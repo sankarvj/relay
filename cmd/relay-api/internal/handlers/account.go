@@ -8,6 +8,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
 
@@ -23,12 +24,12 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	ctx, span := trace.StartSpan(ctx, "handlers.Account.List")
 	defer span.End()
 
-	claims, ok := ctx.Value(auth.Key).(auth.Claims)
-	if !ok {
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
 		return web.NewShutdownError("claims missing from context")
 	}
 
-	accounts, err := account.List(ctx, claims, a.db)
+	accounts, err := account.List(ctx, currentUserID, a.db)
 	if err != nil {
 		return err
 	}

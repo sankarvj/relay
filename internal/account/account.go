@@ -7,19 +7,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"go.opencensus.io/trace"
 )
 
-// List retrieves a list of existing users from the database.
-func List(ctx context.Context, user auth.Claims, db *sqlx.DB) ([]Account, error) {
+// List retrieves a list of existing accounts from the database.
+func List(ctx context.Context, currentUserID string, db *sqlx.DB) ([]Account, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.account.List")
 	defer span.End()
 
 	accounts := []Account{}
 	const q = `SELECT a.* FROM accounts as a join users as u on a.account_id = u.account_id where u.user_id = $1`
 
-	if err := db.SelectContext(ctx, &accounts, q, user.Subject); err != nil {
+	if err := db.SelectContext(ctx, &accounts, q, currentUserID); err != nil {
 		return nil, errors.Wrap(err, "selecting accounts")
 	}
 	return accounts, nil

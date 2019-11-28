@@ -46,6 +46,15 @@ func List(ctx context.Context, db *sqlx.DB) ([]User, error) {
 	return users, nil
 }
 
+// RetrieveCurrentUserID gets the current user wrt the auth claims from the database.
+func RetrieveCurrentUserID(ctx context.Context) (string, error) {
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return "", ErrNotFound
+	}
+	return claims.Subject, nil
+}
+
 // Retrieve gets the specified user from the database.
 func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (*User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")

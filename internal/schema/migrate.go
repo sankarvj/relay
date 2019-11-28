@@ -70,4 +70,70 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     3,
+		Description: "Add teams",
+		Script: `
+		CREATE TABLE teams (
+			team_id       BIGSERIAL PRIMARY KEY,
+			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			name          TEXT,
+			description   TEXT,
+			created_at    TIMESTAMP,
+			updated_at    BIGINT,
+			UNIQUE (name)
+		);
+		`,
+	},
+	{
+		Version:     4,
+		Description: "Add members",
+		Script: `
+		CREATE TABLE members (
+			member_id     BIGSERIAL PRIMARY KEY,
+			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
+			user_id       UUID REFERENCES users ON DELETE CASCADE,
+			roles         TEXT[],
+			created_at    TIMESTAMP,
+			updated_at    BIGINT
+		);
+		`,
+	},
+	{
+		Version:     5,
+		Description: "Add entities",
+		Script: `
+		CREATE TABLE entities (
+			entity_id     UUID,
+			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
+			name          TEXT,
+			description   TEXT,
+			assignee_id   BIGINT,
+			state         INTEGER DEFAULT 0,
+			mode          INTEGER DEFAULT 0,
+			priority      INTEGER DEFAULT 0,
+			retry         INTEGER DEFAULT 0,
+			attributes    TEXT,
+			tags          TEXT[],
+			created_at    TIMESTAMP,
+			updated_at    BIGINT,
+			PRIMARY KEY (entity_id)
+		);
+		`,
+	},
+	{
+		Version:     6,
+		Description: "Add rules",
+		Script: `
+		CREATE TABLE rules (
+			rule_id       UUID,
+			entity_id     UUID REFERENCES entities ON DELETE CASCADE,
+			expression    TEXT,
+			results       TEXT,
+			created_at    TIMESTAMP,
+			updated_at    BIGINT,
+			PRIMARY KEY (rule_id)
+		);
+		`,
+	},
 }
