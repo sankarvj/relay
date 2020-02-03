@@ -13,7 +13,6 @@ import (
 // Check provides support for orchestration health checks.
 type Check struct {
 	db *sqlx.DB
-
 	// ADD OTHER STATE LIKE THE LOGGER IF NEEDED.
 }
 

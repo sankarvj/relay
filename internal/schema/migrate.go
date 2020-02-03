@@ -113,7 +113,7 @@ var migrations = []darwin.Migration{
 			mode          INTEGER DEFAULT 0,
 			priority      INTEGER DEFAULT 0,
 			retry         INTEGER DEFAULT 0,
-			attributes    TEXT,
+			attributes    JSONB,
 			tags          TEXT[],
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,

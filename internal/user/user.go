@@ -48,11 +48,31 @@ func List(ctx context.Context, db *sqlx.DB) ([]User, error) {
 
 // RetrieveCurrentUserID gets the current user wrt the auth claims from the database.
 func RetrieveCurrentUserID(ctx context.Context) (string, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentUserID")
+	defer span.End()
+
 	claims, ok := ctx.Value(auth.Key).(auth.Claims)
 	if !ok {
 		return "", ErrNotFound
 	}
 	return claims.Subject, nil
+}
+
+// RetrieveCurrentAccountID gets the current users account id.
+func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) (string, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentAccountID")
+	defer span.End()
+
+	var accountID string
+	const q = `SELECT account_id FROM users WHERE user_id = $1`
+	if err := db.GetContext(ctx, &accountID, q, id); err != nil {
+		if err == sql.ErrNoRows {
+			return "", ErrNotFound
+		}
+		return "", errors.Wrapf(err, "selecting account for user %q", id)
+	}
+
+	return accountID, nil
 }
 
 // Retrieve gets the specified user from the database.

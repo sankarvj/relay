@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
 
@@ -72,6 +74,37 @@ func HasRole(roles ...string) web.Middleware {
 
 			if !claims.HasRole(roles...) {
 				return ErrForbidden
+			}
+
+			return after(ctx, w, r, params)
+		}
+
+		return h
+	}
+
+	return f
+}
+
+// HasAccountAccess validates that an authenticated user has access to the account
+func HasAccountAccess(db *sqlx.DB) web.Middleware {
+
+	// This is the actual middleware function to be executed.
+	f := func(after web.Handler) web.Handler {
+
+		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+			ctx, span := trace.StartSpan(ctx, "internal.mid.HasAccountAccess")
+			defer span.End()
+
+			claims, ok := ctx.Value(auth.Key).(auth.Claims)
+			if !ok {
+				return errors.New("claims missing from context: HasAccountAccess called without/before Authenticate")
+			}
+
+			accountID := params["account_id"]
+			userID := claims.Subject
+			expectedAccountID, err := user.RetrieveCurrentAccountID(ctx, db, userID)
+			if err != nil || accountID != expectedAccountID {
+				return errors.New("Account not associated with this user")
 			}
 
 			return after(ctx, w, r, params)
