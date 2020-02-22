@@ -108,10 +108,8 @@ var migrations = []darwin.Migration{
 			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
 			name          TEXT,
 			description   TEXT,
-			assignee_id   BIGINT,
 			state         INTEGER DEFAULT 0,
 			mode          INTEGER DEFAULT 0,
-			priority      INTEGER DEFAULT 0,
 			retry         INTEGER DEFAULT 0,
 			attributes    JSONB,
 			tags          TEXT[],
@@ -129,10 +127,25 @@ var migrations = []darwin.Migration{
 			rule_id       UUID,
 			entity_id     UUID REFERENCES entities ON DELETE CASCADE,
 			expression    TEXT,
-			results       TEXT,
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
 			PRIMARY KEY (rule_id)
+		);
+		`,
+	},
+	{
+		Version:     7,
+		Description: "Add items",
+		Script: `
+		CREATE TABLE items (
+			item_id          UUID,
+			parent_item_id   UUID,
+			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
+			state            INTEGER DEFAULT 0,
+			input            JSONB,
+			created_at       TIMESTAMP,
+			updated_at       BIGINT,
+			PRIMARY KEY  (item_id)
 		);
 		`,
 	},

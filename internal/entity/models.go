@@ -12,10 +12,8 @@ type Entity struct {
 	TeamID      int64          `db:"team_id" json:"team_id"`
 	Name        string         `db:"name" json:"name"`
 	Description *string        `db:"description" json:"description"`
-	AssigneeID  *int64         `db:"assignee_id" json:"assignee_id"`
 	State       int            `db:"state" json:"state"`
 	Mode        int            `db:"mode" json:"mode"`
-	Priority    int            `db:"priority" json:"priority"`
 	Retry       int            `db:"retry" json:"retry"`
 	Attributes  string         `db:"attributes" json:"attributes"`
 	Tags        pq.StringArray `db:"tags" json:"tags"`
@@ -30,10 +28,8 @@ type ViewModelEntity struct {
 	TeamID      int64     `json:"team_id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`
-	AssigneeID  *int64    `json:"assignee_id"`
 	State       int       `json:"state"`
 	Mode        int       `json:"mode"`
-	Priority    int       `json:"priority"`
 	Retry       int       `json:"retry"`
 	Fields      []Field   `json:"fields"`
 	Tags        []string  `json:"tags"`
@@ -55,3 +51,8 @@ type Field struct {
 	Value    string `json:"value" validate:"required"`
 	DataType string `json:"data_type" validate:"required"`
 }
+
+//Mode for the entity spcifies certain entity specific characteristics
+const (
+	ModePrimary = 1
+)

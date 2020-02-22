@@ -60,11 +60,31 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, authenticator *a
 	// TODO Add team authorization middleware
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities", e.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities", e.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Retrieve, mid.Authenticate(authenticator))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/trigger", e.Trigger, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
+	i := Item{
+		db:            db,
+		authenticator: authenticator,
+	}
+	// Register items management endpoints.
+	// TODO Add team authorization middleware
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items", i.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items", i.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
+	r := Rule{
+		db:            db,
+		authenticator: authenticator,
+	}
+	// Register items management endpoints.
+	// TODO Add team authorization middleware
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/rules", r.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/rules", r.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	ass := AwsSnsSubscription{
 		db: db,
 	}
-	// Register teams management endpoints.
+	// Register sns subscription from aws for the product key.
 	app.Handle("POST", "/aws/sns/:accountkey/:productkey", ass.Create)
 
 	return app
