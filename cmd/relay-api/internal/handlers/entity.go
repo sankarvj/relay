@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -66,8 +65,7 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	//set account_id from the request path
-	ne.TeamID = params["team_id"]
-	entity, err := entity.Create(ctx, e.db, ne, time.Now())
+	entity, err := entity.Create(ctx, e.db, params["team_id"], ne, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &entity)
 	}
@@ -93,7 +91,7 @@ func (e *Entity) Trigger(ctx context.Context, w http.ResponseWriter, r *http.Req
 	for i := 0; i < len(rules); i++ {
 		expression := rules[i].Expression
 		log.Println("expression - ", expression)
-		rule.RunRuleEngine(expression, e.db)
+		rule.RunRuleEngine(ctx, e.db, expression)
 	}
 
 	return web.Respond(ctx, w, entity, http.StatusCreated)
@@ -119,67 +117,4 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 	}
-}
-
-func releaseDataEntityFields() []entity.Field {
-	fields := make([]entity.Field, 0)
-	field1 := entity.Field{
-		Name:     "Name",
-		DataType: "S",
-		Key:      uuid.New().String(),
-	}
-	field2 := entity.Field{
-		Name:     "Status",
-		DataType: "S",
-		Key:      uuid.New().String(),
-		Value:    "down",
-	}
-	field3 := entity.Field{
-		Name:     "Version",
-		DataType: "N",
-		Key:      uuid.New().String(),
-	}
-	field4 := entity.Field{
-		Name:     "What's New",
-		DataType: "S",
-		Key:      uuid.New().String(),
-	}
-	fields = append(fields, field1, field2, field3, field4)
-	return fields
-}
-
-func apiEntityFields() []entity.Field {
-	fields := make([]entity.Field, 0)
-	headers := make(map[string]string, 0)
-	headers["X-ClientToken"] = "mcr eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjExNTc2NTAwMjk2fQ.1KtXw_YgxbJW8ibv_v2hfpInjQKC6enCh9IO1ziV2RA"
-	encodedHeaders, err := json.Marshal(headers)
-	if err != nil {
-		return nil
-	}
-	field1 := entity.Field{
-		Name:     "Path",
-		DataType: "S",
-		Key:      "path",
-		Value:    "/actuator/info",
-	}
-	field2 := entity.Field{
-		Name:     "Host",
-		DataType: "S",
-		Key:      "host",
-		Value:    "https://stage.freshcontacts.io",
-	}
-	field3 := entity.Field{
-		Name:     "Method",
-		DataType: "S",
-		Key:      "method",
-		Value:    "post",
-	}
-	field4 := entity.Field{
-		Name:     "Header",
-		DataType: "S",
-		Key:      "headers",
-		Value:    string(encodedHeaders),
-	}
-	fields = append(fields, field1, field2, field3, field4)
-	return fields
 }

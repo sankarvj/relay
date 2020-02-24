@@ -12,6 +12,7 @@ type Entity struct {
 	TeamID      int64          `db:"team_id" json:"team_id"`
 	Name        string         `db:"name" json:"name"`
 	Description *string        `db:"description" json:"description"`
+	Category    int            `db:"category" json:"category"`
 	State       int            `db:"state" json:"state"`
 	Mode        int            `db:"mode" json:"mode"`
 	Retry       int            `db:"retry" json:"retry"`
@@ -39,9 +40,11 @@ type ViewModelEntity struct {
 
 // NewEntity has information needed to creat new entity
 type NewEntity struct {
-	TeamID string  `json:"team_id"`
-	Name   string  `json:"name" validate:"required"`
-	Fields []Field `json:"fields" validate:"required"`
+	Name     string  `json:"name" validate:"required"`
+	Fields   []Field `json:"fields" validate:"required"`
+	Category int     `json:"category" validate:"required"`
+	State    int     `json:"state" validate:"required"`
+	Mode     int     `json:"mode" validate:"required"`
 }
 
 // Field represents structural format of attributes in entity
@@ -54,5 +57,19 @@ type Field struct {
 
 //Mode for the entity spcifies certain entity specific characteristics
 const (
-	ModePrimary = 1
+	ModeUnknown = 0
+	ModeDefault = 1
+	ModePrimary = 2
+)
+
+//State for the entity specifies the current state of the entity
+const (
+	StateUnknown = 0
+)
+
+//Category specifies the different type of entities
+const (
+	CategoryUnknown = 0
+	CategoryData    = 1
+	CategoryAPI     = 2
 )

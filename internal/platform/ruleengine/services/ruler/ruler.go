@@ -9,13 +9,20 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 )
 
+//Work used to evaluate the expression
+type Work struct {
+	Key         string
+	CurrentRule string
+	Resp        chan map[string]interface{}
+}
+
 //Ruler has the full set of rule items
 type Ruler struct {
 	RuleItems []RuleItem
 	itemCount int
 
 	action chan string
-	worker workerFn
+	work   chan Work
 }
 
 //RuleItem specifies the single section of the rules
@@ -27,9 +34,6 @@ type RuleItem struct {
 	actionSnippet string
 }
 
-//hashKeyFn takes the keys and returns the response json in the form of map
-type workerFn func(string) map[string]interface{}
-
 //applyFn takes two operands and then apply the logic to get the final result
 type applyFn func(Operand, Operand) bool
 
@@ -38,24 +42,25 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, worker workerFn, action chan string) {
+func Run(rule string, work chan Work, action chan string) {
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
-	ruler := Ruler{
+	r := Ruler{
 		action: action,
-		worker: worker,
+		work:   work,
 	}
-	ruler = ruler.build(rule)
-	for index := 0; index < len(ruler.RuleItems); index++ {
-		item := ruler.RuleItems[index]
+	r = r.build(rule)
+	for index := 0; index < len(r.RuleItems); index++ {
+		item := r.RuleItems[index]
 		positive := item.operation(item.left, item.right)
 		if positive {
-			ruler.action <- item.actionSnippet
+			r.action <- item.actionSnippet
 		}
 	}
-	close(ruler.action)
+	close(r.action)
+	close(r.work)
 }
 
-func (ruler Ruler) build(rule string) Ruler {
+func (r Ruler) build(rule string) Ruler {
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
@@ -63,23 +68,26 @@ func (ruler Ruler) build(rule string) Ruler {
 		log.Println("token", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
-			ruler.addOperand(strings.TrimSpace(token.Value), true)
+			r.addOperand(strings.TrimSpace(token.Value), true)
 		case lexertoken.TokenEqualSign:
-			ruler.addCompareOperation()
+			r.addCompareOperation()
 		case lexertoken.TokenValue:
-			ruler.addOperand(extract(token.Value), false)
+			r.addOperand(extract(token.Value), false)
 		case lexertoken.TokenSnippet:
-			ruler.addActionSnippet(token.Value)
+			r.addActionSnippet(token.Value)
 		case lexertoken.TokenEOF:
-			return ruler
+			return r
 		}
 	}
 }
 
 func (r *Ruler) addOperand(value interface{}, eval bool) error {
 	if eval {
-		key := fetchRootKey(value.(string))
-		value = evaluate(value.(string), r.worker(key))
+		key := FetchRootKey(value.(string))
+		respChan := make(chan map[string]interface{})
+		r.work <- Work{key, value.(string), respChan}
+		resp := <-respChan
+		value = evaluate(value.(string), resp)
 	}
 
 	if !r.isInMiddleOfRule() {

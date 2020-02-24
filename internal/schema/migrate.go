@@ -108,6 +108,7 @@ var migrations = []darwin.Migration{
 			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
 			name          TEXT,
 			description   TEXT,
+			category      INTEGER DEFAULT 0,
 			state         INTEGER DEFAULT 0,
 			mode          INTEGER DEFAULT 0,
 			retry         INTEGER DEFAULT 0,

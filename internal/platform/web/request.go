@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"reflect"
 	"strings"
@@ -73,6 +74,8 @@ func Decode(r *http.Request, val interface{}) error {
 			}
 			fields = append(fields, field)
 		}
+
+		log.Println("reason for err ", fields)
 
 		return &Error{
 			Err:    errors.New("field validation error"),

@@ -2,12 +2,17 @@ package rule
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/net"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"go.opencensus.io/trace"
 )
@@ -57,45 +62,155 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 }
 
 //RunRuleEngine runs the engine on the expression and emit the action to be taken
-func RunRuleEngine(exp string, db *sqlx.DB) {
+func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string) {
 	action := make(chan string)
-	go ruler.Run(exp, dummypayal, action)
-
+	work := make(chan ruler.Work)
+	go ruler.Run(exp, work, action)
+	go startWorker(ctx, db, work)
 	for {
-		act, ok := <-action
+		actExp, ok := <-action
 		if !ok {
-			fmt.Println("Channel Close")
+			fmt.Println("Channel Close 1")
 			break
 		}
-		fmt.Println("Action To Be Taken ", act)
+		fmt.Println("Action To Be Taken ", actExp)
+		actioner(ctx, db, actExp)
 	}
 }
 
-func dummypayal(key string) map[string]interface{} {
-
-	// entity, err := entity.Retrieve(ctx, key, e.db)
-	// if err != nil {
-	// 	return err
-	// }
-
-	if key == "a6036fe2-0e77-4fab-a798-a39fcf99815c" {
-		return map[string]interface{}{
-			"a6036fe2-0e77-4fab-a798-a39fcf99815c": map[string]interface{}{
-				"build": map[string]interface{}{
-					"artifact": 1,
-					"appinfo": map[string]interface{}{
-						"version": 2,
-					},
-				},
-			},
+func startWorker(ctx context.Context, db *sqlx.DB, w chan ruler.Work) {
+	for {
+		do, ok := <-w
+		if !ok {
+			fmt.Println("Channel Close 2")
+			break
 		}
-	} else {
-		return map[string]interface{}{
-			"8ac6147e-ad53-4379-8503-806c01500b9b": map[string]interface{}{
-				"latest": map[string]interface{}{
-					"version": 2,
-				},
-			},
+		do.Resp <- worker(ctx, db, do.Key, do.CurrentRule)
+	}
+}
+
+func worker(ctx context.Context, db *sqlx.DB, key, currentRule string) map[string]interface{} {
+	e, fields, err := entity.RetrieveWithFields(ctx, db, key)
+	if err != nil {
+		return map[string]interface{}{"error": errors.Wrapf(err, "error while retriving entity on response worker %v", key)}
+	}
+
+	var result map[string]interface{}
+	switch e.Category {
+	case entity.CategoryAPI:
+		err = updateResultFromAPIEntity(fields, &result)
+	case entity.CategoryData:
+		result, err = updateResultFromDataEntity(ctx, db, key, currentRule, result)
+	}
+	if err != nil {
+		result = map[string]interface{}{"error": err}
+	}
+
+	return buildResultant(e.ID, result)
+}
+
+func updateResultFromAPIEntity(fields []entity.Field, result *map[string]interface{}) error {
+	apiParams, err := populateAPIParams(fields)
+	if err != nil {
+		return err
+	}
+	err = apiParams.MakeHTTPRequest(result)
+	return err
+}
+
+func updateResultFromDataEntity(ctx context.Context, db *sqlx.DB, key, currentRule string, result map[string]interface{}) (map[string]interface{}, error) {
+	resp := make(map[string]interface{}, 0)
+	itemType := ruler.FetchItemType(currentRule)
+	switch itemType {
+	case "latest":
+		_, fields, err := item.RetrieveLatestItem(ctx, db, key)
+		if err != nil {
+			return result, err
+		}
+		for _, field := range fields {
+			resp[field.Key] = field.Value
 		}
 	}
+	result = map[string]interface{}{
+		itemType: resp,
+	}
+	return result, nil
+}
+
+func populateAPIParams(fields []entity.Field) (net.APIParams, error) {
+	apiParams := net.APIParams{}
+	for _, field := range fields {
+		switch field.Key {
+		case "path":
+			apiParams.Path = field.Value
+		case "host":
+			apiParams.Host = field.Value
+		case "method":
+			apiParams.Method = field.Value
+		case "headers":
+			var headers map[string]string
+			if err := json.Unmarshal([]byte(field.Value), &headers); err != nil {
+				return apiParams, err
+			}
+			apiParams.Headers = headers
+		}
+	}
+	return apiParams, nil
+}
+
+func buildResultant(rootKey string, result map[string]interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		rootKey: result,
+	}
+}
+
+func actioner(ctx context.Context, db *sqlx.DB, actionExp string) error {
+	rootKey := ruler.FetchRootKey(actionExp)
+	e, err := entity.Retrieve(ctx, rootKey, db)
+	if err != nil {
+		return err
+	}
+	switch e.Category {
+	case entity.CategoryAPI:
+	case entity.CategoryData:
+		itemType := ruler.FetchItemType(actionExp)
+		switch itemType {
+		case "latest":
+			i, _, err := item.RetrieveLatestItem(ctx, db, rootKey)
+			if err != nil {
+				return err
+			}
+			performActionOnItem(ctx, db, actionExp, i)
+		}
+	}
+	return nil
+}
+
+func performActionOnItem(ctx context.Context, db *sqlx.DB, actionExp string, i item.Item) error {
+	actionType := ruler.FetchActionType(actionExp)
+	switch actionType {
+	case "set":
+		actionKey, actionVal := ruler.FetchActionKeyValue(actionExp)
+		err := updateItemFields(ctx, db, i, actionKey, actionVal)
+		if err != nil {
+			return errors.Wrapf(err, "error while performing action on item %v", i.ID)
+		}
+	}
+	return nil
+}
+
+func updateItemFields(ctx context.Context, db *sqlx.DB, i item.Item, actionKey, actionVal string) error {
+	var existingFields []item.Field
+	if err := json.Unmarshal([]byte(i.Input), &existingFields); err != nil {
+		return errors.Wrapf(err, "error while unmarshalling item attributes %v", i.ID)
+	}
+	for i := 0; i < len(existingFields); i++ {
+		field := &existingFields[i]
+		if actionKey == field.Key {
+			field.Value = actionVal
+			log.Println("changing the field %v with value %v ", field.Key, field.Value)
+		}
+	}
+
+	return item.UpdateFields(ctx, db, i.ID, existingFields)
 }

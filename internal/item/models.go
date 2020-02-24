@@ -22,8 +22,7 @@ type ViewModelItem struct {
 
 // NewItem has information needed to creat new item
 type NewItem struct {
-	EntityID string  `json:"entity_id"`
-	Fields   []Field `json:"fields" validate:"required"`
+	Fields []Field `json:"fields" validate:"required"`
 }
 
 // Field represents structural format of attributes in entity
@@ -32,4 +31,14 @@ type Field struct {
 	Key      string `json:"key" validate:"required"`
 	Value    string `json:"value" validate:"required"`
 	DataType string `json:"data_type" validate:"required"`
+}
+
+// UpdateItem defines what information may be provided to modify an existing
+// Item. All fields are optional so clients can send just the fields they want
+// changed. It uses pointer fields so we can differentiate between a field that
+// was not provided and a field that was provided as explicitly blank. Normally
+// we do not want to use pointers to basic types but we make exceptions around
+// marshalling/unmarshalling.
+type UpdateItem struct {
+	Input *string `json:"input"`
 }

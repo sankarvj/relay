@@ -56,11 +56,11 @@ func Primary(ctx context.Context, teamID string, db *sqlx.DB) (Entity, error) {
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (*Entity, error) {
+func Create(ctx context.Context, db *sqlx.DB, teamIDStr string, n NewEntity, now time.Time) (*Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Create")
 	defer span.End()
 
-	teamID, _ := strconv.ParseInt(n.TeamID, 10, 64)
+	teamID, _ := strconv.ParseInt(teamIDStr, 10, 64)
 
 	attributes, err := json.Marshal(n.Fields)
 	if err != nil {
@@ -71,18 +71,21 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (*Enti
 		ID:         uuid.New().String(),
 		TeamID:     teamID,
 		Name:       n.Name,
+		Category:   n.Category,
+		State:      n.State,
+		Mode:       n.Mode,
 		Attributes: string(attributes),
 		CreatedAt:  now.UTC(),
 		UpdatedAt:  now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO entities
-		(entity_id, team_id, name, attributes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(entity_id, team_id, name, category, state, mode, attributes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		e.ID, e.TeamID, e.Name, e.Attributes,
+		e.ID, e.TeamID, e.Name, e.Category, e.State, e.Mode, e.Attributes,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {
@@ -112,4 +115,18 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Entity, error) {
 	}
 
 	return &e, nil
+}
+
+// RetrieveWithFields retrive entity along with the fields from the json attributes
+func RetrieveWithFields(ctx context.Context, db *sqlx.DB, entityID string) (*Entity, []Field, error) {
+	e, err := Retrieve(ctx, entityID, db)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "selecting entity while retrive with fields %q", entityID)
+	}
+	var fields []Field
+	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
+		return nil, nil, errors.Wrapf(err, "error while unmarshalling entity attributes on retrive with fields %q", entityID)
+	}
+
+	return e, fields, nil
 }

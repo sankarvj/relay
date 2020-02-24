@@ -2,6 +2,7 @@ package item
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -9,6 +10,14 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+)
+
+var (
+	// ErrNotFound is used when a specific entity is requested but does not exist.
+	ErrNotFound = errors.New("Item not found")
+
+	// ErrInvalidID occurs when an ID is not in a valid form.
+	ErrInvalidID = errors.New("ID is not in its proper form")
 )
 
 // List retrieves a list of existing item for the entity associated from the database.
@@ -27,7 +36,7 @@ func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
 }
 
 // Create inserts a new item into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (*Item, error) {
+func Create(ctx context.Context, db *sqlx.DB, entityID string, n NewItem, now time.Time) (*Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Create")
 	defer span.End()
 
@@ -38,7 +47,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (*Item, 
 
 	i := Item{
 		ID:        uuid.New().String(),
-		EntityID:  n.EntityID,
+		EntityID:  entityID,
 		Input:     string(input),
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
@@ -58,4 +67,95 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (*Item, 
 	}
 
 	return &i, nil
+}
+
+//UpdateFields patches the field data
+func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields []Field) error {
+	input, err := json.Marshal(fields)
+	if err != nil {
+		return errors.Wrap(err, "encode fields to input")
+	}
+	inputStr := string(input)
+	upd := UpdateItem{
+		Input: &inputStr,
+	}
+	return update(ctx, db, id, upd, time.Now())
+}
+
+// Update replaces a item document in the database.
+func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
+	defer span.End()
+
+	i, err := Retrieve(ctx, db, id)
+	if err != nil {
+		return err
+	}
+
+	if upd.Input != nil {
+		i.Input = *upd.Input
+	}
+	i.UpdatedAt = now.Unix()
+
+	const q = `UPDATE items SET
+		"input" = $2,
+		"updated_at" = $3
+		WHERE item_id = $1`
+	_, err = db.ExecContext(ctx, q, i.ID,
+		i.Input, i.UpdatedAt,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating item")
+	}
+
+	return nil
+}
+
+// Retrieve gets the specified user from the database.
+func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
+	defer span.End()
+
+	if _, err := uuid.Parse(id); err != nil {
+		return nil, ErrInvalidID
+	}
+
+	var i Item
+	const q = `SELECT * FROM items WHERE item_id = $1`
+	if err := db.GetContext(ctx, &i, q, id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+
+		return nil, errors.Wrapf(err, "selecting item %q", id)
+	}
+
+	return &i, nil
+}
+
+// RetrieveLatestItem gets the latest item list of items associated with the entity.
+func RetrieveLatestItem(ctx context.Context, db *sqlx.DB, entityID string) (Item, []Field, error) {
+	var i Item
+	var fields []Field
+	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
+	defer span.End()
+
+	if _, err := uuid.Parse(entityID); err != nil {
+		return i, fields, ErrInvalidID
+	}
+
+	const q = `SELECT * FROM items WHERE entity_id = $1 order by created_at desc limit 1`
+	if err := db.GetContext(ctx, &i, q, entityID); err != nil {
+		if err == sql.ErrNoRows {
+			return i, fields, ErrNotFound
+		}
+
+		return i, fields, errors.Wrapf(err, "selecting item from entity %q", entityID)
+	}
+
+	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
+		return i, fields, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", i.ID)
+	}
+
+	return i, fields, nil
 }

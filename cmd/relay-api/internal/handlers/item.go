@@ -66,9 +66,8 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
-	ni.EntityID = entityID
 
-	item, err := item.Create(ctx, i.db, ni, time.Now())
+	item, err := item.Create(ctx, i.db, entityID, ni, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &item)
 	}
