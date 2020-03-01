@@ -1,6 +1,8 @@
 package item
 
-import "time"
+import (
+	"time"
+)
 
 // Item represents the individual unit of entity
 type Item struct {
@@ -16,21 +18,13 @@ type Item struct {
 // ViewModelItem represents the view model of item
 // (i.e) it has fields instead of attributes
 type ViewModelItem struct {
-	ID     string  `json:"id"`
-	Fields []Field `json:"fields"`
+	ID     string                 `json:"id"`
+	Fields map[string]interface{} `json:"fields"`
 }
 
 // NewItem has information needed to creat new item
 type NewItem struct {
-	Fields []Field `json:"fields" validate:"required"`
-}
-
-// Field represents structural format of attributes in entity
-type Field struct {
-	Name     string `json:"name" validate:"required"`
-	Key      string `json:"key" validate:"required"`
-	Value    string `json:"value" validate:"required"`
-	DataType string `json:"data_type" validate:"required"`
+	Fields map[string]interface{} `json:"fields" validate:"required"`
 }
 
 // UpdateItem defines what information may be provided to modify an existing

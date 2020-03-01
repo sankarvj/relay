@@ -70,7 +70,7 @@ func Create(ctx context.Context, db *sqlx.DB, entityID string, n NewItem, now ti
 }
 
 //UpdateFields patches the field data
-func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields []Field) error {
+func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields map[string]interface{}) error {
 	input, err := json.Marshal(fields)
 	if err != nil {
 		return errors.Wrap(err, "encode fields to input")
@@ -134,28 +134,28 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Item, error) {
 }
 
 // RetrieveLatestItem gets the latest item list of items associated with the entity.
-func RetrieveLatestItem(ctx context.Context, db *sqlx.DB, entityID string) (Item, []Field, error) {
+func RetrieveLatestItem(ctx context.Context, db *sqlx.DB, entityID string) (Item, map[string]interface{}, error) {
 	var i Item
-	var fields []Field
+	var itemInput map[string]interface{}
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(entityID); err != nil {
-		return i, fields, ErrInvalidID
+		return i, itemInput, ErrInvalidID
 	}
 
 	const q = `SELECT * FROM items WHERE entity_id = $1 order by created_at desc limit 1`
 	if err := db.GetContext(ctx, &i, q, entityID); err != nil {
 		if err == sql.ErrNoRows {
-			return i, fields, ErrNotFound
+			return i, itemInput, ErrNotFound
 		}
 
-		return i, fields, errors.Wrapf(err, "selecting item from entity %q", entityID)
+		return i, itemInput, errors.Wrapf(err, "selecting item from entity %q", entityID)
 	}
 
-	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
-		return i, fields, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", i.ID)
+	if err := json.Unmarshal([]byte(i.Input), &itemInput); err != nil {
+		return i, itemInput, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", i.ID)
 	}
 
-	return i, fields, nil
+	return i, itemInput, nil
 }

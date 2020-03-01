@@ -9,7 +9,7 @@ func TestRun(t *testing.T) {
 	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
 	//sampleInput = `{{a6036fe2-0e77-4fab-a798-a39fcf99815c.build.appinfo.version}} eq {{8ac6147e-ad53-4379-8503-806c01500b9b.latest.version}} <8ac6147e-ad53-4379-8503-806c01500b9b.latest.status=up>`
 
-	action := make(chan string)
+	action := make(chan ActionItem)
 	work := make(chan Work)
 	go Run(sampleInput, work, action)
 	go startWorker(work)

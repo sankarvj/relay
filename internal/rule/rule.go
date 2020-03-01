@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,10 +36,15 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 	ctx, span := trace.StartSpan(ctx, "internal.rule.Create")
 	defer span.End()
 
+	actionExp, err := json.Marshal(n.Action)
+	if err != nil {
+		return nil, errors.Wrap(err, "encode action")
+	}
+
 	r := Rule{
 		ID:         uuid.New().String(),
 		EntityID:   n.EntityID,
-		Expression: n.Expression,
+		Expression: n.Expression + " <" + string(actionExp) + ">",
 		CreatedAt:  now.UTC(),
 		UpdatedAt:  now.UTC().Unix(),
 	}
@@ -49,7 +53,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 		(rule_id, entity_id, expression, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)`
 
-	_, err := db.ExecContext(
+	_, err = db.ExecContext(
 		ctx, q,
 		r.ID, r.EntityID, r.Expression,
 		r.CreatedAt, r.UpdatedAt,
@@ -63,18 +67,17 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 
 //RunRuleEngine runs the engine on the expression and emit the action to be taken
 func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string) {
-	action := make(chan string)
+	action := make(chan ruler.ActionItem)
 	work := make(chan ruler.Work)
 	go ruler.Run(exp, work, action)
 	go startWorker(ctx, db, work)
 	for {
-		actExp, ok := <-action
+		actionItem, ok := <-action
 		if !ok {
 			fmt.Println("Channel Close 1")
 			break
 		}
-		fmt.Println("Action To Be Taken ", actExp)
-		actioner(ctx, db, actExp)
+		actioner(ctx, db, actionItem)
 	}
 }
 
@@ -119,20 +122,16 @@ func updateResultFromAPIEntity(fields []entity.Field, result *map[string]interfa
 }
 
 func updateResultFromDataEntity(ctx context.Context, db *sqlx.DB, key, currentRule string, result map[string]interface{}) (map[string]interface{}, error) {
-	resp := make(map[string]interface{}, 0)
 	itemType := ruler.FetchItemType(currentRule)
 	switch itemType {
 	case "latest":
 		_, fields, err := item.RetrieveLatestItem(ctx, db, key)
+		result = map[string]interface{}{
+			itemType: fields,
+		}
 		if err != nil {
 			return result, err
 		}
-		for _, field := range fields {
-			resp[field.Key] = field.Value
-		}
-	}
-	result = map[string]interface{}{
-		itemType: resp,
 	}
 	return result, nil
 }
@@ -164,25 +163,24 @@ func buildResultant(rootKey string, result map[string]interface{}) map[string]in
 	}
 }
 
-func actioner(ctx context.Context, db *sqlx.DB, actionExp string) error {
-	rootKey := ruler.FetchRootKey(actionExp)
-	e, err := entity.Retrieve(ctx, rootKey, db)
-	if err != nil {
-		return err
+func actioner(ctx context.Context, db *sqlx.DB, actionItem ruler.ActionItem) error {
+	fmt.Println("action to be taken --> ", actionItem)
+	setter, _ := json.Marshal(actionItem.Set)
+	setterClause := "'" + string(setter) + "'"
+	fmt.Println("setter --> ", setterClause)
+	var whereClause string
+	for key, val := range actionItem.Condition {
+		whereClause = "'" + key + "'" + " = " + "'" + val.(string) + "'"
 	}
-	switch e.Category {
-	case entity.CategoryAPI:
-	case entity.CategoryData:
-		itemType := ruler.FetchItemType(actionExp)
-		switch itemType {
-		case "latest":
-			i, _, err := item.RetrieveLatestItem(ctx, db, rootKey)
-			if err != nil {
-				return err
-			}
-			performActionOnItem(ctx, db, actionExp, i)
-		}
-	}
+	fmt.Println("whereClause --> ", whereClause)
+
+	var q = `UPDATE items SET input = input || ` + setterClause + ` WHERE input->>` + whereClause + ``
+
+	_, err := db.ExecContext(
+		ctx, q,
+	)
+	fmt.Println("err --> ", err)
+
 	return nil
 }
 
@@ -200,17 +198,10 @@ func performActionOnItem(ctx context.Context, db *sqlx.DB, actionExp string, i i
 }
 
 func updateItemFields(ctx context.Context, db *sqlx.DB, i item.Item, actionKey, actionVal string) error {
-	var existingFields []item.Field
+	var existingFields map[string]interface{}
 	if err := json.Unmarshal([]byte(i.Input), &existingFields); err != nil {
 		return errors.Wrapf(err, "error while unmarshalling item attributes %v", i.ID)
 	}
-	for i := 0; i < len(existingFields); i++ {
-		field := &existingFields[i]
-		if actionKey == field.Key {
-			field.Value = actionVal
-			log.Println("changing the field %v with value %v ", field.Key, field.Value)
-		}
-	}
-
+	existingFields[actionKey] = actionVal
 	return item.UpdateFields(ctx, db, i.ID, existingFields)
 }

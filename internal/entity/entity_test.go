@@ -22,11 +22,10 @@ func TestDataEntity(t *testing.T) {
 			fields := []entity.Field{field}
 
 			ne := entity.NewEntity{
-				TeamID: string(3),
 				Name:   "",
 				Fields: fields,
 			}
-			entity.Create(ctx, db, ne, now)
+			entity.Create(ctx, db, string(3), ne, now)
 		}
 	}
 

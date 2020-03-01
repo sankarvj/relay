@@ -21,6 +21,15 @@ type ViewModelRule struct {
 
 // NewRule has information needed to creat new rule
 type NewRule struct {
-	EntityID   string `json:"entity_id"`
-	Expression string `json:"expression"`
+	EntityID   string    `json:"entity_id"`
+	Expression string    `json:"expression"`
+	Action     NewAction `json:"action"`
+}
+
+// NewAction has information needed to creat new action
+type NewAction struct {
+	EntityID    string            `json:"entity_id"`
+	Set         map[string]string `json:"set"`
+	Condition   map[string]string `json:"condition"`
+	Uncondition map[string]string `json:"uncondition"`
 }

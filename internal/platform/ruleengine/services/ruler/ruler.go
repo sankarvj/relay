@@ -1,6 +1,7 @@
 package ruler
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -20,8 +21,8 @@ type Work struct {
 type Ruler struct {
 	RuleItems []RuleItem
 	itemCount int
-
-	action chan string
+	//channels to send the results back
+	action chan ActionItem
 	work   chan Work
 }
 
@@ -29,9 +30,16 @@ type Ruler struct {
 type RuleItem struct {
 	left  Operand
 	right Operand
+	//operation and the snippet
+	operation  applyFn
+	actionItem ActionItem
+}
 
-	operation     applyFn
-	actionSnippet string
+// ActionItem specifies the action
+type ActionItem struct {
+	Set         map[string]interface{}
+	Condition   map[string]interface{}
+	Uncondition map[string]interface{}
 }
 
 //applyFn takes two operands and then apply the logic to get the final result
@@ -42,10 +50,10 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, work chan Work, action chan string) {
+func Run(rule string, work chan Work, actionItem chan ActionItem) {
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
-		action: action,
+		action: actionItem,
 		work:   work,
 	}
 	r = r.build(rule)
@@ -53,7 +61,7 @@ func Run(rule string, work chan Work, action chan string) {
 		item := r.RuleItems[index]
 		positive := item.operation(item.left, item.right)
 		if positive {
-			r.action <- item.actionSnippet
+			r.action <- item.actionItem
 		}
 	}
 	close(r.action)
@@ -83,11 +91,7 @@ func (r Ruler) build(rule string) Ruler {
 
 func (r *Ruler) addOperand(value interface{}, eval bool) error {
 	if eval {
-		key := FetchRootKey(value.(string))
-		respChan := make(chan map[string]interface{})
-		r.work <- Work{key, value.(string), respChan}
-		resp := <-respChan
-		value = evaluate(value.(string), resp)
+		value = r.eval(value.(string))
 	}
 
 	if !r.isInMiddleOfRule() {
@@ -107,11 +111,43 @@ func (r *Ruler) addCompareOperation() error {
 	return errors.New("incorrect rule syntax")
 }
 
-func (r *Ruler) addActionSnippet(value string) error {
-	r.RuleItems[r.itemCount-1].actionSnippet = value
+func (r *Ruler) isInMiddleOfRule() bool {
+	return r.itemCount%2 != 0
+}
+
+func (r *Ruler) addActionSnippet(actionSnippet string) error {
+	var actionItem ActionItem
+	if err := json.Unmarshal([]byte(actionSnippet), &actionItem); err != nil {
+		return err
+	}
+	for key, val := range actionItem.Set {
+		actionItem.Set[key] = r.evalate(val.(string))
+	}
+
+	for key, val := range actionItem.Condition {
+		actionItem.Condition[key] = r.evalate(val.(string))
+	}
+
+	for key, val := range actionItem.Uncondition {
+		actionItem.Uncondition[key] = r.evalate(val.(string))
+	}
+
+	r.RuleItems[r.itemCount-1].actionItem = actionItem
 	return nil
 }
 
-func (r *Ruler) isInMiddleOfRule() bool {
-	return r.itemCount%2 != 0
+func (r Ruler) evalate(val string) interface{} {
+	if strings.HasPrefix(val, lexertoken.LeftDoubleBraces) {
+		val = val[len(lexertoken.LeftDoubleBraces):(len(val) - len(lexertoken.RightDoubleBraces))]
+		return r.eval(val)
+	}
+	return val
+}
+
+func (r *Ruler) eval(val string) interface{} {
+	key := FetchRootKey(val)
+	respChan := make(chan map[string]interface{})
+	r.work <- Work{key, val, respChan}
+	resp := <-respChan
+	return evaluate(val, resp)
 }

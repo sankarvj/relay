@@ -36,6 +36,10 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
+	_, fields, err := entity.RetrieveWithFields(ctx, i.db, entityID)
+	if err != nil {
+		return err
+	}
 
 	viewModelItems := make([]item.ViewModelItem, len(items))
 	for i, item := range items {
@@ -45,9 +49,11 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	response := struct {
 		Items    []item.ViewModelItem `json:"items"`
 		EntityID string               `json:"entity_id"`
+		Fields   []entity.Field       `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		EntityID: entityID,
+		Fields:   fields,
 	}
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
@@ -76,12 +82,11 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {
-	var fields []item.Field
+	var fields map[string]interface{}
 	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
 		log.Printf("error while unmarshalling item input %v", i.ID)
 		log.Println(err)
 	}
-
 	return item.ViewModelItem{
 		ID:     i.ID,
 		Fields: fields,
