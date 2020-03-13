@@ -36,7 +36,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 	ctx, span := trace.StartSpan(ctx, "internal.rule.Create")
 	defer span.End()
 
-	actionExp, err := json.Marshal(n.Action)
+	actionItems, err := json.Marshal(n.ActionItems)
 	if err != nil {
 		return nil, errors.Wrap(err, "encode action")
 	}
@@ -44,7 +44,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 	r := Rule{
 		ID:         uuid.New().String(),
 		EntityID:   n.EntityID,
-		Expression: n.Expression + " <" + string(actionExp) + ">",
+		Expression: n.Expression + " <" + string(actionItems) + ">",
 		CreatedAt:  now.UTC(),
 		UpdatedAt:  now.UTC().Unix(),
 	}
@@ -164,37 +164,52 @@ func buildResultant(rootKey string, result map[string]interface{}) map[string]in
 }
 
 func actioner(ctx context.Context, db *sqlx.DB, actionItem ruler.ActionItem) error {
+	var err error
 	fmt.Println("action to be taken --> ", actionItem)
 	setter, _ := json.Marshal(actionItem.Set)
 	setterClause := "'" + string(setter) + "'"
-	fmt.Println("setter --> ", setterClause)
-	var whereClause string
-	for key, val := range actionItem.Condition {
-		whereClause = "'" + key + "'" + " = " + "'" + val.(string) + "'"
+	fmt.Println("setterClause --> ", setterClause)
+	if actionItem.Action == ActionQuery {
+		var whereClause string
+		for key, val := range actionItem.Condition {
+			whereClause = "'" + key + "'" + " = " + "'" + val.(string) + "'"
+		}
+		for key, val := range actionItem.Uncondition {
+			whereClause = "'" + key + "'" + " != " + "'" + val.(string) + "'"
+		}
+		fmt.Println("whereClause --> ", whereClause)
+		q := `UPDATE items SET input = input || ` + setterClause + ` WHERE input->>` + whereClause + ``
+		_, err = db.ExecContext(
+			ctx, q,
+		)
+	} else if actionItem.Action == ActionCreate {
+		now := time.Now()
+		input, err := json.Marshal(actionItem.Set)
+		if err != nil {
+			return errors.Wrap(err, "encode fields to input")
+		}
+		i := item.Item{
+			ID:        uuid.New().String(),
+			EntityID:  actionItem.EntityID,
+			Input:     string(input),
+			CreatedAt: now.UTC(),
+			UpdatedAt: now.UTC().Unix(),
+		}
+
+		const q = `INSERT INTO items
+		(item_id, entity_id, input, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`
+
+		_, err = db.ExecContext(
+			ctx, q,
+			i.ID, i.EntityID, i.Input,
+			i.CreatedAt, i.UpdatedAt,
+		)
 	}
-	fmt.Println("whereClause --> ", whereClause)
 
-	var q = `UPDATE items SET input = input || ` + setterClause + ` WHERE input->>` + whereClause + ``
-
-	_, err := db.ExecContext(
-		ctx, q,
-	)
 	fmt.Println("err --> ", err)
 
-	return nil
-}
-
-func performActionOnItem(ctx context.Context, db *sqlx.DB, actionExp string, i item.Item) error {
-	actionType := ruler.FetchActionType(actionExp)
-	switch actionType {
-	case "set":
-		actionKey, actionVal := ruler.FetchActionKeyValue(actionExp)
-		err := updateItemFields(ctx, db, i, actionKey, actionVal)
-		if err != nil {
-			return errors.Wrapf(err, "error while performing action on item %v", i.ID)
-		}
-	}
-	return nil
+	return err
 }
 
 func updateItemFields(ctx context.Context, db *sqlx.DB, i item.Item, actionKey, actionVal string) error {

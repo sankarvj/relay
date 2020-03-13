@@ -90,7 +90,6 @@ func (e *Entity) Trigger(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	for i := 0; i < len(rules); i++ {
 		expression := rules[i].Expression
-		log.Println("expression - ", expression)
 		rule.RunRuleEngine(ctx, e.db, expression)
 	}
 
@@ -109,6 +108,7 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		TeamID:      e.TeamID,
 		Name:        e.Name,
 		Description: e.Description,
+		Category:    e.Category,
 		State:       e.State,
 		Mode:        e.Mode,
 		Retry:       e.Retry,

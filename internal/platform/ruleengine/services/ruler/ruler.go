@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
@@ -31,15 +32,17 @@ type RuleItem struct {
 	left  Operand
 	right Operand
 	//operation and the snippet
-	operation  applyFn
-	actionItem ActionItem
+	operation   applyFn
+	actionItems []ActionItem
 }
 
 // ActionItem specifies the action
 type ActionItem struct {
-	Set         map[string]interface{}
-	Condition   map[string]interface{}
-	Uncondition map[string]interface{}
+	EntityID    string                 `json:"entity_id"`
+	Action      int                    `json:"action"`
+	Set         map[string]interface{} `json:"set"`
+	Condition   map[string]interface{} `json:"condition"`
+	Uncondition map[string]interface{} `json:"uncondition"`
 }
 
 //applyFn takes two operands and then apply the logic to get the final result
@@ -61,7 +64,9 @@ func Run(rule string, work chan Work, actionItem chan ActionItem) {
 		item := r.RuleItems[index]
 		positive := item.operation(item.left, item.right)
 		if positive {
-			r.action <- item.actionItem
+			for _, actionItem := range item.actionItems {
+				r.action <- actionItem
+			}
 		}
 	}
 	close(r.action)
@@ -116,23 +121,24 @@ func (r *Ruler) isInMiddleOfRule() bool {
 }
 
 func (r *Ruler) addActionSnippet(actionSnippet string) error {
-	var actionItem ActionItem
-	if err := json.Unmarshal([]byte(actionSnippet), &actionItem); err != nil {
+	var actionItems []ActionItem
+	if err := json.Unmarshal([]byte(actionSnippet), &actionItems); err != nil {
 		return err
 	}
-	for key, val := range actionItem.Set {
-		actionItem.Set[key] = r.evalate(val.(string))
-	}
+	for _, actionItem := range actionItems {
+		for key, val := range actionItem.Set {
+			actionItem.Set[key] = r.evalate(val.(string))
+		}
 
-	for key, val := range actionItem.Condition {
-		actionItem.Condition[key] = r.evalate(val.(string))
-	}
+		for key, val := range actionItem.Condition {
+			actionItem.Condition[key] = r.evalate(val.(string))
+		}
 
-	for key, val := range actionItem.Uncondition {
-		actionItem.Uncondition[key] = r.evalate(val.(string))
+		for key, val := range actionItem.Uncondition {
+			actionItem.Uncondition[key] = r.evalate(val.(string))
+		}
+		r.RuleItems[r.itemCount-1].actionItems = append(r.RuleItems[r.itemCount-1].actionItems, actionItem)
 	}
-
-	r.RuleItems[r.itemCount-1].actionItem = actionItem
 	return nil
 }
 
@@ -146,6 +152,11 @@ func (r Ruler) evalate(val string) interface{} {
 
 func (r *Ruler) eval(val string) interface{} {
 	key := FetchRootKey(val)
+
+	if key == "currenttime" {
+		return time.Now().UTC()
+	}
+
 	respChan := make(chan map[string]interface{})
 	r.work <- Work{key, val, respChan}
 	resp := <-respChan

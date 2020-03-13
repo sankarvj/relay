@@ -29,6 +29,7 @@ type ViewModelEntity struct {
 	TeamID      int64     `json:"team_id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`
+	Category    int       `json:"category"`
 	State       int       `json:"state"`
 	Mode        int       `json:"mode"`
 	Retry       int       `json:"retry"`
@@ -69,7 +70,8 @@ const (
 
 //Category specifies the different type of entities
 const (
-	CategoryUnknown = 0
-	CategoryData    = 1
-	CategoryAPI     = 2
+	CategoryUnknown    = 0
+	CategoryData       = 1
+	CategoryAPI        = 2
+	CategoryTimeSeries = 3
 )

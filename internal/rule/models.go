@@ -21,15 +21,24 @@ type ViewModelRule struct {
 
 // NewRule has information needed to creat new rule
 type NewRule struct {
-	EntityID   string    `json:"entity_id"`
-	Expression string    `json:"expression"`
-	Action     NewAction `json:"action"`
+	EntityID    string       `json:"entity_id"`
+	Expression  string       `json:"expression"`
+	ActionItems []ActionItem `json:"action_items"`
 }
 
-// NewAction has information needed to creat new action
-type NewAction struct {
+// ActionItem has information needed to creat new action
+type ActionItem struct {
 	EntityID    string            `json:"entity_id"`
+	Action      int               `json:"action"`
 	Set         map[string]string `json:"set"`
 	Condition   map[string]string `json:"condition"`
 	Uncondition map[string]string `json:"uncondition"`
 }
+
+//Action specifies the different type of actions to be performed on the entity
+const (
+	ActionQuery  = 0
+	ActionCreate = 1
+	ActionUpdate = 2
+	ActionDelete = 3
+)
