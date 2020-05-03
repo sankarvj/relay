@@ -25,7 +25,7 @@ func TestDataEntity(t *testing.T) {
 				Name:   "",
 				Fields: fields,
 			}
-			entity.Create(ctx, db, string(3), ne, now)
+			entity.Create(ctx, db, 3, ne, now)
 		}
 	}
 

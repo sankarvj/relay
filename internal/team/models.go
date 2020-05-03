@@ -4,7 +4,7 @@ import "time"
 
 // Team represents sub domains of an organisation
 type Team struct {
-	ID          string    `db:"team_id" json:"id"`
+	ID          int64     `db:"team_id" json:"id"`
 	AccountID   string    `db:"account_id" json:"account_id"`
 	Name        string    `db:"name" json:"name"`
 	Description *string   `db:"description" json:"description"`

@@ -50,11 +50,27 @@ type NewEntity struct {
 
 // Field represents structural format of attributes in entity
 type Field struct {
-	Name     string `json:"name" validate:"required"`
-	Key      string `json:"key" validate:"required"`
-	Value    string `json:"value" validate:"required"`
-	DataType string `json:"data_type" validate:"required"`
+	Name      string    `json:"name" validate:"required"`
+	Key       string    `json:"key" validate:"required"`
+	Value     string    `json:"value" validate:"required"`
+	DataType  FieldType `json:"data_type" validate:"required"`
+	Unique    bool      `json:"unique"`
+	Mandatory bool      `json:"mandatory"`
+	Hidden    bool      `json:"hidden"`
+	Reference string    `json:"reference"`
 }
+
+//FieldType defines the type of field
+type FieldType string
+
+//Mode for the entity spcifies certain entity specific characteristics
+const (
+	TypeString   FieldType = "S"
+	TypeNumber   FieldType = "N"
+	TypeDataTime FieldType = "DT"
+	TypeStatus   FieldType = "ST"
+	TypeAC       FieldType = "AC"
+)
 
 //Mode for the entity spcifies certain entity specific characteristics
 const (
@@ -74,4 +90,5 @@ const (
 	CategoryData       = 1
 	CategoryAPI        = 2
 	CategoryTimeSeries = 3
+	CategoryUserSeries = 4
 )

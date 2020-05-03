@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -63,9 +64,9 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err := web.Decode(r, &ne); err != nil {
 		return errors.Wrap(err, "")
 	}
-
+	teamID, _ := strconv.ParseInt(params["team_id"], 10, 64)
 	//set account_id from the request path
-	entity, err := entity.Create(ctx, e.db, params["team_id"], ne, time.Now())
+	entity, err := entity.Create(ctx, e.db, teamID, ne, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &entity)
 	}

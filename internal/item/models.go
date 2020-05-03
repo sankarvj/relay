@@ -15,6 +15,13 @@ type Item struct {
 	UpdatedAt    int64     `db:"updated_at" json:"updated_at"`
 }
 
+// TimeSeriesItem represents the individual unit of entity
+type TimeSeriesItem struct {
+	State string    `db:"status" json:"status"`
+	Date  time.Time `db:"date" json:"date"`
+	Value int64     `db:"value" json:"value"`
+}
+
 // ViewModelItem represents the view model of item
 // (i.e) it has fields instead of attributes
 type ViewModelItem struct {

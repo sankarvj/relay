@@ -28,15 +28,12 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
 
-	entityID, err := findPrimaryEntityID(ctx, params["team_id"], params["entity_id"], i.db)
-	if err != nil {
-		return errors.Wrap(err, "")
-	}
-	items, err := item.List(ctx, entityID, i.db)
+	e, fields, err := entity.RetrieveWithFields(ctx, i.db, params["entity_id"])
 	if err != nil {
 		return err
 	}
-	_, fields, err := entity.RetrieveWithFields(ctx, i.db, entityID)
+
+	items, err := item.List(ctx, e.ID, i.db)
 	if err != nil {
 		return err
 	}
@@ -48,11 +45,42 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	response := struct {
 		Items    []item.ViewModelItem `json:"items"`
-		EntityID string               `json:"entity_id"`
+		Category int                  `json:"category"`
 		Fields   []entity.Field       `json:"fields"`
 	}{
 		Items:    viewModelItems,
-		EntityID: entityID,
+		Category: e.Category,
+		Fields:   fields,
+	}
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
+// TimeSeriesList returns all the existing items associated with the entity
+func (i *Item) TimeSeriesList(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.TimeSeriesList")
+	defer span.End()
+
+	e, fields, err := entity.RetrieveWithFields(ctx, i.db, params["entity_id"])
+	if err != nil {
+		return err
+	}
+
+	items, err := item.TimeSeriesList(ctx, e.ID, i.db)
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	startRounded := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
+	itemsMap := item.TimeSeriesSameDayViewModel(items, startRounded, 24)
+
+	response := struct {
+		ItemsMap map[time.Time]item.TimeSeriesItem `json:"items_map"`
+		Category int                               `json:"category"`
+		Fields   []entity.Field                    `json:"fields"`
+	}{
+		ItemsMap: itemsMap,
+		Category: e.Category,
 		Fields:   fields,
 	}
 	return web.Respond(ctx, w, response, http.StatusOK)

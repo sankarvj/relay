@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"strconv"
-
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -56,11 +54,9 @@ func Primary(ctx context.Context, teamID string, db *sqlx.DB) (Entity, error) {
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, teamIDStr string, n NewEntity, now time.Time) (*Entity, error) {
+func Create(ctx context.Context, db *sqlx.DB, teamID int64, n NewEntity, now time.Time) (*Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Create")
 	defer span.End()
-
-	teamID, _ := strconv.ParseInt(teamIDStr, 10, 64)
 
 	attributes, err := json.Marshal(n.Fields)
 	if err != nil {
