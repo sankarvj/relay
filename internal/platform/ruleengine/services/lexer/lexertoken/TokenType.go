@@ -16,6 +16,8 @@ const (
 	TokenRightSnippet
 
 	TokenEqualSign
+	TokenANDOperation
+	TokenOROperation
 	TokenValuate
 	TokenValue
 	TokenSnippet

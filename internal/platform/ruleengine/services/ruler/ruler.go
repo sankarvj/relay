@@ -1,11 +1,8 @@
 package ruler
 
 import (
-	"encoding/json"
-	"errors"
 	"log"
 	"strings"
-	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
@@ -13,36 +10,28 @@ import (
 
 //Work used to evaluate the expression
 type Work struct {
-	Key         string
-	CurrentRule string
-	Resp        chan map[string]interface{}
+	Expression string
+	Resp       chan map[string]interface{}
 }
 
 //Ruler has the full set of rule items
 type Ruler struct {
-	RuleItems []RuleItem
-	itemCount int
+	RuleItem *RuleItem
+	positive bool
+	trigger  string
 	//channels to send the results back
-	action chan ActionItem
-	work   chan Work
+	workChan    chan Work
+	triggerChan chan string
 }
 
 //RuleItem specifies the single section of the rules
 type RuleItem struct {
 	left  Operand
 	right Operand
-	//operation and the snippet
-	operation   applyFn
-	actionItems []ActionItem
-}
 
-// ActionItem specifies the action
-type ActionItem struct {
-	EntityID    string                 `json:"entity_id"`
-	Action      int                    `json:"action"`
-	Set         map[string]interface{} `json:"set"`
-	Condition   map[string]interface{} `json:"condition"`
-	Uncondition map[string]interface{} `json:"uncondition"`
+	//operation and the snippet
+	isANDOp   bool
+	operation applyFn
 }
 
 //applyFn takes two operands and then apply the logic to get the final result
@@ -53,27 +42,22 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, work chan Work, actionItem chan ActionItem) {
+func Run(rule string, workChan chan Work, triggerChan chan string) {
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
-		action: actionItem,
-		work:   work,
+		workChan:    workChan,
+		triggerChan: triggerChan,
+		positive:    true, //always start on a positive note! :)
 	}
-	r = r.build(rule)
-	for index := 0; index < len(r.RuleItems); index++ {
-		item := r.RuleItems[index]
-		positive := item.operation(item.left, item.right)
-		if positive {
-			for _, actionItem := range item.actionItems {
-				r.action <- actionItem
-			}
-		}
+	r = r.startLexer(rule)
+	if r.positive {
+		r.triggerChan <- r.trigger
 	}
-	close(r.action)
-	close(r.work)
+	close(r.triggerChan)
+	close(r.workChan)
 }
 
-func (r Ruler) build(rule string) Ruler {
+func (r Ruler) startLexer(rule string) Ruler {
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
@@ -81,84 +65,112 @@ func (r Ruler) build(rule string) Ruler {
 		log.Println("token", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
-			r.addOperand(strings.TrimSpace(token.Value), true)
+			r.addEvalOperand(strings.TrimSpace(token.Value))
 		case lexertoken.TokenEqualSign:
 			r.addCompareOperation()
+		case lexertoken.TokenANDOperation:
+			r.addANDCondition()
+		case lexertoken.TokenOROperation:
+			r.addORCondition()
 		case lexertoken.TokenValue:
-			r.addOperand(extract(token.Value), false)
+			r.addOperand(extract(token.Value))
 		case lexertoken.TokenSnippet:
-			r.addActionSnippet(token.Value)
+			r.addTrigger(token.Value)
+		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
+			r.execute()
+		case lexertoken.TokenRightSnippet:
+			r.exit()
+			return r
 		case lexertoken.TokenEOF:
 			return r
 		}
 	}
 }
 
-func (r *Ruler) addOperand(value interface{}, eval bool) error {
-	if eval {
-		value = r.eval(value.(string))
+func (r *Ruler) addEvalOperand(value interface{}) error {
+	return r.addOperand(r.eval(value.(string)))
+}
+
+func (r *Ruler) addOperand(value interface{}) error {
+	//never set the value to nil. That will make the execute condition fail for valid cases
+	if value == nil {
+		value = "nil"
 	}
 
-	if !r.isInMiddleOfRule() {
-		r.RuleItems = append(r.RuleItems, RuleItem{left: value})
-		r.itemCount = r.itemCount + 1
-	} else {
-		r.RuleItems[r.itemCount-1].right = value
+	r.constructRuleItem()
+
+	if r.RuleItem.left == nil {
+		r.RuleItem.left = value
+	} else if r.RuleItem.right == nil {
+		r.RuleItem.right = value
 	}
 	return nil
 }
 
 func (r *Ruler) addCompareOperation() error {
-	if r.isInMiddleOfRule() {
-		r.RuleItems[r.itemCount-1].operation = compare
-		return nil
-	}
-	return errors.New("incorrect rule syntax")
-}
-
-func (r *Ruler) isInMiddleOfRule() bool {
-	return r.itemCount%2 != 0
-}
-
-func (r *Ruler) addActionSnippet(actionSnippet string) error {
-	var actionItems []ActionItem
-	if err := json.Unmarshal([]byte(actionSnippet), &actionItems); err != nil {
-		return err
-	}
-	for _, actionItem := range actionItems {
-		for key, val := range actionItem.Set {
-			actionItem.Set[key] = r.evalate(val.(string))
-		}
-
-		for key, val := range actionItem.Condition {
-			actionItem.Condition[key] = r.evalate(val.(string))
-		}
-
-		for key, val := range actionItem.Uncondition {
-			actionItem.Uncondition[key] = r.evalate(val.(string))
-		}
-		r.RuleItems[r.itemCount-1].actionItems = append(r.RuleItems[r.itemCount-1].actionItems, actionItem)
-	}
+	r.constructRuleItem()
+	r.RuleItem.operation = compare
 	return nil
 }
 
-func (r Ruler) evalate(val string) interface{} {
-	if strings.HasPrefix(val, lexertoken.LeftDoubleBraces) {
-		val = val[len(lexertoken.LeftDoubleBraces):(len(val) - len(lexertoken.RightDoubleBraces))]
-		return r.eval(val)
-	}
-	return val
+func (r *Ruler) addANDCondition() error {
+	r.constructRuleItem()
+	r.RuleItem.isANDOp = true
+	return nil
 }
 
-func (r *Ruler) eval(val string) interface{} {
-	key := FetchRootKey(val)
+func (r *Ruler) addORCondition() error {
+	r.constructRuleItem()
+	r.RuleItem.isANDOp = false
+	return nil
+}
 
-	if key == "currenttime" {
-		return time.Now().UTC()
+func (r *Ruler) addTrigger(trigger string) error {
+	r.trigger = trigger
+	return nil
+}
+
+func (r *Ruler) constructRuleItem() {
+	if r.RuleItem == nil {
+		r.RuleItem = &RuleItem{}
 	}
+}
 
+func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
+	if r.RuleItem.isANDOp {
+		r.positive = r.positive && singleUnitResult
+	} else { // any condition ---> OR case
+		r.positive = r.positive || singleUnitResult
+	}
+	r.RuleItem = nil
+}
+
+func (r *Ruler) execute() error {
+	r.constructRuleItem()
+	log.Println("execute r.RuleItem.left ", r.RuleItem.left)
+	log.Println("execute r.RuleItem.right ", r.RuleItem.right)
+	log.Println("execute r.RuleItem.operation ", r.RuleItem.operation)
+	log.Println("execute r.RuleItem.isANDOp ", r.RuleItem.isANDOp)
+
+	var opResult bool
+	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {
+		opResult = false
+	} else if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
+		opResult = r.RuleItem.operation(r.RuleItem.left, r.RuleItem.right)
+	}
+	//save the result of the unit and reset the ruleItem
+	r.saveAndResetRuleItem(opResult)
+	return nil
+}
+
+func (r *Ruler) exit() error {
+	log.Println("exit exit exit exit exit exit exit exit")
+	return nil
+}
+
+func (r *Ruler) eval(expression string) interface{} {
 	respChan := make(chan map[string]interface{})
-	r.work <- Work{key, val, respChan}
+	r.workChan <- Work{expression, respChan}
 	resp := <-respChan
-	return evaluate(val, resp)
+	return evaluate(expression, resp)
 }

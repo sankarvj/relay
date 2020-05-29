@@ -24,6 +24,9 @@ func Migrate(db *sqlx.DB) error {
 // directory. It has the downside that it lacks syntax highlighting and may be
 // harder to read for some cases compared to using .sql files. You may also
 // consider a combined approach using a tool like packr or go-bindata.
+
+//TODO: Add account_id and team_id in all the tables for sharding....
+
 var migrations = []darwin.Migration{
 	{
 		Version:     1,

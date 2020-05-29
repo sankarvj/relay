@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -67,7 +68,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 
 //RunRuleEngine runs the engine on the expression and emit the action to be taken
 func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string) {
-	action := make(chan ruler.ActionItem)
+	action := make(chan string)
 	work := make(chan ruler.Work)
 	go ruler.Run(exp, work, action)
 	go startWorker(ctx, db, work)
@@ -77,22 +78,25 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string) {
 			fmt.Println("Channel Close 1")
 			break
 		}
-		actioner(ctx, db, actionItem)
+		log.Println("action Item", actionItem)
+		//actioner(ctx, db, actionItem)
 	}
 }
 
 func startWorker(ctx context.Context, db *sqlx.DB, w chan ruler.Work) {
 	for {
-		do, ok := <-w
+		work, ok := <-w
 		if !ok {
 			fmt.Println("Channel Close 2")
 			break
 		}
-		do.Resp <- worker(ctx, db, do.Key, do.CurrentRule)
+
+		work.Resp <- worker(ctx, db, work.Expression)
 	}
 }
 
-func worker(ctx context.Context, db *sqlx.DB, key, currentRule string) map[string]interface{} {
+func worker(ctx context.Context, db *sqlx.DB, expression string) map[string]interface{} {
+	key := ruler.FetchRootKey(expression)
 	e, fields, err := entity.RetrieveWithFields(ctx, db, key)
 	if err != nil {
 		return map[string]interface{}{"error": errors.Wrapf(err, "error while retriving entity on response worker %v", key)}
@@ -103,7 +107,7 @@ func worker(ctx context.Context, db *sqlx.DB, key, currentRule string) map[strin
 	case entity.CategoryAPI:
 		err = updateResultFromAPIEntity(fields, &result)
 	case entity.CategoryData:
-		result, err = updateResultFromDataEntity(ctx, db, key, currentRule, result)
+		result, err = updateResultFromDataEntity(ctx, db, expression, result)
 	}
 	if err != nil {
 		result = map[string]interface{}{"error": err}
@@ -121,8 +125,9 @@ func updateResultFromAPIEntity(fields []entity.Field, result *map[string]interfa
 	return err
 }
 
-func updateResultFromDataEntity(ctx context.Context, db *sqlx.DB, key, currentRule string, result map[string]interface{}) (map[string]interface{}, error) {
-	itemType := ruler.FetchItemType(currentRule)
+func updateResultFromDataEntity(ctx context.Context, db *sqlx.DB, expression string, result map[string]interface{}) (map[string]interface{}, error) {
+	key := ruler.FetchRootKey(expression)
+	itemType := ruler.FetchItemType(expression)
 	switch itemType {
 	case "latest":
 		_, fields, err := item.RetrieveLatestItem(ctx, db, key)
@@ -161,62 +166,4 @@ func buildResultant(rootKey string, result map[string]interface{}) map[string]in
 	return map[string]interface{}{
 		rootKey: result,
 	}
-}
-
-func actioner(ctx context.Context, db *sqlx.DB, actionItem ruler.ActionItem) error {
-	var err error
-	fmt.Println("action to be taken --> ", actionItem)
-	setter, _ := json.Marshal(actionItem.Set)
-	setterClause := "'" + string(setter) + "'"
-	fmt.Println("setterClause --> ", setterClause)
-	if actionItem.Action == ActionQuery {
-		var whereClause string
-		for key, val := range actionItem.Condition {
-			whereClause = "'" + key + "'" + " = " + "'" + val.(string) + "'"
-		}
-		for key, val := range actionItem.Uncondition {
-			whereClause = "'" + key + "'" + " != " + "'" + val.(string) + "'"
-		}
-		fmt.Println("whereClause --> ", whereClause)
-		q := `UPDATE items SET input = input || ` + setterClause + ` WHERE input->>` + whereClause + ``
-		_, err = db.ExecContext(
-			ctx, q,
-		)
-	} else if actionItem.Action == ActionCreate {
-		now := time.Now()
-		input, err := json.Marshal(actionItem.Set)
-		if err != nil {
-			return errors.Wrap(err, "encode fields to input")
-		}
-		i := item.Item{
-			ID:        uuid.New().String(),
-			EntityID:  actionItem.EntityID,
-			Input:     string(input),
-			CreatedAt: now.UTC(),
-			UpdatedAt: now.UTC().Unix(),
-		}
-
-		const q = `INSERT INTO items
-		(item_id, entity_id, input, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)`
-
-		_, err = db.ExecContext(
-			ctx, q,
-			i.ID, i.EntityID, i.Input,
-			i.CreatedAt, i.UpdatedAt,
-		)
-	}
-
-	fmt.Println("err --> ", err)
-
-	return err
-}
-
-func updateItemFields(ctx context.Context, db *sqlx.DB, i item.Item, actionKey, actionVal string) error {
-	var existingFields map[string]interface{}
-	if err := json.Unmarshal([]byte(i.Input), &existingFields); err != nil {
-		return errors.Wrapf(err, "error while unmarshalling item attributes %v", i.ID)
-	}
-	existingFields[actionKey] = actionVal
-	return item.UpdateFields(ctx, db, i.ID, existingFields)
 }

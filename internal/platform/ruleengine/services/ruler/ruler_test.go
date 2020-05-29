@@ -6,15 +6,14 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
-	//sampleInput = `{{a6036fe2-0e77-4fab-a798-a39fcf99815c.build.appinfo.version}} eq {{8ac6147e-ad53-4379-8503-806c01500b9b.latest.version}} <8ac6147e-ad53-4379-8503-806c01500b9b.latest.status=up>`
+	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} || {{e1.appinfo.version1}} eq {{e2.version}} <e3.status=e2.version>`
 
-	action := make(chan ActionItem)
-	work := make(chan Work)
-	go Run(sampleInput, work, action)
-	go startWorker(work)
+	triggerChan := make(chan string)
+	workChan := make(chan Work)
+	go Run(sampleInput, workChan, triggerChan)
+	go startWorker(workChan)
 	for {
-		act, ok := <-action
+		act, ok := <-triggerChan
 		if !ok {
 			fmt.Println("Channel Close 1")
 			break
@@ -26,16 +25,17 @@ func TestRun(t *testing.T) {
 
 func startWorker(w chan Work) {
 	for {
-		do, ok := <-w
+		work, ok := <-w
 		if !ok {
 			fmt.Println("Channel Close 2")
 			break
 		}
-		do.Resp <- getResponseMap(do.Key)
+		work.Resp <- getResponseMap(work.Expression)
 	}
 }
 
-func getResponseMap(key string) map[string]interface{} {
+func getResponseMap(exp string) map[string]interface{} {
+	key := FetchRootKey(exp)
 	if key == "e1" {
 		return map[string]interface{}{
 			"e1": map[string]interface{}{

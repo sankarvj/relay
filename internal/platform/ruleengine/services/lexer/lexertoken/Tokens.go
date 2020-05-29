@@ -12,4 +12,6 @@ const (
 	RightBrace        string = "}"
 	LeftSnippet       string = "<"
 	RightSnippet      string = ">"
+	ANDOperation      string = "&&"
+	OROperation       string = "||"
 )

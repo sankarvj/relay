@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -64,6 +65,9 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err := web.Decode(r, &ne); err != nil {
 		return errors.Wrap(err, "")
 	}
+	//add key with a UUID
+	fieldKeyBinder(ne.Fields)
+
 	teamID, _ := strconv.ParseInt(params["team_id"], 10, 64)
 	//set account_id from the request path
 	entity, err := entity.Create(ctx, e.db, teamID, ne, time.Now())
@@ -118,4 +122,11 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 	}
+}
+
+func fieldKeyBinder(fields []entity.Field) []entity.Field {
+	for i := 0; i < len(fields); i++ {
+		fields[i].Key = uuid.New().String()
+	}
+	return fields
 }
