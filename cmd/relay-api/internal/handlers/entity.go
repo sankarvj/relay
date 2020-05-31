@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -95,16 +94,15 @@ func (e *Entity) Trigger(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	for i := 0; i < len(rules); i++ {
 		expression := rules[i].Expression
-		rule.RunRuleEngine(ctx, e.db, expression)
+		rule.RunRuleEngine(ctx, e.db, expression, map[string]string{})
 	}
 
 	return web.Respond(ctx, w, entity, http.StatusCreated)
 }
 
 func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
-	var fields []entity.Field
-	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
-		log.Printf("error while unmarshalling entity attributes %v", e.ID)
+	fields, err := e.Fields()
+	if err != nil {
 		log.Println(err)
 	}
 

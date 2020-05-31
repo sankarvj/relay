@@ -17,11 +17,10 @@ type Work struct {
 //Ruler has the full set of rule items
 type Ruler struct {
 	RuleItem *RuleItem
-	positive bool
+	positive *bool
 	trigger  string
-	//channels to send the results back
-	workChan    chan Work
-	triggerChan chan string
+	//channels to send the results back and forth
+	workChan chan Work
 }
 
 //RuleItem specifies the single section of the rules
@@ -42,18 +41,16 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, workChan chan Work, triggerChan chan string) {
+func Run(rule string, workChan chan Work) {
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
-		workChan:    workChan,
-		triggerChan: triggerChan,
-		positive:    true, //always start on a positive note! :)
+		workChan: workChan,
+		positive: nil, //always start on a positive note! :)
 	}
 	r = r.startLexer(rule)
-	if r.positive {
-		r.triggerChan <- r.trigger
+	if *r.positive {
+		r.workChan <- Work{r.trigger, nil}
 	}
-	close(r.triggerChan)
 	close(r.workChan)
 }
 
@@ -96,9 +93,7 @@ func (r *Ruler) addOperand(value interface{}) error {
 	if value == nil {
 		value = "nil"
 	}
-
 	r.constructRuleItem()
-
 	if r.RuleItem.left == nil {
 		r.RuleItem.left = value
 	} else if r.RuleItem.right == nil {
@@ -137,11 +132,19 @@ func (r *Ruler) constructRuleItem() {
 }
 
 func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
+	temp := false
 	if r.RuleItem.isANDOp {
-		r.positive = r.positive && singleUnitResult
+		if r.positive == nil {
+			r.positive = newTrue() // start it with true for AND
+		}
+		temp = *r.positive && singleUnitResult
 	} else { // any condition ---> OR case
-		r.positive = r.positive || singleUnitResult
+		if r.positive == nil {
+			r.positive = newFalse() // start it with false for OR
+		}
+		temp = *r.positive || singleUnitResult
 	}
+	r.positive = &temp
 	r.RuleItem = nil
 }
 
@@ -157,6 +160,9 @@ func (r *Ruler) execute() error {
 		opResult = false
 	} else if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
 		opResult = r.RuleItem.operation(r.RuleItem.left, r.RuleItem.right)
+	} else {
+		//Its in the middle. Don't execute
+		return nil
 	}
 	//save the result of the unit and reset the ruleItem
 	r.saveAndResetRuleItem(opResult)
@@ -173,4 +179,14 @@ func (r *Ruler) eval(expression string) interface{} {
 	r.workChan <- Work{expression, respChan}
 	resp := <-respChan
 	return evaluate(expression, resp)
+}
+
+func newTrue() *bool {
+	a := true
+	return &a
+}
+
+func newFalse() *bool {
+	b := false
+	return &b
 }

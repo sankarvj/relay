@@ -10,8 +10,9 @@ import (
 
 func TestDataEntity(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
 	defer teardown()
-	t.Log("Given the need to create an data entity.")
+	t.Log(" Given the need to create an data entity.")
 	{
 		t.Log("\tWhen adding the data entity")
 		{
@@ -25,7 +26,10 @@ func TestDataEntity(t *testing.T) {
 				Name:   "",
 				Fields: fields,
 			}
-			entity.Create(ctx, db, 3, ne, now)
+			_, err := entity.Create(ctx, db, 1, ne, now)
+			if err != nil {
+				t.Fatalf("\tShould not be able to create an entity - %s", err)
+			}
 		}
 	}
 

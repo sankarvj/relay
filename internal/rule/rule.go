@@ -3,16 +3,12 @@ package rule
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/net"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"go.opencensus.io/trace"
 )
@@ -67,103 +63,16 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 }
 
 //RunRuleEngine runs the engine on the expression and emit the action to be taken
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string) {
-	action := make(chan string)
-	work := make(chan ruler.Work)
-	go ruler.Run(exp, work, action)
-	go startWorker(ctx, db, work)
-	for {
-		actionItem, ok := <-action
-		if !ok {
-			fmt.Println("Channel Close 1")
-			break
-		}
-		log.Println("action Item", actionItem)
-		//actioner(ctx, db, actionItem)
-	}
-}
-
-func startWorker(ctx context.Context, db *sqlx.DB, w chan ruler.Work) {
-	for {
-		work, ok := <-w
-		if !ok {
-			fmt.Println("Channel Close 2")
-			break
-		}
-
-		work.Resp <- worker(ctx, db, work.Expression)
-	}
-}
-
-func worker(ctx context.Context, db *sqlx.DB, expression string) map[string]interface{} {
-	key := ruler.FetchRootKey(expression)
-	e, fields, err := entity.RetrieveWithFields(ctx, db, key)
-	if err != nil {
-		return map[string]interface{}{"error": errors.Wrapf(err, "error while retriving entity on response worker %v", key)}
-	}
-
-	var result map[string]interface{}
-	switch e.Category {
-	case entity.CategoryAPI:
-		err = updateResultFromAPIEntity(fields, &result)
-	case entity.CategoryData:
-		result, err = updateResultFromDataEntity(ctx, db, expression, result)
-	}
-	if err != nil {
-		result = map[string]interface{}{"error": err}
-	}
-
-	return buildResultant(e.ID, result)
-}
-
-func updateResultFromAPIEntity(fields []entity.Field, result *map[string]interface{}) error {
-	apiParams, err := populateAPIParams(fields)
-	if err != nil {
-		return err
-	}
-	err = apiParams.MakeHTTPRequest(result)
-	return err
-}
-
-func updateResultFromDataEntity(ctx context.Context, db *sqlx.DB, expression string, result map[string]interface{}) (map[string]interface{}, error) {
-	key := ruler.FetchRootKey(expression)
-	itemType := ruler.FetchItemType(expression)
-	switch itemType {
-	case "latest":
-		_, fields, err := item.RetrieveLatestItem(ctx, db, key)
-		result = map[string]interface{}{
-			itemType: fields,
-		}
-		if err != nil {
-			return result, err
+func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string, input map[string]string) {
+	signalsChan := make(chan ruler.Work)
+	go ruler.Run(exp, signalsChan)
+	//signalsChan wait to receive work and action triggers until the run completes
+	for work := range signalsChan {
+		if work.Resp != nil { //is it a right way to differentiate the expression work and action expression?
+			work.Resp <- worker(ctx, db, work.Expression, input)
+		} else {
+			execute(ctx, db, work.Expression, input)
 		}
 	}
-	return result, nil
-}
-
-func populateAPIParams(fields []entity.Field) (net.APIParams, error) {
-	apiParams := net.APIParams{}
-	for _, field := range fields {
-		switch field.Key {
-		case "path":
-			apiParams.Path = field.Value
-		case "host":
-			apiParams.Host = field.Value
-		case "method":
-			apiParams.Method = field.Value
-		case "headers":
-			var headers map[string]string
-			if err := json.Unmarshal([]byte(field.Value), &headers); err != nil {
-				return apiParams, err
-			}
-			apiParams.Headers = headers
-		}
-	}
-	return apiParams, nil
-}
-
-func buildResultant(rootKey string, result map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		rootKey: result,
-	}
+	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 }

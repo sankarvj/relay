@@ -102,6 +102,13 @@ type Test struct {
 	cleanup func()
 }
 
+// SeedData db
+func SeedData(t *testing.T, db *sqlx.DB) {
+	if err := schema.Seed(db); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // NewIntegration creates a database, seeds it, constructs an authenticator.
 func NewIntegration(t *testing.T) *Test {
 	t.Helper()

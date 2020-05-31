@@ -112,17 +112,3 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Entity, error) {
 
 	return &e, nil
 }
-
-// RetrieveWithFields retrive entity along with the fields from the json attributes
-func RetrieveWithFields(ctx context.Context, db *sqlx.DB, entityID string) (*Entity, []Field, error) {
-	e, err := Retrieve(ctx, entityID, db)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "selecting entity while retrive with fields %q", entityID)
-	}
-	var fields []Field
-	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
-		return nil, nil, errors.Wrapf(err, "error while unmarshalling entity attributes on retrive with fields %q", entityID)
-	}
-
-	return e, fields, nil
-}

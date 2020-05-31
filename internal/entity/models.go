@@ -1,9 +1,11 @@
 package entity
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // Entity represents the building block of all the tasks
@@ -50,14 +52,16 @@ type NewEntity struct {
 
 // Field represents structural format of attributes in entity
 type Field struct {
-	Name      string    `json:"name" validate:"required"`
-	Key       string    `json:"key" validate:"required"`
-	Value     string    `json:"value" validate:"required"`
-	DataType  FieldType `json:"data_type" validate:"required"`
-	Unique    bool      `json:"unique"`
-	Mandatory bool      `json:"mandatory"`
-	Hidden    bool      `json:"hidden"`
-	Reference string    `json:"reference"`
+	Name        string    `json:"name" validate:"required"`
+	DisplayName string    `json:"display_name" validate:"required"`
+	Key         string    `json:"key" validate:"required"`
+	Value       string    `json:"value" validate:"required"`
+	DataType    FieldType `json:"data_type" validate:"required"`
+	Unique      bool      `json:"unique"`
+	Mandatory   bool      `json:"mandatory"`
+	Hidden      bool      `json:"hidden"`
+	Config      bool      `json:"config"`
+	Reference   string    `json:"reference"`
 }
 
 //FieldType defines the type of field
@@ -65,11 +69,11 @@ type FieldType string
 
 //Mode for the entity spcifies certain entity specific characteristics
 const (
-	TypeString   FieldType = "S"
-	TypeNumber   FieldType = "N"
-	TypeDataTime FieldType = "DT"
-	TypeStatus   FieldType = "ST"
-	TypeAC       FieldType = "AC"
+	TypeString       FieldType = "S"
+	TypeNumber       FieldType = "N"
+	TypeDataTime     FieldType = "DT"
+	TypeStatus       FieldType = "ST"
+	TypeAutoComplete FieldType = "AC"
 )
 
 //Mode for the entity spcifies certain entity specific characteristics
@@ -92,3 +96,21 @@ const (
 	CategoryTimeSeries = 3
 	CategoryUserSeries = 4
 )
+
+// Fields parses attribures to fields
+func (e Entity) Fields() ([]Field, error) {
+	var fields []Field
+	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
+		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+	}
+	//remove all config fields
+	temp := fields[:0]
+	for _, field := range fields {
+		if !field.Config {
+			temp = append(temp, field)
+		}
+	}
+	fields = temp
+
+	return fields, nil
+}

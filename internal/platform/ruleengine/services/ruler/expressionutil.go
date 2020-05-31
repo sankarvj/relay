@@ -5,18 +5,18 @@ import (
 	"strings"
 )
 
-//FetchRootKey fetches the root id from the rule
-func FetchRootKey(value string) string {
-	parts := strings.Split(value, ".")
+//FetchEntityID fetches the root id from the rule
+func FetchEntityID(expression string) string {
+	parts := strings.Split(expression, ".")
 	if len(parts) > 0 {
 		return parts[0]
 	}
 	return ""
 }
 
-//FetchItemType fetches item type from the list
-func FetchItemType(ruleVal string) string {
-	parts := strings.Split(ruleVal, ".")
+//FetchItemID fetches item type from the list
+func FetchItemID(expression string) string {
+	parts := strings.Split(expression, ".")
 	if len(parts) > 1 {
 		return parts[1]
 	}
@@ -37,7 +37,6 @@ func evaluate(expression string, response map[string]interface{}) interface{} {
 		}
 		response = response[element].(map[string]interface{})
 	}
-
 	return realValue
 }
 

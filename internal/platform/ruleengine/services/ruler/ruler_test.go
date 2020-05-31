@@ -1,41 +1,28 @@
 package ruler
 
 import (
-	"fmt"
+	"log"
 	"testing"
 )
 
 func TestRun(t *testing.T) {
-	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} || {{e1.appinfo.version1}} eq {{e2.version}} <e3.status=e2.version>`
+	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version1}} eq {{e2.version}} <e3.status=e2.version>`
 
-	triggerChan := make(chan string)
-	workChan := make(chan Work)
-	go Run(sampleInput, workChan, triggerChan)
-	go startWorker(workChan)
-	for {
-		act, ok := <-triggerChan
-		if !ok {
-			fmt.Println("Channel Close 1")
-			break
+	signalsChan := make(chan Work)
+	go Run(sampleInput, signalsChan)
+	//signalsChan wait to receive work and action triggers until the run completes
+	for work := range signalsChan {
+		if work.Resp != nil { //is it a right way to differentiate the expression work and action expression?
+			work.Resp <- getResponseMap(work.Expression)
+		} else {
+			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}
-		fmt.Println("Action To Be Taken ", act)
 	}
-
-}
-
-func startWorker(w chan Work) {
-	for {
-		work, ok := <-w
-		if !ok {
-			fmt.Println("Channel Close 2")
-			break
-		}
-		work.Resp <- getResponseMap(work.Expression)
-	}
+	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 }
 
 func getResponseMap(exp string) map[string]interface{} {
-	key := FetchRootKey(exp)
+	key := FetchEntityID(exp)
 	if key == "e1" {
 		return map[string]interface{}{
 			"e1": map[string]interface{}{

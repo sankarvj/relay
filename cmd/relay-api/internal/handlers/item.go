@@ -28,7 +28,12 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
 
-	e, fields, err := entity.RetrieveWithFields(ctx, i.db, params["entity_id"])
+	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
+	if err != nil {
+		return err
+	}
+
+	fields, err := e.Fields()
 	if err != nil {
 		return err
 	}
@@ -60,7 +65,11 @@ func (i *Item) TimeSeriesList(ctx context.Context, w http.ResponseWriter, r *htt
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.TimeSeriesList")
 	defer span.End()
 
-	e, fields, err := entity.RetrieveWithFields(ctx, i.db, params["entity_id"])
+	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
+	if err != nil {
+		return err
+	}
+	fields, err := e.Fields()
 	if err != nil {
 		return err
 	}
@@ -115,6 +124,7 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 		log.Printf("error while unmarshalling item input %v", i.ID)
 		log.Println(err)
 	}
+
 	return item.ViewModelItem{
 		ID:     i.ID,
 		Fields: fields,

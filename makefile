@@ -47,6 +47,9 @@ down:
 test:
 	go test -mod=vendor ./... -count=1
 
+clean-test:
+	go clean -testcache
+
 clean:
 	docker system prune -f
 

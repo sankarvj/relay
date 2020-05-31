@@ -87,7 +87,7 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
 	defer span.End()
 
-	i, err := Retrieve(ctx, db, id)
+	i, err := Retrieve(ctx, id, db)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Item, error) {
+func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
@@ -131,31 +131,4 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Item, error) {
 	}
 
 	return &i, nil
-}
-
-// RetrieveLatestItem gets the latest item list of items associated with the entity.
-func RetrieveLatestItem(ctx context.Context, db *sqlx.DB, entityID string) (Item, map[string]interface{}, error) {
-	var i Item
-	var itemInput map[string]interface{}
-	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
-	defer span.End()
-
-	if _, err := uuid.Parse(entityID); err != nil {
-		return i, itemInput, ErrInvalidID
-	}
-
-	const q = `SELECT * FROM items WHERE entity_id = $1 order by created_at desc limit 1`
-	if err := db.GetContext(ctx, &i, q, entityID); err != nil {
-		if err == sql.ErrNoRows {
-			return i, itemInput, ErrNotFound
-		}
-
-		return i, itemInput, errors.Wrapf(err, "selecting item from entity %q", entityID)
-	}
-
-	if err := json.Unmarshal([]byte(i.Input), &itemInput); err != nil {
-		return i, itemInput, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", i.ID)
-	}
-
-	return i, itemInput, nil
 }
