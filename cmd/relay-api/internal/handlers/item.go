@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -119,15 +117,9 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {
-	var fields map[string]interface{}
-	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
-		log.Printf("error while unmarshalling item input %v", i.ID)
-		log.Println(err)
-	}
-
 	return item.ViewModelItem{
 		ID:     i.ID,
-		Fields: fields,
+		Fields: i.Fields(),
 	}
 }
 

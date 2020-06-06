@@ -53,7 +53,11 @@ Emit puts a token onto the token channel. The value of this token is
 read from the input based on the current lexer position.
 */
 func (l *Lexer) Emit(tokenType lexertoken.TokenType) {
-	l.Tokens <- lexertoken.Token{Type: tokenType, Value: l.Input[l.Start:l.Pos]}
+	if l.Start > l.Pos {
+		l.Tokens <- lexertoken.Token{Type: lexertoken.TokenEOF, Value: ""}
+	} else {
+		l.Tokens <- lexertoken.Token{Type: tokenType, Value: l.Input[l.Start:l.Pos]}
+	}
 	l.Start = l.Pos
 }
 
@@ -122,7 +126,6 @@ func (l *Lexer) Next() rune {
 	}
 
 	result, width := utf8.DecodeRuneInString(l.Input[l.Pos:])
-
 	l.Width = width
 	l.Pos += l.Width
 	return result
@@ -203,7 +206,6 @@ func (l *Lexer) IgnoreWhitespace() {
 			break
 		}
 		l.Start = l.Pos
-
 		if ch == lexertoken.EOF {
 			l.Emit(lexertoken.TokenEOF)
 			break

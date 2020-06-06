@@ -3,7 +3,6 @@ package rule
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,16 +62,20 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 }
 
 //RunRuleEngine runs the engine on the expression and emit the action to be taken
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string, input map[string]string) {
+func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string, input map[string]string) string {
+	var lexedContent string
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, signalsChan)
 	//signalsChan wait to receive work and action triggers until the run completes
 	for work := range signalsChan {
-		if work.Resp != nil { //is it a right way to differentiate the expression work and action expression?
+		switch work.Type {
+		case ruler.Worker:
 			work.Resp <- worker(ctx, db, work.Expression, input)
-		} else {
+		case ruler.Executor:
 			execute(ctx, db, work.Expression, input)
+		case ruler.Content:
+			lexedContent = work.Expression
 		}
 	}
-	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	return lexedContent
 }

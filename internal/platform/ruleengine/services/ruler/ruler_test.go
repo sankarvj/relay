@@ -12,10 +12,32 @@ func TestRun(t *testing.T) {
 	go Run(sampleInput, signalsChan)
 	//signalsChan wait to receive work and action triggers until the run completes
 	for work := range signalsChan {
-		if work.Resp != nil { //is it a right way to differentiate the expression work and action expression?
+		switch work.Type {
+		case Worker:
 			work.Resp <- getResponseMap(work.Expression)
-		} else {
+		case Executor:
 			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
+		case Content:
+			log.Println("content>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
+		}
+	}
+	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+}
+
+func TestRunSimpleBody(t *testing.T) {
+	sampleInput := `Hello matty {{e1.appinfo.version}}. How are you?`
+
+	signalsChan := make(chan Work)
+	go Run(sampleInput, signalsChan)
+	//signalsChan wait to receive work and action triggers until the run completes
+	for work := range signalsChan {
+		switch work.Type {
+		case Worker:
+			work.Resp <- getResponseMap(work.Expression)
+		case Executor:
+			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
+		case Content:
+			log.Println("content>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}
 	}
 	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")

@@ -11,9 +11,16 @@ ANS :: I wanna go through the usage trends and add some logic here in the near f
 func LexGibberish(lexer *Lexer) LexFn {
 	for {
 		if lexer.IsEOF() {
+			lexer.Emit(lexertoken.TokenGibberish)
 			lexer.Emit(lexertoken.TokenEOF)
 			return nil
 		}
+
+		if lexer.IsWhitespace() {
+			lexer.Emit(lexertoken.TokenGibberish)
+			return LexBegin
+		}
+
 		lexer.Inc()
 	}
 }

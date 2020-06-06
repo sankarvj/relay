@@ -23,7 +23,8 @@ func FetchItemID(expression string) string {
 	return ""
 }
 
-func evaluate(expression string, response map[string]interface{}) interface{} {
+//Evaluate evaluates the expression with the coresponding map
+func Evaluate(expression string, response map[string]interface{}) interface{} {
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
 	lenOfElements := len(elements)

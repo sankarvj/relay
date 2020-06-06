@@ -64,6 +64,18 @@ type Field struct {
 	Reference   string    `json:"reference"`
 }
 
+// EmailEntity represents structural format of email entity
+type EmailEntity struct {
+	Domain  string `json:"domain"`
+	APIKey  string `json:"api_key"`
+	Sender  string `json:"sender"`
+	To      string `json:"to"`
+	Cc      string `json:"cc"`
+	Bcc     string `json:"bcc"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
 //FieldType defines the type of field
 type FieldType string
 
@@ -94,14 +106,15 @@ const (
 	CategoryData       = 1
 	CategoryAPI        = 2
 	CategoryTimeSeries = 3
-	CategoryUserSeries = 4
+	CategoryEmail      = 4
+	CategoryUserSeries = 5
 )
 
 // Fields parses attribures to fields
 func (e Entity) Fields() ([]Field, error) {
-	var fields []Field
-	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
-		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+	fields, err := e.AllFields()
+	if err != nil {
+		return nil, err
 	}
 	//remove all config fields
 	temp := fields[:0]
@@ -111,6 +124,14 @@ func (e Entity) Fields() ([]Field, error) {
 		}
 	}
 	fields = temp
+	return fields, nil
+}
 
+// AllFields parses attribures to fields
+func (e Entity) AllFields() ([]Field, error) {
+	var fields []Field
+	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
+		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+	}
 	return fields, nil
 }

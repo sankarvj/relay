@@ -112,3 +112,14 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Entity, error) {
 
 	return &e, nil
 }
+
+//MakeEmailEntity creates the email entity from the list of values provided
+func MakeEmailEntity(params map[string]interface{}) (EmailEntity, error) {
+	var eme EmailEntity
+	jsonbody, err := json.Marshal(params)
+	if err != nil {
+		return eme, err
+	}
+	err = json.Unmarshal(jsonbody, &eme)
+	return eme, err
+}

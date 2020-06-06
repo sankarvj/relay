@@ -20,5 +20,6 @@ const (
 	TokenOROperation
 	TokenValuate
 	TokenValue
+	TokenGibberish
 	TokenSnippet
 )

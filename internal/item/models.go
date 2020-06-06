@@ -1,6 +1,8 @@
 package item
 
 import (
+	"encoding/json"
+	"log"
 	"time"
 )
 
@@ -42,4 +44,14 @@ type NewItem struct {
 // marshalling/unmarshalling.
 type UpdateItem struct {
 	Input *string `json:"input"`
+}
+
+// Fields parses attribures to fields
+func (i Item) Fields() map[string]interface{} {
+	var fields map[string]interface{}
+	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
+		log.Printf("error while unmarshalling item input field %v", i.ID)
+		log.Println(err)
+	}
+	return fields
 }
