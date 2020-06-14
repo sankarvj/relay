@@ -52,16 +52,16 @@ type NewEntity struct {
 
 // Field represents structural format of attributes in entity
 type Field struct {
-	Name        string    `json:"name" validate:"required"`
-	DisplayName string    `json:"display_name" validate:"required"`
-	Key         string    `json:"key" validate:"required"`
-	Value       string    `json:"value" validate:"required"`
-	DataType    FieldType `json:"data_type" validate:"required"`
-	Unique      bool      `json:"unique"`
-	Mandatory   bool      `json:"mandatory"`
-	Hidden      bool      `json:"hidden"`
-	Config      bool      `json:"config"`
-	Reference   string    `json:"reference"`
+	Name        string      `json:"name" validate:"required"`
+	DisplayName string      `json:"display_name" validate:"required"`
+	Key         string      `json:"key" validate:"required"`
+	Value       interface{} `json:"value" validate:"required"`
+	DataType    FieldType   `json:"data_type" validate:"required"`
+	Unique      bool        `json:"unique"`
+	Mandatory   bool        `json:"mandatory"`
+	Hidden      bool        `json:"hidden"`
+	Config      bool        `json:"config"`
+	Reference   string      `json:"reference"`
 }
 
 // EmailEntity represents structural format of email entity
@@ -74,6 +74,14 @@ type EmailEntity struct {
 	Bcc     string `json:"bcc"`
 	Subject string `json:"subject"`
 	Body    string `json:"body"`
+}
+
+// WebHookEntity represents structural format of webhook entity
+type WebHookEntity struct {
+	Path    string            `json:"path"`
+	Host    string            `json:"host"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
 }
 
 //FieldType defines the type of field

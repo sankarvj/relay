@@ -58,26 +58,22 @@ func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, entityID, itemID 
 	if err := json.Unmarshal([]byte(item.Input), &result); err != nil {
 		return result, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", item.ID)
 	}
+	//sets the id as one of the field key to make use of the reference fields
+	result["id"] = itemID
 	return result, err
 }
 
-func populateAPIParams(fields []entity.Field) (net.APIParams, error) {
-	apiParams := net.APIParams{}
-	for _, field := range fields {
-		switch field.Name {
-		case "path":
-			apiParams.Path = field.Value
-		case "host":
-			apiParams.Host = field.Value
-		case "method":
-			apiParams.Method = field.Value
-		case "headers":
-			var headers map[string]string
-			if err := json.Unmarshal([]byte(field.Value), &headers); err != nil {
-				return apiParams, err
-			}
-			apiParams.Headers = headers
-		}
+func populateAPIParams(entityFields []entity.Field) (net.APIParams, error) {
+	params := namedFieldsMap(entityFields)
+	whe, err := entity.ParseHookEntity(params)
+	if err != nil {
+		return net.APIParams{}, err
+	}
+	apiParams := net.APIParams{
+		Path:    whe.Path,
+		Host:    whe.Host,
+		Method:  whe.Method,
+		Headers: whe.Headers,
 	}
 	return apiParams, nil
 }

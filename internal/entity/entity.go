@@ -113,8 +113,8 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Entity, error) {
 	return &e, nil
 }
 
-//MakeEmailEntity creates the email entity from the list of values provided
-func MakeEmailEntity(params map[string]interface{}) (EmailEntity, error) {
+//ParseEmailEntity creates the email entity from the field map provided
+func ParseEmailEntity(params map[string]interface{}) (EmailEntity, error) {
 	var eme EmailEntity
 	jsonbody, err := json.Marshal(params)
 	if err != nil {
@@ -122,4 +122,29 @@ func MakeEmailEntity(params map[string]interface{}) (EmailEntity, error) {
 	}
 	err = json.Unmarshal(jsonbody, &eme)
 	return eme, err
+}
+
+//ParseHookEntity creates the hook entity from the field map provided
+func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
+	var whe WebHookEntity
+	jsonbody, err := json.Marshal(params)
+	if err != nil {
+		return whe, err
+	}
+	err = json.Unmarshal(jsonbody, &whe)
+	return whe, err
+}
+
+// FillFieldValues updates the
+func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
+	updatedFields := make([]Field, 0)
+	for _, field := range entityFields {
+		if val, ok := itemFields[field.Key]; ok {
+			if !field.Config {
+				field.Value = val
+			}
+		}
+		updatedFields = append(updatedFields, field)
+	}
+	return updatedFields
 }

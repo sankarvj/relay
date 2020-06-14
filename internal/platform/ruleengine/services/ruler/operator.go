@@ -3,18 +3,13 @@ package ruler
 import (
 	"fmt"
 	"log"
-	"reflect"
 
 	version "github.com/mcuadros/go-version"
 )
 
 func compare(left, right Operand) bool {
-	log.Println("Actuals....")
-	log.Println("left ", left)
-	log.Println("right ", right)
-	log.Println("Types....")
-	log.Println("left ", reflect.TypeOf(left))
-	log.Println("right ", reflect.TypeOf(right))
+	log.Printf("compare left: %s(%T) vs right: %s(%T)", left, left, right, right)
+
 	if left == nil && right == nil {
 		return false
 	}

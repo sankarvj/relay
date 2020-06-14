@@ -55,6 +55,10 @@ type Operand interface{}
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
 func Run(rule string, workChan chan Work) {
+	defer close(workChan)
+	if rule == "" {
+		return
+	}
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
 		workChan: workChan,
@@ -62,10 +66,10 @@ func Run(rule string, workChan chan Work) {
 	}
 	r = r.startLexer(rule)
 	if r.positive != nil && *r.positive {
-		r.workChan <- Work{Executor, r.trigger, nil}
+		workChan <- Work{Executor, r.trigger, nil}
 	}
-	r.workChan <- Work{Content, r.content, nil}
-	close(r.workChan)
+	workChan <- Work{Content, r.content, nil}
+
 }
 
 func (r Ruler) startLexer(rule string) Ruler {
@@ -169,10 +173,7 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Println("execute r.RuleItem.left ", r.RuleItem.left)
-	log.Println("execute r.RuleItem.right ", r.RuleItem.right)
-	log.Println("execute r.RuleItem.operation ", r.RuleItem.operation)
-	log.Println("execute r.RuleItem.isANDOp ", r.RuleItem.isANDOp)
+	log.Printf("execute left_rule_item: %s | right_rule_item: %s | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

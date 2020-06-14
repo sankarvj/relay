@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	firebase "firebase.google.com/go"
@@ -176,6 +177,8 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return errors.Wrap(err, "fetching user from token UID")
 	}
+
+	log.Printf("sk/sexy please add a entry at users table in seed.go with this token to login %s", token.UID)
 
 	claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
 	if err != nil {

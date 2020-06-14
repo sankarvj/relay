@@ -5,6 +5,24 @@ import (
 	"strings"
 )
 
+//Behaviour is the enum to hold the action behaviour
+type Behaviour string
+
+//Types of behaviours
+const (
+	Create  Behaviour = "create"
+	Update  Behaviour = "update"
+	Retrive Behaviour = "retrive"
+)
+
+//Action is the parsed action expression
+type Action struct {
+	EntityID  string
+	ItemID    string
+	SecItemID string
+	Behaviour Behaviour
+}
+
 //FetchEntityID fetches the root id from the rule
 func FetchEntityID(expression string) string {
 	parts := strings.Split(expression, ".")
@@ -12,6 +30,31 @@ func FetchEntityID(expression string) string {
 		return parts[0]
 	}
 	return ""
+}
+
+//ActionExpression sets input for the action expression
+func ActionExpression(expression string, input map[string]string) Action {
+	action := Action{}
+	parts := strings.Split(expression, ".")
+	if len(parts) > 0 {
+		action.EntityID = parts[0]
+		action.Behaviour = Create
+		if itemID, ok := input[action.EntityID]; ok {
+			action.ItemID = itemID
+		}
+	}
+
+	if len(parts) > 1 {
+		action.SecItemID = parts[1]
+		action.Behaviour = Update
+	}
+
+	if len(parts) > 2 {
+		if parts[2] == "G" {
+			action.Behaviour = Retrive
+		}
+	}
+	return action
 }
 
 //FetchItemID fetches item type from the list
