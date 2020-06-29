@@ -25,27 +25,26 @@ func Migrate(db *sqlx.DB) error {
 // harder to read for some cases compared to using .sql files. You may also
 // consider a combined approach using a tool like packr or go-bindata.
 
-//TODO: Add account_id and team_id in all the tables for sharding....
-
 var migrations = []darwin.Migration{
 	{
 		Version:     1,
 		Description: "Add accounts",
 		Script: `
 		CREATE TABLE accounts (
-			account_id    UUID,
-			name          TEXT,
-			domain        TEXT UNIQUE,
-			avatar        TEXT,
-			plan          INTEGER DEFAULT 0,
-			mode          INTEGER DEFAULT 0,
-			timezone      TEXT,
-			language      TEXT,
-			country       TEXT,
-			issued_at     TIMESTAMP,
-			expiry        TIMESTAMP,
-			created_at    TIMESTAMP,
-			updated_at    BIGINT,
+			account_id    		UUID,
+			parent_account_id   UUID,
+			name          		TEXT,
+			domain        		TEXT UNIQUE,
+			avatar        		TEXT,
+			plan          		INTEGER DEFAULT 0,
+			mode          		INTEGER DEFAULT 0,
+			timezone      		TEXT,
+			language      		TEXT,
+			country       		TEXT,
+			issued_at     		TIMESTAMP,
+			expiry        		TIMESTAMP,
+			created_at    		TIMESTAMP,
+			updated_at    		BIGINT,
 			PRIMARY KEY (account_id)
 		);
 		`,
@@ -78,27 +77,31 @@ var migrations = []darwin.Migration{
 		Description: "Add teams",
 		Script: `
 		CREATE TABLE teams (
-			team_id       BIGSERIAL PRIMARY KEY,
+			team_id       UUID,
 			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
 			name          TEXT,
 			description   TEXT,
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
-			UNIQUE (name)
+			PRIMARY KEY (team_id),
+			UNIQUE (account_id,name)
 		);
 		`,
 	},
 	{
-		Version:     4,
+		Version:     4, //do we need this table at all, keep members as one of the entity.
 		Description: "Add members",
 		Script: `
 		CREATE TABLE members (
-			member_id     BIGSERIAL PRIMARY KEY,
-			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
+			member_id     UUID,
+			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id       UUID REFERENCES teams ON DELETE CASCADE,
 			user_id       UUID REFERENCES users ON DELETE CASCADE,
 			roles         TEXT[],
 			created_at    TIMESTAMP,
-			updated_at    BIGINT
+			updated_at    BIGINT,
+			PRIMARY KEY (member_id),
+			UNIQUE (team_id,user_id)
 		);
 		`,
 	},
@@ -108,48 +111,75 @@ var migrations = []darwin.Migration{
 		Script: `
 		CREATE TABLE entities (
 			entity_id     UUID,
-			team_id       BIGINT REFERENCES teams ON DELETE CASCADE,
+			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id       UUID REFERENCES teams ON DELETE CASCADE,
 			name          TEXT,
 			description   TEXT,
 			category      INTEGER DEFAULT 0,
 			state         INTEGER DEFAULT 0,
-			mode          INTEGER DEFAULT 0,
-			retry         INTEGER DEFAULT 0,
-			attributes    JSONB,
+			status        INTEGER DEFAULT 0,
+			fieldsb       JSONB,
 			tags          TEXT[],
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
-			PRIMARY KEY (entity_id)
+			PRIMARY KEY (entity_id),
+			UNIQUE (team_id,name)
 		);
 		`,
 	},
 	{
 		Version:     6,
-		Description: "Add rules",
+		Description: "Add items",
 		Script: `
-		CREATE TABLE rules (
-			rule_id       UUID,
-			entity_id     UUID REFERENCES entities ON DELETE CASCADE,
-			expression    TEXT,
-			created_at    TIMESTAMP,
-			updated_at    BIGINT,
-			PRIMARY KEY (rule_id)
+		CREATE TABLE items (
+			item_id          UUID,
+			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
+			state            INTEGER DEFAULT 0,
+			fieldsb          JSONB,
+			created_at       TIMESTAMP,
+			updated_at       BIGINT,
+			PRIMARY KEY (item_id)
 		);
 		`,
 	},
 	{
 		Version:     7,
-		Description: "Add items",
+		Description: "Add flows",
 		Script: `
-		CREATE TABLE items (
-			item_id          UUID,
-			parent_item_id   UUID,
-			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
-			state            INTEGER DEFAULT 0,
-			input            JSONB,
-			created_at       TIMESTAMP,
-			updated_at       BIGINT,
-			PRIMARY KEY  (item_id)
+		CREATE TABLE flows (
+			flow_id       UUID,
+			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id     UUID REFERENCES entities ON DELETE CASCADE,
+			expression    TEXT,
+			name    	  TEXT,
+			description   TEXT,
+			type      	  INTEGER DEFAULT 0,
+			status        INTEGER DEFAULT 0,
+			created_at    TIMESTAMP,
+			updated_at    BIGINT,
+			PRIMARY KEY (flow_id)
+		);
+		`,
+	},
+	{
+		Version:     8,
+		Description: "Add nodes",
+		Script: `
+		CREATE TABLE nodes (
+			node_id       	UUID,
+			parent_node_id  UUID,
+			account_id      UUID REFERENCES accounts ON DELETE CASCADE,
+			flow_id         UUID REFERENCES flows ON DELETE CASCADE,
+		    actor_id 	    UUID,
+			type			INTEGER DEFAULT 0,
+			expression    	TEXT,
+			is_neg      	BOOLEAN DEFAULT FALSE,
+			variables       JSONB,
+			actuals         JSONB,
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			PRIMARY KEY (node_id)
 		);
 		`,
 	},

@@ -32,31 +32,6 @@ func FetchEntityID(expression string) string {
 	return ""
 }
 
-//ActionExpression sets input for the action expression
-func ActionExpression(expression string, input map[string]string) Action {
-	action := Action{}
-	parts := strings.Split(expression, ".")
-	if len(parts) > 0 {
-		action.EntityID = parts[0]
-		action.Behaviour = Create
-		if itemID, ok := input[action.EntityID]; ok {
-			action.ItemID = itemID
-		}
-	}
-
-	if len(parts) > 1 {
-		action.SecItemID = parts[1]
-		action.Behaviour = Update
-	}
-
-	if len(parts) > 2 {
-		if parts[2] == "G" {
-			action.Behaviour = Retrive
-		}
-	}
-	return action
-}
-
 //FetchItemID fetches item type from the list
 func FetchItemID(expression string) string {
 	parts := strings.Split(expression, ".")

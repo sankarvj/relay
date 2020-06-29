@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -23,10 +24,12 @@ func TestDataEntity(t *testing.T) {
 			fields := []entity.Field{field}
 
 			ne := entity.NewEntity{
-				Name:   "",
-				Fields: fields,
+				Name:      "The Entity Name",
+				AccountID: schema.SeedAccountID,
+				TeamID:    schema.SeedTeamID,
+				Fields:    fields,
 			}
-			_, err := entity.Create(ctx, db, 1, ne, now)
+			_, err := entity.Create(ctx, db, ne, now)
 			if err != nil {
 				t.Fatalf("\tShould not be able to create an entity - %s", err)
 			}

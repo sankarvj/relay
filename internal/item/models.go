@@ -8,13 +8,13 @@ import (
 
 // Item represents the individual unit of entity
 type Item struct {
-	ID           string    `db:"item_id" json:"id"`
-	ParentItemID *string   `db:"parent_item_id" json:"parent_item_id"`
-	EntityID     string    `db:"entity_id" json:"entity_id"`
-	State        int       `db:"state" json:"state"`
-	Input        string    `db:"input" json:"input"`
-	CreatedAt    time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt    int64     `db:"updated_at" json:"updated_at"`
+	ID        string    `db:"item_id" json:"id"`
+	AccountID string    `db:"account_id" json:"account_id"`
+	EntityID  string    `db:"entity_id" json:"entity_id"`
+	State     int       `db:"state" json:"state"`
+	Fieldsb   string    `db:"fieldsb" json:"fieldsb"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt int64     `db:"updated_at" json:"updated_at"`
 }
 
 // TimeSeriesItem represents the individual unit of entity
@@ -33,7 +33,9 @@ type ViewModelItem struct {
 
 // NewItem has information needed to creat new item
 type NewItem struct {
-	Fields map[string]interface{} `json:"fields" validate:"required"`
+	AccountID string                 `json:"account_id" validate:"required"`
+	EntityID  string                 `json:"entity_id" validate:"required"`
+	Fields    map[string]interface{} `json:"fields" validate:"required"`
 }
 
 // UpdateItem defines what information may be provided to modify an existing
@@ -43,14 +45,14 @@ type NewItem struct {
 // we do not want to use pointers to basic types but we make exceptions around
 // marshalling/unmarshalling.
 type UpdateItem struct {
-	Input *string `json:"input"`
+	Fieldsb *string `json:"fieldsb"`
 }
 
 // Fields parses attribures to fields
 func (i Item) Fields() map[string]interface{} {
 	var fields map[string]interface{}
-	if err := json.Unmarshal([]byte(i.Input), &fields); err != nil {
-		log.Printf("error while unmarshalling item input field %v", i.ID)
+	if err := json.Unmarshal([]byte(i.Fieldsb), &fields); err != nil {
+		log.Printf("error while unmarshalling item fieldsb %v", i.ID)
 		log.Println(err)
 	}
 	return fields

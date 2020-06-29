@@ -98,17 +98,15 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Create")
 	defer span.End()
 
-	entityID, err := findPrimaryEntityID(ctx, params["team_id"], params["entity_id"], i.db)
-	if err != nil {
-		return errors.Wrap(err, "")
-	}
-
 	var ni item.NewItem
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
 
-	item, err := item.Create(ctx, i.db, entityID, ni, time.Now())
+	ni.AccountID = params["account_id"]
+	ni.EntityID = params["entity_id"]
+
+	item, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &item)
 	}
@@ -121,15 +119,4 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 		ID:     i.ID,
 		Fields: i.Fields(),
 	}
-}
-
-func findPrimaryEntityID(ctx context.Context, teamID, entityID string, db *sqlx.DB) (string, error) {
-	if entityID == "0" {
-		primaryEntity, err := entity.Primary(ctx, teamID, db)
-		if err != nil {
-			return entityID, err
-		}
-		entityID = primaryEntity.ID
-	}
-	return entityID, nil
 }

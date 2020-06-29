@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +13,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
 
@@ -52,7 +53,7 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	return web.Respond(ctx, w, createViewModelEntity(*entity), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelEntity(entity), http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -66,10 +67,10 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 	//add key with a UUID
 	fieldKeyBinder(ne.Fields)
-
-	teamID, _ := strconv.ParseInt(params["team_id"], 10, 64)
+	ne.AccountID = params["account_id"]
+	ne.TeamID = params["team_id"]
 	//set account_id from the request path
-	entity, err := entity.Create(ctx, e.db, teamID, ne, time.Now())
+	entity, err := entity.Create(ctx, e.db, ne, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &entity)
 	}
@@ -94,7 +95,10 @@ func (e *Entity) Trigger(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	for i := 0; i < len(rules); i++ {
 		expression := rules[i].Expression
-		rule.RunRuleEngine(ctx, e.db, expression, map[string]string{})
+		n := node.Node{
+			Expression: expression,
+		}
+		engine.RunRuleEngine(ctx, e.db, n)
 	}
 
 	return web.Respond(ctx, w, entity, http.StatusCreated)
@@ -108,13 +112,10 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 
 	return entity.ViewModelEntity{
 		ID:          e.ID,
-		TeamID:      e.TeamID,
 		Name:        e.Name,
 		Description: e.Description,
 		Category:    e.Category,
 		State:       e.State,
-		Mode:        e.Mode,
-		Retry:       e.Retry,
 		Fields:      fields,
 		Tags:        e.Tags,
 		CreatedAt:   e.CreatedAt,

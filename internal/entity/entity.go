@@ -35,82 +35,64 @@ func List(ctx context.Context, teamID string, db *sqlx.DB) ([]Entity, error) {
 	return entities, nil
 }
 
-// Primary retrieves the primary entity for the team associated from the database.
-func Primary(ctx context.Context, teamID string, db *sqlx.DB) (Entity, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.entity.Primary")
-	defer span.End()
-
-	entities := []Entity{}
-	const q = `SELECT * FROM entities where team_id = $1 and mode = $2 limit 1`
-	if err := db.SelectContext(ctx, &entities, q, teamID, ModePrimary); err != nil {
-		return Entity{}, errors.Wrap(err, "selecting entities")
-	}
-
-	if len(entities) > 0 {
-		return entities[0], nil
-	}
-
-	return Entity{}, errors.New("no primary entity present")
-}
-
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, teamID int64, n NewEntity, now time.Time) (*Entity, error) {
+func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Create")
 	defer span.End()
 
-	attributes, err := json.Marshal(n.Fields)
+	fieldsBytes, err := json.Marshal(n.Fields)
 	if err != nil {
-		return nil, errors.Wrap(err, "encode fields to attributes")
+		return Entity{}, errors.Wrap(err, "encode fields to bytes")
 	}
 
 	e := Entity{
-		ID:         uuid.New().String(),
-		TeamID:     teamID,
-		Name:       n.Name,
-		Category:   n.Category,
-		State:      n.State,
-		Mode:       n.Mode,
-		Attributes: string(attributes),
-		CreatedAt:  now.UTC(),
-		UpdatedAt:  now.UTC().Unix(),
+		ID:        uuid.New().String(),
+		AccountID: n.AccountID,
+		TeamID:    n.TeamID,
+		Name:      n.Name,
+		Category:  n.Category,
+		State:     n.State,
+		Fieldsb:   string(fieldsBytes),
+		CreatedAt: now.UTC(),
+		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO entities
-		(entity_id, team_id, name, category, state, mode, attributes, created_at, updated_at)
+		(entity_id, account_id, team_id, name, category, state, fieldsb, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		e.ID, e.TeamID, e.Name, e.Category, e.State, e.Mode, e.Attributes,
+		e.ID, e.AccountID, e.TeamID, e.Name, e.Category, e.State, e.Fieldsb,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting entity")
+		return Entity{}, errors.Wrap(err, "inserting entity")
 	}
 
-	return &e, nil
+	return e, nil
 }
 
 // Retrieve gets the specified entity from the database.
-func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Entity, error) {
+func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
-		return nil, ErrInvalidID
+		return Entity{}, ErrInvalidID
 	}
 
 	var e Entity
 	const q = `SELECT * FROM entities WHERE entity_id = $1`
 	if err := db.GetContext(ctx, &e, q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return Entity{}, ErrNotFound
 		}
 
-		return nil, errors.Wrapf(err, "selecting entity %q", id)
+		return Entity{}, errors.Wrapf(err, "selecting entity %q", id)
 	}
 
-	return &e, nil
+	return e, nil
 }
 
 //ParseEmailEntity creates the email entity from the field map provided

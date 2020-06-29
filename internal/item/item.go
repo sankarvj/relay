@@ -36,37 +36,38 @@ func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
 }
 
 // Create inserts a new item into the database.
-func Create(ctx context.Context, db *sqlx.DB, entityID string, n NewItem, now time.Time) (*Item, error) {
+func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Create")
 	defer span.End()
 
-	input, err := json.Marshal(n.Fields)
+	fieldsBytes, err := json.Marshal(n.Fields)
 	if err != nil {
-		return nil, errors.Wrap(err, "encode fields to input")
+		return Item{}, errors.Wrap(err, "encode fields to bytes")
 	}
 
 	i := Item{
 		ID:        uuid.New().String(),
-		EntityID:  entityID,
-		Input:     string(input),
+		AccountID: n.AccountID,
+		EntityID:  n.EntityID,
+		Fieldsb:   string(fieldsBytes),
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO items
-		(item_id, entity_id, input, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)`
+		(item_id, account_id, entity_id, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		i.ID, i.EntityID, i.Input,
+		i.ID, i.AccountID, i.EntityID, i.Fieldsb,
 		i.CreatedAt, i.UpdatedAt,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting item")
+		return Item{}, errors.Wrap(err, "inserting item")
 	}
 
-	return &i, nil
+	return i, nil
 }
 
 //UpdateFields patches the field data
@@ -77,7 +78,7 @@ func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields map[string
 	}
 	inputStr := string(input)
 	upd := UpdateItem{
-		Input: &inputStr,
+		Fieldsb: &inputStr,
 	}
 	return update(ctx, db, id, upd, time.Now())
 }
@@ -92,8 +93,8 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 		return err
 	}
 
-	if upd.Input != nil {
-		i.Input = *upd.Input
+	if upd.Fieldsb != nil {
+		i.Fieldsb = *upd.Fieldsb
 	}
 	i.UpdatedAt = now.Unix()
 
@@ -102,7 +103,7 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 		"updated_at" = $3
 		WHERE item_id = $1`
 	_, err = db.ExecContext(ctx, q, i.ID,
-		i.Input, i.UpdatedAt,
+		i.Fieldsb, i.UpdatedAt,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating item")
@@ -112,23 +113,23 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Item, error) {
+func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
 	if _, err := uuid.Parse(id); err != nil {
-		return nil, ErrInvalidID
+		return Item{}, ErrInvalidID
 	}
 
 	var i Item
 	const q = `SELECT * FROM items WHERE item_id = $1`
 	if err := db.GetContext(ctx, &i, q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return Item{}, ErrNotFound
 		}
 
-		return nil, errors.Wrapf(err, "selecting item %q", id)
+		return Item{}, errors.Wrapf(err, "selecting item %q", id)
 	}
 
-	return &i, nil
+	return i, nil
 }

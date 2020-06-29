@@ -57,6 +57,8 @@ type Operand interface{}
 func Run(rule string, workChan chan Work) {
 	defer close(workChan)
 	if rule == "" {
+		// By default the empty rule is considered as the positive expression
+		workChan <- Work{Executor, "", nil}
 		return
 	}
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
@@ -77,7 +79,7 @@ func (r Ruler) startLexer(rule string) Ruler {
 	var token lexertoken.Token
 	for {
 		token = l.NextToken()
-		log.Println("token", token)
+		//log.Println("token", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))
@@ -173,7 +175,7 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Printf("execute left_rule_item: %s | right_rule_item: %s | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

@@ -178,7 +178,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrap(err, "fetching user from token UID")
 	}
 
-	log.Printf("sk/sexy please add a entry at users table in seed.go with this token to login %s", token.UID)
+	log.Printf("sk/sexy please replace the word sk_replacetokenhere/sexy_replacetokenhere in seed.go with this token to login %s", token.UID)
 
 	claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
 	if err != nil {

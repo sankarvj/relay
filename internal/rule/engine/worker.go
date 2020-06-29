@@ -1,4 +1,4 @@
-package rule
+package engine
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, entityID, itemID 
 	if err != nil {
 		return result, err
 	}
-	if err := json.Unmarshal([]byte(item.Input), &result); err != nil {
+	if err := json.Unmarshal([]byte(item.Fieldsb), &result); err != nil {
 		return result, errors.Wrapf(err, "error while unmarshalling item attributes on retrive with fields %q", item.ID)
 	}
 	//sets the id as one of the field key to make use of the reference fields

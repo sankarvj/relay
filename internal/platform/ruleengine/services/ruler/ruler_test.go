@@ -6,7 +6,7 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version1}} eq {{e2.version}} <e3.status=e2.version>`
+	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
 
 	signalsChan := make(chan Work)
 	go Run(sampleInput, signalsChan)

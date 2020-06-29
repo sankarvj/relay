@@ -25,7 +25,7 @@ func List(ctx context.Context, currentUserID string, db *sqlx.DB) ([]Account, er
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (*Account, error) {
+func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Account, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Create")
 	defer span.End()
 
@@ -46,8 +46,8 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (*Acc
 		a.CreatedAt, a.UpdatedAt,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting account")
+		return Account{}, errors.Wrap(err, "inserting account")
 	}
 
-	return &a, nil
+	return a, nil
 }

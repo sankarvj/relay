@@ -15,7 +15,7 @@ func TimeSeriesList(ctx context.Context, entityID string, db *sqlx.DB) ([]TimeSe
 	defer span.End()
 
 	items := []TimeSeriesItem{}
-	const q = `SELECT input->>'9f9ade37-9549-4d12-a82d-c69495e85980' AS status, date_trunc('hour', ("input"->>'d3e572e1-3950-46db-a230-d41b2f4cd8d0')::timestamp) AS date , count(*) AS "value" from items where entity_id = $1 group by date,status;`
+	const q = `SELECT fieldsb->>'9f9ade37-9549-4d12-a82d-c69495e85980' AS status, date_trunc('hour', ("fieldsb"->>'d3e572e1-3950-46db-a230-d41b2f4cd8d0')::timestamp) AS date , count(*) AS "value" from items where entity_id = $1 group by date,status;`
 
 	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
 		return nil, errors.Wrap(err, "selecting timeseries items")

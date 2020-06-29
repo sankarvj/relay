@@ -35,46 +35,48 @@ func List(ctx context.Context, accountID string, db *sqlx.DB) ([]Team, error) {
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (*Team, error) {
+func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (Team, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.team.Create")
 	defer span.End()
 
 	t := Team{
-		Name:      n.Name,
+		ID:        uuid.New().String(),
 		AccountID: n.AccountID,
+		Name:      n.Name,
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO teams
-		(account_id, name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)`
-	result, err := db.ExecContext(
+		(team_id, account_id, name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`
+	_, err := db.ExecContext(
 		ctx, q,
-		t.AccountID, t.Name,
+		t.ID, t.AccountID, t.Name,
 		t.CreatedAt, t.UpdatedAt,
 	)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting team")
+		return Team{}, errors.Wrap(err, "inserting team")
 	}
 
-	teamID, _ := result.LastInsertId()
 	ne := entity.NewEntity{
-		Name:     "Members",
-		Category: entity.CategoryUserSeries,
-		Fields:   makeMemberSeriesFields(),
+		Name:      "Members",
+		AccountID: t.AccountID,
+		TeamID:    t.ID,
+		Category:  entity.CategoryUserSeries,
+		Fields:    makeMemberSeriesFields(),
 	}
-	_, err = entity.Create(ctx, db, teamID, ne, now)
+	_, err = entity.Create(ctx, db, ne, now)
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting default enetity of each team")
+		return Team{}, errors.Wrap(err, "inserting members enetity of each team")
 	}
 
-	return &t, nil
+	return t, nil
 }
 
 // Retrieve gets the specified entity from the database.
-func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (*Team, error) {
+func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (Team, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.team.Retrieve")
 	defer span.End()
 
@@ -82,13 +84,13 @@ func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (*Team, error) {
 	const q = `SELECT * FROM teams WHERE team_id = $1`
 	if err := db.GetContext(ctx, &t, q, teamID); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return Team{}, ErrNotFound
 		}
 
-		return nil, errors.Wrapf(err, "selecting team %q", teamID)
+		return Team{}, errors.Wrapf(err, "selecting team %q", teamID)
 	}
 
-	return &t, nil
+	return t, nil
 }
 
 func makeMemberSeriesFields() []entity.Field {

@@ -103,13 +103,13 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (
 }
 
 // Create inserts a new user into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (*User, error) {
+func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Create")
 	defer span.End()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, errors.Wrap(err, "generating password hash")
+		return User{}, errors.Wrap(err, "generating password hash")
 	}
 
 	u := User{
@@ -133,10 +133,10 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (*User, 
 		u.CreatedAt, u.UpdatedAt,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "inserting user")
+		return User{}, errors.Wrap(err, "inserting user")
 	}
 
-	return &u, nil
+	return u, nil
 }
 
 // Update replaces a user document in the database.

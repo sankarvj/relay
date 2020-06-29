@@ -1,4 +1,4 @@
-package rule
+package engine
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func execute(ctx context.Context, db *sqlx.DB, expression string, input map[string]string) error {
-	log.Println("executing executor for ", expression)
-	action := ruler.ActionExpression(expression, input)
-	e, err := entity.Retrieve(ctx, action.EntityID, db)
+func execute(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	log.Println("execute ActorID ---> ", n.ActorID)
+	e, err := entity.Retrieve(ctx, n.ActorID, db)
+
 	if err != nil {
 		return err
 	}
@@ -21,14 +21,13 @@ func execute(ctx context.Context, db *sqlx.DB, expression string, input map[stri
 	if err != nil {
 		return err
 	}
-
 	switch e.Category {
 	case entity.CategoryAPI:
 		executeHook(ctx, db, entityFields)
 	case entity.CategoryEmail:
-		executeEmail(ctx, db, input, entityFields)
+		executeEmail(ctx, db, entityFields, n)
 	case entity.CategoryData:
-		executeData(ctx, db, input, entityFields, action)
+		executeData(ctx, db, entityFields, n)
 
 	}
 

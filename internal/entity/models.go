@@ -11,14 +11,15 @@ import (
 // Entity represents the building block of all the tasks
 type Entity struct {
 	ID          string         `db:"entity_id" json:"id"`
-	TeamID      int64          `db:"team_id" json:"team_id"`
+	AccountID   string         `db:"account_id" json:"account_id"`
+	TeamID      string         `db:"team_id" json:"team_id"`
 	Name        string         `db:"name" json:"name"`
 	Description *string        `db:"description" json:"description"`
 	Category    int            `db:"category" json:"category"`
 	State       int            `db:"state" json:"state"`
-	Mode        int            `db:"mode" json:"mode"`
+	Status      int            `db:"status" json:"status"`
 	Retry       int            `db:"retry" json:"retry"`
-	Attributes  string         `db:"attributes" json:"attributes"`
+	Fieldsb     string         `db:"fieldsb" json:"fieldsb"`
 	Tags        pq.StringArray `db:"tags" json:"tags"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   int64          `db:"updated_at" json:"updated_at"`
@@ -28,13 +29,11 @@ type Entity struct {
 // (i.e) it has fields instead of attributes
 type ViewModelEntity struct {
 	ID          string    `json:"id"`
-	TeamID      int64     `json:"team_id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`
 	Category    int       `json:"category"`
 	State       int       `json:"state"`
-	Mode        int       `json:"mode"`
-	Retry       int       `json:"retry"`
+	Status      int       `json:"status"`
 	Fields      []Field   `json:"fields"`
 	Tags        []string  `json:"tags"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -43,11 +42,12 @@ type ViewModelEntity struct {
 
 // NewEntity has information needed to creat new entity
 type NewEntity struct {
-	Name     string  `json:"name" validate:"required"`
-	Fields   []Field `json:"fields" validate:"required"`
-	Category int     `json:"category" validate:"required"`
-	State    int     `json:"state" validate:"required"`
-	Mode     int     `json:"mode" validate:"required"`
+	Name      string  `json:"name" validate:"required"`
+	AccountID string  `json:"account_id" validate:"required"`
+	TeamID    string  `json:"team_id" validate:"required"`
+	Fields    []Field `json:"fields" validate:"required"`
+	Category  int     `json:"category" validate:"required"`
+	State     int     `json:"state" validate:"required"`
 }
 
 // Field represents structural format of attributes in entity
@@ -96,13 +96,6 @@ const (
 	TypeAutoComplete FieldType = "AC"
 )
 
-//Mode for the entity spcifies certain entity specific characteristics
-const (
-	ModeUnknown = 0
-	ModeDefault = 1
-	ModePrimary = 2
-)
-
 //State for the entity specifies the current state of the entity
 const (
 	StateUnknown = 0
@@ -138,7 +131,7 @@ func (e Entity) Fields() ([]Field, error) {
 // AllFields parses attribures to fields
 func (e Entity) AllFields() ([]Field, error) {
 	var fields []Field
-	if err := json.Unmarshal([]byte(e.Attributes), &fields); err != nil {
+	if err := json.Unmarshal([]byte(e.Fieldsb), &fields); err != nil {
 		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
 	}
 	return fields, nil

@@ -2,13 +2,11 @@ package rule
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"go.opencensus.io/trace"
 )
 
@@ -32,24 +30,24 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 	ctx, span := trace.StartSpan(ctx, "internal.rule.Create")
 	defer span.End()
 
-	actionItems, err := json.Marshal(n.ActionItems)
-	if err != nil {
-		return nil, errors.Wrap(err, "encode action")
-	}
+	// actionItems, err := json.Marshal(n.ActionItems)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "encode action")
+	// }
 
 	r := Rule{
-		ID:         uuid.New().String(),
-		EntityID:   n.EntityID,
-		Expression: n.Expression + " <" + string(actionItems) + ">",
-		CreatedAt:  now.UTC(),
-		UpdatedAt:  now.UTC().Unix(),
+		ID:       uuid.New().String(),
+		EntityID: n.EntityID,
+		//Expression: n.Expression + " <" + string(actionItems) + ">",
+		CreatedAt: now.UTC(),
+		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO rules
 		(rule_id, entity_id, expression, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)`
 
-	_, err = db.ExecContext(
+	_, err := db.ExecContext(
 		ctx, q,
 		r.ID, r.EntityID, r.Expression,
 		r.CreatedAt, r.UpdatedAt,
@@ -59,23 +57,4 @@ func Create(ctx context.Context, db *sqlx.DB, n NewRule, now time.Time) (*Rule, 
 	}
 
 	return &r, nil
-}
-
-//RunRuleEngine runs the engine on the expression and emit the action to be taken
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, exp string, input map[string]string) string {
-	var lexedContent string
-	signalsChan := make(chan ruler.Work)
-	go ruler.Run(exp, signalsChan)
-	//signalsChan wait to receive work and action triggers until the run completes
-	for work := range signalsChan {
-		switch work.Type {
-		case ruler.Worker:
-			work.Resp <- worker(ctx, db, work.Expression, input)
-		case ruler.Executor:
-			execute(ctx, db, work.Expression, input)
-		case ruler.Content:
-			lexedContent = work.Expression
-		}
-	}
-	return lexedContent
 }
