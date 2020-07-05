@@ -99,7 +99,7 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 	i.UpdatedAt = now.Unix()
 
 	const q = `UPDATE items SET
-		"input" = $2,
+		"fieldsb" = $2,
 		"updated_at" = $3
 		WHERE item_id = $1`
 	_, err = db.ExecContext(ctx, q, i.ID,

@@ -16,6 +16,8 @@ const (
 	TokenRightSnippet
 
 	TokenEqualSign
+	TokenGTSign
+	TokenLTSign
 	TokenANDOperation
 	TokenOROperation
 	TokenValuate

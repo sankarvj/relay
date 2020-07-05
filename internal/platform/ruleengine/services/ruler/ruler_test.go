@@ -9,16 +9,31 @@ func TestRun(t *testing.T) {
 	sampleInput := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
 
 	signalsChan := make(chan Work)
-	go Run(sampleInput, signalsChan)
+	go Run(sampleInput, true, signalsChan)
 	//signalsChan wait to receive work and action triggers until the run completes
 	for work := range signalsChan {
 		switch work.Type {
 		case Worker:
 			work.Resp <- getResponseMap(work.Expression)
 		case Executor:
-			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
-		case Content:
-			log.Println("content>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
+			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
+		}
+	}
+	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+}
+
+func TestRunGTLT(t *testing.T) {
+	sampleInput := `{{e1.appinfo.index}} lt {{e2.index}} && {{e1.appinfo.index}} lt {{e2.index}} <e3.status=e2.version>`
+
+	signalsChan := make(chan Work)
+	go Run(sampleInput, true, signalsChan)
+	//signalsChan wait to receive work and action triggers until the run completes
+	for work := range signalsChan {
+		switch work.Type {
+		case Worker:
+			work.Resp <- getResponseMap(work.Expression)
+		case Executor:
+			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}
 	}
 	log.Println("signals channel closed!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -28,7 +43,7 @@ func TestRunSimpleBody(t *testing.T) {
 	sampleInput := `Hello matty {{e1.appinfo.version}}. How are you?`
 
 	signalsChan := make(chan Work)
-	go Run(sampleInput, signalsChan)
+	go Run(sampleInput, false, signalsChan)
 	//signalsChan wait to receive work and action triggers until the run completes
 	for work := range signalsChan {
 		switch work.Type {
@@ -51,6 +66,7 @@ func getResponseMap(exp string) map[string]interface{} {
 				"artifact": 1,
 				"appinfo": map[string]interface{}{
 					"version": 2,
+					"index":   99,
 				},
 			},
 		}
@@ -58,6 +74,7 @@ func getResponseMap(exp string) map[string]interface{} {
 		return map[string]interface{}{
 			"e2": map[string]interface{}{
 				"version": 2,
+				"index":   100,
 			},
 		}
 	}

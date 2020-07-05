@@ -54,27 +54,31 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, workChan chan Work) {
+func Run(rule string, isExecutor bool, workChan chan Work) {
 	defer close(workChan)
 	if rule == "" {
-		// By default the empty rule is considered as the positive expression
+		// by default the empty rule is considered as the positive expression.
 		workChan <- Work{Executor, "", nil}
 		return
 	}
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
 		workChan: workChan,
-		positive: nil, //always start on a positive note! :)
+		positive: nil, //always start on a nil note! :)
 	}
-	r = r.startLexer(rule)
-	if r.positive != nil && *r.positive {
-		workChan <- Work{Executor, r.trigger, nil}
+	if isExecutor {
+		r = r.startExecutingLexer(rule)
+		if r.positive != nil && *r.positive {
+			workChan <- Work{Executor, r.trigger, nil}
+		}
+	} else {
+		r = r.startParsingLexer(rule)
+		workChan <- Work{Content, r.content, nil}
 	}
-	workChan <- Work{Content, r.content, nil}
 
 }
 
-func (r Ruler) startLexer(rule string) Ruler {
+func (r Ruler) startExecutingLexer(rule string) Ruler {
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
@@ -85,6 +89,10 @@ func (r Ruler) startLexer(rule string) Ruler {
 			r.addEvalOperand(strings.TrimSpace(token.Value))
 		case lexertoken.TokenEqualSign:
 			r.addCompareOperation()
+		case lexertoken.TokenGTSign:
+			r.addGTCompareOperation()
+		case lexertoken.TokenLTSign:
+			r.addLTCompareOperation()
 		case lexertoken.TokenANDOperation:
 			r.addANDCondition()
 		case lexertoken.TokenOROperation:
@@ -95,6 +103,24 @@ func (r Ruler) startLexer(rule string) Ruler {
 			r.addTrigger(token.Value)
 		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
 			r.execute()
+		case lexertoken.TokenGibberish:
+			r.addGibbrish(token.Value)
+		case lexertoken.TokenEOF:
+			return r
+		}
+	}
+}
+
+func (r Ruler) startParsingLexer(rule string) Ruler {
+	l := lexer.BeginLexing("rule", rule)
+	var token lexertoken.Token
+	for {
+		token = l.NextToken()
+		switch token.Type {
+		case lexertoken.TokenValuate:
+			r.addEvalOperand(strings.TrimSpace(token.Value))
+		case lexertoken.TokenValue:
+			r.addOperand(extract(token.Value))
 		case lexertoken.TokenGibberish:
 			r.addGibbrish(token.Value)
 		case lexertoken.TokenEOF:
@@ -130,6 +156,18 @@ func (r *Ruler) addOperand(value interface{}) error {
 func (r *Ruler) addCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = compare
+	return nil
+}
+
+func (r *Ruler) addGTCompareOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = greaterThan
+	return nil
+}
+
+func (r *Ruler) addLTCompareOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = lesserThan
 	return nil
 }
 

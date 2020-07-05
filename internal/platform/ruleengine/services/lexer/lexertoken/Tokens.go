@@ -8,6 +8,8 @@ const (
 	LeftDoubleBraces  string = "{{"
 	RightDoubleBraces string = "}}"
 	EqualSign         string = "eq"
+	GTSign            string = "gt"
+	LTSign            string = "lt"
 	LeftBrace         string = "{"
 	RightBrace        string = "}"
 	LeftSnippet       string = "<"

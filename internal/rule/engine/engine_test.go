@@ -4,8 +4,9 @@ import (
 	"log"
 	"testing"
 
-	"gitlab.com/vjsideprojects/relay/internal/flow"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
@@ -127,6 +128,33 @@ func TestFlow(t *testing.T) {
 			// 	log.Printf("node %d -- %v", i, n)
 			// 	engine.RunRuleEngine(tests.Context(), db, n)
 			// }
+		}
+	}
+}
+
+func TestTrigger(t *testing.T) {
+	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	defer teardown()
+	t.Log("Given the need to run the engine for a trigger")
+	{
+		t.Log("\tWhen updating the event mrr in contact1")
+		{
+			e1 := schema.SeedEntityContactID
+			i1 := schema.SeedItemContactID1
+			i, _ := item.Retrieve(tests.Context(), i1, db)
+			oldItemFields := i.Fields()
+			newItemFields := i.Fields()
+			newItemFields[schema.SeedFieldKeyContactMRR] = 99
+			err := item.UpdateFields(tests.Context(), db, i1, newItemFields)
+			log.Println("err", err)
+			//log.Println("oldItemFields", oldItemFields)
+			//log.Println("newItemFields", newItemFields)
+			flows, _ := flow.List(tests.Context(), e1, db)
+			lazyFlows := flow.LazyFlows(tests.Context(), flows, oldItemFields, newItemFields)
+			//log.Printf("The lazyFlows %v", lazyFlows)
+			flow.Trigger(tests.Context(), i1, lazyFlows, db)
+
 		}
 	}
 }

@@ -117,11 +117,11 @@ INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, create
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemTaskID1 + `', '` + SeedAccountID + `', '` + SeedEntityTaskID + `', 0, '{"` + SeedFieldKeyTaskDesc + `": "Ummm. Prepare the research documents and make a call", "` + SeedFieldKeyAssigned + `": "agents.id"}', '2020-06-08 14:04:58.523412', 1591625098);
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemTaskID2 + `', '` + SeedAccountID + `', '` + SeedEntityTaskID + `', 0, '{"` + SeedFieldKeyTaskDesc + `": "Prepare the research documents and make a call", "` + SeedFieldKeyTaskForCon + `": "{{` + SeedEntityContactID + `.id}}"}', '2020-06-08 14:04:58.523412', 1591625098);
 -- Create a flow
-INSERT INTO public.flows (flow_id, account_id, entity_id, expression, name, description, type, status, created_at, updated_at) VALUES
-	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay}','The Flow','', 0, 0, '2019-11-20 00:00:00', 1574239364000)
+INSERT INTO public.flows (flow_id, account_id, entity_id, expression, name, description, type, condition, status, created_at, updated_at) VALUES
+	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay} && {{` + SeedEntityContactID + `.` + SeedFieldKeyContactMRR + `}} gt {98}','The Flow','', 1, 1, 0, '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 -- Create a node
-INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, is_neg, variables, actuals, created_at, updated_at) VALUES
-	('` + SeedNodeID + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',1,'',false,'{"` + SeedEntityContactID + `": "` + SeedItemContactID1 + `"}','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
+INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, is_neg, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',1,'',false,'{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 `

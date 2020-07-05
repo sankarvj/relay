@@ -155,6 +155,7 @@ var migrations = []darwin.Migration{
 			name    	  TEXT,
 			description   TEXT,
 			type      	  INTEGER DEFAULT 0,
+			condition     INTEGER DEFAULT 0,
 			status        INTEGER DEFAULT 0,
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
@@ -180,6 +181,19 @@ var migrations = []darwin.Migration{
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
 			PRIMARY KEY (node_id)
+		);
+		`,
+	},
+	{
+		Version:     9,
+		Description: "Add active_flows",
+		Script: `
+		CREATE TABLE active_flows (
+			flow_id    	UUID REFERENCES flows ON DELETE CASCADE,
+			item_id    	UUID REFERENCES items ON DELETE CASCADE,
+		    life 	   	INTEGER DEFAULT 0,
+			is_active	BOOLEAN DEFAULT FALSE,
+			UNIQUE (flow_id,item_id)
 		);
 		`,
 	},

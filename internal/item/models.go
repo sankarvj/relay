@@ -57,3 +57,16 @@ func (i Item) Fields() map[string]interface{} {
 	}
 	return fields
 }
+
+//Diff old and new fields
+func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interface{} {
+	diffFields := newItemFields
+	for key, newItem := range newItemFields {
+		if oldItem, ok := oldItemFields[key]; ok {
+			if newItem == oldItem {
+				delete(diffFields, key)
+			}
+		}
+	}
+	return diffFields
+}

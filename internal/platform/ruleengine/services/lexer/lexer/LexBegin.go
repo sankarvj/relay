@@ -19,6 +19,10 @@ func LexBegin(lexer *Lexer) LexFn {
 		return LexLeftBrace
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.EqualSign) {
 		return LexEqualSign
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.GTSign) {
+		return LexGTSign
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LTSign) {
+		return LexLTSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.ANDOperation) {
 		return LexANDOp
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.OROperation) {
