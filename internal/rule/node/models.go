@@ -26,9 +26,8 @@ type Node struct {
 	ActorID      string    `db:"actor_id" json:"actor_id"`
 	Type         int       `db:"type" json:"type"`
 	Expression   string    `db:"expression" json:"expression"`
-	IsNeg        bool      `db:"is_neg" json:"is_neg"`
-	Variables    string    `db:"variables" json:"variables"` //Variables is to evaluate the expression during the runtime
-	Actuals      string    `db:"actuals" json:"actuals"`     //Actuals used to get the actual item of the actionable entity - ActorID's item
+	Variables    string    `db:"-" json:"variables"`     //Variables is to evaluate the expression during the runtime
+	Actuals      string    `db:"actuals" json:"actuals"` //Actuals used to get the actual item of the actionable entity - ActorID's item
 	CreatedAt    time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt    int64     `db:"updated_at" json:"updated_at"`
 }
@@ -48,19 +47,27 @@ type NewNode struct {
 	ActorID      string            `json:"actor_id"`
 	Type         int               `json:"type" validate:"required"`
 	Expression   string            `json:"expression"`
-	IsNeg        bool              `json:"is_neg"`
-	Variables    map[string]string `json:"variables"`
 	Actuals      map[string]string `json:"actuals"`
 }
 
 // VariablesMap parses variables jsonb to map
-func (n Node) VariablesMap() map[string]string {
-	var variables map[string]string
+func (n Node) VariablesMap() map[string]interface{} {
+	var variables map[string]interface{}
 	if err := json.Unmarshal([]byte(n.Variables), &variables); err != nil {
-		log.Printf("error while unmarshalling node variables %v", n.ID)
-		log.Println(err)
+		log.Printf("error while unmarshalling node variables %v %v", n.ID, err)
+		panic(err)
 	}
 	return variables
+}
+
+//VariablesJSON turns map to json
+func (n Node) VariablesJSON(varsMap map[string]interface{}) string {
+	jsonStr, err := MapToJSONB(varsMap)
+	if err != nil {
+		log.Println(err)
+		panic(err)
+	}
+	return jsonStr
 }
 
 // ActualsMap parses actuals jsonb to map

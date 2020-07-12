@@ -95,8 +95,9 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Flow, error) {
 	return f, nil
 }
 
-// LazyFlows inspects the trigger rules on each field changes for a respective entity in the flows
-func LazyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields map[string]interface{}) []Flow {
+// DirtyFlows filters the flows which matches the field name in the rules with the modified fields during the update/insert
+// operation of the item on the entity.
+func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields map[string]interface{}) []Flow {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.LazyFlows")
 	defer span.End()
 
@@ -117,33 +118,35 @@ func LazyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields m
 	return dirtyFlows
 }
 
-//Trigger triggers the inactive flows which are ready to be triggerd based on active flows
-func Trigger(ctx context.Context, itemID string, lazyFlows []Flow, db *sqlx.DB) error {
-	aflows, err := activeFlows(ctx, ids(lazyFlows), db)
+// Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
+func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB) error {
+	aflows, err := activeFlows(ctx, ids(dirtyFlows), db)
 	if err != nil {
 		log.Println("err", err)
 		return err
 	}
 	activeFlowMap := activeFlowMap(aflows)
-	for _, lf := range lazyFlows {
-		af := activeFlowMap[lf.ID]
-		log.Printf("lf %v and af %v", lf, af)
-		if evaluateFlowExpression(ctx, itemID, lf, db) { //entry
-			err = af.entryTrigger(ctx, db, itemID, lf)
+	for _, df := range dirtyFlows {
+		af := activeFlowMap[df.ID]
+		log.Printf("lf %v and af %v", df, af)
+		if evaluateExpression(ctx, itemID, df.EntityID, df.Expression, db) { //entry
+			err = af.entryTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowEntryTrigger(df.Condition))
 		} else {
-			err = af.exitTrigger(ctx, db, lf)
+			err = af.exitTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowExitTrigger(df.Condition))
 		}
-		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", lf.ID)
+		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", df.ID)
 	}
 
 	return err
 }
 
-func evaluateFlowExpression(ctx context.Context, itemID string, lf Flow, db *sqlx.DB) bool {
+// evaluateExpression evaluates the given expression and returns yes/no. It builds the dynamic variables
+// by mapping the changed entity/item and passes those variables to the RunExpEvaluator
+func evaluateExpression(ctx context.Context, itemID, entityID, expression string, db *sqlx.DB) bool {
 	variables := map[string]string{
-		lf.EntityID: itemID,
+		entityID: itemID,
 	}
-	return engine.RunParser(ctx, db, lf.Expression, variables)
+	return engine.RunExpEvaluator(ctx, db, expression, variables)
 }
 
 func ids(lazyFlows []Flow) []string {
@@ -154,10 +157,10 @@ func ids(lazyFlows []Flow) []string {
 	return ids
 }
 
-func (f Flow) allowFlowEntryTrigger() bool {
-	return f.Condition == FlowConditionBoth || f.Condition == FlowConditionEntry
+func allowFlowEntryTrigger(condition int) bool {
+	return condition == FlowConditionBoth || condition == FlowConditionEntry
 }
 
-func (f Flow) allowFlowExitTrigger() bool {
-	return f.Condition == FlowConditionBoth || f.Condition == FlowConditionExit
+func allowFlowExitTrigger(condition int) bool {
+	return condition == FlowConditionBoth || condition == FlowConditionExit
 }

@@ -15,7 +15,7 @@ func TestRun(t *testing.T) {
 		switch work.Type {
 		case Worker:
 			work.Resp <- getResponseMap(work.Expression)
-		case Executor:
+		case PosExecutor:
 			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}
 	}
@@ -32,7 +32,7 @@ func TestRunGTLT(t *testing.T) {
 		switch work.Type {
 		case Worker:
 			work.Resp <- getResponseMap(work.Expression)
-		case Executor:
+		case PosExecutor:
 			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}
 	}
@@ -49,8 +49,6 @@ func TestRunSimpleBody(t *testing.T) {
 		switch work.Type {
 		case Worker:
 			work.Resp <- getResponseMap(work.Expression)
-		case Executor:
-			log.Println("trigger>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		case Content:
 			log.Println("content>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", work.Expression)
 		}

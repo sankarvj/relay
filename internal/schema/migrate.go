@@ -175,8 +175,6 @@ var migrations = []darwin.Migration{
 		    actor_id 	    UUID,
 			type			INTEGER DEFAULT 0,
 			expression    	TEXT,
-			is_neg      	BOOLEAN DEFAULT FALSE,
-			variables       JSONB,
 			actuals         JSONB,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,

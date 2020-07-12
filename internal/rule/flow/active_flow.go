@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
@@ -50,9 +51,9 @@ func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
 	return nil
 }
 
-//ActiveFlows get the active flows entry for the lazy flows
+// activeFlows get the active flows entries for the dirty flow ids if exists
 func activeFlows(ctx context.Context, lazyFlowsIDS []string, db *sqlx.DB) ([]ActiveFlow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.ActivateFlows")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlows")
 	defer span.End()
 
 	activeFlows := []ActiveFlow{}
@@ -65,6 +66,7 @@ func activeFlows(ctx context.Context, lazyFlowsIDS []string, db *sqlx.DB) ([]Act
 	return activeFlows, nil
 }
 
+//activeFlowMap maps flowID with the activeFlow
 func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 	activeFlowMap := map[string]ActiveFlow{}
 	for _, aflow := range activeFlows {
@@ -73,12 +75,12 @@ func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 	return activeFlowMap
 }
 
-func (af ActiveFlow) entryTrigger(ctx context.Context, db *sqlx.DB, itemID string, lf Flow) error {
+func (af ActiveFlow) entryTrigger(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string, allowEntryTrigger bool) error {
 	var err error
 	if af.IsActive { //skips trigger if already active or of exit condition
 		return nil
 	}
-	af.FlowID = lf.ID
+	af.FlowID = flowID
 	af.ItemID = itemID
 	af.IsActive = true
 	af.Life = af.Life + 1
@@ -88,41 +90,59 @@ func (af ActiveFlow) entryTrigger(ctx context.Context, db *sqlx.DB, itemID strin
 		err = UpdateAF(ctx, db, af)
 	}
 
-	if err == nil && lf.allowFlowEntryTrigger() {
-		createNodeJobs(ctx, db, lf)
+	if err == nil && allowEntryTrigger {
+		createNodeJobs(ctx, db, flowID, entityID, itemID)
 	}
 
 	return err
 }
 
-func (af ActiveFlow) exitTrigger(ctx context.Context, db *sqlx.DB, lf Flow) error {
+func (af ActiveFlow) exitTrigger(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string, allowExitTrigger bool) error {
 	if af.Life == 0 || !af.IsActive { //skips trigger if new  or inactive.
 		return nil
 	}
 	af.IsActive = false
 	err := UpdateAF(ctx, db, af)
 
-	if err == nil && lf.allowFlowExitTrigger() {
-		createNodeJobs(ctx, db, lf)
+	if err == nil && allowExitTrigger {
+		createNodeJobs(ctx, db, flowID, entityID, itemID)
 	}
 	return err
 }
 
-func createNodeJobs(ctx context.Context, db *sqlx.DB, lf Flow) {
-	nodes, _ := node.List(ctx, lf.ID, db)
+func createNodeJobs(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string) {
+	nodes, _ := node.List(ctx, flowID, db)
 	log.Println("nodes ", nodes)
 	branchNodeMap := node.BranceNodeMap(nodes)
 	rootNode, err := node.RootNode(branchNodeMap)
-	log.Printf("The rootNode1 %v", rootNode)
+	log.Printf("The rootNode %v", rootNode)
 	log.Println("The rootNode err", err)
 
-	childNodes, err := node.ChildNodes(rootNode.ID, branchNodeMap)
-	log.Printf("The childNodes %v", childNodes)
-	log.Println("The childNodes err", err)
+	rootNode.Variables = rootNode.VariablesJSONS(map[string]string{entityID: itemID})
+	log.Printf("rootNode.Variables1 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", rootNode.Variables)
+	runJob(ctx, db, rootNode)
+}
 
-	//-------------------------------
-	// for i, n := range nodes {
-	// 	log.Printf("node %d -- %v", i, n)
-	// 	engine.RunRuleEngine(tests.Context(), db, n)
-	// }
+func runJob(ctx context.Context, db *sqlx.DB, n node.Node) {
+	log.Printf("Running Job >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", n.ID)
+	engineRes, err := engine.RunRuleEngine(ctx, db, n)
+	if err != nil {
+		//TODO push this is DL queue
+		log.Println("Error running a job....", err)
+	}
+
+	nodes, _ := node.List(ctx, n.FlowID, db)
+	childNodes, err := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
+
+	//if multiple child nodes exists then who will take the job?
+	//if the parentNode is a decision node than the result of engine.RunRuleEngine should say result:true/result:false
+	//if the parentNode is a hook node than the the result of engine.RunRuleEngine should pass the API response inside the variables
+	//if the parentNode is a push/modify/email node than the result of engine.RunRuleEngine should say result:true/result:false
+
+	for _, childNode := range childNodes {
+		childNode.Variables = childNode.VariablesJSON(engineRes)
+		log.Printf("childNode.Variables >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", childNode.Variables)
+		runJob(ctx, db, childNode)
+	}
+
 }

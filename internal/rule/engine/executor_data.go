@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -12,15 +11,10 @@ import (
 )
 
 func executeData(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, n node.Node) error {
-
-	log.Println("variables === ", n.Variables)
-	log.Printf("entityFields11 === %+v", entityFields)
-
 	entityFields, err := fillItemFieldValues(ctx, db, entityFields, n.ActualsMap()[n.ActorID])
 	if err != nil {
 		return err
 	}
-	log.Printf("entityFields22 === %+v", entityFields)
 
 	ni := item.NewItem{
 		AccountID: n.AccountID,
@@ -30,18 +24,14 @@ func executeData(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, 
 
 	switch n.Type {
 	case node.Push:
-		i, err := item.Create(ctx, db, ni, time.Now())
-		log.Printf("iiiii %v", i)
-		log.Println("err", err)
+		_, err = item.Create(ctx, db, ni, time.Now())
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
 		item.UpdateFields(ctx, db, actualItemID, ni.Fields)
-		i, err := item.Retrieve(ctx, actualItemID, db)
-		log.Printf("iiiii %v", i)
-		log.Println("err", err)
+		_, err = item.Retrieve(ctx, actualItemID, db)
 	}
 
-	return nil
+	return err
 }
 
 func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, n node.Node) map[string]interface{} {
@@ -49,7 +39,7 @@ func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity
 	for _, field := range entityFields {
 		switch field.DataType {
 		case entity.TypeString:
-			valuatedValue := RunRenderer(ctx, db, field.Value.(string), n.VariablesMap())
+			valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), n.VariablesMap())
 			evaluatedItemFields[field.Key] = valuatedValue
 		default:
 			evaluatedItemFields[field.Key] = field.Value

@@ -18,16 +18,17 @@ func executeEmail(ctx context.Context, db *sqlx.DB, entityFields []entity.Field,
 
 	emailEntity, err := entity.ParseEmailEntity(namedFieldsMap(entityFields))
 	if err != nil {
-		log.Println("err ", err)
+		return err
 	}
 
 	variables := n.VariablesMap()
-	emailEntity.Body = RunRenderer(ctx, db, emailEntity.Body, variables)
-	emailEntity.To = RunRenderer(ctx, db, emailEntity.To, variables)
-	emailEntity.Subject = RunRenderer(ctx, db, emailEntity.Subject, variables)
-	emailEntity.Sender = RunRenderer(ctx, db, emailEntity.Sender, variables)
+	emailEntity.Body = RunExpRenderer(ctx, db, emailEntity.Body, variables)
+	emailEntity.To = RunExpRenderer(ctx, db, emailEntity.To, variables)
+	emailEntity.Subject = RunExpRenderer(ctx, db, emailEntity.Subject, variables)
+	emailEntity.Sender = RunExpRenderer(ctx, db, emailEntity.Sender, variables)
 
 	_, err = sendSimpleMessage(emailEntity)
+
 	return err
 }
 

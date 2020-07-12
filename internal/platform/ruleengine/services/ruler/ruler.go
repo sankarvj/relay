@@ -15,7 +15,8 @@ type ExpressionType int
 // ExpressionType defines different types of expression to work with
 const (
 	Worker ExpressionType = iota
-	Executor
+	NegExecutor
+	PosExecutor
 	Content
 )
 
@@ -58,7 +59,7 @@ func Run(rule string, isExecutor bool, workChan chan Work) {
 	defer close(workChan)
 	if rule == "" {
 		// by default the empty rule is considered as the positive expression.
-		workChan <- Work{Executor, "", nil}
+		workChan <- Work{PosExecutor, "", nil}
 		return
 	}
 	log.Println("Starting lexer and parser for rule - ", rule, "...")
@@ -69,7 +70,9 @@ func Run(rule string, isExecutor bool, workChan chan Work) {
 	if isExecutor {
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
-			workChan <- Work{Executor, r.trigger, nil}
+			workChan <- Work{PosExecutor, r.trigger, nil}
+		} else {
+			workChan <- Work{NegExecutor, r.trigger, nil}
 		}
 	} else {
 		r = r.startParsingLexer(rule)

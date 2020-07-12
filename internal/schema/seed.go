@@ -58,7 +58,10 @@ const (
 	SeedItemTaskID1            = "3d247443-b257-4b06-ba99-493cf9d83ce7"
 	SeedItemTaskID2            = "4d247443-b257-4b06-ba99-493cf9d83ce7"
 	SeedFlowID                 = "9d447443-b157-4b07-ba89-493cf9d83c88"
-	SeedNodeID                 = "8d447443-b157-4b07-ba89-493cf9d83c88"
+	SeedNodeID1                = "8d447443-b157-4b07-ba89-493cf9d83c88"
+	SeedNodeID2                = "7d447443-b157-4b07-ba89-493cf9d83c88"
+	SeedNodeID3                = "6d447443-b157-4b07-ba89-493cf9d83c88"
+	SeedNodeID4                = "5d447443-b157-4b07-ba89-493cf9d83c88"
 )
 
 // seeds is a string constant containing all of the queries needed to get the
@@ -121,7 +124,17 @@ INSERT INTO public.flows (flow_id, account_id, entity_id, expression, name, desc
 	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay} && {{` + SeedEntityContactID + `.` + SeedFieldKeyContactMRR + `}} gt {98}','The Flow','', 1, 1, 0, '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 -- Create a node
-INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, is_neg, actuals, created_at, updated_at) VALUES
-	('` + SeedNodeID + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',1,'',false,'{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
+INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',1,'','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID2 + `','` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',0,'{Vijay} eq {Vijay}','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID3 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',3,'{{xyz.result}} eq {true}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID4 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',4,'{{xyz.result}} eq {false}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+	
 `

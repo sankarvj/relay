@@ -40,14 +40,9 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 	ctx, span := trace.StartSpan(ctx, "internal.node.Create")
 	defer span.End()
 
-	variables, err := MapToJSONB(nn.Variables)
-	if err != nil {
-		return Node{}, errors.Wrap(err, "encode variables to bytes")
-	}
-
 	actuals, err := MapToJSONB(nn.Actuals)
 	if err != nil {
-		return Node{}, errors.Wrap(err, "encode variables to bytes")
+		return Node{}, errors.Wrap(err, "encode actuals to bytes")
 	}
 
 	n := Node{
@@ -58,21 +53,19 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 		ActorID:      nn.ActorID,
 		Type:         nn.Type,
 		Expression:   nn.Expression,
-		IsNeg:        nn.IsNeg,
-		Variables:    variables,
 		Actuals:      actuals,
 		CreatedAt:    now.UTC(),
 		UpdatedAt:    now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO nodes
-		(node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, is_neg, variables, actuals, 
+		(node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, 
 		created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.Type, n.Expression, n.IsNeg, n.Variables, n.Actuals,
+		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.Type, n.Expression, n.Actuals,
 		n.CreatedAt, n.UpdatedAt,
 	)
 	if err != nil {

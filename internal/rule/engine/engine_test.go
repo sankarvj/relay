@@ -151,9 +151,9 @@ func TestTrigger(t *testing.T) {
 			//log.Println("oldItemFields", oldItemFields)
 			//log.Println("newItemFields", newItemFields)
 			flows, _ := flow.List(tests.Context(), e1, db)
-			lazyFlows := flow.LazyFlows(tests.Context(), flows, oldItemFields, newItemFields)
+			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			//log.Printf("The lazyFlows %v", lazyFlows)
-			flow.Trigger(tests.Context(), i1, lazyFlows, db)
+			flow.Trigger(tests.Context(), i1, dirtyFlows, db)
 
 		}
 	}
