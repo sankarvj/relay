@@ -89,9 +89,8 @@ func (af ActiveFlow) entryTrigger(ctx context.Context, db *sqlx.DB, flowID, enti
 	} else {
 		err = UpdateAF(ctx, db, af)
 	}
-
 	if err == nil && allowEntryTrigger {
-		createNodeJobs(ctx, db, flowID, entityID, itemID)
+		err = startJobFlow(ctx, db, flowID, entityID, itemID)
 	}
 
 	return err
@@ -105,44 +104,54 @@ func (af ActiveFlow) exitTrigger(ctx context.Context, db *sqlx.DB, flowID, entit
 	err := UpdateAF(ctx, db, af)
 
 	if err == nil && allowExitTrigger {
-		createNodeJobs(ctx, db, flowID, entityID, itemID)
+		err = startJobFlow(ctx, db, flowID, entityID, itemID)
 	}
 	return err
 }
 
-func createNodeJobs(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string) {
-	nodes, _ := node.List(ctx, flowID, db)
-	log.Println("nodes ", nodes)
-	branchNodeMap := node.BranceNodeMap(nodes)
-	rootNode, err := node.RootNode(branchNodeMap)
-	log.Printf("The rootNode %v", rootNode)
-	log.Println("The rootNode err", err)
-
-	rootNode.Variables = rootNode.VariablesJSONS(map[string]string{entityID: itemID})
-	log.Printf("rootNode.Variables1 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", rootNode.Variables)
-	runJob(ctx, db, rootNode)
+func startJobFlow(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string) error {
+	rootNode := node.Node{
+		ID:        "root",
+		FlowID:    flowID,
+		Variables: "",
+	}
+	return prepareNextRun(ctx, db, rootNode, map[string]interface{}{entityID: itemID})
 }
 
-func runJob(ctx context.Context, db *sqlx.DB, n node.Node) {
-	log.Printf("Running Job >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", n.ID)
-	engineRes, err := engine.RunRuleEngine(ctx, db, n)
+func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, dynamicResponse map[string]interface{}) error {
+	nodes, err := node.List(ctx, n.FlowID, db)
 	if err != nil {
-		//TODO push this is DL queue
-		log.Println("Error running a job....", err)
+		//TODO push this to DL queue
+		return err
 	}
-
-	nodes, _ := node.List(ctx, n.FlowID, db)
-	childNodes, err := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
-
 	//if multiple child nodes exists then who will take the job?
 	//if the parentNode is a decision node than the result of engine.RunRuleEngine should say result:true/result:false
 	//if the parentNode is a hook node than the the result of engine.RunRuleEngine should pass the API response inside the variables
 	//if the parentNode is a push/modify/email node than the result of engine.RunRuleEngine should say result:true/result:false
-
+	childNodes := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
+	updatedVariables := updateVarJSON(n.VariablesMap(), dynamicResponse)
 	for _, childNode := range childNodes {
-		childNode.Variables = childNode.VariablesJSON(engineRes)
-		log.Printf("childNode.Variables >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", childNode.Variables)
+		childNode.Variables = updatedVariables
+		// TODO call this in a job queue
 		runJob(ctx, db, childNode)
 	}
+	return nil
+}
 
+func runJob(ctx context.Context, db *sqlx.DB, n node.Node) {
+	log.Printf("Run Job >>>>>> %v", n)
+	engineRes, err := engine.RunRuleEngine(ctx, db, n)
+	if err != nil {
+		//TODO push this to DL queue
+		log.Println("Error running a job..", err)
+		return
+	}
+	prepareNextRun(ctx, db, n, engineRes)
+}
+
+func updateVarJSON(existingVars map[string]interface{}, engineRes map[string]interface{}) string {
+	for key, val := range existingVars {
+		engineRes[key] = val
+	}
+	return node.VariablesJSON(engineRes)
 }

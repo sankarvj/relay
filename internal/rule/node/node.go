@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -98,7 +99,7 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Node, error) {
 }
 
 //RootNode fetches the root node
-func RootNode(branchNodeMap map[string][]Node) (Node, error) {
+func RootNode1(branchNodeMap map[string][]Node) (Node, error) {
 	if rootNodes, ok := branchNodeMap["root"]; ok {
 		if len(rootNodes) == 1 {
 			return rootNodes[0], nil
@@ -109,13 +110,13 @@ func RootNode(branchNodeMap map[string][]Node) (Node, error) {
 }
 
 //ChildNodes finds the child nodes
-func ChildNodes(nodeID string, branchNodeMap map[string][]Node) ([]Node, error) {
+func ChildNodes(nodeID string, branchNodeMap map[string][]Node) []Node {
 	for parentNodeID, nodes := range branchNodeMap {
 		if parentNodeID == nodeID {
-			return nodes, nil
+			return nodes
 		}
 	}
-	return []Node{}, errors.New("child node does not exists")
+	return []Node{}
 }
 
 //MapToJSONB converts map to JSONB
@@ -132,8 +133,8 @@ func BranceNodeMap(nodes []Node) map[string][]Node {
 	nodesBranchMap := map[string][]Node{}
 	for _, node := range nodes {
 		if node.ParentNodeID == nil {
-			nodesBranchMap["root"] = []Node{node}
-			continue
+			root := "root"
+			node.ParentNodeID = &root
 		}
 		if existingNodes, ok := nodesBranchMap[*node.ParentNodeID]; ok {
 			existingNodes = append(existingNodes, node)
@@ -142,4 +143,14 @@ func BranceNodeMap(nodes []Node) map[string][]Node {
 		}
 	}
 	return nodesBranchMap
+}
+
+//VariablesJSON turns map to json
+func VariablesJSON(varsMap map[string]interface{}) string {
+	jsonStr, err := MapToJSONB(varsMap)
+	if err != nil {
+		log.Printf("error while marshalling node variables %v ", err)
+		panic(err)
+	}
+	return jsonStr
 }

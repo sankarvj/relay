@@ -15,6 +15,7 @@ const (
 	Modify       = 2
 	Email        = 3
 	Hook         = 4
+	Schedule     = 5
 )
 
 //Node struct defines the structure of each node in the workflow
@@ -60,22 +61,12 @@ func (n Node) VariablesMap() map[string]interface{} {
 	return variables
 }
 
-//VariablesJSON turns map to json
-func (n Node) VariablesJSON(varsMap map[string]interface{}) string {
-	jsonStr, err := MapToJSONB(varsMap)
-	if err != nil {
-		log.Println(err)
-		panic(err)
-	}
-	return jsonStr
-}
-
 // ActualsMap parses actuals jsonb to map
 func (n Node) ActualsMap() map[string]string {
 	var actuals map[string]string
 	if err := json.Unmarshal([]byte(n.Actuals), &actuals); err != nil {
-		log.Printf("error while unmarshalling node actuals %v", n.ID)
-		log.Println(err)
+		log.Printf("error while unmarshalling node actuals %v %v", n.ID, err)
+		panic(err)
 	}
 	return actuals
 }

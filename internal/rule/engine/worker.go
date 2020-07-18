@@ -13,51 +13,36 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 )
 
-func worker(ctx context.Context, db *sqlx.DB, expression string, input map[string]string) map[string]interface{} {
-	log.Println("running worker for expression ", expression)
+func worker(ctx context.Context, db *sqlx.DB, expression string, input map[string]interface{}) (map[string]interface{}, error) {
+	log.Printf("running worker for expression %s : %v", expression, input)
 	entityID := ruler.FetchEntityID(expression)
-	if entityID == GlobalEntity {
-		return globalWorker(input)
+	if entityID == GlobalEntity { //global entity stops here.
+		return input, nil
 	}
-	return normalWorker(ctx, db, entityID, input)
-
-}
-
-func normalWorker(ctx context.Context, db *sqlx.DB, entityID string, input map[string]string) map[string]interface{} {
-
 	e, err := entity.Retrieve(ctx, entityID, db)
 	if err != nil {
-		return map[string]interface{}{"error": err}
+		return map[string]interface{}{}, err
 	}
-
 	var result map[string]interface{}
 	switch e.Category {
 	case entity.CategoryAPI:
 		fields, err := e.Fields()
 		if err != nil {
-			return map[string]interface{}{"error": err}
+			return map[string]interface{}{}, err
 		}
 		result, err = retriveAPIEntityResult(fields)
 	case entity.CategoryData, entity.CategoryTimeSeries:
 		if itemID, ok := input[e.ID]; ok {
-			result, err = retriveDataEntityResult(ctx, db, e.ID, itemID)
+
+			// TODO itemID.(string) we are blindly typecasting it to string???
+			// what happens if different data type comes??
+			result, err = retriveDataEntityResult(ctx, db, e.ID, itemID.(string))
 		}
 	}
 	if err != nil {
 		result = map[string]interface{}{"error": err}
 	}
-	return buildResultant(e.ID, result)
-}
-
-func globalWorker(input map[string]string) map[string]interface{} {
-	var xyzMap map[string]interface{}
-	if xyzJsonb, ok := input[GlobalEntity]; ok {
-		log.Println("xyzJsonb ", xyzJsonb)
-		if err := json.Unmarshal([]byte(xyzJsonb), &xyzMap); err != nil {
-			log.Printf("error while unmarshalling globals %v %v", xyzJsonb, err)
-		}
-	}
-	return xyzMap
+	return buildResultant(e.ID, result), nil
 }
 
 func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, error) {

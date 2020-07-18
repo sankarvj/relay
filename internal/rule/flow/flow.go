@@ -3,7 +3,6 @@ package flow
 import (
 	"context"
 	"database/sql"
-	"log"
 	"strings"
 	"time"
 
@@ -122,18 +121,17 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB) error {
 	aflows, err := activeFlows(ctx, ids(dirtyFlows), db)
 	if err != nil {
-		log.Println("err", err)
 		return err
 	}
 	activeFlowMap := activeFlowMap(aflows)
 	for _, df := range dirtyFlows {
 		af := activeFlowMap[df.ID]
-		log.Printf("lf %v and af %v", df, af)
 		if evaluateExpression(ctx, itemID, df.EntityID, df.Expression, db) { //entry
 			err = af.entryTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowEntryTrigger(df.Condition))
 		} else {
 			err = af.exitTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowExitTrigger(df.Condition))
 		}
+		//concat errors in the loop. nil if no error exists
 		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", df.ID)
 	}
 
@@ -143,7 +141,7 @@ func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB)
 // evaluateExpression evaluates the given expression and returns yes/no. It builds the dynamic variables
 // by mapping the changed entity/item and passes those variables to the RunExpEvaluator
 func evaluateExpression(ctx context.Context, itemID, entityID, expression string, db *sqlx.DB) bool {
-	variables := map[string]string{
+	variables := map[string]interface{}{
 		entityID: itemID,
 	}
 	return engine.RunExpEvaluator(ctx, db, expression, variables)

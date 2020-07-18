@@ -32,7 +32,7 @@ type caster struct {
 func compare(left, right Operand) bool {
 	c := cast(left, right)
 	if c.err != nil {
-		log.Println("error comparing operands", c.err)
+		log.Println("eq error comparing operands", c.err)
 		return false
 	}
 
@@ -52,7 +52,7 @@ func compare(left, right Operand) bool {
 func greaterThan(left, right Operand) bool {
 	c := cast(left, right)
 	if c.err != nil {
-		log.Println("error comparing operands", c.err)
+		log.Println("gt error comparing operands", c.err)
 		return false
 	}
 	switch c.dataType {
@@ -65,7 +65,7 @@ func greaterThan(left, right Operand) bool {
 func lesserThan(left, right Operand) bool {
 	c := cast(left, right)
 	if c.err != nil {
-		log.Println("error comparing operands", c.err)
+		log.Println("lt error comparing operands", c.err)
 		return false
 	}
 
@@ -104,6 +104,9 @@ func (c *caster) setLeft(left Operand) {
 	case string:
 		c.leftString = left.(string)
 		c.dataType = c.deepCaster()
+	case bool:
+		c.leftString = strconv.FormatBool(left.(bool))
+		c.dataType = c.deepCaster()
 	}
 }
 
@@ -126,6 +129,9 @@ func (c *caster) setRight(right Operand) {
 		rightDataType = NumberDT
 	case string:
 		c.rightString = right.(string)
+		rightDataType = c.deepCaster()
+	case bool:
+		c.rightString = strconv.FormatBool(right.(bool))
 		rightDataType = c.deepCaster()
 	}
 	if rightDataType != c.dataType {

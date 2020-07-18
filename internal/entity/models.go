@@ -94,6 +94,8 @@ const (
 	TypeDataTime     FieldType = "DT"
 	TypeStatus       FieldType = "ST"
 	TypeAutoComplete FieldType = "AC"
+	TypeTime         FieldType = "T"
+	TypeMinute       FieldType = "M"
 )
 
 //State for the entity specifies the current state of the entity
@@ -109,6 +111,8 @@ const (
 	CategoryTimeSeries = 3
 	CategoryEmail      = 4
 	CategoryUserSeries = 5
+	CategorySchedule   = 6
+	CategoryDelay      = 7
 )
 
 // Fields parses attribures to fields

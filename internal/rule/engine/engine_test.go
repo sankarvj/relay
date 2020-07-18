@@ -116,13 +116,11 @@ func TestFlow(t *testing.T) {
 			nodes, _ := node.List(tests.Context(), f1, db)
 
 			branchNodeMap := node.BranceNodeMap(nodes)
-			rootNode, err := node.RootNode(branchNodeMap)
-			log.Printf("The rootNode %v", rootNode)
-			log.Println("The rootNode err", err)
+			rootNodes := node.ChildNodes("root", branchNodeMap)
+			log.Printf("The rootNodes %v", rootNodes)
 
-			childNodes, err := node.ChildNodes(rootNode.ID, branchNodeMap)
+			childNodes := node.ChildNodes(rootNodes[0].ID, branchNodeMap)
 			log.Printf("The childNodes %v", childNodes)
-			log.Println("The childNodes err", err)
 
 			// for i, n := range nodes {
 			// 	log.Printf("node %d -- %v", i, n)
@@ -146,8 +144,7 @@ func TestTrigger(t *testing.T) {
 			oldItemFields := i.Fields()
 			newItemFields := i.Fields()
 			newItemFields[schema.SeedFieldKeyContactMRR] = 99
-			err := item.UpdateFields(tests.Context(), db, i1, newItemFields)
-			log.Println("err", err)
+			item.UpdateFields(tests.Context(), db, i1, newItemFields)
 			//log.Println("oldItemFields", oldItemFields)
 			//log.Println("newItemFields", newItemFields)
 			flows, _ := flow.List(tests.Context(), e1, db)

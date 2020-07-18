@@ -10,8 +10,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func executeData(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, n node.Node) error {
-	entityFields, err := fillItemFieldValues(ctx, db, entityFields, n.ActualsMap()[n.ActorID])
+func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	entityFields, err := fields(ctx, db, n.ActorID)
+	if err != nil {
+		return err
+	}
+	entityFields, err = fillItemFieldValues(ctx, db, entityFields, n.ActualsMap()[n.ActorID])
 	if err != nil {
 		return err
 	}
