@@ -76,6 +76,12 @@ type EmailEntity struct {
 	Body    string `json:"body"`
 }
 
+//DelayEntity represents the structural format of delay entity
+type DelayEntity struct {
+	DelayBy string `json:"delay_by"`
+	Repeat  string `json:"repeat"`
+}
+
 // WebHookEntity represents structural format of webhook entity
 type WebHookEntity struct {
 	Path    string            `json:"path"`

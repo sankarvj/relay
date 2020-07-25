@@ -53,7 +53,7 @@ func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
 
 // activeFlows get the active flows entries for the dirty flow ids if exists
 func activeFlows(ctx context.Context, lazyFlowsIDS []string, db *sqlx.DB) ([]ActiveFlow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlows")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.activeFlow.activeFlows")
 	defer span.End()
 
 	activeFlows := []ActiveFlow{}
@@ -113,12 +113,17 @@ func startJobFlow(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID str
 	rootNode := node.Node{
 		ID:        "root",
 		FlowID:    flowID,
-		Variables: "",
+		Variables: node.VariablesJSON(map[string]interface{}{entityID: itemID}), //start with the item which triggered the flow
+		Meta: node.Meta{
+			EntityID: entityID,
+			ItemID:   itemID,
+		},
 	}
-	return prepareNextRun(ctx, db, rootNode, map[string]interface{}{entityID: itemID})
+	logFlowEvent(ctx, db, rootNode)
+	return prepareNextRun(ctx, db, rootNode, map[string]interface{}{})
 }
 
-func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, dynamicResponse map[string]interface{}) error {
+func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap map[string]interface{}) error {
 	nodes, err := node.List(ctx, n.FlowID, db)
 	if err != nil {
 		//TODO push this to DL queue
@@ -129,9 +134,9 @@ func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, dynamicRespon
 	//if the parentNode is a hook node than the the result of engine.RunRuleEngine should pass the API response inside the variables
 	//if the parentNode is a push/modify/email node than the result of engine.RunRuleEngine should say result:true/result:false
 	childNodes := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
-	updatedVariables := updateVarJSON(n.VariablesMap(), dynamicResponse)
+	updatedParentResponseMap := updateVarJSON(n.VariablesMap(), parentResponseMap)
 	for _, childNode := range childNodes {
-		childNode.Variables = updatedVariables
+		childNode.Variables = updatedParentResponseMap
 		// TODO call this in a job queue
 		runJob(ctx, db, childNode)
 	}
@@ -139,13 +144,12 @@ func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, dynamicRespon
 }
 
 func runJob(ctx context.Context, db *sqlx.DB, n node.Node) {
-	log.Printf("Run Job >>>>>> %v", n)
 	engineRes, err := engine.RunRuleEngine(ctx, db, n)
 	if err != nil {
 		//TODO push this to DL queue
-		log.Println("Error running a job..", err)
 		return
 	}
+	logJobEvent(ctx, db, n)
 	prepareNextRun(ctx, db, n, engineRes)
 }
 
@@ -154,4 +158,12 @@ func updateVarJSON(existingVars map[string]interface{}, engineRes map[string]int
 		engineRes[key] = val
 	}
 	return node.VariablesJSON(engineRes)
+}
+
+func logFlowEvent(ctx context.Context, db *sqlx.DB, n node.Node) {
+	log.Printf(">>>>>>>>>>>>>>>>        The Item Has Entered The Segment Flow %v", n.FlowID)
+}
+
+func logJobEvent(ctx context.Context, db *sqlx.DB, n node.Node) {
+	log.Printf(">>>>>>>>>>>>>>>>        The Item Has Entered The Node Flow %v", n.ID)
 }

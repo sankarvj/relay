@@ -70,6 +70,7 @@ const (
 	SeedNodeID2                = "7d447443-b157-4b07-ba89-493cf9d83c88"
 	SeedNodeID3                = "6d447443-b157-4b07-ba89-493cf9d83c88"
 	SeedNodeID4                = "5d447443-b157-4b07-ba89-493cf9d83c88"
+	SeedNodeID5                = "4d557443-b157-4b07-ba89-493cf9d83c88"
 )
 
 // seeds is a string constant containing all of the queries needed to get the
@@ -118,7 +119,7 @@ INSERT INTO public.entities (entity_id, account_id, team_id, name, description, 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
 	VALUES ('` + SeedEntityScheduleID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Schedule', NULL, 6, 1, 1, '[{"key": "` + SeedFieldKeyScheduleAt + `", "name": "schedule_at", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "DT", "mandatory": false, "reference": "", "display_name": ""},{"key": "` + SeedFieldKeyScheduleRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": ""}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
-	VALUES ('` + SeedEntityDelayID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Delay', NULL, 7, 1, 1, '[{"key": "` + SeedFieldKeyDelayBy + `", "name": "delay_by", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "M", "mandatory": false, "reference": "", "display_name": ""}, {"key": "` + SeedFieldKeyDelayRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": ""}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
+	VALUES ('` + SeedEntityDelayID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Delay', NULL, 7, 1, 1, '[{"key": "` + SeedFieldKeyDelayBy + `", "name": "delay_by", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "M", "mandatory": false, "reference": "", "display_name": "Delay By"}, {"key": "` + SeedFieldKeyDelayRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": "Repeat"}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
 -- Create a demo items for Events
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemEventID + `', '` + SeedAccountID + `', '` + SeedEntityTimeSeriesID + `', 0, '{"` + SeedFieldKeyStatusID + `": "down", "` + SeedFieldKeyStTimeID + `": "2020-05-16 12:49:59.279275", "` + SeedFieldKeyEndTimeID + `": "2021-05-16 12:49:59.279275"}', '2020-05-30 07:44:05.760548', 1590824645);
 -- Create a demo items for Contacts
@@ -144,7 +145,7 @@ INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expressi
 	('` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityTaskID + `',1,'','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
-	('` + SeedNodeID2 + `','` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' ,'00000000-0000-0000-0000-000000000000',0,'{Vijay} eq {Vijay}','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
+	('` + SeedNodeID2 + `','` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' ,'00000000-0000-0000-0000-000000000000',0,'{Vijay} eq {Vijay}','{}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
 	('` + SeedNodeID3 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityEmailID + `',3,'{{xyz.result}} eq {true}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
@@ -152,5 +153,7 @@ INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id
 INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
 	('` + SeedNodeID4 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityEmailID + `',4,'{{xyz.result}} eq {false}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
-	
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID5 + `', '` + SeedNodeID3 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityDelayID + `',6,'','{"` + SeedEntityDelayID + `": "` + SeedItemDelayID1 + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
 `

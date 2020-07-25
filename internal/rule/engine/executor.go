@@ -27,6 +27,8 @@ func executePosCase(ctx context.Context, db *sqlx.DB, n node.Node) (map[string]i
 		err = executeEmail(ctx, db, n)
 	case node.Decision:
 		err = nil
+	case node.Delay:
+		err = executeDelay(ctx, db, n)
 	}
 
 	if err != nil {

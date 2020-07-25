@@ -106,6 +106,17 @@ func ParseEmailEntity(params map[string]interface{}) (EmailEntity, error) {
 	return eme, err
 }
 
+//ParseDelayEntity creates the delay entity from the field map provided
+func ParseDelayEntity(params map[string]interface{}) (DelayEntity, error) {
+	var de DelayEntity
+	jsonbody, err := json.Marshal(params)
+	if err != nil {
+		return de, err
+	}
+	err = json.Unmarshal(jsonbody, &de)
+	return de, err
+}
+
 //ParseHookEntity creates the hook entity from the field map provided
 func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
 	var whe WebHookEntity

@@ -98,17 +98,6 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Node, error) {
 	return &n, nil
 }
 
-//RootNode fetches the root node
-func RootNode1(branchNodeMap map[string][]Node) (Node, error) {
-	if rootNodes, ok := branchNodeMap["root"]; ok {
-		if len(rootNodes) == 1 {
-			return rootNodes[0], nil
-		}
-		return Node{}, errors.New("more than one root node exists")
-	}
-	return Node{}, errors.New("root node does not exists")
-}
-
 //ChildNodes finds the child nodes
 func ChildNodes(nodeID string, branchNodeMap map[string][]Node) []Node {
 	for parentNodeID, nodes := range branchNodeMap {
@@ -153,4 +142,9 @@ func VariablesJSON(varsMap map[string]interface{}) string {
 		panic(err)
 	}
 	return jsonStr
+}
+
+//IsRootNode decides whether the node is root or not
+func (n Node) IsRootNode() bool {
+	return n.ID == "root"
 }

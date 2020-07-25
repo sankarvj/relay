@@ -16,6 +16,7 @@ const (
 	Email        = 3
 	Hook         = 4
 	Schedule     = 5
+	Delay        = 6
 )
 
 //Node struct defines the structure of each node in the workflow
@@ -28,9 +29,16 @@ type Node struct {
 	Type         int       `db:"type" json:"type"`
 	Expression   string    `db:"expression" json:"expression"`
 	Variables    string    `db:"-" json:"variables"`     //Variables is to evaluate the expression during the runtime
+	Meta         Meta      `db:"-" json:"meta"`          //Meta used to pass meta data to queues during specific node run time
 	Actuals      string    `db:"actuals" json:"actuals"` //Actuals used to get the actual item of the actionable entity - ActorID's item
 	CreatedAt    time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt    int64     `db:"updated_at" json:"updated_at"`
+}
+
+//Meta is the node meta data which is passed to the queues
+type Meta struct {
+	EntityID string
+	ItemID   string
 }
 
 // ViewModelNode represents the view model of node
