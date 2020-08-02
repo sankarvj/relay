@@ -17,6 +17,7 @@ const (
 	Hook         = 4
 	Schedule     = 5
 	Delay        = 6
+	Stage        = 7
 )
 
 //Node struct defines the structure of each node in the workflow
@@ -39,6 +40,7 @@ type Node struct {
 type Meta struct {
 	EntityID string
 	ItemID   string
+	FlowType int
 }
 
 // ViewModelNode represents the view model of node

@@ -15,6 +15,8 @@ import (
 func TestEmailRuleRunner(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine to send email.")
 	{
@@ -45,6 +47,8 @@ func TestEmailRuleRunner(t *testing.T) {
 func TestCreateRuleRunner(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine to create new item")
 	{
@@ -75,6 +79,8 @@ func TestCreateRuleRunner(t *testing.T) {
 func TestUpdateRuleRunner(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine to update existing item")
 	{
@@ -105,6 +111,8 @@ func TestUpdateRuleRunner(t *testing.T) {
 func TestFlow(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine for a complete flow")
 	{
@@ -133,6 +141,8 @@ func TestFlow(t *testing.T) {
 func TestTrigger(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine for a trigger")
 	{
@@ -151,6 +161,31 @@ func TestTrigger(t *testing.T) {
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			//log.Printf("The lazyFlows %v", lazyFlows)
 			flow.Trigger(tests.Context(), i1, dirtyFlows, db)
+
+		}
+	}
+}
+
+func TestDirectTrigger(t *testing.T) {
+	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedPipelines(t, db)
+	defer teardown()
+	t.Log("Given the need to run the engine for a trigger")
+	{
+		t.Log("\tWhen updating the event mrr in contact1")
+		{
+			e1 := schema.SeedEntityContactID
+			i1 := schema.SeedItemContactID1
+			n1 := schema.SeedNodeID2
+			n, _ := node.Retrieve(tests.Context(), n1, db)
+			flow.DirectTrigger(tests.Context(), db, *n, e1, i1, 3)
+
+			afs, _ := flow.ActiveFlows(tests.Context(), []string{n.FlowID}, db)
+			ans, _ := flow.ActiveNodes(tests.Context(), []string{n.FlowID}, db)
+			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
+			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 
 		}
 	}

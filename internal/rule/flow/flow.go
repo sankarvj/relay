@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
 
@@ -119,7 +120,7 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
 func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB) error {
-	aflows, err := activeFlows(ctx, ids(dirtyFlows), db)
+	aflows, err := ActiveFlows(ctx, ids(dirtyFlows), db)
 	if err != nil {
 		return err
 	}
@@ -127,14 +128,52 @@ func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB)
 	for _, df := range dirtyFlows {
 		af := activeFlowMap[df.ID]
 		if evaluateExpression(ctx, itemID, df.EntityID, df.Expression, db) { //entry
-			err = af.entryTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowEntryTrigger(df.Condition))
+			err = af.entryFlowTrigger(ctx, db, df.AccountID, df.ID, df.EntityID, itemID, df.Type, allowFlowEntryTrigger(df.Condition))
 		} else {
-			err = af.exitTrigger(ctx, db, df.ID, df.EntityID, itemID, allowFlowExitTrigger(df.Condition))
+			err = af.exitFlowTrigger(ctx, db, df.AccountID, df.ID, df.EntityID, itemID, df.Type, allowFlowExitTrigger(df.Condition))
 		}
 		//concat errors in the loop. nil if no error exists
 		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", df.ID)
 	}
 
+	return err
+}
+
+//DirectTrigger is when you want to execute the item on a particular node stage.
+func DirectTrigger(ctx context.Context, db *sqlx.DB, n node.Node, entityID, itemID string, flowType int) error {
+	af, afErr := RetrieveAF(ctx, db, itemID, n.FlowID)
+	if afErr != nil && afErr != ErrNotFound {
+		return afErr
+	}
+
+	an, err := RetrieveAN(ctx, db, n.ID, itemID, n.FlowID)
+	if err != ErrNotFound {
+		return ErrNodeAlreadyActive
+	}
+
+	if evaluateExpression(ctx, itemID, entityID, n.Expression, db) {
+		err = upsertAF(ctx, db, af, n, itemID, afErr)
+		if err != nil {
+			return err
+		}
+		return an.entryNodeTrigger(ctx, db, n, entityID, itemID, flowType)
+	}
+	return ErrExpressionConditionFailed
+}
+
+func upsertAF(ctx context.Context, db *sqlx.DB, af ActiveFlow, n node.Node, itemID string, err error) error {
+	if err == ErrNotFound {
+		af.AccountID = n.AccountID
+		af.FlowID = n.FlowID
+		af.ItemID = itemID
+		af.IsActive = true
+		af.NodeID = n.ID
+		af.Life = 1
+		_, err = CreateAF(ctx, db, af)
+	} else {
+		af.NodeID = n.ID
+		err = UpdateAFNode(ctx, db, n.ID, itemID, n.FlowID)
+	}
 	return err
 }
 

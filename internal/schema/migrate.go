@@ -170,7 +170,7 @@ var migrations = []darwin.Migration{
 		CREATE TABLE nodes (
 			node_id       	UUID,
 			parent_node_id  UUID,
-			account_id      UUID REFERENCES accounts ON DELETE CASCADE,
+			account_id      UUID,
 			flow_id         UUID REFERENCES flows ON DELETE CASCADE,
 		    actor_id 	    UUID,
 			type			INTEGER DEFAULT 0,
@@ -187,11 +187,28 @@ var migrations = []darwin.Migration{
 		Description: "Add active_flows",
 		Script: `
 		CREATE TABLE active_flows (
+			account_id  UUID,
 			flow_id    	UUID REFERENCES flows ON DELETE CASCADE,
 			item_id    	UUID REFERENCES items ON DELETE CASCADE,
+			node_id    	UUID,
 		    life 	   	INTEGER DEFAULT 0,
 			is_active	BOOLEAN DEFAULT FALSE,
 			UNIQUE (flow_id,item_id)
+		);
+		`,
+	},
+	{
+		Version:     10,
+		Description: "Add active_nodes",
+		Script: `
+		CREATE TABLE active_nodes (
+			account_id  UUID,
+			flow_id    	UUID REFERENCES flows ON DELETE CASCADE,
+			item_id    	UUID REFERENCES items ON DELETE CASCADE,
+			node_id    	UUID REFERENCES nodes ON DELETE CASCADE,
+		    life 	   	INTEGER DEFAULT 0,
+			is_active	BOOLEAN DEFAULT FALSE,
+			UNIQUE (flow_id,item_id,node_id)
 		);
 		`,
 	},

@@ -4,9 +4,10 @@ import "time"
 
 //FlowType is the type of flow
 const (
-	FlowTypeUnknown = 0
-	FlowTypeSegment = 1
-	FlowTypeEvent   = 2
+	FlowTypeUnknown  = 0
+	FlowTypeSegment  = 1
+	FlowTypeEvent    = 2
+	FlowTypePipeline = 3
 )
 
 //FlowCondition defines exists/entry conditions
@@ -33,10 +34,12 @@ type Flow struct {
 
 // ActiveFlow represents the flow which are currently active
 type ActiveFlow struct {
-	FlowID   string `db:"flow_id" json:"flow_id"`
-	ItemID   string `db:"item_id" json:"item_id"`
-	Life     int    `db:"life" json:"life"`
-	IsActive bool   `db:"is_active" json:"is_active"`
+	AccountID string `db:"account_id" json:"account_id"`
+	FlowID    string `db:"flow_id" json:"flow_id"`
+	ItemID    string `db:"item_id" json:"item_id"`
+	NodeID    string `db:"node_id" json:"node_id"`
+	Life      int    `db:"life" json:"life"`
+	IsActive  bool   `db:"is_active" json:"is_active"`
 }
 
 // ViewModelFlow represents the view model of flow
@@ -56,4 +59,14 @@ type NewFlow struct {
 	Expression  string `json:"expression" validate:"required"`
 	Type        int    `json:"type" validate:"required"`
 	Condition   int    `json:"condition" validate:"required"`
+}
+
+// ActiveNode represents the node which are currently active
+type ActiveNode struct {
+	AccountID string `db:"account_id" json:"account_id"`
+	FlowID    string `db:"flow_id" json:"flow_id"`
+	ItemID    string `db:"item_id" json:"item_id"`
+	NodeID    string `db:"node_id" json:"node_id"`
+	Life      int    `db:"life" json:"life"`
+	IsActive  bool   `db:"is_active" json:"is_active"`
 }

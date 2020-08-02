@@ -22,14 +22,69 @@ func Seed(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
+//SeedEntity runs entity data
+func SeedEntity(db *sqlx.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(entityItemSeeds); err != nil {
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	return tx.Commit()
+}
+
+//SeedWorkFlows runs workflows
+func SeedWorkFlows(db *sqlx.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(workflowSeeds); err != nil {
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	return tx.Commit()
+}
+
+//SeedPipelines runs pipeline flows
+func SeedPipelines(db *sqlx.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(pipelineSeeds); err != nil {
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	return tx.Commit()
+}
+
 // const for seed data ids
 const (
-	SeedTeamID                 = "8cf27268-3473-4006-984f-9325122678b7"
-	SeedAccountID              = "3cf27266-3473-4006-984f-9325122678b7"
-	SeedUserID1                = "5cf37266-3473-4006-984f-9325122678b7"
-	SeedUserID2                = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
-	SeedUserID3                = "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"
-	SeedUserID4                = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+	SeedTeamID    = "8cf27268-3473-4006-984f-9325122678b7"
+	SeedAccountID = "3cf27266-3473-4006-984f-9325122678b7"
+	SeedUserID1   = "5cf37266-3473-4006-984f-9325122678b7"
+	SeedUserID2   = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+	SeedUserID3   = "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+	SeedUserID4   = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+)
+
+// const for entities
+const (
 	SeedEntityTimeSeriesID     = "d9ccf588-e6eb-40b3-838f-f6d5262bac78"
 	SeedEntityAPIID            = "b8fb4ff2-d660-4846-b058-d27adfb10441"
 	SeedEntityContactID        = "adbd74c7-7add-4dcd-b2cf-6b05863b90e8"
@@ -94,16 +149,21 @@ INSERT INTO public.users (user_id, account_id, name, avatar, email, phone, verif
 -- Create a demo team wayplot
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES 
 ('` + SeedTeamID + `', '` + SeedAccountID + `', 'wayplot-team-A', NULL, '2020-02-22 15:03:57.416566', 1582383837);
+
+`
+
+const timeseriesSeeds = `
 -- Create A Timeseries Entity Called Events 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES 
 	('` + SeedEntityTimeSeriesID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Events', NULL, 3, 1, 1, 
 	'[{"key": "` + SeedFieldKeyStTimeID + `", "name": "StartTime","display_name": "StartTime", "value": "", "hidden": false, "unique": false, "data_type": "DT", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyEndTimeID + `", "display_name": "EndTime","name": "EndTime", "value": "", "hidden": false, "unique": false, "data_type": "DT", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyStatusID + `", "name": "Status","display_name": "Status", "value": "", "hidden": false, "unique": false, "data_type": "ST", "mandatory": false, "reference": ""}]', 
 	NULL, '2020-05-16 12:49:59.279275', 1589633399);
--- Create A API Entity Called Webhook Integration 
-INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES 
-	('` + SeedEntityAPIID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Webhook Integration', NULL, 2, 1, 1, 
-	'[{"key": "` + SeedFieldKeyPathID + `", "name": "path","display_name": "Path", "value": "/actuator/info", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyHostID + `", "name": "host","display_name": "Host", "value": "https://stage.freshcontacts.io", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyMethodID + `", "name": "method","display_name": "Method", "value": "GET", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyHeaderID + `", "name": "headers","display_name": "Headers", "value": "{\"X-ClientToken\":\"mcr eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjExNTc2NTAwMjk2fQ.1KtXw_YgxbJW8ibv_v2hfpInjQKC6enCh9IO1ziV2RA\"}", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}]',
-	 NULL, '2020-05-16 12:49:22.947029', 1589633362);
+
+-- Create a demo items for Events
+INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemEventID + `', '` + SeedAccountID + `', '` + SeedEntityTimeSeriesID + `', 0, '{"` + SeedFieldKeyStatusID + `": "down", "` + SeedFieldKeyStTimeID + `": "2020-05-16 12:49:59.279275", "` + SeedFieldKeyEndTimeID + `": "2021-05-16 12:49:59.279275"}', '2020-05-30 07:44:05.760548', 1590824645);
+`
+
+const entityItemSeeds = `
 -- Create A Data Entity Called Contacts
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES
  	('` + SeedEntityContactID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Contacts', NULL, 1, 1, 1, 
@@ -114,14 +174,20 @@ INSERT INTO public.entities (entity_id, account_id, team_id, name, description, 
 	('` + SeedEntityEmailID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'MailGun Integration', NULL, 4, 1, 1, 
 	'[{"key": "921ecaab-b3f0-42b6-a581-29239cc58e4b", "name": "domain","display_name": "domain", "value": "sandbox3ab4868d173f4391805389718914b89c.mailgun.org", "config": true, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "a8376197-b699-4f4b-b2dd-2bf5aa18ee16", "display_name": "API key","name": "api_key", "value": "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35", "config": true, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "4a68900c-5697-4f64-9a47-e49291ff9218","name": "sender", "display_name": "Sender", "value": "vijayasankar.jothi@wayplot.com", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "c2a0b583-cfb0-4f03-8b36-587548704b13", "name": "to","display_name": "To", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "a27bb6d0-67df-4542-a806-e0974bff2e27", "name": "cc","display_name": "CC", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "e34c3e1e-62fe-44cb-8caa-23c4bbbfcefc", "name": "subject","display_name": "Subject", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "aaed7f03-291c-4276-a687-cbd80dc1eb52", "name": "body","display_name": "Body", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}]', 
 	NULL, '2020-05-31 05:16:27.059717', 1590902187);
+-- Create A API Entity Called Webhook Integration 
+INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES 
+		('` + SeedEntityAPIID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Webhook Integration', NULL, 2, 1, 1, 
+		'[{"key": "` + SeedFieldKeyPathID + `", "name": "path","display_name": "Path", "value": "/actuator/info", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyHostID + `", "name": "host","display_name": "Host", "value": "https://stage.freshcontacts.io", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyMethodID + `", "name": "method","display_name": "Method", "value": "GET", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}, {"key": "` + SeedFieldKeyHeaderID + `", "name": "headers","display_name": "Headers", "value": "{\"X-ClientToken\":\"mcr eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjExNTc2NTAwMjk2fQ.1KtXw_YgxbJW8ibv_v2hfpInjQKC6enCh9IO1ziV2RA\"}", "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": ""}]',
+		 NULL, '2020-05-16 12:49:22.947029', 1589633362);
+-- Create A Task Entity 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
 	VALUES ('` + SeedEntityTaskID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Task', NULL, 1, 1, 1, '[{"key": "` + SeedFieldKeyTaskDesc + `", "name": "Desc", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": "", "display_name": ""}, {"key": "` + SeedFieldKeyAssigned + `", "name": "AssignedTo", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": "", "display_name": ""}, {"key": "` + SeedFieldKeyTaskForCon + `", "name": "Contact", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "S", "mandatory": false, "reference": "", "display_name": ""}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
+-- Create A Schedule Entity 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
 	VALUES ('` + SeedEntityScheduleID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Schedule', NULL, 6, 1, 1, '[{"key": "` + SeedFieldKeyScheduleAt + `", "name": "schedule_at", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "DT", "mandatory": false, "reference": "", "display_name": ""},{"key": "` + SeedFieldKeyScheduleRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": ""}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
+-- Create A Delay Entity 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
 	VALUES ('` + SeedEntityDelayID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Delay', NULL, 7, 1, 1, '[{"key": "` + SeedFieldKeyDelayBy + `", "name": "delay_by", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "M", "mandatory": false, "reference": "", "display_name": "Delay By"}, {"key": "` + SeedFieldKeyDelayRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": "Repeat"}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
--- Create a demo items for Events
-INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemEventID + `', '` + SeedAccountID + `', '` + SeedEntityTimeSeriesID + `', 0, '{"` + SeedFieldKeyStatusID + `": "down", "` + SeedFieldKeyStTimeID + `": "2020-05-16 12:49:59.279275", "` + SeedFieldKeyEndTimeID + `": "2021-05-16 12:49:59.279275"}', '2020-05-30 07:44:05.760548', 1590824645);
 -- Create a demo items for Contacts
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemContactID1 + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `', 0, '{"08320990-cc56-4809-801a-a937b62ec307": "vijayasankarmail@gmail.com", "2bf431f8-b2ae-467f-9c5b-e7216068ea40": "Vijay", "900d69bf-2fc7-4c34-95b1-ef9f79220810": "FreshW", "` + SeedFieldKeyContactMRR + `": "10000"}', '2020-05-31 04:55:22.480538', 1590900922);
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemContactID2 + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `', 0, '{"08320990-cc56-4809-801a-a937b62ec307": "saravanaprakas@gmail.com ", "2bf431f8-b2ae-467f-9c5b-e7216068ea40": "Saravana", "900d69bf-2fc7-4c34-95b1-ef9f79220810": "Zoho", "` + SeedFieldKeyContactMRR + `": "200000"}', '2020-05-31 04:57:14.844344', 1590901034);
@@ -135,10 +201,12 @@ INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, create
 -- Create a demo items for Schedules
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemScheduleID1 + `', '` + SeedAccountID + `', '` + SeedEntityScheduleID + `', 0, '{"` + SeedFieldKeyScheduleAt + `": "2020-06-08 14:04:58.523412", "` + SeedFieldKeyScheduleRepeat + `": "false"}', '2020-06-08 14:04:58.523412', 1591625098);
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemDelayID1 + `', '` + SeedAccountID + `', '` + SeedEntityDelayID + `', 0, '{"` + SeedFieldKeyDelayBy + `": "2", "` + SeedFieldKeyDelayRepeat + `": "true"}', '2020-06-08 14:04:58.523412', 1591625098);
+`
 
+const workflowSeeds = `
 -- Create a flow
 INSERT INTO public.flows (flow_id, account_id, entity_id, expression, name, description, type, condition, status, created_at, updated_at) VALUES
-	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay} && {{` + SeedEntityContactID + `.` + SeedFieldKeyContactMRR + `}} gt {98}','The Flow','', 1, 1, 0, '2019-11-20 00:00:00', 1574239364000)
+	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay} && {{` + SeedEntityContactID + `.` + SeedFieldKeyContactMRR + `}} gt {98}','The Flow','', 1 , 1, 0, '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 -- Create a node
 INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
@@ -151,9 +219,32 @@ INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id
 	('` + SeedNodeID3 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityEmailID + `',3,'{{xyz.result}} eq {true}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
-	('` + SeedNodeID4 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityEmailID + `',4,'{{xyz.result}} eq {false}','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
+	('` + SeedNodeID4 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityAPIID + `',4,'{{xyz.result}} eq {false}','{}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
 	('` + SeedNodeID5 + `', '` + SeedNodeID3 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityDelayID + `',6,'','{"` + SeedEntityDelayID + `": "` + SeedItemDelayID1 + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+`
+
+const pipelineSeeds = `
+-- Create a flow
+INSERT INTO public.flows (flow_id, account_id, entity_id, expression, name, description, type, condition, status, created_at, updated_at) VALUES
+	('` + SeedFlowID + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `','{{` + SeedEntityContactID + `.` + SeedFieldKeyContactName + `}} eq {Vijay} && {{` + SeedEntityContactID + `.` + SeedFieldKeyContactMRR + `}} gt {98}','The Flow','', 3, 1, 0, '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+-- Create a node
+INSERT INTO public.nodes (node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '00000000-0000-0000-0000-000000000000',7,'','{"` + SeedEntityTaskID + `": "` + SeedItemTaskID2 + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID2 + `','` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' ,'00000000-0000-0000-0000-000000000000',7,'{Sankar} eq {Sankar}','{}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID3 + `', '` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityEmailID + `',3,'','{"` + SeedEntityEmailID + `": "` + SeedItemEmailID + `"}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID4 + `', '` + SeedNodeID1 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityAPIID + `',4,'','{}', '2019-11-20 00:00:00', 1574239364000)
+	ON CONFLICT DO NOTHING;
+INSERT INTO public.nodes (node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, created_at, updated_at) VALUES
+	('` + SeedNodeID5 + `', '` + SeedNodeID2 + `', '` + SeedAccountID + `', '` + SeedFlowID + `' , '` + SeedEntityDelayID + `',6,'','{"` + SeedEntityDelayID + `": "` + SeedItemDelayID1 + `"}', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 `

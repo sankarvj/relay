@@ -13,6 +13,11 @@ import (
 	"go.opencensus.io/trace"
 )
 
+//Root node
+const (
+	Root = "root"
+)
+
 var (
 	// ErrNotFound is used when a specific node is requested but does not exist.
 	ErrNotFound = errors.New("Node not found")
@@ -86,7 +91,7 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Node, error) {
 	}
 
 	var n Node
-	const q = `SELECT * FROM node WHERE node_id = $1`
+	const q = `SELECT * FROM nodes WHERE node_id = $1`
 	if err := db.GetContext(ctx, &n, q, id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -146,5 +151,5 @@ func VariablesJSON(varsMap map[string]interface{}) string {
 
 //IsRootNode decides whether the node is root or not
 func (n Node) IsRootNode() bool {
-	return n.ID == "root"
+	return n.ID == Root
 }

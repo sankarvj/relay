@@ -109,6 +109,27 @@ func SeedData(t *testing.T, db *sqlx.DB) {
 	}
 }
 
+// SeedEntity db
+func SeedEntity(t *testing.T, db *sqlx.DB) {
+	if err := schema.SeedEntity(db); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SeedWorkFlows db
+func SeedWorkFlows(t *testing.T, db *sqlx.DB) {
+	if err := schema.SeedWorkFlows(db); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SeedPipelines db
+func SeedPipelines(t *testing.T, db *sqlx.DB) {
+	if err := schema.SeedPipelines(db); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // NewIntegration creates a database, seeds it, constructs an authenticator.
 func NewIntegration(t *testing.T) *Test {
 	t.Helper()

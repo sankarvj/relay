@@ -11,32 +11,42 @@ import (
 
 //GlobalEntity is the generic entity-id for certain expressions. See worker for its usecases
 const (
-	GlobalEntity = "xyz"
-	NoEntity     = "00000000-0000-0000-0000-000000000000"
+	GlobalEntity       = "xyz"
+	GlobalEntityData   = "data"
+	GlobalEntityResult = "result"
+	NoEntity           = "00000000-0000-0000-0000-000000000000"
+	NullID             = "00000000-0000-0000-0000-000000000000"
 )
 
+// RuleResult returns back the recently executed results
+type RuleResult struct {
+	Executed bool
+	Response map[string]interface{}
+}
+
 //RunRuleEngine runs the expression and execute action if the expression conditions met
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, n node.Node) (map[string]interface{}, error) {
+func RunRuleEngine(ctx context.Context, db *sqlx.DB, n node.Node) (*RuleResult, error) {
 	var err error
-	var engineResponse map[string]interface{}
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(n.Expression, true, signalsChan)
+	ruleResult := &RuleResult{}
 	//signalsChan wait to receive evaluation work and final execution
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
 			result, err := worker(ctx, db, work.Expression, n.VariablesMap())
 			if err != nil {
-				return map[string]interface{}{}, err
+				return ruleResult, err
 			}
 			work.Resp <- result
 		case ruler.PosExecutor:
-			engineResponse, err = executePosCase(ctx, db, n)
+			err = ruleResult.executePosCase(ctx, db, n)
 		case ruler.NegExecutor:
-			engineResponse, err = executeNegCase(ctx, db, n)
+			err = ruleResult.executeNegCase(ctx, db, n)
 		}
 	}
-	return engineResponse, err
+
+	return ruleResult, err
 }
 
 //RunExpRenderer run the expression and returns evaluated string
