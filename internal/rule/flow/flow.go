@@ -16,11 +16,23 @@ import (
 )
 
 var (
-	// ErrNotFound is used when a specific flow is requested but does not exist.
+	// ErrNotFound occurs when the flow is not found
 	ErrNotFound = errors.New("Flow not found")
+
+	// ErrFlowActive occurs when the item asking to enter the active flow again
+	ErrFlowActive = errors.New("Cannot enter the flow. Flow is already active for the item")
+
+	// ErrFlowInActive occurs when the item asking to exit from the inactive/new flow
+	ErrFlowInActive = errors.New("Cannot exit the flow. Flow is not active for the item")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidID = errors.New("ID is not in its proper form")
+
+	// ErrInvalidItemEntity occurs when an item's entity is different from the flow entity
+	ErrInvalidItemEntity = errors.New("Item cannot be added to the flow. Entity mismatch")
+
+	// ErrInvalidFlowType occurs direct trigger is executed for any flow type but pipeline
+	ErrInvalidFlowType = errors.New("This operation is cannot be performed for this flow type")
 )
 
 // List retrieves a list of existing flows for the entity change.
@@ -119,7 +131,7 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 }
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
-func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB) error {
+func Trigger(ctx context.Context, db *sqlx.DB, itemID string, dirtyFlows []Flow) error {
 	aflows, err := ActiveFlows(ctx, ids(dirtyFlows), db)
 	if err != nil {
 		return err
@@ -127,10 +139,17 @@ func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB)
 	activeFlowMap := activeFlowMap(aflows)
 	for _, df := range dirtyFlows {
 		af := activeFlowMap[df.ID]
-		if evaluateExpression(ctx, itemID, df.EntityID, df.Expression, db) { //entry
-			err = af.entryFlowTrigger(ctx, db, df.AccountID, df.ID, df.EntityID, itemID, df.Type, allowFlowEntryTrigger(df.Condition))
+		n := node.RootNode(df.AccountID, df.ID, df.EntityID, itemID, df.Expression).UpdateMeta(df.EntityID, itemID, df.Type)
+		if engine.RunExpEvaluator(ctx, db, n.Expression, n.VariablesMap()) { //entry
+			if af.stopEntryTriggerFlow(df.Condition) { //skips trigger if already active or of exit condition
+				return ErrFlowActive
+			}
+			err = af.entryFlowTrigger(ctx, db, n)
 		} else {
-			err = af.exitFlowTrigger(ctx, db, df.AccountID, df.ID, df.EntityID, itemID, df.Type, allowFlowExitTrigger(df.Condition))
+			if af.stopExitTriggerFlow(df.Condition) { //skips trigger if new  or inactive or not allowed.
+				return ErrFlowInActive
+			}
+			err = af.exitFlowTrigger(ctx, db, n)
 		}
 		//concat errors in the loop. nil if no error exists
 		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", df.ID)
@@ -140,50 +159,42 @@ func Trigger(ctx context.Context, itemID string, dirtyFlows []Flow, db *sqlx.DB)
 }
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
-func DirectTrigger(ctx context.Context, db *sqlx.DB, n node.Node, entityID, itemID string, flowType int) error {
-	af, afErr := RetrieveAF(ctx, db, itemID, n.FlowID)
-	if afErr != nil && afErr != ErrNotFound {
-		return afErr
+func DirectTrigger(ctx context.Context, db *sqlx.DB, nodeID, itemID string) error {
+	//retrival of primary components item,flow,node
+	n, err := node.Retrieve(ctx, nodeID, db)
+	if err != nil {
+		return err
+	}
+	f, err := Retrieve(ctx, n.FlowID, db)
+	if err != nil {
+		return err
+	}
+	i, err := item.Retrieve(ctx, itemID, db)
+	if err != nil {
+		return err
 	}
 
-	an, err := RetrieveAN(ctx, db, n.ID, itemID, n.FlowID)
-	if err != ErrNotFound {
-		return ErrNodeAlreadyActive
+	//verification of primary components item,flow,node
+	if n.Type != node.Stage {
+		return node.ErrInvalidNodeType
+	}
+	if f.Type != FlowTypePipeline {
+		return ErrInvalidFlowType
+	}
+	if i.EntityID != f.EntityID {
+		return ErrInvalidItemEntity
 	}
 
-	if evaluateExpression(ctx, itemID, entityID, n.Expression, db) {
-		err = upsertAF(ctx, db, af, n, itemID, afErr)
-		if err != nil {
+	//update meta. very important to update meta before calling exp evalustor
+	n.UpdateMeta(i.EntityID, i.ID, f.Type)
+	if engine.RunExpEvaluator(ctx, db, n.Expression, n.VariablesMap()) {
+		af, err := RetrieveAF(ctx, db, itemID, f.ID)
+		if err != nil && err != ErrNotFound {
 			return err
 		}
-		return an.entryNodeTrigger(ctx, db, n, entityID, itemID, flowType)
+		return af.entryFlowTrigger(ctx, db, n)
 	}
 	return ErrExpressionConditionFailed
-}
-
-func upsertAF(ctx context.Context, db *sqlx.DB, af ActiveFlow, n node.Node, itemID string, err error) error {
-	if err == ErrNotFound {
-		af.AccountID = n.AccountID
-		af.FlowID = n.FlowID
-		af.ItemID = itemID
-		af.IsActive = true
-		af.NodeID = n.ID
-		af.Life = 1
-		_, err = CreateAF(ctx, db, af)
-	} else {
-		af.NodeID = n.ID
-		err = UpdateAFNode(ctx, db, n.ID, itemID, n.FlowID)
-	}
-	return err
-}
-
-// evaluateExpression evaluates the given expression and returns yes/no. It builds the dynamic variables
-// by mapping the changed entity/item and passes those variables to the RunExpEvaluator
-func evaluateExpression(ctx context.Context, itemID, entityID, expression string, db *sqlx.DB) bool {
-	variables := map[string]interface{}{
-		entityID: itemID,
-	}
-	return engine.RunExpEvaluator(ctx, db, expression, variables)
 }
 
 func ids(lazyFlows []Flow) []string {
@@ -192,12 +203,4 @@ func ids(lazyFlows []Flow) []string {
 		ids[i] = flow.ID
 	}
 	return ids
-}
-
-func allowFlowEntryTrigger(condition int) bool {
-	return condition == FlowConditionBoth || condition == FlowConditionEntry
-}
-
-func allowFlowExitTrigger(condition int) bool {
-	return condition == FlowConditionBoth || condition == FlowConditionExit
 }

@@ -21,7 +21,7 @@ var (
 
 // CreateAF inserts a new item into the active_flows table.
 func CreateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) (ActiveFlow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeFlow.Create")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.Create")
 	defer span.End()
 
 	const q = `INSERT INTO active_flows
@@ -41,15 +41,16 @@ func CreateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) (ActiveFlow, erro
 
 // UpdateAF modifies the active flow
 func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeFlow.Update")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.Update")
 	defer span.End()
 
 	const q = `UPDATE active_flows SET
-		"is_active" = $3,
-		"life" = $4
+		"node_id" = $3, 
+		"is_active" = $4,
+		"life" = $5
 		WHERE item_id = $1 AND flow_id = $2` //should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, af.ItemID, af.FlowID,
-		af.IsActive, af.Life,
+		af.NodeID, af.IsActive, af.Life,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating active flow")
@@ -58,27 +59,9 @@ func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
 	return nil
 }
 
-// UpdateAFNode updates the active flow with node_id
-func UpdateAFNode(ctx context.Context, db *sqlx.DB, nodeID, itemID, flowID string) error {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeFlow.Update")
-	defer span.End()
-
-	const q = `UPDATE active_flows SET
-		"node_id" = $3 
-		WHERE item_id = $1 AND flow_id = $2` //should I include account_id in the where clause for sharding?
-	_, err := db.ExecContext(ctx, q, itemID, flowID,
-		nodeID,
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating active flow with nodeID")
-	}
-
-	return nil
-}
-
 // RetrieveAF gets the specified active flow from the database.
 func RetrieveAF(ctx context.Context, db *sqlx.DB, itemID, flowID string) (ActiveFlow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeFlow.Retrive")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.Retrive")
 	defer span.End()
 
 	if _, err := uuid.Parse(flowID); err != nil {
@@ -100,7 +83,7 @@ func RetrieveAF(ctx context.Context, db *sqlx.DB, itemID, flowID string) (Active
 
 // ActiveFlows get the active flows entries for the dirty flow ids if exists
 func ActiveFlows(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveFlow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeFlow.activeFlows")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.activeFlows")
 	defer span.End()
 
 	activeFlows := []ActiveFlow{}
@@ -122,41 +105,51 @@ func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 	return activeFlowMap
 }
 
-func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID, itemID string, flowType int, allowEntryTrigger bool) error {
-	var err error
-	if af.IsActive { //skips trigger if already active or of exit condition
-		return nil
-	}
-	af.FlowID = flowID
-	af.ItemID = itemID
-	af.AccountID = accountID
-	af.NodeID = engine.NullID
-	af.IsActive = true
-	af.Life = af.Life + 1
-	if af.Life == 1 {
-		_, err = CreateAF(ctx, db, af)
-	} else {
-		err = UpdateAF(ctx, db, af)
-	}
-	if err == nil && allowEntryTrigger {
-		// this should be called in the jobQ
-		err = startJobFlow(ctx, db, flowID, entityID, itemID, flowType)
+func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+	if err := af.enableAF(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
+		return err
 	}
 
-	return err
+	return startJobFlow(ctx, db, n)
 }
 
-func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID, itemID string, flowType int, allowExitTrigger bool) error {
-	if af.Life == 0 || !af.IsActive { //skips trigger if new  or inactive.
-		return nil
+func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+	if err := af.disableAF(ctx, db); err != nil {
+		return err
 	}
-	af.IsActive = false
-	err := UpdateAF(ctx, db, af)
+	return startJobFlow(ctx, db, n)
+}
 
-	if err == nil && allowExitTrigger {
-		err = startJobFlow(ctx, db, flowID, entityID, itemID, flowType)
+func (af ActiveFlow) stopEntryTriggerFlow(condition int) bool {
+	return (condition != FlowConditionBoth && condition != FlowConditionEntry) || af.IsActive
+}
+
+func (af ActiveFlow) stopExitTriggerFlow(condition int) bool {
+	return (condition != FlowConditionExit && condition != FlowConditionBoth) || af.Life == 0 || !af.IsActive
+}
+
+func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {
+	if af.Life == 0 {
+		af.AccountID = accountID
+		af.FlowID = flowID
+		af.ItemID = itemID
+		af.NodeID = nodeID
+		af.IsActive = true
+		af.Life = 1
+		_, err := CreateAF(ctx, db, af)
+		return err
 	}
-	return err
+	if nodeID != node.Root { // is this works? not setting the nodeID if the node is a Root
+		af.NodeID = nodeID
+	}
+	af.IsActive = true
+	af.Life = af.Life + 1
+	return UpdateAF(ctx, db, af)
+}
+
+func (af ActiveFlow) disableAF(ctx context.Context, db *sqlx.DB) error {
+	af.IsActive = false
+	return UpdateAF(ctx, db, af)
 }
 
 func updateVarJSON(existingVars map[string]interface{}, engineRes map[string]interface{}) string {
@@ -178,6 +171,14 @@ func updateMap(existingVars map[string]interface{}, newVars map[string]interface
 		}
 	}
 	return newVars
+}
+
+func upsertAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {
+	af, err := RetrieveAF(ctx, db, itemID, flowID)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	return af.enableAF(ctx, db, accountID, flowID, nodeID, itemID)
 }
 
 func logFlowEvent(ctx context.Context, db *sqlx.DB, n node.Node) {

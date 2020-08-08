@@ -15,7 +15,6 @@ const (
 	GlobalEntityData   = "data"
 	GlobalEntityResult = "result"
 	NoEntity           = "00000000-0000-0000-0000-000000000000"
-	NullID             = "00000000-0000-0000-0000-000000000000"
 )
 
 // RuleResult returns back the recently executed results

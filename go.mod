@@ -24,6 +24,7 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.1.0
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
 	github.com/nikunjy/rules v0.0.0-20200120082459-0b7c4dc9dc86 // indirect
+	github.com/onsi/gomega v1.4.3
 	github.com/pkg/errors v0.8.1
 	github.com/rs/cors v1.7.0
 	github.com/stretchr/testify v1.4.0

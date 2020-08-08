@@ -10,7 +10,8 @@ import (
 
 //consts for different node types
 const (
-	Decision int = 0
+	Unknown  int = -1
+	Decision     = 0
 	Push         = 1
 	Modify       = 2
 	Email        = 3

@@ -15,15 +15,18 @@ import (
 
 //Root node
 const (
-	Root = "root"
+	Root = "00000000-0000-0000-0000-000000000000"
 )
 
 var (
-	// ErrNotFound is used when a specific node is requested but does not exist.
-	ErrNotFound = errors.New("Node not found")
+	// ErrNodeNotFound is used when a specific node is requested but does not exist.
+	ErrNodeNotFound = errors.New("Node not found")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidID = errors.New("ID is not in its proper form")
+
+	// ErrInvalidNodeType occurs when the direct trigger executed for any node but stage-node
+	ErrInvalidNodeType = errors.New("This operation is cannot be performed for this node type")
 )
 
 // List retrieves a list of existing nodes for the flow.
@@ -94,7 +97,7 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Node, error) {
 	const q = `SELECT * FROM nodes WHERE node_id = $1`
 	if err := db.GetContext(ctx, &n, q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
+			return nil, ErrNodeNotFound
 		}
 
 		return nil, errors.Wrapf(err, "selecting node %q", id)
@@ -127,7 +130,7 @@ func BranceNodeMap(nodes []Node) map[string][]Node {
 	nodesBranchMap := map[string][]Node{}
 	for _, node := range nodes {
 		if node.ParentNodeID == nil {
-			root := "root"
+			root := Root
 			node.ParentNodeID = &root
 		}
 		if existingNodes, ok := nodesBranchMap[*node.ParentNodeID]; ok {
@@ -152,4 +155,34 @@ func VariablesJSON(varsMap map[string]interface{}) string {
 //IsRootNode decides whether the node is root or not
 func (n Node) IsRootNode() bool {
 	return n.ID == Root
+}
+
+//IsStageNode decides whether the node is stage type or not
+func (n Node) IsStageNode() bool {
+	return n.Type == Stage
+}
+
+//RootNode creates new root node from the flow
+func RootNode(accountID, flowID, entityID, itemID, expression string) *Node {
+	n := &Node{
+		AccountID:  accountID,
+		FlowID:     flowID,
+		ID:         Root,
+		ActorID:    entityID,
+		Type:       Unknown,
+		Actuals:    "",
+		Expression: expression,
+	}
+	return n
+}
+
+//UpdateMeta updates the meta values of the node
+func (n *Node) UpdateMeta(entityID, itemID string, flowType int) *Node {
+	n.Variables = VariablesJSON(map[string]interface{}{entityID: itemID}) //start with the item which triggered the flow
+	n.Meta = Meta{
+		EntityID: entityID,
+		ItemID:   itemID,
+		FlowType: flowType,
+	}
+	return n
 }

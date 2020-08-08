@@ -124,7 +124,7 @@ func TestFlow(t *testing.T) {
 			nodes, _ := node.List(tests.Context(), f1, db)
 
 			branchNodeMap := node.BranceNodeMap(nodes)
-			rootNodes := node.ChildNodes("root", branchNodeMap)
+			rootNodes := node.ChildNodes(node.Root, branchNodeMap)
 			log.Printf("The rootNodes %v", rootNodes)
 
 			childNodes := node.ChildNodes(rootNodes[0].ID, branchNodeMap)
@@ -160,7 +160,8 @@ func TestTrigger(t *testing.T) {
 			flows, _ := flow.List(tests.Context(), e1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			//log.Printf("The lazyFlows %v", lazyFlows)
-			flow.Trigger(tests.Context(), i1, dirtyFlows, db)
+			err := flow.Trigger(tests.Context(), db, i1, dirtyFlows)
+			log.Println("err >>>>> ", err)
 
 		}
 	}
@@ -176,14 +177,13 @@ func TestDirectTrigger(t *testing.T) {
 	{
 		t.Log("\tWhen updating the event mrr in contact1")
 		{
-			e1 := schema.SeedEntityContactID
 			i1 := schema.SeedItemContactID1
-			n1 := schema.SeedNodeID2
-			n, _ := node.Retrieve(tests.Context(), n1, db)
-			flow.DirectTrigger(tests.Context(), db, *n, e1, i1, 3)
+			n2 := schema.SeedNodeID2
+			err := flow.DirectTrigger(tests.Context(), db, n2, i1)
+			log.Println("err >>>>> ", err)
 
-			afs, _ := flow.ActiveFlows(tests.Context(), []string{n.FlowID}, db)
-			ans, _ := flow.ActiveNodes(tests.Context(), []string{n.FlowID}, db)
+			afs, _ := flow.ActiveFlows(tests.Context(), []string{schema.SeedFlowID}, db)
+			ans, _ := flow.ActiveNodes(tests.Context(), []string{schema.SeedFlowID}, db)
 			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
 			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 

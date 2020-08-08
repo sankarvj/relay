@@ -22,11 +22,11 @@ var (
 
 // CreateAN inserts a new item into the active_nodes table.
 func CreateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) (ActiveNode, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeNode.Create")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.Create")
 	defer span.End()
 
 	const q = `INSERT INTO active_nodes
-		(account_id,flow_id, item_id,node_id, is_active, life)
+		(account_id,flow_id, item_id, node_id, is_active, life)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err := db.ExecContext(
@@ -40,9 +40,28 @@ func CreateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) (ActiveNode, erro
 	return an, nil
 }
 
+// UpdateAN modifies the active node
+func UpdateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) error {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.Update")
+	defer span.End()
+
+	const q = `UPDATE active_nodes SET
+		"is_active" = $4,
+		"life" = $5
+		WHERE item_id = $1 AND flow_id = $2 AND node_id = $3` //should I include account_id in the where clause for sharding?
+	_, err := db.ExecContext(ctx, q, an.ItemID, an.FlowID, an.NodeID,
+		an.IsActive, an.Life,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating active flow")
+	}
+
+	return nil
+}
+
 // RetrieveAN gets the specified node from the database.
 func RetrieveAN(ctx context.Context, db *sqlx.DB, nodeID, itemID, flowID string) (ActiveNode, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeNode.Retrive")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.Retrive")
 	defer span.End()
 
 	if _, err := uuid.Parse(nodeID); err != nil {
@@ -64,7 +83,7 @@ func RetrieveAN(ctx context.Context, db *sqlx.DB, nodeID, itemID, flowID string)
 
 // ActiveNodes get the active nodes entries for the given flows
 func ActiveNodes(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveNode, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.activeNode.ActiveNodes")
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.ActiveNodes")
 	defer span.End()
 
 	activeNodes := []ActiveNode{}
@@ -77,39 +96,17 @@ func ActiveNodes(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveNo
 	return activeNodes, nil
 }
 
-func (an ActiveNode) entryNodeTrigger(ctx context.Context, db *sqlx.DB, n node.Node, entityID, itemID string, flowType int) error {
-	if an.Life != 0 { //skips trigger if already has a life. TODO: It should be based on node condition as well
-		return nil
-	}
-	return startNodeFlow(ctx, db, n, entityID, itemID, flowType)
+func startJobFlow(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+	// call this in job Q
+	return nextRun(ctx, db, *n, map[string]interface{}{})
 }
 
-func startNodeFlow(ctx context.Context, db *sqlx.DB, n node.Node, entityID, itemID string, flowType int) error {
-	n.Variables = node.VariablesJSON(map[string]interface{}{entityID: itemID})
-	n.Meta = node.Meta{
-		EntityID: entityID,
-		ItemID:   itemID,
-		FlowType: flowType,
+func nextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap map[string]interface{}) error {
+	err := upsertActives(ctx, db, n)
+	if err != nil {
+		//TODO push this to DL queue
+		return err
 	}
-	return prepareNextRun(ctx, db, n, map[string]interface{}{})
-}
-
-func startJobFlow(ctx context.Context, db *sqlx.DB, flowID, entityID, itemID string, flowType int) error {
-	rootNode := node.Node{
-		ID:        node.Root,
-		FlowID:    flowID,
-		Variables: node.VariablesJSON(map[string]interface{}{entityID: itemID}), //start with the item which triggered the flow
-		Meta: node.Meta{
-			EntityID: entityID,
-			ItemID:   itemID,
-			FlowType: flowType,
-		},
-	}
-	return prepareNextRun(ctx, db, rootNode, map[string]interface{}{})
-}
-
-func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap map[string]interface{}) error {
-	logActiveNode(ctx, db, n)
 	nodes, err := node.List(ctx, n.FlowID, db)
 	if err != nil {
 		//TODO push this to DL queue
@@ -127,7 +124,6 @@ func prepareNextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentRespons
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
 			continue
 		}
-		// TODO call this in a job queue
 		runJob(ctx, db, childNode)
 	}
 	return nil
@@ -142,33 +138,49 @@ func runJob(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	if !ruleResult.Executed {
 		return ErrCannotExecuteNode
 	}
-	return prepareNextRun(ctx, db, n, ruleResult.Response)
+	return nextRun(ctx, db, n, ruleResult.Response)
 }
 
-func logActiveNode(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	log.Printf(">>>>>>>>>>>>>>>>        The Item Has Entered The Node Flow Node ID: %v -- Entity ID: %v -- Item ID: %v -- Flow ID: %v", n.ID, n.Meta.EntityID, n.Meta.ItemID, n.FlowID)
-	if n.IsRootNode() {
+func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) (bool, error) {
+	an, err := RetrieveAN(ctx, db, nodeID, itemID, flowID)
+	if err != nil && err != ErrNotFound {
+		return false, err
+	}
+	if err == ErrNotFound {
+		an.AccountID = accountID
+		an.FlowID = flowID
+		an.ItemID = itemID
+		an.IsActive = true
+		an.NodeID = nodeID
+		an.Life = 1
+		_, err = CreateAN(ctx, db, an)
+	} else {
+		an.IsActive = true
+		an.Life = an.Life + 1
+		err = UpdateAN(ctx, db, an)
+	}
+	return an.Life > 1, err
+}
+
+func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	log.Printf(">>>>>>>>>>>>>>>>   The Item Has Entered The Node Flow Node ID: %v -- Entity ID: %v -- Item ID: %v -- Flow ID: %v", n.ID, n.Meta.EntityID, n.Meta.ItemID, n.FlowID)
+	if n.ID == node.Root { // add the flow entry event
 		logFlowEvent(ctx, db, n)
-		return nil
 	}
 
-	//Update the flow with the current active node.
-	if n.Meta.FlowType != FlowTypePipeline {
-		err := UpdateAFNode(ctx, db, n.ID, n.Meta.ItemID, n.FlowID)
-		if err != nil {
+	if err := logNodeEvent(ctx, db, n); err != nil { // add the node entry event
+		return err
+	}
+
+	if !n.IsRootNode() && n.Meta.FlowType != FlowTypePipeline || (n.Meta.FlowType == FlowTypePipeline && n.IsStageNode()) {
+		if _, err := upsertAN(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
 			return err
 		}
 	}
 
-	//Entry Active Node
-	an := ActiveNode{
-		AccountID: n.AccountID,
-		FlowID:    n.FlowID,
-		NodeID:    n.ID,
-		ItemID:    n.Meta.ItemID,
-		IsActive:  true,
-		Life:      1,
-	}
-	_, err := CreateAN(ctx, db, an)
-	return err
+	return nil
+}
+
+func logNodeEvent(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	return nil
 }
