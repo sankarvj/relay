@@ -11,12 +11,13 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/net"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
 func worker(ctx context.Context, db *sqlx.DB, expression string, input map[string]interface{}) (map[string]interface{}, error) {
 	log.Printf("running worker for expression %s : %v", expression, input)
 	entityID := ruler.FetchEntityID(expression)
-	if entityID == GlobalEntity { //global entity stops here.
+	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
 	}
 	e, err := entity.Retrieve(ctx, entityID, db)

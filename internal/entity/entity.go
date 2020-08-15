@@ -141,3 +141,29 @@ func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []
 	}
 	return updatedFields
 }
+
+// Fields parses attribures to fields
+func (e Entity) Fields() ([]Field, error) {
+	fields, err := e.AllFields()
+	if err != nil {
+		return nil, err
+	}
+	//remove all config fields
+	temp := fields[:0]
+	for _, field := range fields {
+		if !field.Config {
+			temp = append(temp, field)
+		}
+	}
+	fields = temp
+	return fields, nil
+}
+
+// AllFields parses attribures to fields
+func (e Entity) AllFields() ([]Field, error) {
+	var fields []Field
+	if err := json.Unmarshal([]byte(e.Fieldsb), &fields); err != nil {
+		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+	}
+	return fields, nil
+}

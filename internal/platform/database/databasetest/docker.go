@@ -60,6 +60,53 @@ func StartContainer(t *testing.T) *Container {
 	return &c
 }
 
+//StartRedisContainer runs a redis container to execute commands.
+func StartRedisContainer(t *testing.T) *Container {
+	t.Helper()
+
+	cmd := exec.Command("docker", "run", "-P", "-d", "redislabs/redisgraph")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("could not start container: %v", err)
+	}
+
+	id := out.String()[:12]
+	t.Log("DB ContainerID:", id)
+
+	cmd = exec.Command("docker", "inspect", id)
+	out.Reset()
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("could not inspect container %s: %v", id, err)
+	}
+
+	var doc []struct {
+		NetworkSettings struct {
+			Ports struct {
+				TCP6379 []struct {
+					HostIP   string `json:"HostIp"`
+					HostPort string `json:"HostPort"`
+				} `json:"6379/tcp"`
+			} `json:"Ports"`
+		} `json:"NetworkSettings"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatalf("could not decode json: %v", err)
+	}
+
+	network := doc[0].NetworkSettings.Ports.TCP6379[0]
+
+	c := Container{
+		ID:   id,
+		Host: network.HostIP + ":" + network.HostPort,
+	}
+
+	t.Log("Redis Host:", c.Host)
+
+	return &c
+}
+
 // StopContainer stops and removes the specified container.
 func StopContainer(t *testing.T, c *Container) {
 	t.Helper()

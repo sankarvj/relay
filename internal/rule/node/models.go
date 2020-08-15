@@ -65,7 +65,7 @@ type NewNode struct {
 // VariablesMap parses variables jsonb to map
 func (n Node) VariablesMap() map[string]interface{} {
 	var variables map[string]interface{}
-	if err := json.Unmarshal([]byte(n.Variables), &variables); err != nil {
+	if err := json.Unmarshal([]byte(n.Variables), &variables); err != nil && n.Variables != "" {
 		log.Printf("error while unmarshalling node variables %v %v", n.ID, err)
 		panic(err)
 	}

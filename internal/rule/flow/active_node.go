@@ -117,10 +117,10 @@ func nextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap ma
 	//if the parentNode is a hook node than the the result of engine.RunRuleEngine should pass the API response inside the variables
 	//if the parentNode is a push/modify/email node than the result of engine.RunRuleEngine should say result:true/result:false
 	childNodes := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
-	updatedParentResponseMap := updateVarJSON(n.VariablesMap(), parentResponseMap)
+	updatedVars := updateVarJSON(n.VariablesMap(), parentResponseMap)
 	for _, childNode := range childNodes {
 		childNode.Meta = n.Meta //passing root node meta
-		childNode.Variables = updatedParentResponseMap
+		childNode.Variables = updatedVars
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
 			continue
 		}

@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"expvar"
 	"fmt"
-	"github.com/rs/cors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +12,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/rs/cors"
 
 	"github.com/ardanlabs/conf"
 	"github.com/dgrijalva/jwt-go"
@@ -40,6 +42,7 @@ func run() error {
 
 	// =========================================================================
 	// Configuration
+
 	var cfg struct {
 		Web struct {
 			APIHost         string        `conf:"default:0.0.0.0:3000"`
@@ -54,6 +57,12 @@ func run() error {
 			Host       string `conf:"default:0.0.0.0"`
 			Name       string `conf:"default:relaydb"`
 			DisableTLS bool   `conf:"default:true"`
+		}
+		SecDB struct {
+			User     string `conf:"default:redisgraph"`
+			Password string `conf:"default:redis,noprint"`
+			Host     string `conf:"default:127.0.0.1:6379"`
+			Name     string `conf:"default:relaydb"`
 		}
 		Auth struct {
 			KeyID          string `conf:"default:1"`
@@ -117,10 +126,9 @@ func run() error {
 	}
 
 	// =========================================================================
-	// Start Database
+	// Start Primary Database
 
 	log.Println("main : Started : Initializing database support")
-
 	db, err := database.Open(database.Config{
 		User:       cfg.DB.User,
 		Password:   cfg.DB.Password,
@@ -129,12 +137,40 @@ func run() error {
 		DisableTLS: cfg.DB.DisableTLS,
 	})
 	if err != nil {
-		return errors.Wrap(err, "connecting to db")
+		return errors.Wrap(err, "connecting to primary db")
 	}
 	defer func() {
-		log.Printf("main : Database Stopping : %s", cfg.DB.Host)
+		log.Printf("main : Primary Database Stopping : %s", cfg.DB.Host)
 		db.Close()
 	}()
+
+	// =========================================================================
+	// Start Secondary Database
+
+	redisPool := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", cfg.SecDB.Host)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer func() {
+		log.Printf("main : Redis Database Stopping : %s", cfg.SecDB.Host)
+		redisPool.Close()
+	}()
+
+	// =========================================================================
+	// Start WebServer
 
 	go func() {
 		log.Printf("main : Debug Listening %s", cfg.Web.DebugHost)
@@ -150,7 +186,7 @@ func run() error {
 		AllowedHeaders:   []string{"Content-Type", "X-Requested-With", "Authorization"},
 		AllowCredentials: true,
 	})
-	handler := c.Handler(handlers.API(shutdown, log, db, authenticator))
+	handler := c.Handler(handlers.API(shutdown, log, db, redisPool, authenticator))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

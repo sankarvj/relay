@@ -131,28 +131,28 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 }
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
-func Trigger(ctx context.Context, db *sqlx.DB, itemID string, dirtyFlows []Flow) error {
-	aflows, err := ActiveFlows(ctx, ids(dirtyFlows), db)
+func Trigger(ctx context.Context, db *sqlx.DB, itemID string, flows []Flow) error {
+	aflows, err := ActiveFlows(ctx, ids(flows), db)
 	if err != nil {
 		return err
 	}
 	activeFlowMap := activeFlowMap(aflows)
-	for _, df := range dirtyFlows {
-		af := activeFlowMap[df.ID]
-		n := node.RootNode(df.AccountID, df.ID, df.EntityID, itemID, df.Expression).UpdateMeta(df.EntityID, itemID, df.Type)
+	for _, f := range flows {
+		af := activeFlowMap[f.ID]
+		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
 		if engine.RunExpEvaluator(ctx, db, n.Expression, n.VariablesMap()) { //entry
-			if af.stopEntryTriggerFlow(df.Condition) { //skips trigger if already active or of exit condition
+			if af.stopEntryTriggerFlow(f.Condition) { //skips trigger if already active or of exit condition
 				return ErrFlowActive
 			}
 			err = af.entryFlowTrigger(ctx, db, n)
 		} else {
-			if af.stopExitTriggerFlow(df.Condition) { //skips trigger if new  or inactive or not allowed.
+			if af.stopExitTriggerFlow(f.Condition) { //skips trigger if new  or inactive or not allowed.
 				return ErrFlowInActive
 			}
 			err = af.exitFlowTrigger(ctx, db, n)
 		}
 		//concat errors in the loop. nil if no error exists
-		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", df.ID)
+		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", f.ID)
 	}
 
 	return err

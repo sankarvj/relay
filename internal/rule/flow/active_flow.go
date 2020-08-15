@@ -9,7 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
@@ -153,24 +152,7 @@ func (af ActiveFlow) disableAF(ctx context.Context, db *sqlx.DB) error {
 }
 
 func updateVarJSON(existingVars map[string]interface{}, engineRes map[string]interface{}) string {
-	return node.VariablesJSON(updateMap(existingVars, engineRes))
-}
-
-func updateMap(existingVars map[string]interface{}, newVars map[string]interface{}) map[string]interface{} {
-	for key, exitingVal := range existingVars {
-		if _, ok := newVars[key]; !ok { //if existing key present in newVars then keep the newVars value.
-			newVars[key] = exitingVal
-		} else {
-			// for the global entity, dive in to the innerMap (inside xyz).
-			// we should update the content inside global entities and not just replace it with new values.
-			if key == engine.GlobalEntity || key == engine.GlobalEntityData {
-				exitingGlobalMap := existingVars[key].(map[string]interface{})
-				newGlobalMap := newVars[key].(map[string]interface{})
-				newVars[key] = updateMap(exitingGlobalMap, newGlobalMap)
-			}
-		}
-	}
-	return newVars
+	return node.VariablesJSON(node.UpdateNodeVars(existingVars, engineRes))
 }
 
 func upsertAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {

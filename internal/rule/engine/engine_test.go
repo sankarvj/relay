@@ -20,7 +20,7 @@ func TestEmailRuleRunner(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine to send email.")
 	{
-		t.Log("\tWhen running a send email engine")
+		t.Log("\twhen running a send email engine for the given contact - default case")
 		{
 			e1 := schema.SeedEntityContactID
 			e2 := schema.SeedEntityEmailID
@@ -39,12 +39,16 @@ func TestEmailRuleRunner(t *testing.T) {
 				Type:      node.Email,
 			}
 
-			engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			if err != nil {
+				t.Fatalf("\t%s\tshould send email : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s\tshould send the email", tests.Success)
 		}
 	}
 }
 
-func TestCreateRuleRunner(t *testing.T) {
+func TestCreateItemRuleRunner(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
 	tests.SeedEntity(t, db)
@@ -52,7 +56,7 @@ func TestCreateRuleRunner(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine to create new item")
 	{
-		t.Log("\tWhen running a create item engine")
+		t.Log("\twhen running a create item engine - default case")
 		{
 			e1 := schema.SeedEntityContactID
 			//k1 := schema.SeedFieldKeyContactName
@@ -71,7 +75,11 @@ func TestCreateRuleRunner(t *testing.T) {
 				ActorID:   e2,
 				Type:      node.Push,
 			}
-			engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			if err != nil {
+				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s\tshould create a item", tests.Success)
 		}
 	}
 }
@@ -84,7 +92,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine to update existing item")
 	{
-		t.Log("\tWhen running update item engine")
+		t.Log("\twhen running update item engine - default case")
 		{
 			e1 := schema.SeedEntityContactID
 			//k1 := schema.SeedFieldKeyContactName
@@ -102,8 +110,11 @@ func TestUpdateRuleRunner(t *testing.T) {
 				ActorID:   e1,
 				Type:      node.Modify,
 			}
-
-			engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			if err != nil {
+				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s should update a item", tests.Success)
 		}
 	}
 }
@@ -116,7 +127,7 @@ func TestFlow(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine for a complete flow")
 	{
-		t.Log("\tWhen running a flow 'The flow'")
+		t.Log("\twhen running a flow 'The flow'")
 		{
 			f1 := schema.SeedFlowID
 			flow, _ := flow.Retrieve(tests.Context(), f1, db)
@@ -155,14 +166,13 @@ func TestTrigger(t *testing.T) {
 			newItemFields := i.Fields()
 			newItemFields[schema.SeedFieldKeyContactMRR] = 99
 			item.UpdateFields(tests.Context(), db, i1, newItemFields)
-			//log.Println("oldItemFields", oldItemFields)
-			//log.Println("newItemFields", newItemFields)
 			flows, _ := flow.List(tests.Context(), e1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
-			//log.Printf("The lazyFlows %v", lazyFlows)
 			err := flow.Trigger(tests.Context(), db, i1, dirtyFlows)
-			log.Println("err >>>>> ", err)
-
+			if err != nil {
+				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s should flow without error", tests.Success)
 		}
 	}
 }
@@ -175,12 +185,15 @@ func TestDirectTrigger(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine for a trigger")
 	{
-		t.Log("\tWhen updating the event mrr in contact1")
+		t.Log("\twhen updating the event mrr in contact1")
 		{
 			i1 := schema.SeedItemContactID1
 			n2 := schema.SeedNodeID2
 			err := flow.DirectTrigger(tests.Context(), db, n2, i1)
-			log.Println("err >>>>> ", err)
+			if err != nil {
+				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s should flow without error", tests.Success)
 
 			afs, _ := flow.ActiveFlows(tests.Context(), []string{schema.SeedFlowID}, db)
 			ans, _ := flow.ActiveNodes(tests.Context(), []string{schema.SeedFlowID}, db)

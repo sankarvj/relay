@@ -10,11 +10,7 @@ import (
 )
 
 func executeDelay(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	entityFields, err := fields(ctx, db, n.ActorID)
-	if err != nil {
-		return err
-	}
-	entityFields, err = fillItemFieldValues(ctx, db, entityFields, n.ActualsMap()[n.ActorID])
+	entityFields, err := mergeActualsWithActor(ctx, db, n.ActorID, n.ActualsMap())
 	if err != nil {
 		return err
 	}

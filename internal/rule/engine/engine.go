@@ -9,14 +9,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-//GlobalEntity is the generic entity-id for certain expressions. See worker for its usecases
-const (
-	GlobalEntity       = "xyz"
-	GlobalEntityData   = "data"
-	GlobalEntityResult = "result"
-	NoEntity           = "00000000-0000-0000-0000-000000000000"
-)
-
 // RuleResult returns back the recently executed results
 type RuleResult struct {
 	Executed bool

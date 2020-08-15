@@ -58,7 +58,7 @@ type Operand interface{}
 func Run(rule string, isExecutor bool, workChan chan Work) {
 	defer close(workChan)
 	if rule == "" {
-		// by default the empty rule is considered as the positive expression.
+		// by default the empty rule is considered as the positive expression. Since most of nodes don't possess expressions
 		workChan <- Work{PosExecutor, "", nil}
 		return
 	}

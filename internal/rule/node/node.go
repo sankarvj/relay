@@ -18,6 +18,14 @@ const (
 	Root = "00000000-0000-0000-0000-000000000000"
 )
 
+//GlobalEntity is the generic entity-id for certain expressions. See worker for its usecases
+const (
+	GlobalEntity       = "xyz"
+	GlobalEntityData   = "data"
+	GlobalEntityResult = "result"
+	NoEntity           = "00000000-0000-0000-0000-000000000000"
+)
+
 var (
 	// ErrNodeNotFound is used when a specific node is requested but does not exist.
 	ErrNodeNotFound = errors.New("Node not found")
@@ -152,6 +160,24 @@ func VariablesJSON(varsMap map[string]interface{}) string {
 	return jsonStr
 }
 
+//UpdateNodeVars updates the existing variables of the node with the new response map
+func UpdateNodeVars(existingVars map[string]interface{}, newVars map[string]interface{}) map[string]interface{} {
+	for key, exitingVal := range existingVars {
+		if _, ok := newVars[key]; !ok { //if existing key present in newVars then keep the newVars value.
+			newVars[key] = exitingVal
+		} else {
+			// for the global entity, dive in to the innerMap (inside xyz).
+			// we should update the content inside global entities and not just replace it with new values.
+			if key == GlobalEntity || key == GlobalEntityData {
+				exitingGlobalMap := existingVars[key].(map[string]interface{})
+				newGlobalMap := newVars[key].(map[string]interface{})
+				newVars[key] = UpdateNodeVars(exitingGlobalMap, newGlobalMap)
+			}
+		}
+	}
+	return newVars
+}
+
 //IsRootNode decides whether the node is root or not
 func (n Node) IsRootNode() bool {
 	return n.ID == Root
@@ -168,7 +194,6 @@ func RootNode(accountID, flowID, entityID, itemID, expression string) *Node {
 		AccountID:  accountID,
 		FlowID:     flowID,
 		ID:         Root,
-		ActorID:    entityID,
 		Type:       Unknown,
 		Actuals:    "",
 		Expression: expression,
@@ -178,7 +203,7 @@ func RootNode(accountID, flowID, entityID, itemID, expression string) *Node {
 
 //UpdateMeta updates the meta values of the node
 func (n *Node) UpdateMeta(entityID, itemID string, flowType int) *Node {
-	n.Variables = VariablesJSON(map[string]interface{}{entityID: itemID}) //start with the item which triggered the flow
+	n.Variables = VariablesJSON(UpdateNodeVars(n.VariablesMap(), map[string]interface{}{entityID: itemID})) //start with the item which triggered the flow
 	n.Meta = Meta{
 		EntityID: entityID,
 		ItemID:   itemID,

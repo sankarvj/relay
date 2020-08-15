@@ -13,7 +13,9 @@ require (
 	github.com/dimiro1/darwin v0.0.0-20191008194338-370f81775d3b
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/gobuffalo/envy v1.9.0 // indirect
+	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/go-cmp v0.3.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.6.2
@@ -24,8 +26,10 @@ require (
 	github.com/mailgun/mailgun-go/v4 v4.1.0
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
 	github.com/nikunjy/rules v0.0.0-20200120082459-0b7c4dc9dc86 // indirect
+	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/onsi/gomega v1.4.3
 	github.com/pkg/errors v0.8.1
+	github.com/redislabs/redisgraph-go v2.0.2+incompatible
 	github.com/rs/cors v1.7.0
 	github.com/stretchr/testify v1.4.0
 	go.opencensus.io v0.22.2

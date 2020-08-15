@@ -1,11 +1,9 @@
 package entity
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
 )
 
 // Entity represents the building block of all the tasks
@@ -50,20 +48,6 @@ type NewEntity struct {
 	State     int     `json:"state" validate:"required"`
 }
 
-// Field represents structural format of attributes in entity
-type Field struct {
-	Name        string      `json:"name" validate:"required"`
-	DisplayName string      `json:"display_name" validate:"required"`
-	Key         string      `json:"key" validate:"required"`
-	Value       interface{} `json:"value" validate:"required"`
-	DataType    FieldType   `json:"data_type" validate:"required"`
-	Unique      bool        `json:"unique"`
-	Mandatory   bool        `json:"mandatory"`
-	Hidden      bool        `json:"hidden"`
-	Config      bool        `json:"config"`
-	Reference   string      `json:"reference"`
-}
-
 // EmailEntity represents structural format of email entity
 type EmailEntity struct {
 	Domain  string `json:"domain"`
@@ -90,18 +74,55 @@ type WebHookEntity struct {
 	Headers map[string]string `json:"headers"`
 }
 
-//FieldType defines the type of field
-type FieldType string
+// Field represents structural format of attributes in entity
+type Field struct {
+	Name        string      `json:"name" validate:"required"`
+	DisplayName string      `json:"display_name" validate:"required"`
+	Key         string      `json:"key" validate:"required"`
+	Value       interface{} `json:"value" validate:"required"`
+	DataType    DType       `json:"data_type" validate:"required"`
+	DomType     Dom         `json:"dom_type" validate:"required"`
+	Unique      bool        `json:"unique"`
+	List        bool        `json:"list"`
+	Mandatory   bool        `json:"mandatory"`
+	Hidden      bool        `json:"hidden"`
+	Config      bool        `json:"config"`     //UI property useful only during display
+	Expression  string      `json:"expression"` //expression executes the checks like, field.value > 100 < 200 or field.value == 'vijay'
+	Reference   Reference   `json:"reference"`
+}
+
+// Reference points the another entity item
+type Reference struct {
+	EntityID string
+	ItemID   string
+	Key      string
+}
+
+//DType defines the data type of field
+type DType string
+
+//Dom defines the visual representation of the field
+type Dom string
 
 //Mode for the entity spcifies certain entity specific characteristics
 const (
-	TypeString       FieldType = "S"
-	TypeNumber       FieldType = "N"
-	TypeDataTime     FieldType = "DT"
-	TypeStatus       FieldType = "ST"
-	TypeAutoComplete FieldType = "AC"
-	TypeTime         FieldType = "T"
-	TypeMinute       FieldType = "M"
+	TypeString    DType = "S"
+	TypeNumber          = "N"
+	TypeDataTime        = "T"
+	TypeReference       = "R"
+)
+
+//const defines the types of visual representation dom
+const (
+	DomText         Dom = "TE"
+	DomTextArea         = "TA"
+	DomStatus           = "ST"
+	DomAutoComplete     = "AC"
+	DomDropDown         = "DD"
+	DomDate             = "DA"
+	DomTime             = "TI"
+	DomMinute           = "MI"
+	DomMultiSelect      = "MS"
 )
 
 //State for the entity specifies the current state of the entity
@@ -120,29 +141,3 @@ const (
 	CategorySchedule   = 6
 	CategoryDelay      = 7
 )
-
-// Fields parses attribures to fields
-func (e Entity) Fields() ([]Field, error) {
-	fields, err := e.AllFields()
-	if err != nil {
-		return nil, err
-	}
-	//remove all config fields
-	temp := fields[:0]
-	for _, field := range fields {
-		if !field.Config {
-			temp = append(temp, field)
-		}
-	}
-	fields = temp
-	return fields, nil
-}
-
-// AllFields parses attribures to fields
-func (e Entity) AllFields() ([]Field, error) {
-	var fields []Field
-	if err := json.Unmarshal([]byte(e.Fieldsb), &fields); err != nil {
-		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
-	}
-	return fields, nil
-}

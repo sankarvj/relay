@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -16,6 +17,7 @@ import (
 
 // Item represents the Item API method handler set.
 type Item struct {
+	rPool         *redis.Pool
 	db            *sqlx.DB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
@@ -106,12 +108,18 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
 
-	item, err := item.Create(ctx, i.db, ni, time.Now())
+	ri, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {
-		return errors.Wrapf(err, "Item: %+v", &item)
+		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	return web.Respond(ctx, w, item, http.StatusCreated)
+	//call this in the JobQ
+	err = item.AddItemNode(ctx, i.rPool, ri, time.Now())
+	if err != nil {
+		return errors.Wrapf(err, "Item: %+v", &i)
+	}
+
+	return web.Respond(ctx, w, ri, http.StatusCreated)
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {

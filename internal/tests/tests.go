@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -90,6 +91,37 @@ func NewUnit(t *testing.T) (*sqlx.DB, func()) {
 	}
 
 	return db, teardown
+}
+
+//NewRedisUnit creates a redis connection pool
+func NewRedisUnit(t *testing.T) (*redis.Pool, func()) {
+	t.Helper()
+
+	c := databasetest.StartRedisContainer(t)
+
+	t.Log("waiting for redis to be ready")
+	redisPool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", c.Host)
+			if err != nil {
+				t.Fatalf("opening redis connection: %v", err)
+			}
+			return c, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	// teardown is the function that should be invoked when the caller is done
+	// with the database.
+	teardown := func() {
+		t.Helper()
+		redisPool.Close()
+		databasetest.StopContainer(t, c)
+	}
+
+	return redisPool, teardown
 }
 
 // Test owns state for running and shutting down tests.

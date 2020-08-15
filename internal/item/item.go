@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,4 +133,27 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 	}
 
 	return i, nil
+}
+
+// Fields parses attribures to fields
+func (i Item) Fields() map[string]interface{} {
+	var fields map[string]interface{}
+	if err := json.Unmarshal([]byte(i.Fieldsb), &fields); err != nil {
+		log.Printf("error while unmarshalling item fieldsb %v", i.ID)
+		log.Println(err)
+	}
+	return fields
+}
+
+//Diff old and new fields
+func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interface{} {
+	diffFields := newItemFields
+	for key, newItem := range newItemFields {
+		if oldItem, ok := oldItemFields[key]; ok {
+			if newItem == oldItem {
+				delete(diffFields, key)
+			}
+		}
+	}
+	return diffFields
 }
