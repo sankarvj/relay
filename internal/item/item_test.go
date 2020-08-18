@@ -2,79 +2,35 @@ package item_test
 
 import (
 	"testing"
-	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
-func TestItemRedis(t *testing.T) {
-	residPool, teardown := tests.NewRedisUnit(t)
-	defer teardown()
-	t.Log(" Given the need to add the pivot for the newly created item")
-	{
-		t.Log("\twhen adding the item to the graph")
-		{
-			ctx := tests.Context()
-			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
-			accountID := "4d247443-b257-4b06-ba99-493cf9d83ce7"
-			entityID := "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
-			it := item.NewItem{
-				Fields: map[string]interface{}{
-					"id":                                   "12345",
-					"name":                                 "john",
-					"age":                                  32,
-					"male":                                 true,
-					"4d247443-b257-4b06-ba99-493cf9d83ce7": "cypher",
-				},
-			}
-			entityFields := []entity.Field{
-				entity.Field{
-					Key:      "id",
-					DataType: entity.TypeString,
-				},
-				entity.Field{
-					Key:      "name",
-					DataType: entity.TypeString,
-				},
-				entity.Field{
-					Key:      "age",
-					DataType: entity.TypeNumber,
-				},
-				entity.Field{
-					Key:      "4d247443-b257-4b06-ba99-493cf9d83ce7",
-					DataType: entity.TypeString,
-				},
-			}
-			fields := entity.FillFieldValues(entityFields, it.Fields)
+var (
+	accountID = "2d247443-b257-4b06-ba99-493cf9d83ce7"
+	entityID  = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
+	itemID    = "12345"
+	fieldID   = "4d247443-b257-4b06-ba99-493cf9d83ce7"
+	Name1     = "Panchavan Pari Venthan"
+	Name2     = "Kosakshi Pasapughaz"
+	colors    = []string{"blue", "yellow"}
 
-			err := item.AddItemNode(ctx, residPool, accountID, entityID, fields, now)
-			if err != nil {
-				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
-			}
-			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
-		}
+	//item
+	properties = map[string]interface{}{
+		"id":    itemID,
+		"name":  Name1,
+		"age":   32,
+		"male":  true,
+		fieldID: colors,
 	}
-
-}
-
-func TestMerge(t *testing.T) {
-	residPool, teardown := tests.NewRedisUnit(t)
-	defer teardown()
-	accountID := "4d247443-b257-4b06-ba99-493cf9d83ce7"
-	entityID := "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
-	colors := []string{"blue", "yellow"}
-	it := item.NewItem{
-		Fields: map[string]interface{}{
-			"id":                                   "12345",
-			"name":                                 "john",
-			"age":                                  32,
-			"male":                                 true,
-			"4d247443-b257-4b06-ba99-493cf9d83ce7": colors,
-		},
+	// updated item
+	updatedProperties = map[string]interface{}{
+		"name": Name2,
 	}
-	entityFields := []entity.Field{
+	//entity field skeleton
+	entityFields = []entity.Field{
 		entity.Field{
 			Key:      "id",
 			DataType: entity.TypeString,
@@ -88,57 +44,59 @@ func TestMerge(t *testing.T) {
 			DataType: entity.TypeNumber,
 		},
 		entity.Field{
-			Key:      "4d247443-b257-4b06-ba99-493cf9d83ce7",
+			Key:      fieldID,
 			DataType: entity.TypeString,
 			List:     true,
 		},
 	}
+
+	fields = entity.FillFieldValues(entityFields, properties)
+	gpb    = item.WhitelistedProperties(accountID, entityID, itemID, fields)
+)
+
+func TestGraph(t *testing.T) {
+	residPool, teardown := tests.NewRedisUnit(t)
+	defer teardown()
+
 	t.Log(" Given the need create nodes and edges")
 	{
 		t.Log("\twhen adding the new item to the graph")
 		{
-			fields := entity.FillFieldValues(entityFields, it.Fields)
-			_, err := item.Upsert(residPool, accountID, entityID, "12345", fields)
+			properties = gpb.Properties
+			_, err := item.UpsertNode(residPool, gpb)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
 			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
 		}
 
-		it := item.NewItem{
-			Fields: map[string]interface{}{
-				"id":   "12345",
-				"name": "vijay",
-			},
+		t.Log("\twhen fetching the created item to the graph")
+		{
+			n, err := item.GetNode(residPool, accountID, entityID, itemID)
+			if err != nil {
+				t.Fatalf("\t%s should not throw any error during the fetch - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should not throw any error during the fetch", tests.Success)
+			//case2
+			if n.GetProperty("name") != Name1 {
+				t.Fatalf("\t%s should fetch the node with %s - %s", tests.Failed, Name1, err)
+			}
+			t.Logf("\t%s should fetch the node with %s", tests.Success, Name1)
 		}
 
 		t.Log("\twhen updating the existing item to the graph")
 		{
-			// fields := entity.FillFieldValues(entityFields, it.Fields)
-			// _, err := item.Upsert(residPool, accountID, entityID, "12345", fields)
-			_, err := item.Update(residPool, accountID, entityID, "12345", it.Fields)
+			gpb.Properties = updatedProperties
+			_, err := item.UpsertNode(residPool, gpb)
 			if err != nil {
-				t.Fatalf("\t%s should update the exisiting node(item) with name vijay to the graph - %s", tests.Failed, err)
+				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)
 			}
-			t.Logf("\t%s should update the exisiting node(item) with name vijay to the graph", tests.Success)
-		}
-
-		t.Log("\twhen fetching the updated item to the graph")
-		{
-			// fields := entity.FillFieldValues(entityFields, it.Fields)
-			// _, err := item.Upsert(residPool, accountID, entityID, "12345", fields)
-			_, err := item.Temp(residPool, accountID, entityID, "4d247443-b257-4b06-ba99-493cf9d83ce7", "12345")
-			if err != nil {
-				t.Fatalf("\t%s fetched node should have the name set to vijay - %s", tests.Failed, err)
-			}
-			t.Logf("\t%s fetched node should have the name set to vijay", tests.Success)
+			t.Logf("\t%s should update the exisiting node(item) with %s", tests.Success, Name2)
 		}
 
 		t.Log("\twhen adding a relation to the updated item to the graph")
 		{
-			// fields := entity.FillFieldValues(entityFields, it.Fields)
-			// _, err := item.Upsert(residPool, accountID, entityID, "12345", fields)
-			_, err := item.UpdateRelation(residPool, accountID, entityID, "12345")
+			_, err := item.UpsertEdge(residPool, gpb, fieldID)
 			if err != nil {
 				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
 			}
@@ -147,13 +105,16 @@ func TestMerge(t *testing.T) {
 
 		t.Log("\twhen fetching the updated item with relation to the graph")
 		{
-			// fields := entity.FillFieldValues(entityFields, it.Fields)
-			// _, err := item.Upsert(residPool, accountID, entityID, "12345", fields)
-			_, err := item.Temp2(residPool, accountID, entityID, "4d247443-b257-4b06-ba99-493cf9d83ce7", "12345")
+			n, err := item.Temp2(residPool, accountID, entityID, fieldID, itemID)
 			if err != nil {
-				t.Fatalf("\t%s fetched node should have the name set to vijay associated with honda - %s", tests.Failed, err)
+				t.Fatalf("\t%s should fetch with relation honda - %s", tests.Failed, err)
 			}
-			t.Logf("\t%s fetched node should have the name set to vijay associated with honda", tests.Success)
+			t.Logf("\t%s should fetch with relation honda", tests.Success)
+			//case2
+			if n.GetProperty("name") != Name2 {
+				t.Fatalf("\t%s should fetch the node with %s - %s", tests.Failed, Name2, err)
+			}
+			t.Logf("\t%s should fetch the node with %s", tests.Success, Name2)
 		}
 	}
 

@@ -6,6 +6,10 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	FieldIdKey = "id"
+)
+
 // Entity represents the building block of all the tasks
 type Entity struct {
 	ID          string         `db:"entity_id" json:"id"`

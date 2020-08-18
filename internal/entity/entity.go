@@ -167,3 +167,7 @@ func (e Entity) AllFields() ([]Field, error) {
 	}
 	return fields, nil
 }
+
+func (f Field) IsKeyId() bool {
+	return f.Key == FieldIdKey
+}
