@@ -1,6 +1,7 @@
 package item_test
 
 import (
+	"log"
 	"testing"
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -51,18 +52,17 @@ var (
 	}
 
 	fields = entity.FillFieldValues(entityFields, properties)
-	gpb    = item.WhitelistedProperties(accountID, entityID, itemID, fields)
+	gpb    = item.BuildGNode(accountID, entityID).MakeBaseGNode(itemID, fields)
 )
 
 func TestGraph(t *testing.T) {
 	residPool, teardown := tests.NewRedisUnit(t)
 	defer teardown()
-
+	log.Printf("gpb %+v", gpb)
 	t.Log(" Given the need create nodes and edges")
 	{
 		t.Log("\twhen adding the new item to the graph")
 		{
-			properties = gpb.Properties
 			_, err := item.UpsertNode(residPool, gpb)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
@@ -96,7 +96,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding a relation to the updated item to the graph")
 		{
-			_, err := item.UpsertEdge(residPool, gpb, fieldID)
+			_, err := item.UpsertEdge(residPool, gpb)
 			if err != nil {
 				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
 			}

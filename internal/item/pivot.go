@@ -11,84 +11,13 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
+var (
+	// ErrNoEdgeNodesToAssociate will returned when there is no edge nodes are available for making the relation with source node
+	ErrNoEdgeNodesToAssociate = errors.New("There is no edge nodes to associate with")
+)
+
 func graph(graphName string, conn redis.Conn) rg.Graph {
 	return rg.GraphNew(graphName, conn)
-}
-
-//Upsert .....
-// func Upsert(rPool *redis.Pool, accountID, alias, label string, properties map[string]interface{}) error {
-// 	conn := rPool.Get()
-// 	defer conn.Close()
-// 	graph := graph(accountID, conn)
-// 	iNode, err := CreateIfNotExists(rPool, accountID, alias, label, properties)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	log.Println("iNode", iNode)
-// 	log.Println("graph", graph)
-// 	return nil
-// }
-
-//Upsert hi
-// func Upsert(rPool *redis.Pool, accountID, label, id string, newFields []entity.Field) (*rg.Node, error) {
-// 	conn := rPool.Get()
-// 	defer conn.Close()
-// 	graph := graph(accountID, conn)
-
-// 	iNode, err := wrapFindNode(rPool, accountID, label, id)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	err = setProperties(&graph, iNode, newFields)
-
-// 	Temp(rPool, accountID, label, quote("4d247443-b257-4b06-ba99-493cf9d83ce7"), id)
-
-// 	return iNode, errors.Wrap(err, "err on commit")
-// }
-
-func wrapFindNode(rPool *redis.Pool, accountID, label, id string) (*rg.Node, error) {
-	iNode, err := GetNode(rPool, accountID, label, id)
-	if err != nil {
-		return nil, err
-	}
-	if iNode == nil {
-		return &rg.Node{
-			Label: quote(label),
-			Properties: map[string]interface{}{
-				"id": id,
-			},
-		}, nil
-	}
-	return iNode, nil
-}
-
-func Temp(rPool *redis.Pool, accountID, label, id string) (*rg.Node, error) {
-	log.Printf("calling temp for %v", id)
-	iNode := rg.Node{
-		Label: label,
-	}
-
-	conn := rPool.Get()
-	defer conn.Close()
-	graph := graph(accountID, conn)
-
-	query := fmt.Sprintf(`MATCH (i:%s) where i.id = "%s" return i`, quote(label), id)
-	result, err := graph.Query(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "selection nodes ...")
-	}
-	log.Printf("calling temp result %v", result)
-	result.PrettyPrint()
-	if result.Next() {
-		records := result.Record().Values()
-		if result.Next() || len(records) == 0 {
-			return nil, errors.New("problem getting the node for id: " + id)
-		}
-		n := records[0].(*rg.Node)
-		iNode.Properties = n.Properties
-	}
-	return &iNode, nil
 }
 
 func Temp2(rPool *redis.Pool, accountID, label, label1, id string) (*rg.Node, error) {
@@ -118,75 +47,20 @@ func Temp2(rPool *redis.Pool, accountID, label, label1, id string) (*rg.Node, er
 	return &iNode, nil
 }
 
-// func setProperties(graph *rg.Graph, iNode *rg.Node, newFields []entity.Field) error {
-// 	isModified := false
-// 	graph.AddNode(iNode)
-
-// 	for _, field := range newFields {
-// 		if val, ok := iNode.Properties[field.Key]; (ok && field.Value == val) || field.Key == "id" {
-// 			continue
-// 		}
-// 		isModified = true
-// 		if !createEdges(graph, iNode, field) { // don't add properties if edges exists
-// 			iNode.Properties[quote(field.Key)] = field.Value
-// 		}
-// 	}
-// 	if isModified {
-// 		_, err := Commit(graph)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
-//Commit ...
-func Commit(g *rg.Graph) (*rg.QueryResult, error) {
-	items := make([]string, 0, len(g.Nodes)+len(g.Edges))
-	for _, n := range g.Nodes {
-		items = append(items, n.Encode())
-	}
-	for _, e := range g.Edges {
-		items = append(items, e.Encode())
-	}
-	log.Println("items -----> ", items)
-	q := "CREATE " + strings.Join(items, ",")
-	log.Println("qqqqqqqq -----> ", q)
-	return g.Query(q)
-}
-
-//GraphBluePrint takes an item and build the bule print of the nodes and relationships
-type GraphBluePrint struct {
+//GraphNode takes an item and build the bule print of the nodes and relationships
+type GraphNode struct {
 	GraphName  string
 	Label      string
 	ItemID     string
-	Properties map[string]interface{} // default fields
-	Contains   []GraphBluePrint       // list/map fields
-	Has        []GraphBluePrint       // reference fields
+	Properties map[string]PropValue // default fields
+	Contains   []GraphNode          // list/map fields
+	Has        []GraphNode          // reference fields
 }
 
-//WhitelistedProperties filters the fields with types text area, lists, maps, and reference.
-//It updates the properties with id and restrict field keys to updates the id.
-func WhitelistedProperties(graphName, label, itemID string, fields []entity.Field) GraphBluePrint {
-	baseGP := buildGraphBP(graphName, label).makeBaseGraphBp(itemID)
-	for _, field := range fields {
-		if field.IsKeyId() {
-			continue
-		}
-		if field.List {
-			list := field.Value.([]string)
-			containsGraph := buildGraphBP(graphName, field.Key)
-			for _, element := range list {
-				log.Printf("element %v", element)
-				baseGP = containsGraph.append(baseGP, element)
-			}
-		} else if field.DataType == entity.TypeReference {
-		} else {
-			baseGP.Properties[quote(field.Key)] = field.Value
-		}
-
-	}
-	return baseGP
+type PropValue struct {
+	Operator string
+	Value    interface{}
+	Type     string
 }
 
 //GetNode fetches the node for the id provided
@@ -216,94 +90,92 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 //UpsertNode create/update the node with the given properties.
 //Properties should not include text area, lists, maps, reference.
 //TODO: For update, properties should include only the modified values including null for deleted keys.
-func UpsertNode(rPool *redis.Pool, gbp GraphBluePrint) (*rg.QueryResult, error) {
+func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
-	graph := graph(gbp.GraphName, conn)
+	graph := graph(gn.GraphName, conn)
 
-	q := updateProperties(gbp)
+	q := setNode(gn)
+	log.Println("UpsertNodeQuery --> ", q)
 	return graph.Query(q)
 }
 
 //"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
-func updateProperties(gbp GraphBluePrint) string {
-	alias := rg.RandomString(10)
-	n := newNode(gbp.Label, alias, gbp.ItemID)
-	s := mergeNode(n)
-	if len(gbp.Properties) > 0 {
-		p := make([]string, 0, len(gbp.Properties))
-		for k, v := range gbp.Properties {
+func setNode(gn GraphNode) string {
+	srcNode := gn.RgNode(false)
+	s := mergeNode(srcNode)
+	if len(gn.Properties) > 0 {
+		p := make([]string, 0, len(gn.Properties))
+		for k, v := range gn.Properties {
 			if k == "id" {
 				continue
 			}
-			p = append(p, fmt.Sprintf("%s.%s = %v", alias, k, rg.ToString(v)))
+			p = append(p, fmt.Sprintf("%s.%s = %v", srcNode.Alias, k, rg.ToString(v)))
 		}
 
 		s = append(s, "SET")
-		s = append(s, " ")
-		s = append(s, strings.Join(p, ","))
+		s = append(s, strings.Join(p, ", "))
 	}
 
-	return strings.Join(s, "")
+	return strings.Join(s, " ")
 }
 
-//UpsertEdge create/update the relationship between two nodes
-func UpsertEdge(rPool *redis.Pool, gbp GraphBluePrint, label1 string) (*rg.QueryResult, error) {
+//UpsertEdge creates/updates the relationship between src node and all its dst node
+func UpsertEdge(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
-	graph := graph(gbp.GraphName, conn)
+	graph := graph(gn.GraphName, conn)
 
-	srcNode := newNode(gbp.Label, rg.RandomString(10), gbp.ItemID)
-	dNode := &rg.Node{
-		Alias: rg.RandomString(10),
-		Label: quote(label1),
-		Properties: map[string]interface{}{
-			"element": "honda",
-		},
+	srcNode := gn.RgNode(false)
+	s := matchNode(srcNode)
+
+	for _, cn := range gn.Contains {
+		dstNode := cn.RgNode(true)
+		s = append(s, mergeRelation("contains", srcNode, dstNode)...)
 	}
 
-	q := updateRelationships("contains", srcNode, dNode)
-
+	for _, hn := range gn.Has {
+		dstNode := hn.RgNode(true)
+		s = append(s, mergeRelation("has", srcNode, dstNode)...)
+	}
+	if len(gn.Contains) == 0 && len(gn.Has) == 0 {
+		return nil, ErrNoEdgeNodesToAssociate
+	}
+	q := strings.Join(s, " ")
+	log.Println("UpsertEdgeQuery --> ", q)
 	return graph.Query(q)
 }
 
 //"MERGE (charlie { name: 'Charlie Sheen' }) MERGE (wallStreet:Movie { name: 'Wall Street' }) MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
-func updateRelationships(relation string, srcNode, destNode *rg.Node) string {
+func mergeRelation(relation string, srcNode, destNode *rg.Node) []string {
 	edge := rg.EdgeNew(relation, srcNode, destNode, nil)
-	ms := matchNode(srcNode)
 	md := mergeNode(destNode)
 	me := mergeEdge(edge)
-	return strings.Join(ms, "") + strings.Join(md, "") + strings.Join(me, "")
+	return append(md, me...)
 }
 
-func newNode(label, alias, id string) *rg.Node {
-	n := rg.NodeNew(label, alias, map[string]interface{}{
-		"id": id,
-	})
-	return n
-}
-
+// MATCH   (cJeZNYvqro:`7d9c4f94-890b-484c-8189-91c3d7e8e50b`{`id`:"12345"})
 func matchNode(n *rg.Node) []string {
 	s := []string{"MATCH"}
-	s = append(s, " ")
 	s = append(s, n.Encode())
-	s = append(s, " ")
 	return s
 }
 
 func mergeNode(n *rg.Node) []string {
 	s := []string{"MERGE"}
-	s = append(s, " ")
 	s = append(s, n.Encode())
-	s = append(s, " ")
+	return s
+}
+
+func matchEdge(e *rg.Edge) []string {
+	s := []string{"MATCH"}
+	s = append(s, e.Encode())
 	return s
 }
 
 func mergeEdge(e *rg.Edge) []string {
 	s := []string{"MERGE"}
-	s = append(s, " ")
 	s = append(s, e.Encode())
-	s = append(s, " ")
 	return s
 }
 
@@ -311,25 +183,45 @@ func quote(label string) string {
 	return fmt.Sprintf("`%s`", label)
 }
 
-func buildGraphBP(graphName, label string) GraphBluePrint {
-	gbp := GraphBluePrint{
+func BuildGNode(graphName, label string) GraphNode {
+	gn := GraphNode{
 		GraphName:  graphName,
 		Label:      quote(label),
 		Properties: map[string]interface{}{},
+		Contains:   make([]GraphNode, 0),
+		Has:        make([]GraphNode, 0),
 	}
-	return gbp
+	return gn
 }
 
-func (gbp GraphBluePrint) makeBaseGraphBp(itemID string) GraphBluePrint {
-	gbp.ItemID = itemID
-	gbp.Properties[quote(entity.FieldIdKey)] = gbp.ItemID
-	gbp.Contains = make([]GraphBluePrint, 0)
-	gbp.Has = make([]GraphBluePrint, 0)
-	return gbp
+func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNode {
+	gn.ItemID = itemID
+	gn.Properties[quote(entity.FieldIdKey)] = gn.ItemID
+
+	for _, field := range fields {
+		if field.IsKeyId() {
+			continue
+		}
+		if field.List {
+			for _, element := range field.Value.([]string) {
+				cn := BuildGNode(gn.GraphName, field.Key)
+				cn.Properties[quote("element")] = element
+				gn.Contains = append(gn.Contains, cn)
+			}
+		} else if field.DataType == entity.TypeReference {
+		} else {
+			gn.Properties[quote(field.Key)] = field.Value
+		}
+
+	}
+	return gn
 }
 
-func (cg GraphBluePrint) append(gbp GraphBluePrint, element interface{}) GraphBluePrint {
-	cg.Properties[quote("element")] = element
-	gbp.Contains = append(gbp.Contains, cg)
-	return gbp
+func (gn GraphNode) RgNode(allProps bool) *rg.Node {
+	if allProps {
+		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.Properties)
+	}
+	return rg.NodeNew(gn.Label, rg.RandomString(10), map[string]interface{}{
+		quote(entity.FieldIdKey): gn.ItemID,
+	})
 }
