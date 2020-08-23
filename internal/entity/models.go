@@ -90,7 +90,7 @@ type Field struct {
 	Mandatory   bool        `json:"mandatory"`
 	Hidden      bool        `json:"hidden"`
 	Config      bool        `json:"config"`     //UI property useful only during display
-	Expression  string      `json:"expression"` //expression executes the checks like, field.value > 100 < 200 or field.value == 'vijay'
+	Expression  string      `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
 	Field       *Field      `json:"field"`
 }
 

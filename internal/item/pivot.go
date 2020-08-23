@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/platform/segment"
 )
 
 var (
@@ -24,20 +23,13 @@ func graph(graphName string, conn redis.Conn) rg.Graph {
 
 //GraphNode takes an item and build the bule print of the nodes and relationships
 type GraphNode struct {
-	GraphName  string
-	Label      string
-	ItemID     string
-	Properties map[string]interface{}       // default fields
-	Condition  map[string]segment.Condition // meta field attr
-	Contains   []GraphNode                  // list/map fields
-	Has        []GraphNode                  // reference fields
-}
-
-type PropValue struct {
-	Operator string
-	Type     string
-	Key      string
-	Value    interface{}
+	GraphName       string
+	Label           string
+	ItemID          string
+	Properties      map[string]interface{}  // properties during write
+	FieldConditions map[string]entity.Field // conditions during read
+	Contains        []GraphNode             // list/map fields
+	Has             []GraphNode             // reference fields
 }
 
 //GetNode fetches the node for the id provided
@@ -95,14 +87,14 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 func where(gn GraphNode, alias string) []string {
 	p := make([]string, 0, len(gn.Properties))
-	if len(gn.Condition) > 0 {
-		for _, condition := range gn.Condition {
-			if condition.Type == "S" {
-				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, condition.Key, condition.Operator, condition.Value))
-			} else if condition.Type == "N" {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Operator, condition.Value))
+	if len(gn.FieldConditions) > 0 {
+		for _, condition := range gn.FieldConditions {
+			if condition.DataType == "S" {
+				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, condition.Key, condition.Expression, condition.Value))
+			} else if condition.DataType == "N" {
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Expression, condition.Value))
 			} else {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Operator, condition.Value))
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Expression, condition.Value))
 			}
 		}
 	}
@@ -208,12 +200,12 @@ func quote(label string) string {
 
 func BuildGNode(graphName, label string) GraphNode {
 	gn := GraphNode{
-		GraphName:  graphName,
-		Label:      quote(label),
-		Properties: map[string]interface{}{},
-		Condition:  map[string]segment.Condition{},
-		Contains:   make([]GraphNode, 0),
-		Has:        make([]GraphNode, 0),
+		GraphName:       graphName,
+		Label:           quote(label),
+		Properties:      map[string]interface{}{},
+		FieldConditions: map[string]entity.Field{},
+		Contains:        make([]GraphNode, 0),
+		Has:             make([]GraphNode, 0),
 	}
 	return gn
 }
@@ -226,33 +218,32 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 		if field.IsKeyId() {
 			continue
 		}
-		if field.DataType == entity.TypeList {
+		switch field.DataType {
+		case entity.TypeList:
 			for _, element := range field.Value.([]string) {
 				cn := BuildGNode(gn.GraphName, field.Key)
-				cn.Properties[field.Field.Key] = element
+				cn.Properties[quote(field.Field.Key)] = element
 				gn.Contains = append(gn.Contains, cn)
 			}
-		} else if field.DataType == entity.TypeReference {
-		} else {
+		case entity.TypeReference:
+		default:
 			gn.Properties[quote(field.Key)] = field.Value
 		}
-
 	}
 	return gn
 }
 
-func (gn GraphNode) SegmentBaseGNode(seg segment.Segment) GraphNode {
-	for i, condition := range seg.Conditions {
-		if condition.Type == "L" {
-			cn := BuildGNode(gn.GraphName, condition.Key)
-			cn.Condition[strconv.Itoa(i)] = *condition.Condition
+func (gn GraphNode) SegmentBaseGNode(seg entity.Segment) GraphNode {
+	for i, fc := range seg.FieldConditions {
+		switch fc.DataType {
+		case entity.TypeList:
+			cn := BuildGNode(gn.GraphName, fc.Key)
+			cn.FieldConditions[strconv.Itoa(i)] = *fc.Field
 			gn.Contains = append(gn.Contains, cn)
-		} else if condition.Type == "R" {
-
-		} else {
-			gn.Condition[strconv.Itoa(i)] = condition
+		case entity.TypeReference:
+		default:
+			gn.FieldConditions[strconv.Itoa(i)] = fc
 		}
-
 	}
 	return gn
 }

@@ -132,10 +132,8 @@ func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
 func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
 	updatedFields := make([]Field, 0)
 	for _, field := range entityFields {
-		if val, ok := itemFields[field.Key]; ok {
-			if !field.Config {
-				field.Value = val
-			}
+		if val, ok := itemFields[field.Key]; ok && !field.Config {
+			field.Value = val
 		}
 		updatedFields = append(updatedFields, field)
 	}

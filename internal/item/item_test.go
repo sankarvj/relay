@@ -6,7 +6,6 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/segment"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -60,37 +59,37 @@ var (
 )
 
 var (
-	conditions = []segment.Condition{
-		segment.Condition{
-			Operator: "<",
-			Key:      "age",
-			Type:     "N",
-			Value:    "50",
+	conditionFields = []entity.Field{
+		entity.Field{
+			Expression: "<",
+			Key:        "age",
+			DataType:   entity.TypeNumber,
+			Value:      "50",
 		},
-		segment.Condition{
-			Key:  fieldID,
-			Type: "L",
-			Condition: &segment.Condition{
-				Operator: "=",
-				Key:      "element",
-				Type:     "S",
-				Value:    "yellow",
+		entity.Field{
+			Key:      fieldID,
+			DataType: "L",
+			Field: &entity.Field{
+				Expression: "=",
+				Key:        "element",
+				DataType:   entity.TypeString,
+				Value:      "yellow",
 			},
 		},
-		segment.Condition{
-			Key:  fieldID, //replace here with the entityID
-			Type: "R",
-			Condition: &segment.Condition{
-				Operator: "=",
-				Key:      "element", //fieldID of the entity
-				Type:     "S",       //
-				Value:    "yellow",
+		entity.Field{
+			Key:      fieldID, //replace here with the entityID
+			DataType: "R",
+			Field: &entity.Field{
+				Expression: "=",
+				Key:        "element", //fieldID of the entity
+				DataType:   entity.TypeString,
+				Value:      "yellow",
 			},
 		},
 	}
-	seg = segment.Segment{
-		Match:      segment.MatchAll,
-		Conditions: conditions,
+	seg = entity.Segment{
+		Match:           entity.MatchAll,
+		FieldConditions: conditionFields,
 	}
 
 	gSegment = item.BuildGNode(accountID, entityID).SegmentBaseGNode(seg)
