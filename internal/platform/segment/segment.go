@@ -11,6 +11,12 @@ const (
 	MatchAny        = "ANY"
 )
 
+const (
+	Default = iota
+	List
+	Reference
+)
+
 type Segment struct {
 	Match      string
 	Conditions []Condition
@@ -18,10 +24,21 @@ type Segment struct {
 
 type Condition struct {
 	Operator string
+	EntityID string
 	Key      string
 	Value    string
 	Type     string
+	On       int
 	Segment  *Segment // as of now no use... use it for complex conditions. Mostly try to solve in the lexer and remove it here
+}
+
+type Condition1 struct {
+	Operator   string
+	Key        string
+	Value      string
+	Type       string // --> string,int,list,ref,seg
+	Condition1 *Condition1
+	Segment    *Segment // as of now no use... use it for complex conditions. Mostly try to solve in the lexer and remove it here
 }
 
 func ParseSegmentForGraph(label string, seg Segment) (string, error) {

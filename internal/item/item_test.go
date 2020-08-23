@@ -6,6 +6,7 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/segment"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -53,6 +54,31 @@ var (
 
 	fields = entity.FillFieldValues(entityFields, properties)
 	gpb    = item.BuildGNode(accountID, entityID).MakeBaseGNode(itemID, fields)
+)
+
+var (
+	conditions = []segment.Condition{
+		segment.Condition{
+			Operator: "<",
+			Key:      "age",
+			Type:     "N",
+			Value:    "50",
+		},
+		segment.Condition{
+			Operator: "=",
+			EntityID: fieldID,
+			Key:      "element",
+			Type:     "S",
+			Value:    "yellow",
+			On:       segment.List,
+		},
+	}
+	seg = segment.Segment{
+		Match:      segment.MatchAll,
+		Conditions: conditions,
+	}
+
+	gSegment = item.BuildGNode(accountID, entityID).SegmentBaseGNode(seg)
 )
 
 func TestGraph(t *testing.T) {
@@ -105,17 +131,71 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen fetching the updated item with relation to the graph")
 		{
-			n, err := item.Temp2(residPool, accountID, entityID, fieldID, itemID)
+			_, err := item.GetResult(residPool, gSegment)
 			if err != nil {
 				t.Fatalf("\t%s should fetch with relation honda - %s", tests.Failed, err)
 			}
 			t.Logf("\t%s should fetch with relation honda", tests.Success)
 			//case2
-			if n.GetProperty("name") != Name2 {
-				t.Fatalf("\t%s should fetch the node with %s - %s", tests.Failed, Name2, err)
-			}
-			t.Logf("\t%s should fetch the node with %s", tests.Success, Name2)
+			// if n.GetProperty("name") != Name2 {
+			// 	t.Fatalf("\t%s should fetch the node with %s - %s", tests.Failed, Name2, err)
+			// }
+			// t.Logf("\t%s should fetch the node with %s", tests.Success, Name2)
 		}
 	}
 
+}
+
+var (
+	complexConditions = []segment.Condition{
+		segment.Condition{
+			Operator: ">",
+			Key:      "age",
+			Type:     "N",
+			Value:    "40",
+		},
+		segment.Condition{
+			Operator: "<",
+			Key:      "age",
+			Type:     "N",
+			Value:    "50",
+		},
+		segment.Condition{
+			Operator: "=",
+			Key:      "name",
+			Type:     "S",
+			Value:    "Siva",
+		},
+		segment.Condition{
+			Operator: "=",
+			EntityID: "colors",
+			Key:      "element",
+			Type:     "S",
+			Value:    "blue",
+			On:       segment.List,
+		},
+	}
+	complexSeg = segment.Segment{
+		Match:      segment.MatchAll,
+		Conditions: complexConditions,
+	}
+
+	gSegmentCom = item.BuildGNode(accountID, entityID).SegmentBaseGNode(complexSeg)
+)
+
+func TestSegmentBaseGNode(t *testing.T) {
+	residPool, teardown := tests.NewRedisUnit(t)
+	defer teardown()
+	t.Log(" Given the need to parse the segment into graph query")
+	{
+		t.Log("\twhen parsing AND conditions")
+		{
+			log.Printf("gbp1 ------> %+v", gSegmentCom)
+			_, err := item.GetResult(residPool, gSegmentCom)
+			if err != nil {
+				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
+		}
+	}
 }

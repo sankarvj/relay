@@ -3,12 +3,14 @@ package item
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/segment"
 )
 
 var (
@@ -20,47 +22,22 @@ func graph(graphName string, conn redis.Conn) rg.Graph {
 	return rg.GraphNew(graphName, conn)
 }
 
-func Temp2(rPool *redis.Pool, accountID, label, label1, id string) (*rg.Node, error) {
-	log.Printf("calling temp1 for %v", id)
-	iNode := rg.Node{
-		Label: quote(label),
-	}
-
-	conn := rPool.Get()
-	defer conn.Close()
-	graph := graph(accountID, conn)
-
-	query := fmt.Sprintf(`MATCH (i:%s)-[c:contains]->(l:%s) where i.id = "%s" return i,l`, quote(label), quote(label1), id)
-	result, err := graph.Query(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "selection nodes ...")
-	}
-	result.PrettyPrint()
-	if result.Next() {
-		records := result.Record().Values()
-		if result.Next() || len(records) == 0 {
-			return nil, errors.New("problem getting the node for id: " + id)
-		}
-		n := records[0].(*rg.Node)
-		iNode.Properties = n.Properties
-	}
-	return &iNode, nil
-}
-
 //GraphNode takes an item and build the bule print of the nodes and relationships
 type GraphNode struct {
 	GraphName  string
 	Label      string
 	ItemID     string
-	Properties map[string]PropValue // default fields
-	Contains   []GraphNode          // list/map fields
-	Has        []GraphNode          // reference fields
+	Properties map[string]interface{} // default fields
+	PropMeta   map[string]PropValue   // meta field attr
+	Contains   []GraphNode            // list/map fields
+	Has        []GraphNode            // reference fields
 }
 
 type PropValue struct {
 	Operator string
-	Value    interface{}
 	Type     string
+	Key      string
+	Value    interface{}
 }
 
 //GetNode fetches the node for the id provided
@@ -87,6 +64,52 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 	return iNode, nil
 }
 
+//GetResult fetches resultant node
+func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	srcNode := gn.RgNode(false)
+	s := matchNode(srcNode)
+	wc := where(gn, srcNode.Alias)
+
+	for _, cn := range gn.Contains {
+		dstNode := cn.RgNode(false)
+		edge := rg.EdgeNew("contains", srcNode, dstNode, nil)
+		s = append(s, matchNode(dstNode)...)
+		s = append(s, matchEdge(edge)...)
+		wc = append(wc, where(cn, dstNode.Alias)...)
+	}
+
+	q := strings.Join(s, " ")
+	w := strings.Join(wc, " AND ")
+	q = strings.Join([]string{q, w}, " WHERE ")
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
+
+	result, err := graph.Query(q)
+	log.Println("GetResultQuery --> ", q)
+	result.PrettyPrint()
+	return result, err
+}
+
+func where(gn GraphNode, alias string) []string {
+	p := make([]string, 0, len(gn.Properties))
+	if len(gn.PropMeta) > 0 {
+		for _, meta := range gn.PropMeta {
+			if meta.Type == "S" {
+				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, meta.Key, meta.Operator, meta.Value))
+			} else if meta.Type == "N" {
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, meta.Key, meta.Operator, meta.Value))
+			} else {
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, meta.Key, meta.Operator, meta.Value))
+			}
+		}
+	}
+
+	return p
+}
+
 //UpsertNode create/update the node with the given properties.
 //Properties should not include text area, lists, maps, reference.
 //TODO: For update, properties should include only the modified values including null for deleted keys.
@@ -95,13 +118,13 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	q := setNode(gn)
+	q := mergeProperties(gn)
 	log.Println("UpsertNodeQuery --> ", q)
 	return graph.Query(q)
 }
 
 //"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
-func setNode(gn GraphNode) string {
+func mergeProperties(gn GraphNode) string {
 	srcNode := gn.RgNode(false)
 	s := mergeNode(srcNode)
 	if len(gn.Properties) > 0 {
@@ -188,6 +211,7 @@ func BuildGNode(graphName, label string) GraphNode {
 		GraphName:  graphName,
 		Label:      quote(label),
 		Properties: map[string]interface{}{},
+		PropMeta:   map[string]PropValue{},
 		Contains:   make([]GraphNode, 0),
 		Has:        make([]GraphNode, 0),
 	}
@@ -217,11 +241,41 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 	return gn
 }
 
-func (gn GraphNode) RgNode(allProps bool) *rg.Node {
-	if allProps {
+func (gn GraphNode) SegmentBaseGNode(seg segment.Segment) GraphNode {
+	for i, condition := range seg.Conditions {
+
+		switch condition.On {
+		case segment.List:
+			cn := BuildGNode(gn.GraphName, condition.EntityID)
+			cn.PropMeta[strconv.Itoa(i)] = PropValue{
+				Operator: condition.Operator,
+				Type:     condition.Type,
+				Key:      condition.Key,
+				Value:    condition.Value,
+			}
+			gn.Contains = append(gn.Contains, cn)
+		case segment.Reference:
+		default:
+			gn.PropMeta[strconv.Itoa(i)] = PropValue{
+				Operator: condition.Operator,
+				Type:     condition.Type,
+				Key:      condition.Key,
+				Value:    condition.Value,
+			}
+		}
+
+	}
+	return gn
+}
+
+func (gn GraphNode) RgNode(withProps bool) *rg.Node {
+	if withProps {
 		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.Properties)
 	}
-	return rg.NodeNew(gn.Label, rg.RandomString(10), map[string]interface{}{
-		quote(entity.FieldIdKey): gn.ItemID,
-	})
+	if gn.ItemID != "" {
+		return rg.NodeNew(gn.Label, rg.RandomString(10), map[string]interface{}{
+			quote(entity.FieldIdKey): gn.ItemID,
+		})
+	}
+	return rg.NodeNew(gn.Label, rg.RandomString(10), nil)
 }
