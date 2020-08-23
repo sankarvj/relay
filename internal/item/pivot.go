@@ -27,10 +27,10 @@ type GraphNode struct {
 	GraphName  string
 	Label      string
 	ItemID     string
-	Properties map[string]interface{} // default fields
-	PropMeta   map[string]PropValue   // meta field attr
-	Contains   []GraphNode            // list/map fields
-	Has        []GraphNode            // reference fields
+	Properties map[string]interface{}       // default fields
+	Condition  map[string]segment.Condition // meta field attr
+	Contains   []GraphNode                  // list/map fields
+	Has        []GraphNode                  // reference fields
 }
 
 type PropValue struct {
@@ -95,14 +95,14 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 func where(gn GraphNode, alias string) []string {
 	p := make([]string, 0, len(gn.Properties))
-	if len(gn.PropMeta) > 0 {
-		for _, meta := range gn.PropMeta {
-			if meta.Type == "S" {
-				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, meta.Key, meta.Operator, meta.Value))
-			} else if meta.Type == "N" {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, meta.Key, meta.Operator, meta.Value))
+	if len(gn.Condition) > 0 {
+		for _, condition := range gn.Condition {
+			if condition.Type == "S" {
+				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, condition.Key, condition.Operator, condition.Value))
+			} else if condition.Type == "N" {
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Operator, condition.Value))
 			} else {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, meta.Key, meta.Operator, meta.Value))
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Operator, condition.Value))
 			}
 		}
 	}
@@ -211,7 +211,7 @@ func BuildGNode(graphName, label string) GraphNode {
 		GraphName:  graphName,
 		Label:      quote(label),
 		Properties: map[string]interface{}{},
-		PropMeta:   map[string]PropValue{},
+		Condition:  map[string]segment.Condition{},
 		Contains:   make([]GraphNode, 0),
 		Has:        make([]GraphNode, 0),
 	}
@@ -226,10 +226,10 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 		if field.IsKeyId() {
 			continue
 		}
-		if field.List {
+		if field.DataType == entity.TypeList {
 			for _, element := range field.Value.([]string) {
 				cn := BuildGNode(gn.GraphName, field.Key)
-				cn.Properties[quote("element")] = element
+				cn.Properties[field.Field.Key] = element
 				gn.Contains = append(gn.Contains, cn)
 			}
 		} else if field.DataType == entity.TypeReference {
@@ -243,25 +243,14 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 
 func (gn GraphNode) SegmentBaseGNode(seg segment.Segment) GraphNode {
 	for i, condition := range seg.Conditions {
-
-		switch condition.On {
-		case segment.List:
-			cn := BuildGNode(gn.GraphName, condition.EntityID)
-			cn.PropMeta[strconv.Itoa(i)] = PropValue{
-				Operator: condition.Operator,
-				Type:     condition.Type,
-				Key:      condition.Key,
-				Value:    condition.Value,
-			}
+		if condition.Type == "L" {
+			cn := BuildGNode(gn.GraphName, condition.Key)
+			cn.Condition[strconv.Itoa(i)] = *condition.Condition
 			gn.Contains = append(gn.Contains, cn)
-		case segment.Reference:
-		default:
-			gn.PropMeta[strconv.Itoa(i)] = PropValue{
-				Operator: condition.Operator,
-				Type:     condition.Type,
-				Key:      condition.Key,
-				Value:    condition.Value,
-			}
+		} else if condition.Type == "R" {
+
+		} else {
+			gn.Condition[strconv.Itoa(i)] = condition
 		}
 
 	}

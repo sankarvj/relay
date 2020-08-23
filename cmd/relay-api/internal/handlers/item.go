@@ -113,12 +113,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	//call this in the JobQ
-	err = item.AddItemNode(ctx, i.rPool, ri, time.Now())
-	if err != nil {
-		return errors.Wrapf(err, "Item: %+v", &i)
-	}
-
 	return web.Respond(ctx, w, ri, http.StatusCreated)
 }
 

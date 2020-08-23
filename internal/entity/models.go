@@ -87,19 +87,11 @@ type Field struct {
 	DataType    DType       `json:"data_type" validate:"required"`
 	DomType     Dom         `json:"dom_type" validate:"required"`
 	Unique      bool        `json:"unique"`
-	List        bool        `json:"list"`
 	Mandatory   bool        `json:"mandatory"`
 	Hidden      bool        `json:"hidden"`
 	Config      bool        `json:"config"`     //UI property useful only during display
 	Expression  string      `json:"expression"` //expression executes the checks like, field.value > 100 < 200 or field.value == 'vijay'
-	Reference   Reference   `json:"reference"`
-}
-
-// Reference points the another entity item
-type Reference struct {
-	EntityID string
-	ItemID   string
-	Key      string
+	Field       *Field      `json:"field"`
 }
 
 //DType defines the data type of field
@@ -113,6 +105,7 @@ const (
 	TypeString    DType = "S"
 	TypeNumber          = "N"
 	TypeDataTime        = "T"
+	TypeList            = "L"
 	TypeReference       = "R"
 )
 

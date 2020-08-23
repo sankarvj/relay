@@ -95,21 +95,20 @@ func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (Team, error) {
 
 func makeMemberSeriesFields() []entity.Field {
 	fields := make([]entity.Field, 0)
-	fields = append(fields, makeNewField("Email", uuid.New().String(), "", "e1", false, entity.TypeString))
-	fields = append(fields, makeNewField("Name", uuid.New().String(), "", "", false, entity.TypeString))
-	fields = append(fields, makeNewField("Email", uuid.New().String(), "", "", false, entity.TypeString))
+	fields = append(fields, makeNewField("Email", uuid.New().String(), "e1", false, entity.TypeString))
+	fields = append(fields, makeNewField("Name", uuid.New().String(), "", false, entity.TypeString))
+	fields = append(fields, makeNewField("Email", uuid.New().String(), "", false, entity.TypeString))
 	return fields
 }
 
-func makeNewField(name, key, value, reference string, hidden bool, dataType entity.FieldType) entity.Field {
+func makeNewField(name, key, value string, hidden bool, dataType entity.DType) entity.Field {
 	field := entity.Field{
-		Name:      name,
-		Key:       key,
-		DataType:  dataType,
-		Value:     value,
-		Unique:    true,
-		Hidden:    hidden,
-		Reference: reference,
+		Name:     name,
+		Key:      key,
+		DataType: dataType,
+		Value:    value,
+		Unique:   true,
+		Hidden:   hidden,
 	}
 	return field
 }
