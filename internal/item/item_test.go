@@ -10,25 +10,34 @@ import (
 )
 
 var (
-	accountID = "2d247443-b257-4b06-ba99-493cf9d83ce7"
-	entityID  = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
-	itemID    = "12345"
-	fieldID   = "4d247443-b257-4b06-ba99-493cf9d83ce7"
+	accountID = "2c247443-b257-4b06-ba99-493cf9d83ce7"
+	entityID1 = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
+	entityID2 = "8d9c4f94-890b-484c-8189-91c3d7e8e50c"
+	itemID1   = "12345"
+	itemID2   = "54321"
+	fieldID1  = "4d247443-b257-4b06-ba99-493cf9d83ce7"
+	fieldID2  = "5d247443-b257-4b06-ba99-493cf9d83ce7"
 	Name1     = "Panchavan Pari Venthan"
 	Name2     = "Kosakshi Pasapughaz"
 	colors    = []string{"blue", "yellow"}
+	ref       = entity.RefMap(entityID2, itemID2)
 
 	//item
 	properties = map[string]interface{}{
-		"id":    itemID,
-		"name":  Name1,
-		"age":   32,
-		"male":  true,
-		fieldID: colors,
+		"id":     itemID1,
+		"name":   Name1,
+		"age":    32,
+		"male":   true,
+		fieldID1: colors,
+		fieldID2: ref,
 	}
 	// updated item
-	updatedProperties = map[string]interface{}{
-		"name": Name2,
+	updatedFields = []entity.Field{
+		entity.Field{
+			Key:      "name",
+			DataType: entity.TypeString,
+			Value:    Name2,
+		},
 	}
 	//entity field skeleton
 	entityFields = []entity.Field{
@@ -45,17 +54,26 @@ var (
 			DataType: entity.TypeNumber,
 		},
 		entity.Field{
-			Key:      fieldID,
+			Key:      fieldID1,
 			DataType: entity.TypeList,
 			Field: &entity.Field{
 				Key:      "element",
 				DataType: entity.TypeString,
 			},
 		},
+		entity.Field{
+			Key:      fieldID2,
+			DataType: entity.TypeReference,
+			Field: &entity.Field{
+				Key:      "score",
+				DataType: entity.TypeNumber,
+				Value:    100,
+			},
+		},
 	}
 
 	fields = entity.FillFieldValues(entityFields, properties)
-	gpb    = item.BuildGNode(accountID, entityID).MakeBaseGNode(itemID, fields)
+	gpb    = item.BuildGNode(accountID, entityID1).MakeBaseGNode(itemID1, fields)
 )
 
 var (
@@ -67,8 +85,8 @@ var (
 			Value:      "50",
 		},
 		entity.Field{
-			Key:      fieldID,
-			DataType: "L",
+			Key:      fieldID1,
+			DataType: entity.TypeList,
 			Field: &entity.Field{
 				Expression: "=",
 				Key:        "element",
@@ -77,22 +95,19 @@ var (
 			},
 		},
 		entity.Field{
-			Key:      fieldID, //replace here with the entityID
-			DataType: "R",
+			Key:      fieldID2,
+			Value:    ref,
+			DataType: entity.TypeReference,
 			Field: &entity.Field{
 				Expression: "=",
-				Key:        "element", //fieldID of the entity
-				DataType:   entity.TypeString,
-				Value:      "yellow",
+				Key:        "score",
+				DataType:   entity.TypeNumber,
+				Value:      100,
 			},
 		},
 	}
-	seg = entity.Segment{
-		Match:           entity.MatchAll,
-		FieldConditions: conditionFields,
-	}
 
-	gSegment = item.BuildGNode(accountID, entityID).SegmentBaseGNode(seg)
+	gSegment = item.BuildGNode(accountID, entityID1).SegmentBaseGNode(conditionFields)
 )
 
 func TestGraph(t *testing.T) {
@@ -112,7 +127,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen fetching the created item to the graph")
 		{
-			n, err := item.GetNode(residPool, accountID, entityID, itemID)
+			n, err := item.GetNode(residPool, accountID, entityID1, itemID1)
 			if err != nil {
 				t.Fatalf("\t%s should not throw any error during the fetch - %s", tests.Failed, err)
 			}
@@ -126,8 +141,8 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen updating the existing item to the graph")
 		{
-			gpb.Properties = updatedProperties
-			_, err := item.UpsertNode(residPool, gpb)
+			updateNameGbp := item.BuildGNode(accountID, entityID1).MakeBaseGNode(itemID1, updatedFields)
+			_, err := item.UpsertNode(residPool, updateNameGbp)
 			if err != nil {
 				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)
 			}

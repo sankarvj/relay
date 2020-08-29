@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"fmt"
 	"log"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestEmailRuleRunner(t *testing.T) {
 		{
 			e1 := schema.SeedEntityContactID
 			e2 := schema.SeedEntityEmailID
-			//k1 := schema.SeedFieldKeyContactName
+			k1 := schema.SeedFieldKeyContactName
 			i1 := schema.SeedItemContactID1
 			i2 := schema.SeedItemEmailID
 
@@ -32,11 +33,11 @@ func TestEmailRuleRunner(t *testing.T) {
 			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
 
 			node := node.Node{
-				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
-				Variables: vars,
-				Actuals:   acts,
-				ActorID:   e2,
-				Type:      node.Email,
+				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
+				Variables:  vars,
+				Actuals:    acts,
+				ActorID:    e2,
+				Type:       node.Email,
 			}
 
 			_, err := engine.RunRuleEngine(tests.Context(), db, node)

@@ -3,7 +3,6 @@ package item
 import (
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/gomodule/redigo/redis"
@@ -23,13 +22,12 @@ func graph(graphName string, conn redis.Conn) rg.Graph {
 
 //GraphNode takes an item and build the bule print of the nodes and relationships
 type GraphNode struct {
-	GraphName       string
-	Label           string
-	ItemID          string
-	Properties      map[string]interface{}  // properties during write
-	FieldConditions map[string]entity.Field // conditions during read
-	Contains        []GraphNode             // list/map fields
-	Has             []GraphNode             // reference fields
+	GraphName string
+	Label     string
+	ItemID    string
+	Fields    []entity.Field
+	Contains  []GraphNode // list/map fields
+	Has       []GraphNode // reference fields
 }
 
 //GetNode fetches the node for the id provided
@@ -62,12 +60,12 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	srcNode := gn.RgNode(false)
+	srcNode := gn.RgNodeSource()
 	s := matchNode(srcNode)
 	wc := where(gn, srcNode.Alias)
 
 	for _, cn := range gn.Contains {
-		dstNode := cn.RgNode(false)
+		dstNode := cn.RgNode()
 		edge := rg.EdgeNew("contains", srcNode, dstNode, nil)
 		s = append(s, matchNode(dstNode)...)
 		s = append(s, matchEdge(edge)...)
@@ -86,15 +84,16 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 }
 
 func where(gn GraphNode, alias string) []string {
-	p := make([]string, 0, len(gn.Properties))
-	if len(gn.FieldConditions) > 0 {
-		for _, condition := range gn.FieldConditions {
-			if condition.DataType == "S" {
-				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, condition.Key, condition.Expression, condition.Value))
-			} else if condition.DataType == "N" {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Expression, condition.Value))
-			} else {
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, condition.Key, condition.Expression, condition.Value))
+	p := make([]string, 0, len(gn.Fields))
+	if len(gn.Fields) > 0 {
+		for _, f := range gn.Fields {
+			switch f.DataType {
+			case entity.TypeString:
+				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, f.Key, f.Expression, f.Value))
+			case entity.TypeNumber:
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
+			default:
+				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
 			}
 		}
 	}
@@ -117,21 +116,18 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 //"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
 func mergeProperties(gn GraphNode) string {
-	srcNode := gn.RgNode(false)
+	srcNode := gn.RgNodeSource()
 	s := mergeNode(srcNode)
-	if len(gn.Properties) > 0 {
-		p := make([]string, 0, len(gn.Properties))
-		for k, v := range gn.Properties {
-			if k == "id" {
-				continue
-			}
+	props := gn.properties(true)
+	if len(props) > 0 {
+		p := make([]string, 0, len(props))
+		for k, v := range props {
+			//TODO: skip for `id`
 			p = append(p, fmt.Sprintf("%s.%s = %v", srcNode.Alias, k, rg.ToString(v)))
 		}
-
 		s = append(s, "SET")
 		s = append(s, strings.Join(p, ", "))
 	}
-
 	return strings.Join(s, " ")
 }
 
@@ -141,16 +137,17 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	srcNode := gn.RgNode(false)
+	srcNode := gn.RgNodeSource()
 	s := matchNode(srcNode)
 
 	for _, cn := range gn.Contains {
-		dstNode := cn.RgNode(true)
+		dstNode := cn.RgNodeProps()
+		log.Printf("dstNode -- %v", dstNode)
 		s = append(s, mergeRelation("contains", srcNode, dstNode)...)
 	}
 
 	for _, hn := range gn.Has {
-		dstNode := hn.RgNode(true)
+		dstNode := hn.RgNodeProps()
 		s = append(s, mergeRelation("has", srcNode, dstNode)...)
 	}
 	if len(gn.Contains) == 0 && len(gn.Has) == 0 {
@@ -200,62 +197,75 @@ func quote(label string) string {
 
 func BuildGNode(graphName, label string) GraphNode {
 	gn := GraphNode{
-		GraphName:       graphName,
-		Label:           quote(label),
-		Properties:      map[string]interface{}{},
-		FieldConditions: map[string]entity.Field{},
-		Contains:        make([]GraphNode, 0),
-		Has:             make([]GraphNode, 0),
+		GraphName: graphName,
+		Label:     quote(label),
+		Fields:    []entity.Field{},
+		Contains:  make([]GraphNode, 0),
+		Has:       make([]GraphNode, 0),
 	}
 	return gn
 }
 
 func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNode {
 	gn.ItemID = itemID
-	gn.Properties[quote(entity.FieldIdKey)] = gn.ItemID
 
-	for _, field := range fields {
-		if field.IsKeyId() {
+	for _, f := range fields {
+		if f.IsKeyId() {
 			continue
 		}
-		switch field.DataType {
+		switch f.DataType {
 		case entity.TypeList:
-			for _, element := range field.Value.([]string) {
-				cn := BuildGNode(gn.GraphName, field.Key)
-				cn.Properties[quote(field.Field.Key)] = element
+			for _, element := range f.Value.([]string) {
+				cn := BuildGNode(gn.GraphName, f.Key).MakeBaseGNode("", []entity.Field{entity.Field{Key: f.Field.Key, DataType: f.Field.DataType, Value: element}})
 				gn.Contains = append(gn.Contains, cn)
 			}
 		case entity.TypeReference:
+			rEntityID, rItemID := f.Ref()
+			//TODO: handle cyclic looping
+			cn := BuildGNode(gn.GraphName, rEntityID).MakeBaseGNode(rItemID, []entity.Field{*f.Field})
+			gn.Has = append(gn.Has, cn)
 		default:
-			gn.Properties[quote(field.Key)] = field.Value
+			gn.Fields = append(gn.Fields, f)
 		}
 	}
 	return gn
 }
 
-func (gn GraphNode) SegmentBaseGNode(seg entity.Segment) GraphNode {
-	for i, fc := range seg.FieldConditions {
-		switch fc.DataType {
+func (gn GraphNode) SegmentBaseGNode(fields []entity.Field) GraphNode {
+	for _, f := range fields {
+		switch f.DataType {
 		case entity.TypeList:
-			cn := BuildGNode(gn.GraphName, fc.Key)
-			cn.FieldConditions[strconv.Itoa(i)] = *fc.Field
+			cn := BuildGNode(gn.GraphName, f.Key).MakeBaseGNode("", []entity.Field{*f.Field})
 			gn.Contains = append(gn.Contains, cn)
 		case entity.TypeReference:
 		default:
-			gn.FieldConditions[strconv.Itoa(i)] = fc
+			gn.Fields = append(gn.Fields, f)
 		}
 	}
 	return gn
 }
 
-func (gn GraphNode) RgNode(withProps bool) *rg.Node {
-	if withProps {
-		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.Properties)
+func (gn GraphNode) RgNodeSource() *rg.Node {
+	return rg.NodeNew(gn.Label, rg.RandomString(10), gn.properties(false))
+}
+
+func (gn GraphNode) RgNodeProps() *rg.Node {
+	return rg.NodeNew(gn.Label, rg.RandomString(10), gn.properties(true))
+}
+
+func (gn GraphNode) RgNode() *rg.Node {
+	return rg.NodeNew(gn.Label, rg.RandomString(10), nil)
+}
+
+func (gn GraphNode) properties(props bool) map[string]interface{} {
+	properties := map[string]interface{}{}
+	if props {
+		for _, field := range gn.Fields {
+			properties[quote(field.Key)] = field.Value
+		}
 	}
 	if gn.ItemID != "" {
-		return rg.NodeNew(gn.Label, rg.RandomString(10), map[string]interface{}{
-			quote(entity.FieldIdKey): gn.ItemID,
-		})
+		properties[quote(entity.FieldIdKey)] = gn.ItemID
 	}
-	return rg.NodeNew(gn.Label, rg.RandomString(10), nil)
+	return properties
 }
