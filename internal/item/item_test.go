@@ -10,28 +10,31 @@ import (
 )
 
 var (
-	accountID = "2c247443-b257-4b06-ba99-493cf9d83ce7"
-	entityID1 = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
-	entityID2 = "8d9c4f94-890b-484c-8189-91c3d7e8e50c"
-	itemID1   = "12345"
-	itemID2   = "54321"
-	fieldID1  = "4d247443-b257-4b06-ba99-493cf9d83ce7"
-	fieldID2  = "5d247443-b257-4b06-ba99-493cf9d83ce7"
-	Name1     = "Panchavan Pari Venthan"
-	Name2     = "Kosakshi Pasapughaz"
-	colors    = []string{"blue", "yellow"}
-	ref       = entity.RefMap(entityID2, itemID2)
+	accountID       = "2c247443-b257-4b06-ba99-493cf9d83ce7"
+	contactEntityID = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
+	taskEntityID    = "8d9c4f94-890b-484c-8189-91c3d7e8e50c"
+	dealEntityID    = "109c4f94-890b-484c-8189-91c3d7e8e50c"
+	contactItemID   = "12345"
+	taskItemID      = "54321"
+	dealItemID      = "26436"
+	fieldID1        = "4d247443-b257-4b06-ba99-493cf9d83ce7"
+	taskRefFieldID  = "5d247443-b257-4b06-ba99-493cf9d83ce7"
+	dealRefFieldID  = "33333343-b257-4b06-ba99-493cf9d83ce7"
+	Name1           = "Panchavan Pari Venthan"
+	Name2           = "Kosakshi Pasapughaz"
+	colors          = []string{"blue", "yellow"}
+	ref             = entity.RefMap(taskEntityID, taskItemID)
 
-	//item
-	properties = map[string]interface{}{
-		"id":     itemID1,
-		"name":   Name1,
-		"age":    32,
-		"male":   true,
-		fieldID1: colors,
-		fieldID2: ref,
+	//gbp1
+	contactProperties = map[string]interface{}{
+		"id":           contactItemID,
+		"name":         Name1,
+		"age":          32,
+		"male":         true,
+		fieldID1:       colors,
+		taskRefFieldID: ref,
 	}
-	// updated item
+	// updated contact fields
 	updatedFields = []entity.Field{
 		entity.Field{
 			Key:      "name",
@@ -39,8 +42,8 @@ var (
 			Value:    Name2,
 		},
 	}
-	//entity field skeleton
-	entityFields = []entity.Field{
+	//contact entity field skeleton
+	contactEntityFields = []entity.Field{
 		entity.Field{
 			Key:      "id",
 			DataType: entity.TypeString,
@@ -62,18 +65,62 @@ var (
 			},
 		},
 		entity.Field{
-			Key:      fieldID2,
+			Key:      taskRefFieldID,
 			DataType: entity.TypeReference,
 			Field: &entity.Field{
 				Key:      "score",
 				DataType: entity.TypeNumber,
-				Value:    100,
 			},
 		},
 	}
 
-	fields = entity.FillFieldValues(entityFields, properties)
-	gpb    = item.BuildGNode(accountID, entityID1).MakeBaseGNode(itemID1, fields)
+	//gbp2
+	dealProperties = map[string]interface{}{
+		"name":         "Deal1",
+		"amount":       999,
+		dealRefFieldID: entity.RefMap(contactEntityID, contactItemID),
+	}
+	dealEntityFields = []entity.Field{
+		entity.Field{
+			Key:      "name",
+			DataType: entity.TypeString,
+		},
+		entity.Field{
+			Key:      "amount",
+			DataType: entity.TypeNumber,
+		},
+		entity.Field{
+			Key:      dealRefFieldID,
+			DataType: entity.TypeReference,
+			Field: &entity.Field{
+				Key:      "name",
+				DataType: entity.TypeString,
+			},
+		},
+	}
+
+	//gbp0
+	taskProperties = map[string]interface{}{
+		"name":  "Task1",
+		"score": 100,
+	}
+	taskEntityFields = []entity.Field{
+		entity.Field{
+			Key:      "name",
+			DataType: entity.TypeString,
+		},
+		entity.Field{
+			Key:      "score",
+			DataType: entity.TypeNumber,
+		},
+	}
+
+	taskFields    = entity.FillFieldValues(taskEntityFields, taskProperties)
+	gpb0          = item.BuildGNode(accountID, taskEntityID).MakeBaseGNode(taskItemID, taskFields)
+	contactFields = entity.FillFieldValues(contactEntityFields, contactProperties)
+	gpb1          = item.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, contactFields)
+	dealFields    = entity.FillFieldValues(dealEntityFields, dealProperties)
+	gpb2          = item.BuildGNode(accountID, dealEntityID).MakeBaseGNode(dealItemID, dealFields)
 )
 
 var (
@@ -95,7 +142,7 @@ var (
 			},
 		},
 		entity.Field{
-			Key:      fieldID2,
+			Key:      taskRefFieldID,
 			Value:    ref,
 			DataType: entity.TypeReference,
 			Field: &entity.Field{
@@ -105,29 +152,76 @@ var (
 				Value:      100,
 			},
 		},
+		entity.Field{
+			Value:    entity.RefMap(dealEntityID, ""),
+			DataType: entity.TypeReference,
+			Field: &entity.Field{
+				Expression: ">",
+				Key:        "amount",
+				DataType:   entity.TypeNumber,
+				Value:      998,
+			},
+		},
 	}
 
-	gSegment = item.BuildGNode(accountID, entityID1).SegmentBaseGNode(conditionFields)
+	gSegment = item.BuildGNode(accountID, contactEntityID).SegmentBaseGNode(conditionFields)
 )
 
 func TestGraph(t *testing.T) {
 	residPool, teardown := tests.NewRedisUnit(t)
 	defer teardown()
-	log.Printf("gpb %+v", gpb)
+	log.Printf("gpb1 %+v", gpb1)
 	t.Log(" Given the need create nodes and edges")
 	{
-		t.Log("\twhen adding the new item to the graph")
+
+		t.Log("\twhen adding the task item to the graph")
 		{
-			_, err := item.UpsertNode(residPool, gpb)
+			_, err := item.UpsertNode(residPool, gpb0)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
 			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
 		}
 
-		t.Log("\twhen fetching the created item to the graph")
+		t.Log("\twhen adding the contact item to the graph with straight reference of task")
 		{
-			n, err := item.GetNode(residPool, accountID, entityID1, itemID1)
+			_, err := item.UpsertNode(residPool, gpb1)
+			if err != nil {
+				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
+		}
+
+		t.Log("\twhen adding the deal item to the graph with reverse reference of contact")
+		{
+			_, err := item.UpsertNode(residPool, gpb2)
+			if err != nil {
+				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
+		}
+
+		t.Log("\twhen adding a relation to the contact item to the graph")
+		{
+			_, err := item.UpsertEdge(residPool, gpb1)
+			if err != nil {
+				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should make a relation", tests.Success)
+		}
+
+		t.Log("\twhen adding a relation to the deal item to the graph")
+		{
+			_, err := item.UpsertEdge(residPool, gpb2)
+			if err != nil {
+				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should make a relation", tests.Success)
+		}
+
+		t.Log("\twhen fetching the created contact item from the graph")
+		{
+			n, err := item.GetNode(residPool, accountID, contactEntityID, contactItemID)
 			if err != nil {
 				t.Fatalf("\t%s should not throw any error during the fetch - %s", tests.Failed, err)
 			}
@@ -139,23 +233,14 @@ func TestGraph(t *testing.T) {
 			t.Logf("\t%s should fetch the node with %s", tests.Success, Name1)
 		}
 
-		t.Log("\twhen updating the existing item to the graph")
+		t.Log("\twhen updating the existing contact item to the graph")
 		{
-			updateNameGbp := item.BuildGNode(accountID, entityID1).MakeBaseGNode(itemID1, updatedFields)
+			updateNameGbp := item.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, updatedFields)
 			_, err := item.UpsertNode(residPool, updateNameGbp)
 			if err != nil {
 				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)
 			}
 			t.Logf("\t%s should update the exisiting node(item) with %s", tests.Success, Name2)
-		}
-
-		t.Log("\twhen adding a relation to the updated item to the graph")
-		{
-			_, err := item.UpsertEdge(residPool, gpb)
-			if err != nil {
-				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
-			}
-			t.Logf("\t%s should make a relation", tests.Success)
 		}
 
 		t.Log("\twhen fetching the updated item with relation to the graph")

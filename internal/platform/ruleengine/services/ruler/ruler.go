@@ -76,6 +76,8 @@ func Run(rule string, isExecutor bool, workChan chan Work) {
 		}
 	} else {
 		r = r.startParsingLexer(rule)
+		//NOTE: This might cause adverse effects in the html contents. Take note
+		r.content = strings.TrimSpace(r.content)
 		workChan <- Work{Content, r.content, nil}
 	}
 
@@ -96,6 +98,8 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
 			r.addLTCompareOperation()
+		case lexertoken.TokenINSign:
+			r.addINOperation()
 		case lexertoken.TokenANDOperation:
 			r.addANDCondition()
 		case lexertoken.TokenOROperation:
@@ -106,6 +110,8 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 			r.addTrigger(token.Value)
 		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
 			r.execute()
+		case lexertoken.TokenQuery:
+			r.query(strings.TrimSpace(token.Value))
 		case lexertoken.TokenGibberish:
 			r.addGibbrish(token.Value)
 		case lexertoken.TokenEOF:
@@ -174,6 +180,12 @@ func (r *Ruler) addLTCompareOperation() error {
 	return nil
 }
 
+func (r *Ruler) addINOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = in
+	return nil
+}
+
 func (r *Ruler) addANDCondition() error {
 	r.constructRuleItem()
 	r.RuleItem.isANDOp = true
@@ -212,6 +224,13 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 	}
 	r.positive = &temp
 	r.RuleItem = nil
+}
+
+func (r *Ruler) query(q string) {
+	log.Printf("query %v", q)
+	r.constructRuleItem()
+	opResult := true
+	r.saveAndResetRuleItem(opResult)
 }
 
 func (r *Ruler) execute() error {

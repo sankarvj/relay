@@ -170,8 +170,11 @@ func (f Field) IsKeyId() bool {
 	return f.Key == FieldIdKey
 }
 
-func (f Field) Ref() (string, string) {
-	ref := f.Value.(map[string]string)
+func (f Field) RefList() []map[string]string {
+	return f.Value.([]map[string]string)
+}
+
+func (f Field) Ref(ref map[string]string) (string, string) {
 	return ref["entity_id"], ref["item_id"]
 }
 
@@ -180,9 +183,11 @@ func (f Field) SetRef(entityID, itemID string) Field {
 	return f
 }
 
-func RefMap(entityID, itemID string) map[string]string {
-	return map[string]string{
-		"entity_id": entityID,
-		"item_id":   itemID,
+func RefMap(entityID, itemID string) []map[string]string {
+	return []map[string]string{
+		{
+			"entity_id": entityID,
+			"item_id":   itemID,
+		},
 	}
 }

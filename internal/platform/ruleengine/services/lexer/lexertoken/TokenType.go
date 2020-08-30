@@ -14,14 +14,20 @@ const (
 	TokenRightBrace
 	TokenLeftSnippet
 	TokenRightSnippet
+	TokenLeftDoubleSnippet
+	TokenRightDoubleSnippet
+	TokenSnippet
 
 	TokenEqualSign
 	TokenGTSign
 	TokenLTSign
+	TokenINSign
+
 	TokenANDOperation
 	TokenOROperation
+
 	TokenValuate
+	TokenQuery
 	TokenValue
 	TokenGibberish
-	TokenSnippet
 )

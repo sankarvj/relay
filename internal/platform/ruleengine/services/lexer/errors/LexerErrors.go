@@ -9,4 +9,6 @@ const (
 	LexerErrorMissingValueOpener    string = "Missing a opening value brace"
 	LexerErrorMissingSnippetOpener  string = "Missing a opening snippet symbol"
 	LexerErrorMissingSnippetClosure string = "Missing a closing snippet symbol"
+	LexerErrorMissingQueryOpener    string = "Missing a opening query symbol"
+	LexerErrorMissingQueryClosure   string = "Missing a closing query symbol"
 )

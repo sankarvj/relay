@@ -14,29 +14,33 @@ type OperandDT int
 
 //DataType enum
 const (
-	StrDT OperandDT = iota
+	UnknownDT OperandDT = iota
+	StrDT
 	NumberDT
 	VersionDT
-	UnknownDT
+	ListDT
 )
 
 type caster struct {
-	leftNumber  float64
-	rightNumber float64
-	leftString  string
-	rightString string
-	dataType    OperandDT
-	err         error
+	leftNumber    float64
+	rightNumber   float64
+	leftString    string
+	rightString   string
+	leftDataType  OperandDT
+	rightDataType OperandDT
+	err           error
+	casters       []interface{}
 }
 
 func compare(left, right Operand) bool {
-	c := cast(left, right)
+
+	c := cast(left, right, true)
 	if c.err != nil {
 		log.Println("eq error comparing operands", c.err)
 		return false
 	}
 
-	switch c.dataType {
+	switch c.leftDataType {
 	case StrDT:
 		return c.leftString == c.rightString
 	case NumberDT:
@@ -50,12 +54,12 @@ func compare(left, right Operand) bool {
 }
 
 func greaterThan(left, right Operand) bool {
-	c := cast(left, right)
+	c := cast(left, right, true)
 	if c.err != nil {
 		log.Println("gt error comparing operands", c.err)
 		return false
 	}
-	switch c.dataType {
+	switch c.leftDataType {
 	case NumberDT:
 		return c.leftNumber > c.rightNumber
 	}
@@ -63,20 +67,46 @@ func greaterThan(left, right Operand) bool {
 }
 
 func lesserThan(left, right Operand) bool {
-	c := cast(left, right)
+	c := cast(left, right, true)
 	if c.err != nil {
 		log.Println("lt error comparing operands", c.err)
 		return false
 	}
 
-	switch c.dataType {
+	switch c.leftDataType {
 	case NumberDT:
 		return c.leftNumber < c.rightNumber
 	}
 	return false
 }
 
-func cast(left, right Operand) caster {
+func in(left, right Operand) bool {
+	c := cast(left, right, false)
+	if c.err != nil {
+		log.Println("in error comparing operands", c.err)
+		return false
+	}
+	switch c.leftDataType {
+	case ListDT:
+		switch c.rightDataType {
+		case StrDT:
+			for _, v := range c.casters {
+				if compare(v, c.rightString) {
+					return true
+				}
+			}
+		case NumberDT:
+			for _, v := range c.casters {
+				if compare(v, c.rightNumber) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func cast(left, right Operand, checkEquality bool) caster {
 	log.Printf("compare left: %v (%T) vs right: %v (%T)", left, left, right, right)
 	c := caster{}
 	if left == nil || right == nil {
@@ -85,6 +115,10 @@ func cast(left, right Operand) caster {
 	}
 	c.setLeft(left)
 	c.setRight(right)
+
+	if checkEquality && (c.rightDataType != c.leftDataType) {
+		c.err = fmt.Errorf("Can't do operation in two different operand types %v & %v", c.leftDataType, c.rightDataType)
+	}
 	return c
 }
 
@@ -94,19 +128,22 @@ func (c *caster) setLeft(left Operand) {
 		c.err = fmt.Errorf("unexpected type %T", v)
 	case int:
 		c.leftNumber = float64(left.(int))
-		c.dataType = NumberDT
+		c.leftDataType = NumberDT
 	case int64:
 		c.leftNumber = float64(left.(int64))
-		c.dataType = NumberDT
+		c.leftDataType = NumberDT
 	case float64:
 		c.leftNumber = float64(left.(float64))
-		c.dataType = NumberDT
+		c.leftDataType = NumberDT
 	case string:
 		c.leftString = left.(string)
-		c.dataType = c.deepCaster()
+		c.leftDataType = c.deepCaster()
 	case bool:
 		c.leftString = strconv.FormatBool(left.(bool))
-		c.dataType = c.deepCaster()
+		c.leftDataType = c.deepCaster()
+	case []interface{}:
+		c.casters = left.([]interface{})
+		c.leftDataType = ListDT
 	}
 }
 
@@ -114,28 +151,27 @@ func (c *caster) setRight(right Operand) {
 	if c.err != nil {
 		return
 	}
-	rightDataType := UnknownDT
 	switch v := right.(type) {
 	default:
 		c.err = fmt.Errorf("unexpected type %T", v)
 	case int:
 		c.rightNumber = float64(right.(int))
-		rightDataType = NumberDT
+		c.rightDataType = NumberDT
 	case int64:
 		c.rightNumber = float64(right.(int64))
-		rightDataType = NumberDT
+		c.rightDataType = NumberDT
 	case float64:
 		c.rightNumber = float64(right.(float64))
-		rightDataType = NumberDT
+		c.rightDataType = NumberDT
 	case string:
 		c.rightString = right.(string)
-		rightDataType = c.deepCaster()
+		c.rightDataType = c.deepCaster()
 	case bool:
 		c.rightString = strconv.FormatBool(right.(bool))
-		rightDataType = c.deepCaster()
-	}
-	if rightDataType != c.dataType {
-		c.err = fmt.Errorf("Can't do operation in two different operand types %v & %v", c.dataType, rightDataType)
+		c.rightDataType = c.deepCaster()
+	case []interface{}:
+		c.casters = right.([]interface{})
+		c.rightDataType = ListDT
 	}
 }
 

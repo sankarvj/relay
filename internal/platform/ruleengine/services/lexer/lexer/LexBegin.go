@@ -17,8 +17,12 @@ func LexBegin(lexer *Lexer) LexFn {
 		return LexLeftDoubleBrace
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LeftBrace) {
 		return LexLeftBrace
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LeftDoubleSnippet) {
+		return LexLeftDoubleSnippet
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.EqualSign) {
 		return LexEqualSign
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.INSign) {
+		return LexINSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.GTSign) {
 		return LexGTSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LTSign) {
