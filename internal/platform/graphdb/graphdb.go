@@ -1,4 +1,4 @@
-package item
+package graphdb
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type GraphNode struct {
 	Label        string
 	RelationName string
 	ItemID       string
-	Fields       []entity.Field
+	Fields       []Field
 	Relations    []GraphNode // list/map fields
 	IsReverse    bool
 }
@@ -92,9 +92,9 @@ func where(gn GraphNode, alias string) []string {
 	if len(gn.Fields) > 0 {
 		for _, f := range gn.Fields {
 			switch f.DataType {
-			case entity.TypeString:
+			case TypeString:
 				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, f.Key, f.Expression, f.Value))
-			case entity.TypeNumber:
+			case TypeNumber:
 				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
 			default:
 				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
@@ -108,6 +108,7 @@ func where(gn GraphNode, alias string) []string {
 //UpsertNode create/update the node with the given properties.
 //Properties should not include text area, lists, maps, reference.
 //TODO: For update, properties should include only the modified values including null for deleted keys.
+//TODO: handle deleted field/field values
 func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -198,7 +199,7 @@ func BuildGNode(graphName, label string) GraphNode {
 	gn := GraphNode{
 		GraphName: graphName,
 		Label:     quote(label),
-		Fields:    []entity.Field{},
+		Fields:    []Field{},
 		Relations: make([]GraphNode, 0),
 	}
 	return gn
@@ -212,7 +213,7 @@ func (gn GraphNode) Relate(name string) GraphNode {
 	return gn
 }
 
-func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNode {
+func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	gn.ItemID = itemID
 
 	for _, f := range fields {
@@ -222,21 +223,21 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 		switch f.DataType {
 		case entity.TypeList:
 			for _, element := range f.Value.([]string) {
+				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key).
-					MakeBaseGNode("", []entity.Field{entity.Field{Key: f.Field.Key, DataType: f.Field.DataType, Value: element}}).
+					MakeBaseGNode("", []Field{*f.Field}).
 					Relate("contains")
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-			for _, ref := range f.Value.([]map[string]string) {
-				rEntityID, rItemID := f.Ref(ref)
+			for _, ref := range f.RefList() {
+				rEntityID, rItemID := fetchRef(ref)
 				rn := BuildGNode(gn.GraphName, rEntityID).
-					MakeBaseGNode(rItemID, []entity.Field{*f.Field}).
+					MakeBaseGNode(rItemID, []Field{*f.Field}).
 					Relate("has")
 				gn.Relations = append(gn.Relations, rn)
 			}
-
 		default:
 			gn.Fields = append(gn.Fields, f)
 		}
@@ -244,23 +245,22 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []entity.Field) GraphNod
 	return gn
 }
 
-func (gn GraphNode) SegmentBaseGNode(fields []entity.Field) GraphNode {
+func (gn GraphNode) SegmentBaseGNode(fields []Field) GraphNode {
 	for _, f := range fields {
 		switch f.DataType {
 		case entity.TypeList:
 			rn := BuildGNode(gn.GraphName, f.Key).
-				MakeBaseGNode("", []entity.Field{*f.Field}).
+				MakeBaseGNode("", []Field{*f.Field}).
 				Relate("contains")
 			gn.Relations = append(gn.Relations, rn)
 		case entity.TypeReference:
-			for _, ref := range f.Value.([]map[string]string) {
-				rEntityID, rItemID := f.Ref(ref)
+			for _, ref := range f.RefList() {
+				rEntityID, rItemID := fetchRef(ref)
 				rn := BuildGNode(gn.GraphName, rEntityID).
-					MakeBaseGNode(rItemID, []entity.Field{*f.Field}).
+					MakeBaseGNode(rItemID, []Field{*f.Field}).
 					Relate("has")
 				gn.Relations = append(gn.Relations, rn)
 			}
-
 		default:
 			gn.Fields = append(gn.Fields, f)
 		}
@@ -274,7 +274,6 @@ func (gn GraphNode) RgNodeProps() *rg.Node {
 	} else {
 		return gn.RgNode()
 	}
-
 }
 
 func (gn GraphNode) RgNode() *rg.Node {
@@ -283,13 +282,13 @@ func (gn GraphNode) RgNode() *rg.Node {
 
 func (gn GraphNode) properties(props bool) map[string]interface{} {
 	properties := map[string]interface{}{}
+	if gn.ItemID != "" {
+		properties[quote(FieldIdKey)] = gn.ItemID
+	}
 	if props {
 		for _, field := range gn.Fields {
 			properties[quote(field.Key)] = field.Value
 		}
-	}
-	if gn.ItemID != "" {
-		properties[quote(entity.FieldIdKey)] = gn.ItemID
 	}
 	return properties
 }

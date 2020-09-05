@@ -164,7 +164,7 @@ func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemI
 
 func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	log.Printf(">>>>>>>>>>>>>>>>   The Item Has Entered The Node Flow Node ID: %v -- Entity ID: %v -- Item ID: %v -- Flow ID: %v", n.ID, n.Meta.EntityID, n.Meta.ItemID, n.FlowID)
-	if n.ID == node.Root { // add the flow entry event
+	if n.IsRootNode() { // add the flow entry event
 		logFlowEvent(ctx, db, n)
 	}
 

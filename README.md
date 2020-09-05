@@ -43,7 +43,12 @@ Though the events is not an regular entity the relationships still holds true fo
 #### example: item_test.go
 
 ### Workflow/Playbook/Pipeline
-1. Sequence of stages/goals with tasks in a single direction is called as playbook/pipelines.
+1. Sequence of task nodes is called as workflow
+2. Sequence of stages/goals with task nodes in a single direction is called as playbook/pipelines. 
+3. The flow types are:- Segment(1) & Pipeline(3)
+4. The pipeline flows will always hold the node type called stage.
+100. More about this in the package internal/rule READ.ME
+
 
 ### TODO
 1. Stop cyclic looping of references - pivot.go
@@ -53,6 +58,7 @@ Though the events is not an regular entity the relationships still holds true fo
 5. Add aggregation <,> in "IN" of list rule engine
 6. MathAny/MatchAll in segmentation/workflow
 7. ******* Add upsertEdge inside the upsert itself ********
+8. ******* Write READ.ME in the pipeline/playbooks/workflow ******
 
 
 

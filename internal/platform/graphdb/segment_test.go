@@ -1,11 +1,10 @@
-package item_test
+package graphdb_test
 
 import (
 	"log"
 	"testing"
 
-	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -23,7 +22,23 @@ var (
 	Name1           = "Panchavan Pari Venthan"
 	Name2           = "Kosakshi Pasapughaz"
 	colors          = []string{"blue", "yellow"}
-	ref             = entity.RefMap(taskEntityID, taskItemID)
+	ref             = graphdb.RefMap(taskEntityID, taskItemID)
+
+	//gbp0
+	taskProperties = map[string]interface{}{
+		"name":  "Task1",
+		"score": 100,
+	}
+	taskEntityFields = []graphdb.Field{
+		graphdb.Field{
+			Key:      "name",
+			DataType: graphdb.TypeString,
+		},
+		graphdb.Field{
+			Key:      "score",
+			DataType: graphdb.TypeNumber,
+		},
+	}
 
 	//gbp1
 	contactProperties = map[string]interface{}{
@@ -35,41 +50,42 @@ var (
 		taskRefFieldID: ref,
 	}
 	// updated contact fields
-	updatedFields = []entity.Field{
-		entity.Field{
+	updatedFields = []graphdb.Field{
+		graphdb.Field{
 			Key:      "name",
-			DataType: entity.TypeString,
+			DataType: graphdb.TypeString,
 			Value:    Name2,
 		},
 	}
+
 	//contact entity field skeleton
-	contactEntityFields = []entity.Field{
-		entity.Field{
+	contactEntityFields = []graphdb.Field{
+		graphdb.Field{
 			Key:      "id",
-			DataType: entity.TypeString,
+			DataType: graphdb.TypeString,
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      "name",
-			DataType: entity.TypeString,
+			DataType: graphdb.TypeString,
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      "age",
-			DataType: entity.TypeNumber,
+			DataType: graphdb.TypeNumber,
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      fieldID1,
-			DataType: entity.TypeList,
-			Field: &entity.Field{
+			DataType: graphdb.TypeList,
+			Field: &graphdb.Field{
 				Key:      "element",
-				DataType: entity.TypeString,
+				DataType: graphdb.TypeString,
 			},
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      taskRefFieldID,
-			DataType: entity.TypeReference,
-			Field: &entity.Field{
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{
 				Key:      "score",
-				DataType: entity.TypeNumber,
+				DataType: graphdb.TypeNumber,
 			},
 		},
 	}
@@ -78,93 +94,77 @@ var (
 	dealProperties = map[string]interface{}{
 		"name":         "Deal1",
 		"amount":       999,
-		dealRefFieldID: entity.RefMap(contactEntityID, contactItemID),
+		dealRefFieldID: graphdb.RefMap(contactEntityID, contactItemID),
 	}
-	dealEntityFields = []entity.Field{
-		entity.Field{
+	dealEntityFields = []graphdb.Field{
+		graphdb.Field{
 			Key:      "name",
-			DataType: entity.TypeString,
+			DataType: graphdb.TypeString,
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      "amount",
-			DataType: entity.TypeNumber,
+			DataType: graphdb.TypeNumber,
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      dealRefFieldID,
-			DataType: entity.TypeReference,
-			Field: &entity.Field{
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{
 				Key:      "name",
-				DataType: entity.TypeString,
+				DataType: graphdb.TypeString,
 			},
 		},
 	}
 
-	//gbp0
-	taskProperties = map[string]interface{}{
-		"name":  "Task1",
-		"score": 100,
-	}
-	taskEntityFields = []entity.Field{
-		entity.Field{
-			Key:      "name",
-			DataType: entity.TypeString,
-		},
-		entity.Field{
-			Key:      "score",
-			DataType: entity.TypeNumber,
-		},
-	}
-
-	taskFields    = entity.FillFieldValues(taskEntityFields, taskProperties)
-	gpb0          = item.BuildGNode(accountID, taskEntityID).MakeBaseGNode(taskItemID, taskFields)
-	contactFields = entity.FillFieldValues(contactEntityFields, contactProperties)
-	gpb1          = item.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, contactFields)
-	dealFields    = entity.FillFieldValues(dealEntityFields, dealProperties)
-	gpb2          = item.BuildGNode(accountID, dealEntityID).MakeBaseGNode(dealItemID, dealFields)
+	taskFields    = graphdb.FillFieldValues(taskEntityFields, taskProperties)
+	gpb0          = graphdb.BuildGNode(accountID, taskEntityID).MakeBaseGNode(taskItemID, taskFields)
+	contactFields = graphdb.FillFieldValues(contactEntityFields, contactProperties)
+	gpb1          = graphdb.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, contactFields)
+	dealFields    = graphdb.FillFieldValues(dealEntityFields, dealProperties)
+	gpb2          = graphdb.BuildGNode(accountID, dealEntityID).MakeBaseGNode(dealItemID, dealFields)
 )
 
 var (
-	conditionFields = []entity.Field{
-		entity.Field{
+	conditionFields = []graphdb.Field{
+		graphdb.Field{
 			Expression: "<",
 			Key:        "age",
-			DataType:   entity.TypeNumber,
+			DataType:   graphdb.TypeNumber,
 			Value:      "50",
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      fieldID1,
-			DataType: entity.TypeList,
-			Field: &entity.Field{
+			DataType: graphdb.TypeList,
+			Value:    []string{"yellow"},
+			Field: &graphdb.Field{
 				Expression: "=",
 				Key:        "element",
-				DataType:   entity.TypeString,
-				Value:      "yellow",
+				DataType:   graphdb.TypeString,
 			},
 		},
-		entity.Field{
+		graphdb.Field{
 			Key:      taskRefFieldID,
 			Value:    ref,
-			DataType: entity.TypeReference,
-			Field: &entity.Field{
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{
 				Expression: "=",
 				Key:        "score",
-				DataType:   entity.TypeNumber,
+				DataType:   graphdb.TypeNumber,
 				Value:      100,
 			},
 		},
-		entity.Field{
-			Value:    entity.RefMap(dealEntityID, ""),
-			DataType: entity.TypeReference,
-			Field: &entity.Field{
+		graphdb.Field{
+			Value:    graphdb.RefMap(dealEntityID, ""),
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{
 				Expression: ">",
 				Key:        "amount",
-				DataType:   entity.TypeNumber,
+				DataType:   graphdb.TypeNumber,
 				Value:      998,
 			},
 		},
 	}
 
-	gSegment = item.BuildGNode(accountID, contactEntityID).SegmentBaseGNode(conditionFields)
+	gSegment = graphdb.BuildGNode(accountID, contactEntityID).MakeBaseGNode("", conditionFields)
 )
 
 func TestGraph(t *testing.T) {
@@ -176,7 +176,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the task item to the graph")
 		{
-			_, err := item.UpsertNode(residPool, gpb0)
+			_, err := graphdb.UpsertNode(residPool, gpb0)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -185,7 +185,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the contact item to the graph with straight reference of task")
 		{
-			_, err := item.UpsertNode(residPool, gpb1)
+			_, err := graphdb.UpsertNode(residPool, gpb1)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -194,7 +194,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the deal item to the graph with reverse reference of contact")
 		{
-			_, err := item.UpsertNode(residPool, gpb2)
+			_, err := graphdb.UpsertNode(residPool, gpb2)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -203,7 +203,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding a relation to the contact item to the graph")
 		{
-			_, err := item.UpsertEdge(residPool, gpb1)
+			_, err := graphdb.UpsertEdge(residPool, gpb1)
 			if err != nil {
 				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
 			}
@@ -212,7 +212,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding a relation to the deal item to the graph")
 		{
-			_, err := item.UpsertEdge(residPool, gpb2)
+			_, err := graphdb.UpsertEdge(residPool, gpb2)
 			if err != nil {
 				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
 			}
@@ -221,7 +221,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen fetching the created contact item from the graph")
 		{
-			n, err := item.GetNode(residPool, accountID, contactEntityID, contactItemID)
+			n, err := graphdb.GetNode(residPool, accountID, contactEntityID, contactItemID)
 			if err != nil {
 				t.Fatalf("\t%s should not throw any error during the fetch - %s", tests.Failed, err)
 			}
@@ -235,8 +235,8 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen updating the existing contact item to the graph")
 		{
-			updateNameGbp := item.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, updatedFields)
-			_, err := item.UpsertNode(residPool, updateNameGbp)
+			updateNameGbp := graphdb.BuildGNode(accountID, contactEntityID).MakeBaseGNode(contactItemID, updatedFields)
+			_, err := graphdb.UpsertNode(residPool, updateNameGbp)
 			if err != nil {
 				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)
 			}
@@ -245,7 +245,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen fetching the updated item with relation to the graph")
 		{
-			_, err := item.GetResult(residPool, gSegment)
+			_, err := graphdb.GetResult(residPool, gSegment)
 			if err != nil {
 				t.Fatalf("\t%s should fetch with relation honda - %s", tests.Failed, err)
 			}
@@ -259,57 +259,3 @@ func TestGraph(t *testing.T) {
 	}
 
 }
-
-// var (
-// 	complexConditions = []segment.Condition{
-// 		segment.Condition{
-// 			Operator: ">",
-// 			Key:      "age",
-// 			Type:     "N",
-// 			Value:    "40",
-// 		},
-// 		segment.Condition{
-// 			Operator: "<",
-// 			Key:      "age",
-// 			Type:     "N",
-// 			Value:    "50",
-// 		},
-// 		segment.Condition{
-// 			Operator: "=",
-// 			Key:      "name",
-// 			Type:     "S",
-// 			Value:    "Siva",
-// 		},
-// 		segment.Condition{
-// 			Operator: "=",
-// 			EntityID: "colors",
-// 			Key:      "element",
-// 			Type:     "S",
-// 			Value:    "blue",
-// 			On:       segment.List,
-// 		},
-// 	}
-// 	complexSeg = segment.Segment{
-// 		Match:      segment.MatchAll,
-// 		Conditions: complexConditions,
-// 	}
-
-// 	gSegmentCom = item.BuildGNode(accountID, entityID).SegmentBaseGNode(complexSeg)
-// )
-
-// func TestSegmentBaseGNode(t *testing.T) {
-// 	residPool, teardown := tests.NewRedisUnit(t)
-// 	defer teardown()
-// 	t.Log(" Given the need to parse the segment into graph query")
-// 	{
-// 		t.Log("\twhen parsing AND conditions")
-// 		{
-// 			log.Printf("gbp1 ------> %+v", gSegmentCom)
-// 			_, err := item.GetResult(residPool, gSegmentCom)
-// 			if err != nil {
-// 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
-// 			}
-// 			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
-// 		}
-// 	}
-// }

@@ -6,10 +6,6 @@ import (
 	"github.com/lib/pq"
 )
 
-const (
-	FieldIdKey = "id"
-)
-
 // Entity represents the building block of all the tasks
 type Entity struct {
 	ID          string         `db:"entity_id" json:"id"`
@@ -81,7 +77,7 @@ type WebHookEntity struct {
 // Field represents structural format of attributes in entity
 type Field struct {
 	Name        string      `json:"name" validate:"required"`
-	DisplayName string      `json:"display_name" validate:"required"`
+	DisplayName string      `json:"display_name" validate:"required"` //do we need this? why not use name for display
 	Key         string      `json:"key" validate:"required"`
 	Value       interface{} `json:"value" validate:"required"`
 	DataType    DType       `json:"data_type" validate:"required"`
@@ -97,9 +93,6 @@ type Field struct {
 //DType defines the data type of field
 type DType string
 
-//Dom defines the visual representation of the field
-type Dom string
-
 //Mode for the entity spcifies certain entity specific characteristics
 const (
 	TypeString    DType = "S"
@@ -108,6 +101,9 @@ const (
 	TypeList            = "L"
 	TypeReference       = "R"
 )
+
+//Dom defines the visual representation of the field
+type Dom string
 
 //const defines the types of visual representation dom
 const (
