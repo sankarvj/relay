@@ -11,6 +11,14 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
+//GraphDB creates the base GraphNode with the fields of an item.
+//Once that has been created it uses base graphNode to create/update/segment/get in the redisGraph
+//GraphNode handles two cases - 1) CRUD 2) Segmentation
+//Both the use cases handled effortlessly by the graphNode.
+//Make sure to understand some of the concepts as well, for example
+//The lists field ite, will be added as the relationship with empty itemID
+//The segmentation may/may not contain the itemID
+
 var (
 	// ErrNoEdgeNodesToAssociate will returned when there is no edge nodes are available for making the relation with source node
 	ErrNoEdgeNodesToAssociate = errors.New("There is no edge nodes to associate with")
@@ -61,12 +69,12 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	srcNode := gn.RgNode()
+	srcNode := gn.justNode()
 	s := matchNode(srcNode)
 	wc := where(gn, srcNode.Alias)
 
 	for _, rn := range gn.Relations {
-		dstNode := rn.RgNode()
+		dstNode := rn.justNode()
 		edge := rg.EdgeNew(rn.RelationName, srcNode, dstNode, nil)
 		if rn.IsReverse {
 			edge = rg.EdgeNew(rn.RelationName, dstNode, srcNode, nil)
@@ -121,18 +129,23 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 //"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
 func mergeProperties(gn GraphNode) string {
-	srcNode := gn.RgNode()
+	srcNode := gn.rgNode()
 	s := mergeNode(srcNode)
-	props := gn.properties(true)
+	props := gn.onlyProps()
 	if len(props) > 0 {
 		p := make([]string, 0, len(props))
 		for k, v := range props {
-			//TODO: skip for `id`
 			p = append(p, fmt.Sprintf("%s.%s = %v", srcNode.Alias, k, rg.ToString(v)))
 		}
 		s = append(s, "SET")
 		s = append(s, strings.Join(p, ", "))
 	}
+
+	for _, rn := range gn.Relations {
+		dstNode := rn.rgNode()
+		s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
+	}
+
 	return strings.Join(s, " ")
 }
 
@@ -142,11 +155,11 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	srcNode := gn.RgNode()
+	srcNode := gn.rgNode()
 	s := matchNode(srcNode)
 
 	for _, rn := range gn.Relations {
-		dstNode := rn.RgNodeProps()
+		dstNode := rn.rgNode()
 		s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
 	}
 
@@ -191,10 +204,6 @@ func mergeEdge(e *rg.Edge) []string {
 	return s
 }
 
-func quote(label string) string {
-	return fmt.Sprintf("`%s`", label)
-}
-
 func BuildGNode(graphName, label string) GraphNode {
 	gn := GraphNode{
 		GraphName: graphName,
@@ -205,28 +214,16 @@ func BuildGNode(graphName, label string) GraphNode {
 	return gn
 }
 
-func (gn GraphNode) Relate(name string) GraphNode {
-	if gn.ItemID == "" && name == "has" {
-		gn.IsReverse = true
-	}
-	gn.RelationName = name
-	return gn
-}
-
 func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	gn.ItemID = itemID
 
 	for _, f := range fields {
-		if f.IsKeyId() {
-			continue
-		}
 		switch f.DataType {
 		case entity.TypeList:
 			for _, element := range f.Value.([]string) {
 				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key).
-					MakeBaseGNode("", []Field{*f.Field}).
-					Relate("contains")
+					MakeBaseGNode("", []Field{*f.Field}).relateLists()
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case entity.TypeReference:
@@ -234,8 +231,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			for _, ref := range f.RefList() {
 				rEntityID, rItemID := fetchRef(ref)
 				rn := BuildGNode(gn.GraphName, rEntityID).
-					MakeBaseGNode(rItemID, []Field{*f.Field}).
-					Relate("has")
+					MakeBaseGNode(rItemID, []Field{*f.Field}).relateRefs()
 				gn.Relations = append(gn.Relations, rn)
 			}
 		default:
@@ -245,50 +241,49 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	return gn
 }
 
-func (gn GraphNode) SegmentBaseGNode(fields []Field) GraphNode {
-	for _, f := range fields {
-		switch f.DataType {
-		case entity.TypeList:
-			rn := BuildGNode(gn.GraphName, f.Key).
-				MakeBaseGNode("", []Field{*f.Field}).
-				Relate("contains")
-			gn.Relations = append(gn.Relations, rn)
-		case entity.TypeReference:
-			for _, ref := range f.RefList() {
-				rEntityID, rItemID := fetchRef(ref)
-				rn := BuildGNode(gn.GraphName, rEntityID).
-					MakeBaseGNode(rItemID, []Field{*f.Field}).
-					Relate("has")
-				gn.Relations = append(gn.Relations, rn)
-			}
-		default:
-			gn.Fields = append(gn.Fields, f)
-		}
+//useful during all the upsertNode/upsertEdge
+//when id is not empty, choose node with id alone. (ref/create/update use-case)
+//when id is empty, choose all the properties. (list use-case)
+func (gn GraphNode) rgNode() *rg.Node {
+	if gn.ItemID == "" { //useful for list
+		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.onlyProps())
 	}
-	return gn
+	return gn.justNode()
 }
 
-func (gn GraphNode) RgNodeProps() *rg.Node {
-	if gn.ItemID == "" {
-		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.properties(true))
-	} else {
-		return gn.RgNode()
-	}
-}
-
-func (gn GraphNode) RgNode() *rg.Node {
-	return rg.NodeNew(gn.Label, rg.RandomString(10), gn.properties(false))
-}
-
-func (gn GraphNode) properties(props bool) map[string]interface{} {
+//useful during the get/upsertNode/upsertEdge
+//when id is not empty - form node with id alone. (ref/create/update use-case)
+//when id is empty - form node with out properties (segment use-case)
+func (gn GraphNode) justNode() *rg.Node {
 	properties := map[string]interface{}{}
-	if gn.ItemID != "" {
+	if gn.ItemID != "" { //useful for almost all the cases except the segmentation use-case
 		properties[quote(FieldIdKey)] = gn.ItemID
 	}
-	if props {
-		for _, field := range gn.Fields {
-			properties[quote(field.Key)] = field.Value
-		}
+	return rg.NodeNew(gn.Label, rg.RandomString(10), properties)
+}
+
+//useful during the upsert.
+func (gn GraphNode) onlyProps() map[string]interface{} {
+	properties := map[string]interface{}{}
+	for _, field := range gn.Fields {
+		properties[quote(field.Key)] = field.Value
 	}
 	return properties
+}
+
+func (gn GraphNode) relateRefs() GraphNode {
+	gn.RelationName = "has"
+	if gn.ItemID == "" { // reverse true on segmentations ref
+		gn.IsReverse = true
+	}
+	return gn
+}
+
+func (gn GraphNode) relateLists() GraphNode {
+	gn.RelationName = "contains"
+	return gn
+}
+
+func quote(label string) string {
+	return fmt.Sprintf("`%s`", label)
 }

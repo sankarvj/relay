@@ -201,23 +201,23 @@ func TestGraph(t *testing.T) {
 			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
 		}
 
-		t.Log("\twhen adding a relation to the contact item to the graph")
-		{
-			_, err := graphdb.UpsertEdge(residPool, gpb1)
-			if err != nil {
-				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
-			}
-			t.Logf("\t%s should make a relation", tests.Success)
-		}
+		// t.Log("\twhen adding a relation to the contact item to the graph")
+		// {
+		// 	_, err := graphdb.UpsertEdge(residPool, gpb1)
+		// 	if err != nil {
+		// 		t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
+		// 	}
+		// 	t.Logf("\t%s should make a relation", tests.Success)
+		// }
 
-		t.Log("\twhen adding a relation to the deal item to the graph")
-		{
-			_, err := graphdb.UpsertEdge(residPool, gpb2)
-			if err != nil {
-				t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
-			}
-			t.Logf("\t%s should make a relation", tests.Success)
-		}
+		// t.Log("\twhen adding a relation to the deal item to the graph")
+		// {
+		// 	_, err := graphdb.UpsertEdge(residPool, gpb2)
+		// 	if err != nil {
+		// 		t.Fatalf("\t%s should make a relation - %s", tests.Failed, err)
+		// 	}
+		// 	t.Logf("\t%s should make a relation", tests.Success)
+		// }
 
 		t.Log("\twhen fetching the created contact item from the graph")
 		{
@@ -243,7 +243,7 @@ func TestGraph(t *testing.T) {
 			t.Logf("\t%s should update the exisiting node(item) with %s", tests.Success, Name2)
 		}
 
-		t.Log("\twhen fetching the updated item with relation to the graph")
+		t.Log("\twhen segmenting the updated item with relation to the graph")
 		{
 			_, err := graphdb.GetResult(residPool, gSegment)
 			if err != nil {
