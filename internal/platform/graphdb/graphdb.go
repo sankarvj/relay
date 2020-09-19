@@ -313,8 +313,8 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-			for i, ref := range f.RefList() {
-				rEntityID, rItemID := fetchRef(ref)
+			for i, rItemID := range f.Value.([]string) {
+				rEntityID := f.RefID
 				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
 					MakeBaseGNode(rItemID, []Field{*f.Field}).relateRefs()
 				gn.Relations = append(gn.Relations, rn)

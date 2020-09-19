@@ -22,8 +22,8 @@ var (
 	Name1           = "Panchavan Paari Venthan"
 	Name2           = "Kosakshi Pasapughaz"
 	colors          = []string{"blue", "yellow"}
-	ref             = graphdb.RefMap(taskEntityID1, taskItemID1)
-	sref            = graphdb.RefMap(taskEntityID1, taskItemID2)
+	ref             = []string{taskItemID1}
+	sref            = []string{taskItemID2}
 
 	//gbp0
 	taskProperties1 = map[string]interface{}{
@@ -80,6 +80,7 @@ var (
 		graphdb.Field{
 			Key:      taskRefFieldID,
 			DataType: graphdb.TypeReference,
+			RefID:    taskEntityID1,
 			Field: &graphdb.Field{
 				Key:      "score",
 				DataType: graphdb.TypeNumber,
@@ -107,17 +108,9 @@ var (
 		graphdb.Field{
 			Key:          taskRefFieldID,
 			DataType:     graphdb.TypeReference,
+			RefID:        taskEntityID1,
 			UnlinkOffset: 2, // this will remove old task and set a new task relation
-			Value: []map[string]string{
-				{
-					"entity_id": taskEntityID1,
-					"item_id":   taskItemID2,
-				},
-				{
-					"entity_id": taskEntityID1,
-					"item_id":   taskItemID1,
-				},
-			},
+			Value:        []string{taskItemID2, taskItemID1},
 			Field: &graphdb.Field{
 				Key:      "score",
 				DataType: graphdb.TypeNumber,
@@ -129,7 +122,7 @@ var (
 	dealProperties = map[string]interface{}{
 		"name":         "Deal1",
 		"amount":       999,
-		dealRefFieldID: graphdb.RefMap(contactEntityID, contactItemID),
+		dealRefFieldID: []string{contactItemID},
 	}
 	dealEntityFields = []graphdb.Field{
 		graphdb.Field{
@@ -143,6 +136,7 @@ var (
 		graphdb.Field{
 			Key:      dealRefFieldID,
 			DataType: graphdb.TypeReference,
+			RefID:    contactEntityID,
 			Field: &graphdb.Field{
 				Key:      "name",
 				DataType: graphdb.TypeString,
@@ -181,6 +175,7 @@ var (
 		graphdb.Field{
 			Key:      taskRefFieldID,
 			Value:    sref,
+			RefID:    taskEntityID1,
 			DataType: graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Expression: "=",
@@ -190,7 +185,8 @@ var (
 			},
 		},
 		graphdb.Field{
-			Value:    graphdb.RefMap(dealEntityID, ""),
+			Value:    []string{""},
+			RefID:    dealEntityID,
 			DataType: graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Expression: ">",
@@ -201,7 +197,8 @@ var (
 			},
 		},
 		graphdb.Field{
-			Value:    graphdb.RefMap(dealEntityID, ""),
+			Value:    []string{""},
+			RefID:    dealEntityID,
 			DataType: graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Expression: ">",
