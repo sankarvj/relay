@@ -15,6 +15,7 @@ type ExpressionType int
 // ExpressionType defines different types of expression to work with
 const (
 	Worker ExpressionType = iota
+	Querier
 	NegExecutor
 	PosExecutor
 	Content
@@ -58,11 +59,12 @@ type Operand interface{}
 func Run(rule string, isExecutor bool, workChan chan Work) {
 	defer close(workChan)
 	if rule == "" {
-		// by default the empty rule is considered as the positive expression. Since most of nodes don't possess expressions
+		// By default, the empty rule is considered as the positive expression.
+		// stand taken since the default nodes don't possess expressions
 		workChan <- Work{PosExecutor, "", nil}
 		return
 	}
-	log.Println("Starting lexer and parser for rule - ", rule, "...")
+	log.Println("starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
 		workChan: workChan,
 		positive: nil, //always start on a nil note! :)
@@ -76,7 +78,7 @@ func Run(rule string, isExecutor bool, workChan chan Work) {
 		}
 	} else {
 		r = r.startParsingLexer(rule)
-		//NOTE: This might cause adverse effects in the html contents. Take note
+		//CHECK: This might cause adverse effects in the html contents. Take note
 		r.content = strings.TrimSpace(r.content)
 		workChan <- Work{Content, r.content, nil}
 	}
@@ -88,7 +90,6 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 	var token lexertoken.Token
 	for {
 		token = l.NextToken()
-		//log.Println("token", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))
@@ -227,9 +228,16 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 }
 
 func (r *Ruler) query(q string) {
-	log.Printf("query %v", q)
+	respChan := make(chan map[string]interface{})
+	r.workChan <- Work{Querier, q, respChan}
+	resp := <-respChan
+
+	//set opResult true, if the resp any contains elements
+	opResult := false
+	if len(resp) > 0 {
+		opResult = true
+	}
 	r.constructRuleItem()
-	opResult := true
 	r.saveAndResetRuleItem(opResult)
 }
 

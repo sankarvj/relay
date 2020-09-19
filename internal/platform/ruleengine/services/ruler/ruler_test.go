@@ -8,7 +8,7 @@ import (
 
 func TestOperators(t *testing.T) {
 	//signalsChan wait to receive work and action triggers until the run completes
-	t.Log(" Given the need test the operators(GT/LT/EQ) in the expression")
+	t.Log("Given the need test the operators(GT/LT/EQ) in the expression")
 	{
 		t.Log("\twhen evaluating lt")
 		{
@@ -55,7 +55,7 @@ func TestOperators(t *testing.T) {
 }
 
 func TestContentParser(t *testing.T) {
-	t.Log(" Given the need evaluate/parse the given expression")
+	t.Log("Given the need evaluate/parse the given expression")
 	{
 		t.Log("\twhen evaluating subject line : ")
 		{
@@ -132,19 +132,20 @@ func TestExpressionWithListOperands(t *testing.T) {
 
 func TestQuerySnippet(t *testing.T) {
 	//signalsChan wait to receive work and action triggers until the run completes
-	t.Log(" Given the need test the query snippets in the expression")
+	t.Log("Given the need test the query snippets in the expression")
 	{
 		t.Log("\twhen evaluating query")
 		{
 			var triggered bool
 			exp := `{{e1.appinfo.index}} lt {{e2.index}} && <<helloquery>>`
-			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
 			go Run(exp, true, signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
 					work.Resp <- workerMockInput(work.Expression)
+				case Querier:
+					work.Resp <- map[string]interface{}{"hello": 1}
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -21,6 +22,7 @@ import (
 // Entity represents the Entity API method handler set.
 type Entity struct {
 	db            *sqlx.DB
+	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -98,7 +100,7 @@ func (e *Entity) Trigger(ctx context.Context, w http.ResponseWriter, r *http.Req
 		n := node.Node{
 			Expression: expression,
 		}
-		engine.RunRuleEngine(ctx, e.db, n)
+		engine.RunRuleEngine(ctx, e.db, e.rPool, n)
 	}
 
 	return web.Respond(ctx, w, entity, http.StatusCreated)

@@ -1,5 +1,5 @@
 # Relay
-Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs of his own. 
+Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. 
 
 ## Getting Started
 > make run
@@ -40,7 +40,7 @@ Though the events is not an regular entity the relationships still holds true fo
     c. Assign the where condition properties in the sub-field, just like other fields
     d. If you do like that, the SegmentBaseGNode in pivot.go will create the node with the reverse property enabled.
     e. Enabling reverse property by setting the field key as empty is the one and only active change which we are making here. The rest of the code is just works like the STRAIGHT case and produce the result. 
-#### example: item_test.go
+#### example: item_test.go,segment_test.go
 
 ### Workflow/Playbook/Pipeline
 1. Sequence of task nodes is called as workflow
@@ -52,13 +52,12 @@ Though the events is not an regular entity the relationships still holds true fo
 
 ### TODO
 1. Stop cyclic looping of references - pivot.go
-2. Delete/Update references - pivot.go
-3. Upsert should include only the modified values - pivot.go
-4. Add aggregation funcs in the rGraph segmentation.
+2. Done --- Delete/Update references - pivot.go 
+3. Done --- Upsert should include only the modified values - pivot.go
+4. Done* ---Add aggregation funcs in the rGraph segmentation.
 5. Add aggregation <,> in "IN" of list rule engine
 6. MathAny/MatchAll in segmentation/workflow
-7. ******* Add upsertEdge inside the upsert itself ********
-8. ******* Write READ.ME in the pipeline/playbooks/workflow ******
+7. ******* Write READ.ME in the pipeline/playbooks/workflow ******
 
 
 

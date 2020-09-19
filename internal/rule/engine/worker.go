@@ -34,8 +34,8 @@ func worker(ctx context.Context, db *sqlx.DB, expression string, input map[strin
 		result, err = retriveAPIEntityResult(fields)
 	case entity.CategoryData, entity.CategoryTimeSeries:
 		if itemID, ok := input[e.ID]; ok {
-
 			// TODO itemID.(string) we are blindly typecasting it to string???
+			// TODO cache the object instead of itemID
 			// what happens if different data type comes??
 			result, err = retriveDataEntityResult(ctx, db, e.ID, itemID.(string))
 		}

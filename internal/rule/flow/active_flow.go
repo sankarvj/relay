@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -104,19 +105,19 @@ func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 	return activeFlowMap
 }
 
-func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
 	if err := af.enableAF(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
 		return err
 	}
 
-	return startJobFlow(ctx, db, n)
+	return startJobFlow(ctx, db, rp, n)
 }
 
-func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
 	if err := af.disableAF(ctx, db); err != nil {
 		return err
 	}
-	return startJobFlow(ctx, db, n)
+	return startJobFlow(ctx, db, rp, n)
 }
 
 func (af ActiveFlow) stopEntryTriggerFlow(condition int) bool {

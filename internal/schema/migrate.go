@@ -212,4 +212,17 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     11,
+		Description: "Add relationships",
+		Script: `
+		CREATE TABLE relationships (
+			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
+	    	src_entity_id	UUID REFERENCES entities ON DELETE CASCADE,
+			dst_entity_id   UUID REFERENCES entities ON DELETE CASCADE,
+		    type 	   	    INTEGER DEFAULT 0,
+			UNIQUE (account_id,src_entity_id,dst_entity_id)
+		);
+		`,
+	},
 }

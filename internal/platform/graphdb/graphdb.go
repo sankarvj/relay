@@ -1,6 +1,7 @@
 package graphdb
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -37,6 +38,7 @@ type GraphNode struct {
 	Fields       []Field
 	Relations    []GraphNode // list/map fields
 	IsReverse    bool
+	Unlink       bool
 }
 
 //GetNode fetches the node for the id provided
@@ -71,7 +73,10 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 	srcNode := gn.justNode()
 	s := matchNode(srcNode)
-	wc := where(gn, srcNode.Alias)
+	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
+	s = append(s, wi...)
+	s = append(s, "WHERE")
+	s = append(s, strings.Join(wh, " AND "))
 
 	for _, rn := range gn.Relations {
 		dstNode := rn.justNode()
@@ -81,56 +86,99 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 		}
 		s = append(s, matchNode(dstNode)...)
 		s = append(s, matchEdge(edge)...)
-		wc = append(wc, where(rn, dstNode.Alias)...)
+		wi, wh := where(rn, dstNode.Alias, srcNode.Alias)
+		s = append(s, wi...)
+		s = append(s, "WHERE")
+		s = append(s, strings.Join(wh, " AND "))
 	}
 
 	q := strings.Join(s, " ")
-	w := strings.Join(wc, " AND ")
-	q = strings.Join([]string{q, w}, " WHERE ")
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
 	result, err := graph.Query(q)
-	log.Println("GetResultQuery --> ", q)
+	log.Println("GetResultQuery result--> ", q)
+	log.Println("GetResultQuery err--> ", err)
+	if err != nil {
+		return result, err
+	}
 	result.PrettyPrint()
 	return result, err
 }
 
-func where(gn GraphNode, alias string) []string {
-	p := make([]string, 0, len(gn.Fields))
+func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
+	wi := make([]string, 0)
+	wh := make([]string, 0, len(gn.Fields))
 	if len(gn.Fields) > 0 {
 		for _, f := range gn.Fields {
+
+			if f.Aggr != "" {
+				f.WithAlias = fmt.Sprintf("%s_%s", f.Aggr, f.Key)
+				with := fmt.Sprintf("WITH %s,%s(%s.%s) as %s", srcAlias, f.Aggr, alias, f.Key, f.WithAlias)
+				wi = append(wi, with)
+			} else {
+				f.WithAlias = fmt.Sprintf("%s.%s", alias, f.Key)
+			}
+
 			switch f.DataType {
 			case TypeString:
-				p = append(p, fmt.Sprintf("%s.%s %s \"%v\"", alias, f.Key, f.Expression, f.Value))
+				wh = append(wh, fmt.Sprintf("%s %s \"%v\"", f.WithAlias, f.Expression, f.Value))
 			case TypeNumber:
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
+				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
 			default:
-				p = append(p, fmt.Sprintf("%s.%s %s %v", alias, f.Key, f.Expression, f.Value))
+				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
 			}
 		}
 	}
 
-	return p
+	return wi, wh
 }
 
 //UpsertNode create/update the node with the given properties.
 //Properties should not include text area, lists, maps, reference.
 //TODO: For update, properties should include only the modified values including null for deleted keys.
 //TODO: handle deleted field/field values
-func UpsertNode(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	q := mergeProperties(gn)
-	log.Println("UpsertNodeQuery --> ", q)
-	return graph.Query(q)
+	srcNode := gn.rgNode()
+
+	//first part set and new edge
+	mps := mergeProperties(gn, srcNode)
+	rs, ru := updateRelation(gn, srcNode)
+	if len(mps) > 0 || len(rs) > 0 {
+		s := mergeNode(srcNode)
+		s = append(s, mps...)
+		s = append(s, rs...)
+		sq := strings.Join(s, " ")
+		log.Println("UpsertNodeQuery --> ", sq)
+		_, err := graph.Query(sq)
+		if err != nil {
+			return err
+		}
+	}
+
+	//second part unlink edge
+	//TODO: improvise this query. Instead of hitting n+1 times batch delete
+	//Try like this: match a,b,c delete a,b,c
+	for _, ruQ := range ru {
+		s := matchNode(srcNode)
+		s = append(s, ruQ)
+		sq := strings.Join(s, " ")
+		log.Println("UnlinkNodeQuery --> ", sq)
+		_, err := graph.Query(sq)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 //"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
-func mergeProperties(gn GraphNode) string {
-	srcNode := gn.rgNode()
-	s := mergeNode(srcNode)
+func mergeProperties(gn GraphNode, srcNode *rg.Node) []string {
+	s := []string{}
 	props := gn.onlyProps()
 	if len(props) > 0 {
 		p := make([]string, 0, len(props))
@@ -140,35 +188,55 @@ func mergeProperties(gn GraphNode) string {
 		s = append(s, "SET")
 		s = append(s, strings.Join(p, ", "))
 	}
-
-	for _, rn := range gn.Relations {
-		dstNode := rn.rgNode()
-		s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
-	}
-
-	return strings.Join(s, " ")
+	return s
 }
 
 //UpsertEdge creates/updates the relationship between src node and all its dst node
-func UpsertEdge(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
 	srcNode := gn.rgNode()
-	s := matchNode(srcNode)
+	rs, ru := updateRelation(gn, srcNode)
 
+	//unlink existing relations
+	for _, ulink := range ru {
+		s := matchNode(srcNode)
+		s = append(s, ulink)
+		ruq := strings.Join(s, " ")
+		log.Println("UnlinkEdgeQuery --> ", ruq)
+		_, err := graph.Query(ruq)
+		if err != nil {
+			return err
+		}
+	}
+
+	//make new relations
+	if len(rs) > 0 {
+		s := matchNode(srcNode)
+		s = append(s, rs...)
+		rsq := strings.Join(s, " ")
+		log.Println("UpsertEdgeQuery --> ", rsq)
+		_, err := graph.Query(rsq)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func updateRelation(gn GraphNode, srcNode *rg.Node) ([]string, []string) {
+	s, u := []string{}, []string{}
 	for _, rn := range gn.Relations {
 		dstNode := rn.rgNode()
-		s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
+		if rn.Unlink {
+			u = append(u, strings.Join(unlinkRelation(rn.RelationName, srcNode, dstNode), " "))
+		} else {
+			s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
+		}
 	}
-
-	if len(gn.Relations) == 0 {
-		return nil, ErrNoEdgeNodesToAssociate
-	}
-	q := strings.Join(s, " ")
-	log.Println("UpsertEdgeQuery --> ", q)
-	return graph.Query(q)
+	return s, u
 }
 
 //"MERGE (charlie { name: 'Charlie Sheen' }) MERGE (wallStreet:Movie { name: 'Wall Street' }) MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
@@ -204,12 +272,29 @@ func mergeEdge(e *rg.Edge) []string {
 	return s
 }
 
-func BuildGNode(graphName, label string) GraphNode {
+//"MERGE (charlie { name: 'Charlie Sheen' }) MATCH (wallStreet:Movie { name: 'Wall Street' }) MATCH (charlie)-[r:ACTED_IN]->(wallStreet)"
+func unlinkRelation(relation string, srcNode, destNode *rg.Node) []string {
+	unlinkAlias := rg.RandomString(10)
+	edge := rg.EdgeNew(relation, srcNode, destNode, nil)
+	md := matchNode(destNode)
+	me := unlinkEdge(unlinkAlias, edge)
+	return append(md, me...)
+}
+
+func unlinkEdge(unlinkAlias string, e *rg.Edge) []string {
+	s := []string{"MATCH"}
+	s = append(s, deleteEncode(e, unlinkAlias))
+	s = append(s, "DELETE", unlinkAlias)
+	return s
+}
+
+func BuildGNode(graphName, label string, unlink bool) GraphNode {
 	gn := GraphNode{
 		GraphName: graphName,
-		Label:     quote(label),
+		Label:     label,
 		Fields:    []Field{},
 		Relations: make([]GraphNode, 0),
+		Unlink:    unlink,
 	}
 	return gn
 }
@@ -220,17 +305,17 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	for _, f := range fields {
 		switch f.DataType {
 		case entity.TypeList:
-			for _, element := range f.Value.([]string) {
+			for i, element := range f.Value.([]string) {
 				f.Field.Value = element
-				rn := BuildGNode(gn.GraphName, f.Key).
+				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
 					MakeBaseGNode("", []Field{*f.Field}).relateLists()
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-			for _, ref := range f.RefList() {
+			for i, ref := range f.RefList() {
 				rEntityID, rItemID := fetchRef(ref)
-				rn := BuildGNode(gn.GraphName, rEntityID).
+				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
 					MakeBaseGNode(rItemID, []Field{*f.Field}).relateRefs()
 				gn.Relations = append(gn.Relations, rn)
 			}
@@ -246,7 +331,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 //when id is empty, choose all the properties. (list use-case)
 func (gn GraphNode) rgNode() *rg.Node {
 	if gn.ItemID == "" { //useful for list
-		return rg.NodeNew(gn.Label, rg.RandomString(10), gn.onlyProps())
+		return rg.NodeNew(quote(gn.Label), rg.RandomString(10), gn.onlyProps())
 	}
 	return gn.justNode()
 }
@@ -259,7 +344,7 @@ func (gn GraphNode) justNode() *rg.Node {
 	if gn.ItemID != "" { //useful for almost all the cases except the segmentation use-case
 		properties[quote(FieldIdKey)] = gn.ItemID
 	}
-	return rg.NodeNew(gn.Label, rg.RandomString(10), properties)
+	return rg.NodeNew(quote(gn.Label), rg.RandomString(10), properties)
 }
 
 //useful during the upsert.
@@ -286,4 +371,60 @@ func (gn GraphNode) relateLists() GraphNode {
 
 func quote(label string) string {
 	return fmt.Sprintf("`%s`", label)
+}
+
+func (gn GraphNode) JsonB() (string, error) {
+	jsonbody, err := json.Marshal(gn)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonbody), err
+}
+
+func (gn GraphNode) AddIDCondition(itemID interface{}) GraphNode {
+	f := Field{
+		Expression: "=",
+		Key:        FieldIdKey,
+		DataType:   TypeString,
+		Value:      itemID,
+	}
+	gn.Fields = append(gn.Fields, f)
+	return gn
+}
+
+func GraphNodeSt(jsonB string) (GraphNode, error) {
+	var gn GraphNode
+	if err := json.Unmarshal([]byte(jsonB), &gn); err != nil {
+		return gn, errors.Wrapf(err, "error while unmarshalling graph node")
+	}
+	return gn, nil
+}
+
+//deleteEncode adds the alias for relation.
+//current go-library doesn't have this functionality
+//overloading encode with relation alias
+func deleteEncode(e *rg.Edge, relationAlias string) string {
+	s := []string{"(", e.Source.Alias, ")"}
+
+	s = append(s, "-[")
+
+	if e.Relation != "" {
+		s = append(s, relationAlias, ":", e.Relation) // this is the only change from the source edge.go
+	}
+
+	if len(e.Properties) > 0 {
+		p := make([]string, 0, len(e.Properties))
+		for k, v := range e.Properties {
+			p = append(p, fmt.Sprintf("%s:%v", k, rg.ToString(v)))
+		}
+
+		s = append(s, "{")
+		s = append(s, strings.Join(p, ","))
+		s = append(s, "}")
+	}
+
+	s = append(s, "]->")
+	s = append(s, "(", e.Destination.Alias, ")")
+
+	return strings.Join(s, "")
 }

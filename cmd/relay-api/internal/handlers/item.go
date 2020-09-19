@@ -17,8 +17,8 @@ import (
 
 // Item represents the Item API method handler set.
 type Item struct {
-	rPool         *redis.Pool
 	db            *sqlx.DB
+	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }

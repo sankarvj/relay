@@ -24,11 +24,15 @@ const (
 
 //Field is the subset of entity field. Make sure it is on par with Entity Field
 type Field struct {
-	Key        string      `json:"key" validate:"required"`
-	Value      interface{} `json:"value" validate:"required"`
-	DataType   DType       `json:"data_type" validate:"required"`
-	Expression string      `json:"expression"`
-	Field      *Field      `json:"field"`
+	Key          string      `json:"key" validate:"required"`
+	Value        interface{} `json:"value" validate:"required"`
+	DataType     DType       `json:"data_type" validate:"required"`
+	Expression   string      `json:"expression"`
+	RefID        string      `json:"ref_id"`
+	Field        *Field      `json:"field"`
+	UnlinkOffset int         `json:"unlink_offset"` // 0 if nothing to delete
+	Aggr         string      `json:"aggr"`
+	WithAlias    string      `json:"with_alias"`
 }
 
 func Fields(jsonB string) ([]Field, error) {
@@ -50,17 +54,15 @@ func FillFieldValues(eFields []Field, itemProps map[string]interface{}) []Field 
 	return uFields
 }
 
-func (f Field) IsKeyId() bool {
-	return f.Key == FieldIdKey
+func (f Field) doUnlink(index int) bool {
+	return f.UnlinkOffset != 0 && index+1 >= f.UnlinkOffset
 }
 
 func (f Field) RefList() []map[string]string {
+	if f.Value == nil {
+		return []map[string]string{}
+	}
 	return f.Value.([]map[string]string)
-}
-
-func (f Field) SetRef(entityID, itemID string) Field {
-	f.Value = RefMap(entityID, itemID)
-	return f
 }
 
 func fetchRef(ref map[string]string) (string, string) {

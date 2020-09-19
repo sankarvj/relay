@@ -76,18 +76,22 @@ type WebHookEntity struct {
 
 // Field represents structural format of attributes in entity
 type Field struct {
-	Name        string      `json:"name" validate:"required"`
-	DisplayName string      `json:"display_name" validate:"required"` //do we need this? why not use name for display
-	Key         string      `json:"key" validate:"required"`
-	Value       interface{} `json:"value" validate:"required"`
-	DataType    DType       `json:"data_type" validate:"required"`
-	DomType     Dom         `json:"dom_type" validate:"required"`
-	Unique      bool        `json:"unique"`
-	Mandatory   bool        `json:"mandatory"`
-	Hidden      bool        `json:"hidden"`
-	Config      bool        `json:"config"`     //UI property useful only during display
-	Expression  string      `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
-	Field       *Field      `json:"field"`
+	Name        string            `json:"name" validate:"required"`
+	DisplayName string            `json:"display_name" validate:"required"` //do we need this? why not use name for display
+	Key         string            `json:"key" validate:"required"`
+	Value       interface{}       `json:"value" validate:"required"`
+	DataType    DType             `json:"data_type" validate:"required"`
+	DomType     Dom               `json:"dom_type" validate:"required"`
+	Unique      bool              `json:"unique"`
+	Mandatory   bool              `json:"mandatory"`
+	Hidden      bool              `json:"hidden"`
+	Config      bool              `json:"config"`     //UI property useful only during display
+	Expression  string            `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
+	Field       *Field            `json:"field"`
+	Choices     []string          `json:"choices"`
+	Link        string            `json:"link"`
+	RefID       string            `json:"ref_id"`
+	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
 }
 
 //DType defines the data type of field
@@ -111,7 +115,7 @@ const (
 	DomTextArea         = "TA"
 	DomStatus           = "ST"
 	DomAutoComplete     = "AC"
-	DomDropDown         = "DD"
+	DomSelect           = "SE"
 	DomDate             = "DA"
 	DomTime             = "TI"
 	DomMinute           = "MI"

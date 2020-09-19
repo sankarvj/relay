@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -16,7 +17,7 @@ type RuleResult struct {
 }
 
 //RunRuleEngine runs the expression and execute action if the expression conditions met
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, n node.Node) (*RuleResult, error) {
+func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) (*RuleResult, error) {
 	var err error
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(n.Expression, true, signalsChan)
@@ -25,11 +26,17 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, n node.Node) (*RuleResult, 
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			result, err := worker(ctx, db, work.Expression, n.VariablesMap())
-			if err != nil {
-				return ruleResult, err
+			if result, err := worker(ctx, db, work.Expression, n.VariablesMap()); err != nil {
+				return nil, err
+			} else {
+				work.Resp <- result
 			}
-			work.Resp <- result
+		case ruler.Querier:
+			if result, err := querier(ctx, rp, work.Expression, n.VariablesMap()); err != nil {
+				return nil, err
+			} else {
+				work.Resp <- result
+			}
 		case ruler.PosExecutor:
 			err = ruleResult.executePosCase(ctx, db, n)
 		case ruler.NegExecutor:
@@ -49,11 +56,11 @@ func RunExpRenderer(ctx context.Context, db *sqlx.DB, exp string, variables map[
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			result, err := worker(ctx, db, work.Expression, variables)
-			if err != nil {
+			if result, err := worker(ctx, db, work.Expression, variables); err != nil {
 				return err.Error()
+			} else {
+				work.Resp <- result
 			}
-			work.Resp <- result
 		case ruler.Content:
 			lexedContent = work.Expression
 		}
@@ -62,7 +69,7 @@ func RunExpRenderer(ctx context.Context, db *sqlx.DB, exp string, variables map[
 }
 
 //RunExpEvaluator runs the expression to see whether the condition met or not
-func RunExpEvaluator(ctx context.Context, db *sqlx.DB, exp string, variables map[string]interface{}) bool {
+func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, exp string, variables map[string]interface{}) bool {
 	positive := false
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, true, signalsChan)
@@ -70,12 +77,19 @@ func RunExpEvaluator(ctx context.Context, db *sqlx.DB, exp string, variables map
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			result, err := worker(ctx, db, work.Expression, variables)
-			if err != nil {
+			if result, err := worker(ctx, db, work.Expression, variables); err != nil {
 				log.Println("error in expression evaluator ", err)
 				return false
+			} else {
+				work.Resp <- result
 			}
-			work.Resp <- result
+		case ruler.Querier:
+			if result, err := querier(ctx, rp, work.Expression, variables); err != nil {
+				log.Println("error in expression evaluator ", err)
+				return false
+			} else {
+				work.Resp <- result
+			}
 		case ruler.PosExecutor:
 			positive = true
 		}

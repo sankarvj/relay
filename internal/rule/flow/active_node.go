@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -96,12 +97,12 @@ func ActiveNodes(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveNo
 	return activeNodes, nil
 }
 
-func startJobFlow(ctx context.Context, db *sqlx.DB, n *node.Node) error {
+func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
 	// call this in job Q
-	return nextRun(ctx, db, *n, map[string]interface{}{})
+	return nextRun(ctx, db, rp, *n, map[string]interface{}{})
 }
 
-func nextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap map[string]interface{}) error {
+func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, parentResponseMap map[string]interface{}) error {
 	err := upsertActives(ctx, db, n)
 	if err != nil {
 		//TODO push this to DL queue
@@ -124,13 +125,13 @@ func nextRun(ctx context.Context, db *sqlx.DB, n node.Node, parentResponseMap ma
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
 			continue
 		}
-		runJob(ctx, db, childNode)
+		runJob(ctx, db, rp, childNode)
 	}
 	return nil
 }
 
-func runJob(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	ruleResult, err := engine.RunRuleEngine(ctx, db, n)
+func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) error {
+	ruleResult, err := engine.RunRuleEngine(ctx, db, rp, n)
 	if err != nil {
 		//TODO push this to DL queue
 		return err
@@ -138,7 +139,7 @@ func runJob(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	if !ruleResult.Executed {
 		return ErrCannotExecuteNode
 	}
-	return nextRun(ctx, db, n, ruleResult.Response)
+	return nextRun(ctx, db, rp, n, ruleResult.Response)
 }
 
 func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) (bool, error) {

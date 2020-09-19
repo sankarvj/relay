@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -40,7 +41,7 @@ func TestEmailRuleRunner(t *testing.T) {
 				Type:       node.Email,
 			}
 
-			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould send email : %s.", tests.Failed, err)
 			}
@@ -76,7 +77,7 @@ func TestCreateItemRuleRunner(t *testing.T) {
 				ActorID:   e2,
 				Type:      node.Push,
 			}
-			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
 			}
@@ -111,7 +112,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 				ActorID:   e1,
 				Type:      node.Modify,
 			}
-			_, err := engine.RunRuleEngine(tests.Context(), db, node)
+			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
 			}
@@ -167,9 +168,10 @@ func TestTrigger(t *testing.T) {
 			newItemFields := i.Fields()
 			newItemFields[schema.SeedFieldKeyContactMRR] = 99
 			item.UpdateFields(tests.Context(), db, i1, newItemFields)
+			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), e1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
-			err := flow.Trigger(tests.Context(), db, i1, dirtyFlows)
+			err := flow.Trigger(tests.Context(), db, nil, i1, dirtyFlows)
 			if err != nil {
 				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
 			}
@@ -190,7 +192,7 @@ func TestDirectTrigger(t *testing.T) {
 		{
 			i1 := schema.SeedItemContactID1
 			n2 := schema.SeedNodeID2
-			err := flow.DirectTrigger(tests.Context(), db, n2, i1)
+			err := flow.DirectTrigger(tests.Context(), db, nil, n2, i1)
 			if err != nil {
 				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
 			}
@@ -201,6 +203,124 @@ func TestDirectTrigger(t *testing.T) {
 			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
 			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 
+		}
+	}
+}
+
+var (
+	accountID       = "2c247443-b257-4b06-ba99-493cf9d83ce7"
+	contactEntityID = "7d9c4f94-890b-484c-8189-91c3d7e8e50b"
+	contactItemID   = "12345"
+	dealEntityID    = "109c4f94-890b-484c-8189-91c3d7e8e50c"
+	dealRefFieldID  = "33333343-b257-4b06-ba99-493cf9d83ce7"
+	dealItemID      = "26436"
+
+	//gbp1
+	contactEntityFields = []graphdb.Field{
+		graphdb.Field{
+			Key:      "id",
+			DataType: graphdb.TypeString,
+		},
+		graphdb.Field{
+			Key:      "age",
+			DataType: graphdb.TypeNumber,
+		},
+	}
+
+	contactProperties = map[string]interface{}{
+		"id":  contactItemID,
+		"age": 32,
+	}
+
+	//gbp2
+	dealProperties = map[string]interface{}{
+		"name":         "Deal1",
+		"amount":       999,
+		dealRefFieldID: graphdb.RefMap(contactEntityID, contactItemID),
+	}
+	dealEntityFields = []graphdb.Field{
+		graphdb.Field{
+			Key:      "name",
+			DataType: graphdb.TypeString,
+		},
+		graphdb.Field{
+			Key:      "amount",
+			DataType: graphdb.TypeNumber,
+		},
+		graphdb.Field{
+			Key:      dealRefFieldID,
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{
+				Key:      "name",
+				DataType: graphdb.TypeString,
+			},
+		},
+	}
+
+	contactFields = graphdb.FillFieldValues(contactEntityFields, contactProperties)
+	gpb1          = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode(contactItemID, contactFields)
+	dealFields    = graphdb.FillFieldValues(dealEntityFields, dealProperties)
+	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false).MakeBaseGNode(dealItemID, dealFields)
+	//refer segment_test.go more complex conditions
+	conditionFields = []graphdb.Field{
+		graphdb.Field{
+			Expression: "<",
+			Key:        "age",
+			DataType:   graphdb.TypeNumber,
+			Value:      "50",
+		},
+	}
+	gSegment   = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode("", conditionFields)
+	jsonB, _   = gSegment.JsonB()
+	expression = fmt.Sprintf("<<%s>>", jsonB)
+)
+
+func TestQueryRuleRunner(t *testing.T) {
+	residPool, teardown := tests.NewRedisUnit(t)
+	defer teardown()
+	t.Log("Given the need to run the engine to evaluate a query")
+	{
+		t.Log("\twhen adding the contact item to the graph with straight reference of task")
+		{
+			err := graphdb.UpsertNode(residPool, gpb1)
+			if err != nil {
+				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
+		}
+
+		t.Log("\twhen adding the deal item to the graph with reverse reference of contact")
+		{
+			err := graphdb.UpsertNode(residPool, gpb2)
+			if err != nil {
+				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should create the item node(item) to the graph", tests.Success)
+		}
+
+		t.Log("\twhen segmenting the updated item with relation to the graph")
+		{
+			_, err := graphdb.GetResult(residPool, gSegment)
+			if err != nil {
+				t.Fatalf("\t%s should fetch the item - %s", tests.Failed, err)
+			}
+			t.Logf("\t%s should fetch the item", tests.Success)
+		}
+
+		t.Log("\twhen evaluating the query")
+		{
+			vars, _ := node.MapToJSONB(map[string]string{contactEntityID: contactItemID})
+			node := node.Node{
+				Expression: expression,
+				AccountID:  accountID,
+				Variables:  vars,
+				Type:       node.Unknown,
+			}
+			_, err := engine.RunRuleEngine(tests.Context(), nil, residPool, node)
+			if err != nil {
+				t.Fatalf("\t%s should pass with out fail : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s should pass with out fail", tests.Success)
 		}
 	}
 }
