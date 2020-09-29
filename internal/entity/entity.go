@@ -73,6 +73,33 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	return e, nil
 }
 
+// Update replaces a item document in the database.
+func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
+	defer span.End()
+
+	e, err := Retrieve(ctx, entityID, db)
+	if err != nil {
+		return err
+	}
+
+	e.UpdatedAt = now.Unix()
+	e.Fieldsb = fieldsB
+
+	const q = `UPDATE entities SET
+		"fieldsb" = $2,
+		"updated_at" = $3
+		WHERE entity_id = $1`
+	_, err = db.ExecContext(ctx, q, e.ID,
+		e.Fieldsb, e.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Retrieve gets the specified entity from the database.
 func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Retrieve")
@@ -132,7 +159,7 @@ func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
 func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
 	updatedFields := make([]Field, 0)
 	for _, field := range entityFields {
-		if val, ok := itemFields[field.Key]; ok && !field.Config {
+		if val, ok := itemFields[field.Key]; ok && !field.isConfig() {
 			field.Value = val
 		}
 		updatedFields = append(updatedFields, field)
@@ -149,7 +176,7 @@ func (e Entity) Fields() ([]Field, error) {
 	//remove all config fields
 	temp := fields[:0]
 	for _, field := range fields {
-		if !field.Config {
+		if !field.isConfig() {
 			temp = append(temp, field)
 		}
 	}
@@ -164,4 +191,11 @@ func (e Entity) AllFields() ([]Field, error) {
 		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
 	}
 	return fields, nil
+}
+
+func (f Field) isConfig() bool {
+	if val, ok := f.Meta["config"]; ok && val == "true" {
+		return true
+	}
+	return false
 }

@@ -137,20 +137,55 @@ const (
 // may need to be broken up.
 const seeds = `
 -- Create a demo account wayplot
-INSERT INTO public.accounts (account_id, name, domain, avatar, plan, mode, timezone, language, country, issued_at, expiry, created_at, updated_at) VALUES
-	('` + SeedAccountID + `', 'Wayplot', 'Wayplot', 'http://gravatar/vj', 0, 0, 'IST', 'EN', 'IN', '2019-11-20 00:00:00', '2020-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000)
+INSERT INTO public.accounts (
+	account_id, 
+	name, 
+	domain, 
+	avatar, 
+	plan, 
+	mode, 
+	timezone, 
+	language, 
+	country, 
+	issued_at, 
+	expiry, 
+	created_at, 
+	updated_at) VALUES
+	('` + SeedAccountID + `', 'Wayplot', 'Wayplot', 'http://gravatar/vj', 0,0, 'IST', 'EN', 'IN', 
+	'2019-11-20 00:00:00', '2020-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
+
 -- Create admin and regular User with password "gophers"
-INSERT INTO public.users (user_id, account_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES
-	('` + SeedUserID1 + `', '` + SeedAccountID + `', 'vijayasankar', 'http://gravatar/vj', 'vijayasankarmail@gmail.com', '9944293499', true, '{ADMIN,USER}', 'cfr07IBEBCfGxp9dxjBOGYdkjHG2', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
-	('` + SeedUserID2 + `', '` + SeedAccountID + `', 'vijay', 'http://gravatar/vj', 'vijayasankarj@gmail.com', '9940209164', true, '{USER}', 'ggOv3mMCqVZ6nFqaco4lD9qjxc63', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
-	('` + SeedUserID3 + `', '` + SeedAccountID + `', 'senthil', 'http://gravatar/vj', 'sksenthilkumaar@gmail.com', '9940209164', true, '{USER}', 'sk_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
-	('` + SeedUserID4 + `', '` + SeedAccountID + `', 'saravana', 'http://gravatar/vj', 'saravanaprakas@gmail.com', '9940209164', true, '{USER}', 'sexy_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000)
+INSERT INTO public.users (
+	user_id, 
+	account_id, 
+	name, 
+	avatar, 
+	email, 
+	phone, 
+	verified, 
+	roles, 
+	password_hash, 
+	provider, 
+	issued_at, 
+	created_at, 
+	updated_at) VALUES
+	('` + SeedUserID1 + `', '` + SeedAccountID + `', 'vijayasankar', 'http://gravatar/vj', 
+	'vijayasankarmail@gmail.com', '9944293499', true, '{ADMIN,USER}', 'cfr07IBEBCfGxp9dxjBOGYdkjHG2', 
+	'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
+	('` + SeedUserID2 + `', '` + SeedAccountID + `', 'vijay', 'http://gravatar/vj', 
+	'vijayasankarj@gmail.com', '9940209164', true, '{USER}', 'ggOv3mMCqVZ6nFqaco4lD9qjxc63', 'firebase', 
+	'2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
+	('` + SeedUserID3 + `', '` + SeedAccountID + `', 'senthil', 'http://gravatar/vj', 
+	'sksenthilkumaar@gmail.com', '9940209164', true, '{USER}', 'sk_replacetokenhere', 'firebase', 
+	'2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000),
+	('` + SeedUserID4 + `', '` + SeedAccountID + `', 'saravana', 'http://gravatar/vj', 
+	'saravanaprakas@gmail.com', '9940209164', true, '{USER}', 'sexy_replacetokenhere', 'firebase', 
+	'2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000)
 	ON CONFLICT DO NOTHING;
 -- Create a demo team wayplot
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES 
-('` + SeedTeamID + `', '` + SeedAccountID + `', 'wayplot-team-A', NULL, '2020-02-22 15:03:57.416566', 1582383837);
-
+('` + SeedTeamID + `', '` + SeedAccountID + `', 'CRM', NULL, '2020-02-22 15:03:57.416566', 1582383837);
 `
 
 const timeseriesSeeds = `
@@ -193,6 +228,10 @@ INSERT INTO public.entities (entity_id, account_id, team_id, name, description, 
 -- Create A Delay Entity 
 INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) 
 	VALUES ('` + SeedEntityDelayID + `','` + SeedAccountID + `', '` + SeedTeamID + `', 'Delay', NULL, 7, 1, 1, '[{"key": "` + SeedFieldKeyDelayBy + `", "name": "delay_by", "value": "", "config": false, "hidden": false, "unique": false, "data_type": "M", "mandatory": false, "reference": "", "display_name": "Delay By"}, {"key": "` + SeedFieldKeyDelayRepeat + `", "name": "repeat", "value": "true", "config": false, "hidden": false, "unique": false, "data_type": "B", "mandatory": false, "reference": "", "display_name": "Repeat"}]', NULL, '2020-06-08 08:25:49.617813', 1591604749);
+-- Create A Status Entity
+INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES ('52c3b7d8-89c8-416f-8bff-d6fd72a9a2e2', '3cf27266-3473-4006-984f-9325122678b7', '8cf27268-3473-4006-984f-9325122678b7', 'Status', NULL, 1, 1, 0, '[{"key": "3f68d326-963b-45f5-b863-3d8d32fd296a", "link": "", "meta": null, "name": "Name", "field": null, "value": "", "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "S", "mandatory": false, "expression": "", "display_name": ""}, {"key": "209d81c0-0857-4b9b-b41d-eb7627ca40ca", "link": "", "meta": null, "name": "Color", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "S", "mandatory": false, "expression": "", "display_name": ""}]', NULL, '2020-09-29 11:14:10.248898', 1601378050);
+-- Create A Customer Entity
+INSERT INTO public.entities (entity_id, account_id, team_id, name, description, category, state, status, fieldsb, tags, created_at, updated_at) VALUES ('5fab8ae6-a334-4c29-9d5d-15f9117ac780', '3cf27266-3473-4006-984f-9325122678b7', '8cf27268-3473-4006-984f-9325122678b7', 'Customer', NULL, 1, 1, 0, '[{"key": "e247b7d1-d8ab-4ace-8b00-f0ef72bc8ce6", "link": "", "meta": null, "name": "First Name", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "S", "mandatory": false, "expression": "", "display_name": ""}, {"key": "829e8cf6-794b-49de-a6d1-1c1bb100d44a", "link": "", "meta": null, "name": "Email", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "S", "mandatory": false, "expression": "", "display_name": ""}, {"key": "b01ff3f7-0750-449c-8a88-ab0800c9a5f7", "link": "", "meta": null, "name": "Mobile Numbers", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "L", "mandatory": false, "expression": "", "display_name": ""}, {"key": "f6e3c292-e705-4102-afec-3d5f50ac889b", "link": "", "meta": null, "name": "NPS Score", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "N", "mandatory": false, "expression": "", "display_name": ""}, {"key": "dadc9197-100e-4c05-b556-741cc39294e8", "link": "", "meta": null, "name": "Status", "field": {"key": "id", "link": "", "meta": null, "name": "", "field": null, "value": null, "config": false, "hidden": false, "ref_id": "", "unique": false, "choices": null, "dom_type": "", "data_type": "S", "mandatory": false, "expression": "", "display_name": ""}, "value": null, "config": false, "hidden": false, "ref_id": "52c3b7d8-89c8-416f-8bff-d6fd72a9a2e2", "unique": false, "choices": null, "dom_type": "", "data_type": "R", "mandatory": false, "expression": "", "display_name": ""}]', NULL, '2020-09-29 11:42:59.996032', 1601379779);
 -- Create a demo items for Contacts
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemContactID1 + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `', 0, '{"08320990-cc56-4809-801a-a937b62ec307": "vijayasankarmail@gmail.com", "2bf431f8-b2ae-467f-9c5b-e7216068ea40": "Vijay", "900d69bf-2fc7-4c34-95b1-ef9f79220810": "FreshW", "` + SeedFieldKeyContactMRR + `": "10000", "` + SeedFieldKeyContactDealAmount + `": "[1000,2000]"}', '2020-05-31 04:55:22.480538', 1590900922);
 INSERT INTO public.items (item_id, account_id, entity_id, state, fieldsb, created_at, updated_at) VALUES ('` + SeedItemContactID2 + `', '` + SeedAccountID + `', '` + SeedEntityContactID + `', 0, '{"08320990-cc56-4809-801a-a937b62ec307": "saravanaprakas@gmail.com ", "2bf431f8-b2ae-467f-9c5b-e7216068ea40": "Saravana", "900d69bf-2fc7-4c34-95b1-ef9f79220810": "Zoho", "` + SeedFieldKeyContactMRR + `": "200000", "` + SeedFieldKeyContactDealAmount + `": "[2000,3000]"}', '2020-05-31 04:57:14.844344', 1590901034);

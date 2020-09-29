@@ -11,8 +11,9 @@ import (
 
 func TestDataEntity(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
-	tests.SeedData(t, db)
 	defer teardown()
+	tests.SeedData(t, db)
+
 	t.Log(" Given the need to create an data entity.")
 	{
 		t.Log("\tWhen adding the data entity")
@@ -73,6 +74,7 @@ func contactFields() []entity.Field {
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "refKey",
+			Value:    "--",
 		},
 	}
 

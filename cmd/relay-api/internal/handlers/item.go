@@ -104,7 +104,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
-
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
 

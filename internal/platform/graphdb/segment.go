@@ -57,23 +57,3 @@ func FillFieldValues(eFields []Field, itemProps map[string]interface{}) []Field 
 func (f Field) doUnlink(index int) bool {
 	return f.UnlinkOffset != 0 && index+1 >= f.UnlinkOffset
 }
-
-func (f Field) RefList() []map[string]string {
-	if f.Value == nil {
-		return []map[string]string{}
-	}
-	return f.Value.([]map[string]string)
-}
-
-func fetchRef(ref map[string]string) (string, string) {
-	return ref["entity_id"], ref["item_id"]
-}
-
-func RefMap(entityID, itemID string) []map[string]string {
-	return []map[string]string{
-		{
-			"entity_id": entityID,
-			"item_id":   itemID,
-		},
-	}
-}

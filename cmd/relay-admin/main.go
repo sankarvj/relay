@@ -110,6 +110,11 @@ func seed(cfg database.Config) error {
 		return err
 	}
 
+	if err := schema.SeedEntity(db); err != nil {
+		log.Println(err)
+		return err
+	}
+
 	fmt.Println("Seed data complete")
 	return nil
 }

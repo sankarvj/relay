@@ -236,7 +236,7 @@ var (
 	dealProperties = map[string]interface{}{
 		"name":         "Deal1",
 		"amount":       999,
-		dealRefFieldID: graphdb.RefMap(contactEntityID, contactItemID),
+		dealRefFieldID: []string{contactItemID},
 	}
 	dealEntityFields = []graphdb.Field{
 		graphdb.Field{
@@ -249,6 +249,7 @@ var (
 		},
 		graphdb.Field{
 			Key:      dealRefFieldID,
+			RefID:    contactEntityID,
 			DataType: graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Key:      "name",
