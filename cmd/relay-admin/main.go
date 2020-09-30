@@ -13,6 +13,8 @@ import (
 
 	"github.com/ardanlabs/conf"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/config"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
@@ -69,6 +71,8 @@ func run() error {
 		err = migrate(dbConfig)
 	case "seed":
 		err = seed(dbConfig)
+	case "crmadd":
+		err = crmadd(dbConfig)
 	case "useradd":
 		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -110,12 +114,74 @@ func seed(cfg database.Config) error {
 		return err
 	}
 
-	if err := schema.SeedEntity(db); err != nil {
-		log.Println(err)
+	// if err := schema.SeedEntity(db); err != nil {
+	//    return err
+	// }
+
+	fmt.Println("Seed data complete")
+	return nil
+}
+
+func crmadd(cfg database.Config) error {
+	//add entity - status
+	se, err := config.EntityAdd(cfg, "Status", entity.CategoryData, config.StatusFields())
+	if err != nil {
+		return err
+	}
+	//add entity - contacts
+	ce, err := config.EntityAdd(cfg, "Contacts", entity.CategoryData, config.ContactFields(se.ID))
+	if err != nil {
+		return err
+	}
+	//add entity - task
+	te, err := config.EntityAdd(cfg, "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
+	if err != nil {
+		return err
+	}
+	//add entity - deal
+	de, err := config.EntityAdd(cfg, "Deals", entity.CategoryData, config.DealFields(ce.ID))
+	if err != nil {
 		return err
 	}
 
-	fmt.Println("Seed data complete")
+	// add status item - open
+	st1, err := config.ItemAdd(cfg, se.ID, config.StatusVals("Open", "#fb667e"))
+	if err != nil {
+		return err
+	}
+	// add status item - closed
+	st2, err := config.ItemAdd(cfg, se.ID, config.StatusVals("Closed", "#66fb99"))
+	if err != nil {
+		return err
+	}
+	// add contact item - vijay (straight)
+	con1, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("vijay", "vijayasankarj@gmail.com", st1.ID))
+	if err != nil {
+		return err
+	}
+	// add contact item - senthil (straight)
+	con2, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("senthil", "senthil@gmail.com", st2.ID))
+	if err != nil {
+		return err
+	}
+	// add task item for contact - vijay (reverse)
+	_, err = config.ItemAdd(cfg, te.ID, config.TaskVals("add deal price", con1.ID))
+	if err != nil {
+		return err
+	}
+	// add task item for contact - vijay (reverse)
+	_, err = config.ItemAdd(cfg, te.ID, config.TaskVals("make call", con1.ID))
+	if err != nil {
+		return err
+	}
+	// add deal item with contacts - vijay & senthil (reverse)
+	_, err = config.ItemAdd(cfg, de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID))
+	if err != nil {
+		return err
+	}
+	//add email entity
+	//add workflows
+
 	return nil
 }
 
