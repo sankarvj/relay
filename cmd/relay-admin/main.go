@@ -11,12 +11,15 @@ import (
 	"os"
 	"time"
 
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
+
 	"github.com/ardanlabs/conf"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/config"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -143,6 +146,21 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
+	//add entity - email
+	me, err := config.EntityAdd(cfg, "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	if err != nil {
+		return err
+	}
+	//add entity - api-hook
+	we, err := config.EntityAdd(cfg, "WebHook", entity.CategoryAPI, config.APIFields())
+	if err != nil {
+		return err
+	}
+	//add entity - delay
+	dele, err := config.EntityAdd(cfg, "Delay Timer", entity.CategoryDelay, config.DelayFields())
+	if err != nil {
+		return err
+	}
 
 	// add status item - open
 	st1, err := config.ItemAdd(cfg, se.ID, config.StatusVals("Open", "#fb667e"))
@@ -155,12 +173,12 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 	// add contact item - vijay (straight)
-	con1, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("vijay", "vijayasankarj@gmail.com", st1.ID))
+	con1, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("Vijay", "vijayasankarj@gmail.com", st1.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	con2, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("senthil", "senthil@gmail.com", st2.ID))
+	con2, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("Senthil", "senthil@gmail.com", st2.ID))
 	if err != nil {
 		return err
 	}
@@ -179,8 +197,79 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
-	//add email entity
+	// add email item
+	emg, err := config.ItemAdd(cfg, me.ID, config.EmailVals(ce.ID))
+	if err != nil {
+		return err
+	}
+	// add delay item
+	delayi, err := config.ItemAdd(cfg, me.ID, config.DelayVals())
+	if err != nil {
+		return err
+	}
+
 	//add workflows
+	f, err := config.FlowAdd(cfg, ce.ID, "The Workflow", flow.FlowTypeSegment, flow.FlowConditionEntry)
+	if err != nil {
+		return err
+	}
+
+	//test node push test case - TestCreateItemRuleRunner
+	no1, err := config.NodeAdd(cfg, f.ID, te.ID, "", node.Push, "", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	no2, err := config.NodeAdd(cfg, f.ID, "00000000-0000-0000-0000-000000000000", no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	no3, err := config.NodeAdd(cfg, f.ID, me.ID, no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
+	if err != nil {
+		return err
+	}
+
+	_, err = config.NodeAdd(cfg, f.ID, we.ID, no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	_, err = config.NodeAdd(cfg, f.ID, dele.ID, no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	if err != nil {
+		return err
+	}
+
+	p, err := config.FlowAdd(cfg, ce.ID, "The Pipeline", flow.FlowTypePipeline, flow.FlowConditionEntry)
+	if err != nil {
+		return err
+	}
+
+	//test node push test case - TestCreateItemRuleRunner
+	pno1, err := config.NodeAdd(cfg, p.ID, "00000000-0000-0000-0000-000000000000", "", node.Stage, "", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	pno2, err := config.NodeAdd(cfg, p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	_, err = config.NodeAdd(cfg, p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
+	if err != nil {
+		return err
+	}
+
+	_, err = config.NodeAdd(cfg, p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	_, err = config.NodeAdd(cfg, p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

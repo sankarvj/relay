@@ -78,7 +78,7 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 	const q = `INSERT INTO nodes
 		(node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, 
 		created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err = db.ExecContext(
 		ctx, q,
