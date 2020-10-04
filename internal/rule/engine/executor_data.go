@@ -42,8 +42,10 @@ func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity
 	for _, field := range entityFields {
 		switch field.DataType {
 		case entity.TypeString:
-			valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), n.VariablesMap())
-			evaluatedItemFields[field.Key] = valuatedValue
+			if field.Value != nil {
+				valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), n.VariablesMap())
+				evaluatedItemFields[field.Key] = valuatedValue
+			}
 		default:
 			evaluatedItemFields[field.Key] = field.Value
 		}

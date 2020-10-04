@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -106,6 +107,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
+	ni.ID = uuid.New().String()
 
 	ri, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {

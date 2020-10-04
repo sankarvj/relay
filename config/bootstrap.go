@@ -13,7 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func EntityAdd(cfg database.Config, name string, cat int, fields []entity.Field) (entity.Entity, error) {
+func EntityAdd(cfg database.Config, id, name string, cat int, fields []entity.Field) (entity.Entity, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return entity.Entity{}, err
@@ -22,6 +22,7 @@ func EntityAdd(cfg database.Config, name string, cat int, fields []entity.Field)
 
 	ctx := context.Background()
 	ne := entity.NewEntity{
+		ID:        id,
 		AccountID: schema.SeedAccountID,
 		TeamID:    schema.SeedTeamID,
 		Category:  cat,
@@ -38,7 +39,7 @@ func EntityAdd(cfg database.Config, name string, cat int, fields []entity.Field)
 	return e, nil
 }
 
-func ItemAdd(cfg database.Config, entityID string, fields map[string]interface{}) (item.Item, error) {
+func ItemAdd(cfg database.Config, id, entityID string, fields map[string]interface{}) (item.Item, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return item.Item{}, err
@@ -47,6 +48,7 @@ func ItemAdd(cfg database.Config, entityID string, fields map[string]interface{}
 
 	ctx := context.Background()
 	ni := item.NewItem{
+		ID:        id,
 		AccountID: schema.SeedAccountID,
 		EntityID:  entityID,
 		Fields:    fields,
@@ -61,7 +63,7 @@ func ItemAdd(cfg database.Config, entityID string, fields map[string]interface{}
 	return i, nil
 }
 
-func FlowAdd(cfg database.Config, entityID string, name string, typ, condition int) (flow.Flow, error) {
+func FlowAdd(cfg database.Config, id, entityID string, name string, typ, condition int) (flow.Flow, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return flow.Flow{}, err
@@ -70,6 +72,7 @@ func FlowAdd(cfg database.Config, entityID string, name string, typ, condition i
 
 	ctx := context.Background()
 	nf := flow.NewFlow{
+		ID:         id,
 		AccountID:  schema.SeedAccountID,
 		EntityID:   entityID,
 		Type:       typ,
@@ -87,7 +90,7 @@ func FlowAdd(cfg database.Config, entityID string, name string, typ, condition i
 	return f, nil
 }
 
-func NodeAdd(cfg database.Config, flowID, actorID, pnodeID string, typ int, exp string, actuals map[string]string) (node.Node, error) {
+func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID *string, typ int, exp string, actuals map[string]string) (node.Node, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return node.Node{}, err
@@ -96,6 +99,7 @@ func NodeAdd(cfg database.Config, flowID, actorID, pnodeID string, typ int, exp 
 
 	ctx := context.Background()
 	nn := node.NewNode{
+		ID:           id,
 		AccountID:    schema.SeedAccountID,
 		FlowID:       flowID,
 		ActorID:      actorID,

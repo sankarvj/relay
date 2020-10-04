@@ -31,6 +31,7 @@ type ViewModelItem struct {
 
 // NewItem has information needed to creat new item
 type NewItem struct {
+	ID        string                 `json:"id"`
 	AccountID string                 `json:"account_id"`
 	EntityID  string                 `json:"entity_id"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`

@@ -46,7 +46,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	}
 
 	e := Entity{
-		ID:        uuid.New().String(),
+		ID:        n.ID,
 		AccountID: n.AccountID,
 		TeamID:    n.TeamID,
 		Name:      n.Name,

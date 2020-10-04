@@ -57,7 +57,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewFlow, now time.Time) (Flow, e
 	defer span.End()
 
 	f := Flow{
-		ID:          uuid.New().String(),
+		ID:          n.ID,
 		AccountID:   n.AccountID,
 		EntityID:    n.EntityID,
 		Name:        n.Name,

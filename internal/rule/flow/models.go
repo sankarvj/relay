@@ -52,6 +52,7 @@ type ViewModelFlow struct {
 
 // NewFlow has information needed to creat new flow
 type NewFlow struct {
+	ID          string `json:"id"`
 	AccountID   string `json:"account_id" validate:"required"`
 	EntityID    string `json:"entity_id" validate:"required"`
 	Name        string `json:"name" validate:"required"`

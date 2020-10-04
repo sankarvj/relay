@@ -32,6 +32,10 @@ type caster struct {
 	casters       []interface{}
 }
 
+func Compare(left, right interface{}) bool {
+	return compare(left, right)
+}
+
 func compare(left, right Operand) bool {
 
 	c := cast(left, right, true)

@@ -7,6 +7,8 @@ import (
 	"log"
 	"time"
 
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -47,7 +49,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 	}
 
 	i := Item{
-		ID:        uuid.New().String(),
+		ID:        n.ID,
 		AccountID: n.AccountID,
 		EntityID:  n.EntityID,
 		Fieldsb:   string(fieldsBytes),
@@ -150,7 +152,9 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	diffFields := newItemFields
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
-			if newItem == oldItem {
+			log.Printf("newItem %v", newItem)
+			log.Printf("oldItem %v", newItem)
+			if ruler.Compare(newItem, oldItem) {
 				delete(diffFields, key)
 			}
 		}

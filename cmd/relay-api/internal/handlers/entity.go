@@ -65,6 +65,7 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err := web.Decode(r, &ne); err != nil {
 		return errors.Wrap(err, "")
 	}
+	ne.ID = uuid.New().String()
 	ne.AccountID = params["account_id"]
 	ne.TeamID = params["team_id"]
 	//add key with a UUID

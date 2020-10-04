@@ -53,8 +53,9 @@ type ViewModelNode struct {
 
 // NewNode has information needed to creat new node
 type NewNode struct {
+	ID           string            `json:"id"`
 	AccountID    string            `json:"account_id" validate:"required"`
-	ParentNodeID string            `json:"parent_node_id"`
+	ParentNodeID *string           `json:"parent_node_id"`
 	FlowID       string            `json:"flow_id" validate:"required"`
 	ActorID      string            `json:"actor_id"`
 	Type         int               `json:"type" validate:"required"`

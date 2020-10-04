@@ -127,146 +127,146 @@ func seed(cfg database.Config) error {
 
 func crmadd(cfg database.Config) error {
 	//add entity - status
-	se, err := config.EntityAdd(cfg, "Status", entity.CategoryData, config.StatusFields())
+	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryData, config.StatusFields())
 	if err != nil {
 		return err
 	}
 	//add entity - contacts
-	ce, err := config.EntityAdd(cfg, "Contacts", entity.CategoryData, config.ContactFields(se.ID))
+	ce, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - task
-	te, err := config.EntityAdd(cfg, "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
+	te, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - deal
-	de, err := config.EntityAdd(cfg, "Deals", entity.CategoryData, config.DealFields(ce.ID))
+	de, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - email
-	me, err := config.EntityAdd(cfg, "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	me, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
 	if err != nil {
 		return err
 	}
 	//add entity - api-hook
-	we, err := config.EntityAdd(cfg, "WebHook", entity.CategoryAPI, config.APIFields())
+	we, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
 	if err != nil {
 		return err
 	}
 	//add entity - delay
-	dele, err := config.EntityAdd(cfg, "Delay Timer", entity.CategoryDelay, config.DelayFields())
+	dele, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
 	if err != nil {
 		return err
 	}
 
 	// add status item - open
-	st1, err := config.ItemAdd(cfg, se.ID, config.StatusVals("Open", "#fb667e"))
+	st1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000008", se.ID, config.StatusVals("Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	st2, err := config.ItemAdd(cfg, se.ID, config.StatusVals("Closed", "#66fb99"))
+	st2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000009", se.ID, config.StatusVals("Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
 	// add contact item - vijay (straight)
-	con1, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("Vijay", "vijayasankarj@gmail.com", st1.ID))
+	con1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000010", ce.ID, config.ContactVals("Vijay", "vijayasankarmail@gmail.com", st1.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	con2, err := config.ItemAdd(cfg, ce.ID, config.ContactVals("Senthil", "senthil@gmail.com", st2.ID))
+	con2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000011", ce.ID, config.ContactVals("Senthil", "senthil@gmail.com", st2.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = config.ItemAdd(cfg, te.ID, config.TaskVals("add deal price", con1.ID))
+	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000012", te.ID, config.TaskVals("add deal price", con1.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = config.ItemAdd(cfg, te.ID, config.TaskVals("make call", con1.ID))
+	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000013", te.ID, config.TaskVals("make call", con1.ID))
 	if err != nil {
 		return err
 	}
 	// add deal item with contacts - vijay & senthil (reverse)
-	_, err = config.ItemAdd(cfg, de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID))
+	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID))
 	if err != nil {
 		return err
 	}
 	// add email item
-	emg, err := config.ItemAdd(cfg, me.ID, config.EmailVals(ce.ID))
+	emg, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000015", me.ID, config.EmailVals(ce.ID))
 	if err != nil {
 		return err
 	}
 	// add delay item
-	delayi, err := config.ItemAdd(cfg, me.ID, config.DelayVals())
+	delayi, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000016", dele.ID, config.DelayVals())
 	if err != nil {
 		return err
 	}
 
 	//add workflows
-	f, err := config.FlowAdd(cfg, ce.ID, "The Workflow", flow.FlowTypeSegment, flow.FlowConditionEntry)
+	f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowTypeSegment, flow.FlowConditionEntry)
 	if err != nil {
 		return err
 	}
 
 	//test node push test case - TestCreateItemRuleRunner
-	no1, err := config.NodeAdd(cfg, f.ID, te.ID, "", node.Push, "", map[string]string{})
+	no1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000018", f.ID, te.ID, nil, node.Push, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	no2, err := config.NodeAdd(cfg, f.ID, "00000000-0000-0000-0000-000000000000", no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
+	no2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000019", f.ID, "00000000-0000-0000-0000-000000000000", &no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	no3, err := config.NodeAdd(cfg, f.ID, me.ID, no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
+	no3, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000020", f.ID, me.ID, &no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, f.ID, we.ID, no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000021", f.ID, we.ID, &no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, f.ID, dele.ID, no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000022", f.ID, dele.ID, &no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
 	if err != nil {
 		return err
 	}
 
-	p, err := config.FlowAdd(cfg, ce.ID, "The Pipeline", flow.FlowTypePipeline, flow.FlowConditionEntry)
+	p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", ce.ID, "The Pipeline", flow.FlowTypePipeline, flow.FlowConditionEntry)
 	if err != nil {
 		return err
 	}
 
 	//test node push test case - TestCreateItemRuleRunner
-	pno1, err := config.NodeAdd(cfg, p.ID, "00000000-0000-0000-0000-000000000000", "", node.Stage, "", map[string]string{})
+	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", nil, node.Stage, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	pno2, err := config.NodeAdd(cfg, p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", &pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, &pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, &pno1.ID, node.Hook, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, &pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
 	if err != nil {
 		return err
 	}

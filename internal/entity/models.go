@@ -40,6 +40,7 @@ type ViewModelEntity struct {
 
 // NewEntity has information needed to creat new entity
 type NewEntity struct {
+	ID        string  `json:"id"`
 	Name      string  `json:"name" validate:"required"`
 	AccountID string  `json:"account_id"`
 	TeamID    string  `json:"team_id"`

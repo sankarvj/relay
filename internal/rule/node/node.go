@@ -63,8 +63,8 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 	}
 
 	n := Node{
-		ID:           uuid.New().String(),
-		ParentNodeID: nil,
+		ID:           nn.ID,
+		ParentNodeID: nn.ParentNodeID,
 		AccountID:    nn.AccountID,
 		FlowID:       nn.FlowID,
 		ActorID:      nn.ActorID,
