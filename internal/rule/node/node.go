@@ -165,14 +165,12 @@ func UpdateNodeVars(existingVars map[string]interface{}, newVars map[string]inte
 	for key, exitingVal := range existingVars {
 		if _, ok := newVars[key]; !ok { //if existing key present in newVars then keep the newVars value.
 			newVars[key] = exitingVal
-		} else {
+		} else if key == GlobalEntity || key == GlobalEntityData {
 			// for the global entity, dive in to the innerMap (inside xyz).
 			// we should update the content inside global entities and not just replace it with new values.
-			if key == GlobalEntity || key == GlobalEntityData {
-				exitingGlobalMap := existingVars[key].(map[string]interface{})
-				newGlobalMap := newVars[key].(map[string]interface{})
-				newVars[key] = UpdateNodeVars(exitingGlobalMap, newGlobalMap)
-			}
+			exitingGlobalMap := existingVars[key].(map[string]interface{})
+			newGlobalMap := newVars[key].(map[string]interface{})
+			newVars[key] = UpdateNodeVars(exitingGlobalMap, newGlobalMap)
 		}
 	}
 	return newVars

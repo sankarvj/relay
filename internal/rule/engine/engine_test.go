@@ -10,6 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -49,76 +50,74 @@ func TestEmailRuleRunner(t *testing.T) {
 	}
 }
 
-// func TestCreateItemRuleRunner(t *testing.T) {
-// 	db, teardown := tests.NewUnit(t)
-// 	tests.SeedData(t, db)
-// 	tests.SeedEntity(t, db)
-// 	tests.SeedWorkFlows(t, db)
-// 	defer teardown()
-// 	t.Log("Given the need to run the engine to create new item")
-// 	{
-// 		t.Log("\twhen running a create item engine - default case")
-// 		{
-// 			e1 := schema.SeedEntityContactID
-// 			//k1 := schema.SeedFieldKeyContactName
-// 			i1 := schema.SeedItemContactID1
-// 			e2 := schema.SeedEntityTaskID
-// 			i2 := schema.SeedItemTaskID2
+func TestCreateItemRuleRunner(t *testing.T) {
+	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
+	defer teardown()
+	t.Log("Given the need to run the engine to create new item")
+	{
+		t.Log("\twhen running a create item engine - default case")
+		{
+			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
+			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
+			e2 := "00000000-0000-0000-0000-000000000003" //task-entity-id
+			i2 := "00000000-0000-0000-0000-000000000012" //task-item-id
 
-// 			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
-// 			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
+			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
+			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
 
-// 			node := node.Node{
-// 				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
-// 				AccountID: schema.SeedAccountID,
-// 				Variables: vars,
-// 				Actuals:   acts,
-// 				ActorID:   e2,
-// 				Type:      node.Push,
-// 			}
-// 			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
-// 			if err != nil {
-// 				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
-// 			}
-// 			t.Logf("\t%s\tshould create a item", tests.Success)
-// 		}
-// 	}
-// }
+			node := node.Node{
+				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
+				AccountID: schema.SeedAccountID,
+				Variables: vars,
+				Actuals:   acts,
+				ActorID:   e2,
+				Type:      node.Push,
+			}
+			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
+			if err != nil {
+				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s\tshould create a item", tests.Success)
+		}
+	}
+}
 
-// func TestUpdateRuleRunner(t *testing.T) {
-// 	db, teardown := tests.NewUnit(t)
-// 	tests.SeedData(t, db)
-// 	tests.SeedEntity(t, db)
-// 	tests.SeedWorkFlows(t, db)
-// 	defer teardown()
-// 	t.Log("Given the need to run the engine to update existing item")
-// 	{
-// 		t.Log("\twhen running update item engine - default case")
-// 		{
-// 			e1 := schema.SeedEntityContactID
-// 			//k1 := schema.SeedFieldKeyContactName
-// 			i1 := schema.SeedItemContactID1
-// 			i2 := schema.SeedItemContactUpdatableID
+func TestUpdateRuleRunner(t *testing.T) {
+	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedWorkFlows(t, db)
+	defer teardown()
+	t.Log("Given the need to run the engine to update existing item")
+	{
+		t.Log("\twhen running update item engine - default case")
+		{
+			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
+			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
+			i2 := "00000000-0000-0000-0000-000000000011" //updatable-contact-id
 
-// 			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
-// 			acts, _ := node.MapToJSONB(map[string]string{e1: i2})
+			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
+			acts, _ := node.MapToJSONB(map[string]string{e1: i2})
 
-// 			node := node.Node{
-// 				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
-// 				AccountID: schema.SeedAccountID,
-// 				Variables: vars,
-// 				Actuals:   acts,
-// 				ActorID:   e1,
-// 				Type:      node.Modify,
-// 			}
-// 			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
-// 			if err != nil {
-// 				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
-// 			}
-// 			t.Logf("\t%s should update a item", tests.Success)
-// 		}
-// 	}
-// }
+			node := node.Node{
+				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
+				AccountID: schema.SeedAccountID,
+				Variables: vars,
+				Actuals:   acts,
+				ActorID:   e1,
+				Type:      node.Modify,
+			}
+			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
+			if err != nil {
+				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
+			}
+			t.Logf("\t%s should update a item", tests.Success)
+		}
+	}
+}
 
 func TestFlow(t *testing.T) {
 	db, teardown := tests.NewUnit(t)

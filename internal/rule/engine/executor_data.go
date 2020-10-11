@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -17,10 +19,13 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	}
 
 	ni := item.NewItem{
+		ID:        uuid.New().String(),
 		AccountID: n.AccountID,
 		EntityID:  n.ActorID,
 	}
-	ni.Fields = evaluateFieldValues(ctx, db, entityFields, n)
+	ni.Fields = evaluateFieldValues(ctx, db, entityFields, n.VariablesMap())
+
+	log.Printf("ni %+v ", ni)
 
 	switch n.Type {
 	case node.Push:
@@ -37,15 +42,17 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	return err
 }
 
-func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, n node.Node) map[string]interface{} {
+func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, vars map[string]interface{}) map[string]interface{} {
 	evaluatedItemFields := map[string]interface{}{}
 	for _, field := range entityFields {
 		switch field.DataType {
 		case entity.TypeString:
 			if field.Value != nil {
-				valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), n.VariablesMap())
+				valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), vars)
 				evaluatedItemFields[field.Key] = valuatedValue
 			}
+		case entity.TypeReference:
+			evaluatedItemFields[field.Key] = vars[field.RefID] // what happens if the vars has more than one item
 		default:
 			evaluatedItemFields[field.Key] = field.Value
 		}

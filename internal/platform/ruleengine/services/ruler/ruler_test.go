@@ -131,7 +131,8 @@ func TestExpressionWithListOperands(t *testing.T) {
 }
 
 func TestQuerySnippet(t *testing.T) {
-	//signalsChan wait to receive work and action triggers until the run completes
+	//check TestQueryRuleRunner test case in the engine_test to fully understand the feature
+	//useful for segmenting usecase like: filter a contact's deal > 1000
 	t.Log("Given the need test the query snippets in the expression")
 	{
 		t.Log("\twhen evaluating query")
