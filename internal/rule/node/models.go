@@ -54,13 +54,20 @@ type ViewModelNode struct {
 // NewNode has information needed to creat new node
 type NewNode struct {
 	ID           string            `json:"id"`
-	AccountID    string            `json:"account_id" validate:"required"`
 	ParentNodeID *string           `json:"parent_node_id"`
 	FlowID       string            `json:"flow_id" validate:"required"`
 	ActorID      string            `json:"actor_id"`
 	Type         int               `json:"type" validate:"required"`
 	Expression   string            `json:"expression"`
 	Actuals      map[string]string `json:"actuals"`
+	Nodes        []NewNode         `json:"nodes"`
+	Queries      []Query           `json:"queries"`
+}
+
+type Query struct {
+	Key      string `json:"key"`
+	Value    string `json:"value"`
+	Operator string `json:"operator"`
 }
 
 // VariablesMap parses variables jsonb to map

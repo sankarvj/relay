@@ -46,3 +46,9 @@ type NewItem struct {
 type UpdateItem struct {
 	Fieldsb *string `json:"fieldsb"`
 }
+
+//State for the item specifies when to associate a item to the lists
+const (
+	StateDefault   = 0
+	StateBluePrint = 0 //used when adding blueprint item in the workflow
+)

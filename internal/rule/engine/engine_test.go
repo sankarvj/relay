@@ -26,15 +26,14 @@ func TestEmailRuleRunner(t *testing.T) {
 		{
 			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
 			e2 := "00000000-0000-0000-0000-000000000005" //mail-intg
-			k1 := "uuid-00-fname"
 			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i2 := "00000000-0000-0000-0000-000000000015" //mail-item-id
+			i2 := "00000000-0000-0000-0000-000000000015" //mail-item-id (assuming the item has incorparated the contacts fields as vars in its body/subject)
 
-			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
-			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
+			vars, _ := node.MapToJSONB(map[string]string{e1: i1}) // this will get populated only during the trigger
+			acts, _ := node.MapToJSONB(map[string]string{e2: i2}) // this will get populated during the workflow creation
 
 			node := node.Node{
-				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
+				Expression: fmt.Sprintf("{{%s.uuid-00-fname}} eq {Vijay}", e1),
 				Variables:  vars,
 				Actuals:    acts,
 				ActorID:    e2,
@@ -63,7 +62,7 @@ func TestCreateItemRuleRunner(t *testing.T) {
 			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
 			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
 			e2 := "00000000-0000-0000-0000-000000000003" //task-entity-id
-			i2 := "00000000-0000-0000-0000-000000000012" //task-item-id
+			i2 := "00000000-0000-0000-0000-000000000012" //task-item-id (the task blue-print which will be used to create other tasks)
 
 			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
 			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
@@ -97,7 +96,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 		{
 			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
 			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i2 := "00000000-0000-0000-0000-000000000011" //updatable-contact-id
+			i2 := "00000000-0000-0000-0000-000000000011" //updatable-contact-id (Has blue-print of the values to be updated when triggered)
 
 			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
 			acts, _ := node.MapToJSONB(map[string]string{e1: i2})

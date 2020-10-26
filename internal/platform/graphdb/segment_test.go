@@ -219,7 +219,6 @@ func TestGraph(t *testing.T) {
 	//log.Printf("gpb1 %+v", gpb1)
 	t.Log(" Given the need create nodes and edges")
 	{
-
 		t.Log("\twhen adding the task item 1 to the graph")
 		{
 			err := graphdb.UpsertNode(residPool, gpb01)

@@ -102,6 +102,7 @@ type FieldMeta struct {
 type DType string
 
 //Mode for the entity spcifies certain entity specific characteristics
+//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
 	TypeString    DType = "S"
 	TypeNumber          = "N"
