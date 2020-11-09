@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -137,6 +138,20 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 	return i, nil
 }
 
+func BulkRetrieve(ctx context.Context, entityID string, ids []string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2)`
+
+	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items")
+	}
+
+	return items, nil
+}
+
 // Fields parses attribures to fields
 func (i Item) Fields() map[string]interface{} {
 	var fields map[string]interface{}
@@ -152,8 +167,6 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	diffFields := newItemFields
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
-			log.Printf("newItem %v", newItem)
-			log.Printf("oldItem %v", newItem)
 			if ruler.Compare(newItem, oldItem) {
 				delete(diffFields, key)
 			}

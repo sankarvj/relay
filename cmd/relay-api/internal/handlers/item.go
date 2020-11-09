@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"go.opencensus.io/trace"
@@ -96,6 +97,31 @@ func (i *Item) TimeSeriesList(ctx context.Context, w http.ResponseWriter, r *htt
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
+//Update updates the item
+func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.Update")
+	defer span.End()
+
+	var vi item.ViewModelItem
+	if err := web.Decode(r, &vi); err != nil {
+		return errors.Wrap(err, "")
+	}
+
+	existingItem, err := item.Retrieve(ctx, vi.ID, i.db)
+	if err != nil {
+		return errors.Wrapf(err, "Item Get During Update")
+	}
+
+	err = item.UpdateFields(ctx, i.db, params["item_id"], vi.Fields)
+	if err != nil {
+		return errors.Wrapf(err, "Item Update: %+v", &vi)
+	}
+	//TODO push this to stream/queue
+	job.OnFieldUpdate(params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
+
+	return web.Respond(ctx, w, vi, http.StatusOK)
+}
+
 // Create inserts a new team into the system.
 func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Create")
@@ -115,6 +141,19 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	return web.Respond(ctx, w, ri, http.StatusCreated)
+}
+
+// Retrieve gets the specified item with field meta from the database.
+func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.Retrieve")
+	defer span.End()
+
+	item, err := item.Retrieve(ctx, params["item_id"], i.db)
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, createViewModelItem(item), http.StatusOK)
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {

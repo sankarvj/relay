@@ -97,8 +97,22 @@ func ActiveNodes(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveNo
 	return activeNodes, nil
 }
 
+func ActiveNodesForItem(ctx context.Context, accountID, flowID, itemID string, db *sqlx.DB) ([]ActiveNode, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.ActiveNodesForItem")
+	defer span.End()
+
+	activeNodes := []ActiveNode{}
+	const q = `SELECT * FROM active_nodes where account_id = $1 AND flow_id = $2 AND item_id = $3`
+
+	if err := db.SelectContext(ctx, &activeNodes, q, accountID, flowID, itemID); err != nil {
+		return activeNodes, errors.Wrap(err, "selecting active nodes")
+	}
+
+	return activeNodes, nil
+}
+
 func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
-	// call this in job Q
+	//TODO call this in job Q
 	return nextRun(ctx, db, rp, *n, map[string]interface{}{})
 }
 
@@ -120,9 +134,11 @@ func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, pare
 	childNodes := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
 	updatedVars := updateVarJSON(n.VariablesMap(), parentResponseMap)
 	for _, childNode := range childNodes {
+		log.Printf("nextnodeID: %s", childNode.ID)
 		childNode.Meta = n.Meta //passing root node meta
 		childNode.Variables = updatedVars
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
+			log.Println("encountered stage node. Skipping auto run")
 			continue
 		}
 		runJob(ctx, db, rp, childNode)
@@ -164,7 +180,6 @@ func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemI
 }
 
 func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	log.Printf(">>>>>>>>>>>>>>>>   The Item Has Entered The Node Flow Node ID: %v -- Entity ID: %v -- Item ID: %v -- Flow ID: %v", n.ID, n.Meta.EntityID, n.Meta.ItemID, n.FlowID)
 	if n.IsRootNode() { // add the flow entry event
 		logFlowEvent(ctx, db, n)
 	}
@@ -183,5 +198,6 @@ func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
 }
 
 func logNodeEvent(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	log.Printf("the job entered the node %s", n.ID)
 	return nil
 }

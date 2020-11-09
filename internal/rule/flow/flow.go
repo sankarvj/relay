@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"database/sql"
+	"log"
 	"strings"
 	"time"
 
@@ -37,14 +38,17 @@ var (
 )
 
 // List retrieves a list of existing flows for the entity change.
-func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Flow, error) {
+func List(ctx context.Context, entityIDs []string, db *sqlx.DB) ([]Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.List")
 	defer span.End()
 
 	flows := []Flow{}
-	const q = `SELECT * FROM flows where entity_id = $1`
-
-	if err := db.SelectContext(ctx, &flows, q, entityID); err != nil {
+	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?);`, entityIDs)
+	if err != nil {
+		return nil, errors.Wrap(err, "selecting in query")
+	}
+	q = db.Rebind(q)
+	if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
 		return nil, errors.Wrap(err, "selecting flows")
 	}
 
@@ -52,19 +56,19 @@ func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Flow, error) {
 }
 
 // Create inserts a new item into the database.
-func Create(ctx context.Context, db *sqlx.DB, n NewFlow, now time.Time) (Flow, error) {
+func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Create")
 	defer span.End()
 
 	f := Flow{
-		ID:          n.ID,
-		AccountID:   n.AccountID,
-		EntityID:    n.EntityID,
-		Name:        n.Name,
-		Description: n.Description,
-		Expression:  n.Expression,
-		Type:        n.Type,
-		Condition:   n.Condition,
+		ID:          nf.ID,
+		AccountID:   nf.AccountID,
+		EntityID:    nf.EntityID,
+		Name:        nf.Name,
+		Description: nf.Description,
+		Expression:  nf.Expression,
+		Type:        nf.Type,
+		Condition:   nf.Condition,
 		Status:      0,
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
@@ -123,6 +127,7 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 	for key := range dirtyFields {
 		for _, flow := range flows {
 			if strings.Contains(flow.Expression, key) {
+				log.Println("black Sheep ---> ", flow.Name)
 				dirtyFlows = append(dirtyFlows, flow)
 			}
 		}
@@ -132,31 +137,39 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 }
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
-func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, flows []Flow) error {
+func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, flows []Flow) []error {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger")
+	defer span.End()
+	triggerErrors := make([]error, 0)
+	//TODO what if the matched flows has 1 million records
 	aflows, err := ActiveFlows(ctx, ids(flows), db)
 	if err != nil {
-		return err
+		return append(triggerErrors, err)
 	}
 	activeFlowMap := activeFlowMap(aflows)
 	for _, f := range flows {
+		log.Printf("check expression for flow ----->  %s", f.Name)
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
 		if engine.RunExpEvaluator(ctx, db, rp, n.Expression, n.VariablesMap()) { //entry
-			if af.stopEntryTriggerFlow(f.Condition) { //skips trigger if already active or of exit condition
-				return ErrFlowActive
+			if af.stopEntryTriggerFlow(f.Condition) { //skip trigger if already active or of exit condition
+				err = ErrFlowActive
+			} else {
+				err = af.entryFlowTrigger(ctx, db, rp, n)
 			}
-			err = af.entryFlowTrigger(ctx, db, rp, n)
 		} else {
-			if af.stopExitTriggerFlow(f.Condition) { //skips trigger if new  or inactive or not allowed.
-				return ErrFlowInActive
+			if af.stopExitTriggerFlow(f.Condition) { //skip trigger if new  or inactive or not allowed.
+				err = ErrFlowInActive
+			} else {
+				err = af.exitFlowTrigger(ctx, db, rp, n)
 			}
-			err = af.exitFlowTrigger(ctx, db, rp, n)
 		}
 		//concat errors in the loop. nil if no error exists
 		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", f.ID)
+		triggerErrors = append(triggerErrors, err)
 	}
 
-	return err
+	return triggerErrors
 }
 
 //DirectTrigger is when you want to execute the item on a particular node stage.

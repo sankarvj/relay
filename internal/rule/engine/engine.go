@@ -94,5 +94,6 @@ func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, exp strin
 			positive = true
 		}
 	}
+	log.Printf("result of the evaluator: %t", positive)
 	return positive
 }

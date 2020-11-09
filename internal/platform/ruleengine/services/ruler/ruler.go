@@ -58,18 +58,20 @@ type Operand interface{}
 //res chan will trigger when the rule engine needs a response in the form of map
 func Run(rule string, isExecutor bool, workChan chan Work) {
 	defer close(workChan)
-	if rule == "" {
+
+	if strings.TrimSpace(rule) == "" {
+		log.Printf("run rule: empty expression, send positive response")
 		// By default, the empty rule is considered as the positive expression.
 		// stand taken since the default nodes don't possess expressions
 		workChan <- Work{PosExecutor, "", nil}
 		return
 	}
-	log.Println("starting lexer and parser for rule - ", rule, "...")
 	r := Ruler{
 		workChan: workChan,
 		positive: nil, //always start on a nil note! :)
 	}
 	if isExecutor {
+		log.Printf("run rule: %s", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
 			workChan <- Work{PosExecutor, r.trigger, nil}
@@ -77,6 +79,7 @@ func Run(rule string, isExecutor bool, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil}
 		}
 	} else {
+		log.Printf("run parser for expression: %s", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		r.content = strings.TrimSpace(r.content)
@@ -243,7 +246,7 @@ func (r *Ruler) query(q string) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	//log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

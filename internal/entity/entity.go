@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -122,6 +123,20 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Entity, error) {
 	return e, nil
 }
 
+func BulkRetrieve(ctx context.Context, ids []string, db *sqlx.DB) ([]Entity, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.BulkRetrieve")
+	defer span.End()
+
+	entities := []Entity{}
+	const q = `SELECT * FROM entities where entity_id = any($1)`
+
+	if err := db.SelectContext(ctx, &entities, q, pq.Array(ids)); err != nil {
+		return entities, errors.Wrap(err, "selecting bulk entities")
+	}
+
+	return entities, nil
+}
+
 //ParseEmailEntity creates the email entity from the field map provided
 func ParseEmailEntity(params map[string]interface{}) (EmailEntity, error) {
 	var eme EmailEntity
@@ -165,6 +180,14 @@ func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []
 		updatedFields = append(updatedFields, field)
 	}
 	return updatedFields
+}
+
+func FetchIDs(entities []Entity) []string {
+	ids := make([]string, 0)
+	for _, e := range entities {
+		ids = append(ids, e.ID)
+	}
+	return ids
 }
 
 // Fields parses attribures to fields

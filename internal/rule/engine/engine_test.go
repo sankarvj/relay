@@ -161,7 +161,7 @@ func TestTrigger(t *testing.T) {
 			newItemFields["uuid-00-nps-score"] = 99
 			item.UpdateFields(tests.Context(), db, i1, newItemFields)
 			// the above action will trigger this in the background thread
-			flows, _ := flow.List(tests.Context(), e1, db)
+			flows, _ := flow.List(tests.Context(), []string{e1}, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			err := flow.Trigger(tests.Context(), db, nil, i1, dirtyFlows)
 			if err != nil {

@@ -18,6 +18,11 @@ const (
 	Root = "00000000-0000-0000-0000-000000000000"
 )
 
+//Root node
+const (
+	NoActor = "00000000-0000-0000-0000-000000000000"
+)
+
 //GlobalEntity is the generic entity-id for certain expressions. See worker for its usecases
 const (
 	GlobalEntity       = "xyz"
@@ -46,7 +51,22 @@ func List(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
 	const q = `SELECT * FROM nodes where flow_id = $1`
 
 	if err := db.SelectContext(ctx, &nodes, q, flowID); err != nil {
-		return nil, errors.Wrap(err, "selecting items")
+		return nil, errors.Wrap(err, "selecting nodes")
+	}
+
+	return nodes, nil
+}
+
+//NodeActorsList is list with entity details joined
+func NodeActorsList(ctx context.Context, flowID string, db *sqlx.DB) ([]NodeActor, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.node.NodeActorsList")
+	defer span.End()
+
+	nodes := []NodeActor{}
+	const q = `select e.name,e.category,n.node_id,n.parent_node_id,n.actor_id,n.type,n.expression,n.actuals from nodes as n left join entities as e on n.actor_id = e.entity_id where n.flow_id = $1`
+
+	if err := db.SelectContext(ctx, &nodes, q, flowID); err != nil {
+		return nil, errors.Wrap(err, "selecting node actors")
 	}
 
 	return nodes, nil
@@ -137,14 +157,10 @@ func MapToJSONB(data interface{}) (string, error) {
 func BranceNodeMap(nodes []Node) map[string][]Node {
 	nodesBranchMap := map[string][]Node{}
 	for _, node := range nodes {
-		if node.ParentNodeID == nil {
-			root := Root
-			node.ParentNodeID = &root
-		}
-		if existingNodes, ok := nodesBranchMap[*node.ParentNodeID]; ok {
+		if existingNodes, ok := nodesBranchMap[node.ParentNodeID]; ok {
 			existingNodes = append(existingNodes, node)
 		} else {
-			nodesBranchMap[*node.ParentNodeID] = []Node{node}
+			nodesBranchMap[node.ParentNodeID] = []Node{node}
 		}
 	}
 	return nodesBranchMap

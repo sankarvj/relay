@@ -90,7 +90,7 @@ func FlowAdd(cfg database.Config, id, entityID string, name string, typ, conditi
 	return f, nil
 }
 
-func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID *string, typ int, exp string, actuals map[string]string) (node.Node, error) {
+func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, typ int, exp string, actuals map[string]string) (node.Node, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return node.Node{}, err

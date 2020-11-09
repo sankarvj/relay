@@ -178,12 +178,12 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 	// add contact item - senthil (straight)
-	con2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000011", ce.ID, config.ContactVals("Senthil", "senthil@gmail.com", st2.ID))
+	con2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000011", ce.ID, config.ContactVals("Senthil", "vijayasankarmail@gmail.com", st2.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000012", te.ID, config.TaskVals("add deal price", con1.ID))
+	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000012", te.ID, config.TaskVals("make cake", con1.ID))
 	if err != nil {
 		return err
 	}
@@ -215,27 +215,27 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//test node push test case - TestCreateItemRuleRunner
-	no1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000018", f.ID, te.ID, nil, node.Push, "", map[string]string{})
+	no1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000018", f.ID, te.ID, node.Root, node.Push, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	no2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000019", f.ID, "00000000-0000-0000-0000-000000000000", &no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
+	no2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000019", f.ID, "00000000-0000-0000-0000-000000000000", no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	no3, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000020", f.ID, me.ID, &no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
+	no3, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000020", f.ID, me.ID, no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000021", f.ID, we.ID, &no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000021", f.ID, we.ID, no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000022", f.ID, dele.ID, &no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000022", f.ID, dele.ID, no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
 	if err != nil {
 		return err
 	}
@@ -246,27 +246,27 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//test node push test case - TestCreateItemRuleRunner
-	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", nil, node.Stage, "", map[string]string{})
+	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, node.Stage, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", &pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, &pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, &pno1.ID, node.Hook, "", map[string]string{})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
 	if err != nil {
 		return err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, &pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
 	if err != nil {
 		return err
 	}

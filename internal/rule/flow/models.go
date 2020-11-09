@@ -1,13 +1,17 @@
 package flow
 
-import "time"
+import (
+	"time"
+
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+)
 
 //FlowType is the type of flow
 const (
-	FlowTypeUnknown  = 0
-	FlowTypeSegment  = 1
-	FlowTypeEvent    = 2
-	FlowTypePipeline = 3
+	FlowTypeFieldUpdate = 0
+	FlowTypeSegment     = 1
+	FlowTypeEvent       = 2
+	FlowTypePipeline    = 3
 )
 
 //FlowCondition defines exists/entry conditions
@@ -45,6 +49,7 @@ type ActiveFlow struct {
 // ViewModelFlow represents the view model of flow
 type ViewModelFlow struct {
 	ID          string `json:"id"`
+	EntityID    string `json:"entity_id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Expression  string `json:"condition"`
@@ -52,34 +57,15 @@ type ViewModelFlow struct {
 
 // NewFlow has information needed to creat new flow
 type NewFlow struct {
-	ID          string      `json:"id"`
-	AccountID   string      `json:"account_id"`
-	EntityID    string      `json:"entity_id"`
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Expression  string      `json:"expression"`
-	Type        int         `json:"type"`
-	Condition   int         `json:"condition"`
-	Nodes       []NewNode   `json:"nodes"`
-	Meta        interface{} `json:"meta"`
-}
-
-type NewNode struct {
-	ID         string    `json:"id"`
-	ParentID   string    `json:"parent"`
-	Name       string    `json:"name"`
-	Type       int       `json:"type"`
-	Expression string    `json:"exp"`
-	EntityID   string    `json:"entity_id"`
-	ItemID     string    `json:"item_id"`
-	Nodes      []NewNode `json:"nodes"`
-	Queries    []Query   `json:"queries"`
-}
-
-type Query struct {
-	Key      string `json:"key"`
-	Value    string `json:"value"`
-	Operator string `json:"operator"`
+	ID          string         `json:"id"`
+	AccountID   string         `json:"account_id"`
+	EntityID    string         `json:"entity_id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Expression  string         `json:"expression"`
+	Type        int            `json:"type"`
+	Condition   int            `json:"condition"`
+	Nodes       []node.NewNode `json:"nodes"`
 }
 
 // ActiveNode represents the node which are currently active

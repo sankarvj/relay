@@ -1,6 +1,7 @@
 package node
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"time"
@@ -24,7 +25,7 @@ const (
 //Node struct defines the structure of each node in the workflow
 type Node struct {
 	ID           string    `db:"node_id" json:"id"`
-	ParentNodeID *string   `db:"parent_node_id" json:"parent_node_id"`
+	ParentNodeID string    `db:"parent_node_id" json:"parent_node_id"` //put 000000 for default
 	AccountID    string    `db:"account_id" json:"account_id"`
 	FlowID       string    `db:"flow_id" json:"flow_id"`
 	ActorID      string    `db:"actor_id" json:"actor_id"`
@@ -44,23 +45,45 @@ type Meta struct {
 	FlowType int
 }
 
+//Node struct defines the structure of each node in the workflow
+type NodeActor struct {
+	ID             string         `db:"node_id" json:"id"`
+	ParentNodeID   string         `db:"parent_node_id" json:"parent_node_id"`
+	ActorID        string         `db:"actor_id" json:"actor_id"`
+	EntityName     sql.NullString `db:"name" json:"name"`
+	EntityCategory sql.NullInt32  `db:"category" json:"category"`
+	Type           int            `db:"type" json:"type"`
+	Expression     string         `db:"expression" json:"expression"`
+	Actuals        string         `db:"actuals" json:"actuals"`
+}
+
 // ViewModelNode represents the view model of node
 type ViewModelNode struct {
-	ID           string `json:"id"`
-	ParentNodeID string `json:"parent_node_id"`
-	Type         int    `json:"type"`
+	ID             string `json:"id"`
+	ParentNodeID   string `json:"parent_node_id"`
+	EntityName     string `json:"entity_name"`
+	EntityCategory int    `json:"entity_category"`
+	ActorID        string `json:"actor_id"`
+	Type           int    `json:"type"`
+}
+
+type ViewModelActiveNode struct {
+	ID       string `json:"id"`
+	IsActive bool   `json:"is_active"`
+	Life     int    `json:"life"`
 }
 
 // NewNode has information needed to creat new node
 type NewNode struct {
 	ID           string            `json:"id"`
-	ParentNodeID *string           `json:"parent_node_id"`
-	FlowID       string            `json:"flow_id" validate:"required"`
+	Name         string            `json:"name"`
+	ParentNodeID string            `json:"parent_node_id"`
+	AccountID    string            `json:"account_id"`
+	FlowID       string            `json:"flow_id"`
 	ActorID      string            `json:"actor_id"`
 	Type         int               `json:"type" validate:"required"`
 	Expression   string            `json:"expression"`
 	Actuals      map[string]string `json:"actuals"`
-	Nodes        []NewNode         `json:"nodes"`
 	Queries      []Query           `json:"queries"`
 }
 
