@@ -59,12 +59,14 @@ type NodeActor struct {
 
 // ViewModelNode represents the view model of node
 type ViewModelNode struct {
-	ID             string `json:"id"`
-	ParentNodeID   string `json:"parent_node_id"`
-	EntityName     string `json:"entity_name"`
-	EntityCategory int    `json:"entity_category"`
-	ActorID        string `json:"actor_id"`
-	Type           int    `json:"type"`
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	ParentNodeID   string            `json:"parent_node_id"`
+	EntityName     string            `json:"entity_name"`
+	EntityCategory int               `json:"entity_category"`
+	ActorID        string            `json:"actor_id"`
+	Type           int               `json:"type"`
+	Actuals        map[string]string `json:"actuals"`
 }
 
 type ViewModelActiveNode struct {

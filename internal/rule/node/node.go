@@ -225,3 +225,15 @@ func (n *Node) UpdateMeta(entityID, itemID string, flowType int) *Node {
 	}
 	return n
 }
+
+func (n NodeActor) ActualsMap() map[string]string {
+	var actualsMap map[string]string
+	if err := json.Unmarshal([]byte(n.Actuals), &actualsMap); err != nil {
+		//TODO handle this error properly
+		errMsg := errors.Wrapf(err, "error while unmarshalling node actuals attributes to actuals type %q", n.ID)
+		log.Println(errMsg)
+		return actualsMap
+
+	}
+	return actualsMap
+}

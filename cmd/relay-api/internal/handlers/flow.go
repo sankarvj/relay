@@ -33,7 +33,7 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	var flows []flow.Flow
 	if params["entity_id"] == "0" { //fetch all flows for all entities of the product if entity is zero
-		entities, err := entity.List(ctx, params["team_id"], f.db)
+		entities, err := entity.List(ctx, params["team_id"], []int{}, f.db)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	viewModelFlows := make([]flow.ViewModelFlow, len(flows))
 	for i, flow := range flows {
-		viewModelFlows[i] = createViewModelFlow(flow)
+		viewModelFlows[i] = createViewModelFlow(flow, nil)
 	}
 
 	return web.Respond(ctx, w, viewModelFlows, http.StatusOK)
@@ -62,16 +62,26 @@ func (f *Flow) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Flow.Retrieve")
 	defer span.End()
 
-	flow, err := flow.Retrieve(ctx, params["flow_id"], f.db)
+	fl, err := flow.Retrieve(ctx, params["flow_id"], f.db)
 	if err != nil {
 		return err
 	}
 
-	return web.Respond(ctx, w, createViewModelFlow(flow), http.StatusOK)
+	nodes, err := node.NodeActorsList(ctx, fl.ID, f.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelNodes := make([]node.ViewModelNode, len(nodes))
+	for i, node := range nodes {
+		viewModelNodes[i] = createViewModelNode(node)
+	}
+
+	return web.Respond(ctx, w, createViewModelFlow(fl, viewModelNodes), http.StatusOK)
 }
 
-func (f *Flow) RetrieveActiveFlowItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Flow.RetrieveActiveFlowItems")
+func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Flow.RetrieveActivedItems")
 	defer span.End()
 
 	fl, err := flow.Retrieve(ctx, params["flow_id"], f.db)
@@ -102,7 +112,7 @@ func (f *Flow) RetrieveActiveFlowItems(ctx context.Context, w http.ResponseWrite
 
 	viewModelNodes := make([]node.ViewModelNode, len(nodes))
 	for i, node := range nodes {
-		viewModelNodes[i] = createViewModelNodeActor(node)
+		viewModelNodes[i] = createViewModelNode(node)
 	}
 
 	items, err := item.BulkRetrieve(ctx, e.ID, itemIds(aflows), f.db)
@@ -123,7 +133,7 @@ func (f *Flow) RetrieveActiveFlowItems(ctx context.Context, w http.ResponseWrite
 		Nodes      []node.ViewModelNode `json:"nodes"`
 	}{
 		Items:      viewModelItems,
-		Flow:       createViewModelFlow(fl),
+		Flow:       createViewModelFlow(fl, nil),
 		EntityName: e.Name,
 		Fields:     fields,
 		Nodes:      viewModelNodes,
@@ -162,13 +172,14 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.AccountID = params["account_id"]
 	nf.EntityID = params["entity_id"]
 
+	//TODO: do it in single transaction <|>
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Flow: %+v", &flow)
 	}
 
 	for _, nn := range nf.Nodes {
-		//TODO: do it in single transaction
+		//TODO: do it in single transaction >|<
 		nn = makeNode(flow.AccountID, flow.ID, nn)
 		n, err := node.Create(ctx, f.db, nn, time.Now())
 		if err != nil {
@@ -179,13 +190,14 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, flow, http.StatusCreated)
 }
 
-func createViewModelFlow(f flow.Flow) flow.ViewModelFlow {
+func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModelFlow {
 	return flow.ViewModelFlow{
 		ID:          f.ID,
 		EntityID:    f.EntityID,
 		Name:        f.Name,
 		Description: f.Description,
 		Expression:  f.Expression,
+		Nodes:       nodes,
 	}
 }
 
@@ -223,22 +235,16 @@ func entityIds(nodes []node.Node) []string {
 	return ids
 }
 
-func createViewModelNode(n node.Node) node.ViewModelNode {
-	return node.ViewModelNode{
-		ID:           n.ID,
-		ParentNodeID: n.ParentNodeID,
-		Type:         n.Type,
-	}
-}
-
-func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {
+func createViewModelNode(n node.NodeActor) node.ViewModelNode {
 	return node.ViewModelNode{
 		ID:             n.ID,
+		Name:           nameOfType(n.Type),
 		ParentNodeID:   n.ParentNodeID,
 		ActorID:        n.ActorID,
 		EntityName:     n.EntityName.String,
 		EntityCategory: int(n.EntityCategory.Int32),
 		Type:           n.Type,
+		Actuals:        n.ActualsMap(),
 	}
 }
 
@@ -248,4 +254,9 @@ func createViewModelActiveNode(n flow.ActiveNode) node.ViewModelActiveNode {
 		IsActive: n.IsActive,
 		Life:     n.Life,
 	}
+}
+
+func nameOfType(typeOfNode int) string {
+	//TODO: Remove it here. Hanlde this in the UI
+	return ""
 }

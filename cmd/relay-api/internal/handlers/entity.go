@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -30,7 +31,7 @@ func (e *Entity) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.List")
 	defer span.End()
 
-	entities, err := entity.List(ctx, params["team_id"], e.db)
+	entities, err := entity.List(ctx, params["team_id"], categories(r.URL.Query().Get("category_id")), e.db)
 	if err != nil {
 		return err
 	}
@@ -126,4 +127,19 @@ func fieldKeyBinder(fields []entity.Field) []entity.Field {
 		fields[i].Key = uuid.New().String()
 	}
 	return fields
+}
+
+func categories(categoryID string) []int {
+	ids := []int{}
+	i, err := strconv.Atoi(categoryID)
+	if err != nil {
+		log.Printf("cannot parse category_id from the request %s", err)
+		return ids
+	} else if i == -1 {
+		log.Printf("fetch all categories")
+		return ids
+	}
+
+	ids = append(ids, i)
+	return ids
 }

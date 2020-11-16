@@ -142,4 +142,5 @@ const (
 	CategoryUserSeries = 5
 	CategorySchedule   = 6
 	CategoryDelay      = 7
+	CategoryChildUnit  = 8
 )

@@ -127,7 +127,7 @@ func seed(cfg database.Config) error {
 
 func crmadd(cfg database.Config) error {
 	//add entity - status
-	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryData, config.StatusFields())
+	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryConfig, config.StatusFields())
 	if err != nil {
 		return err
 	}

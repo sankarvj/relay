@@ -45,7 +45,7 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.New("claims missing from context")
 	}
 
-	usr, err := user.Retrieve(ctx, claims, u.db, params["id"])
+	usr, err := user.Retrieve(ctx, claims, u.db)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -59,7 +59,7 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	return web.Respond(ctx, w, usr, http.StatusOK)
+	return web.Respond(ctx, w, createViewModelUser(*usr), http.StatusOK)
 }
 
 // Create inserts a new user into the system.
@@ -178,7 +178,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrap(err, "fetching user from token UID")
 	}
 
-	log.Printf("sk/sexy please replace the word sk_replacetokenhere/sexy_replacetokenhere in seed.go with this token to login %s", token.UID)
+	log.Printf("sk/saravana please replace the word sk_replacetokenhere/sarvana_replacetokenhere in seed.go with this token to login %s", token.UID)
 
 	claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
 	if err != nil {
@@ -205,4 +205,15 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
+}
+
+func createViewModelUser(u user.User) user.ViewModelUser {
+	return user.ViewModelUser{
+		Name:      *u.Name,
+		Avatar:    *u.Avatar,
+		Email:     u.Email,
+		Phone:     *u.Phone,
+		Roles:     u.Roles,
+		CreatedAt: u.CreatedAt.String(),
+	}
 }

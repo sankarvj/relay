@@ -76,10 +76,11 @@ func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) (stri
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string) (*User, error) {
+func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")
 	defer span.End()
 
+	id := claims.StandardClaims.Subject
 	if _, err := uuid.Parse(id); err != nil {
 		return nil, ErrInvalidID
 	}
@@ -144,7 +145,7 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
 	defer span.End()
 
-	u, err := Retrieve(ctx, claims, db, id)
+	u, err := Retrieve(ctx, claims, db)
 	if err != nil {
 		return err
 	}

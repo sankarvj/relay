@@ -22,15 +22,20 @@ var (
 )
 
 // List retrieves a list of existing entities for the team associated from the database.
-func List(ctx context.Context, teamID string, db *sqlx.DB) ([]Entity, error) {
+func List(ctx context.Context, teamID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
 	defer span.End()
-
 	entities := []Entity{}
-	const q = `SELECT * FROM entities where team_id = $1`
-
-	if err := db.SelectContext(ctx, &entities, q, teamID); err != nil {
-		return nil, errors.Wrap(err, "selecting entities")
+	if len(categoryIds) == 0 {
+		const q = `SELECT * FROM entities where team_id = $1`
+		if err := db.SelectContext(ctx, &entities, q, teamID); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for all category")
+		}
+	} else {
+		const q = `SELECT * FROM entities where team_id = $1 AND category = any($2)`
+		if err := db.SelectContext(ctx, &entities, q, teamID, pq.Array(categoryIds)); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for category")
+		}
 	}
 
 	return entities, nil

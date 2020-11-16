@@ -48,11 +48,12 @@ type ActiveFlow struct {
 
 // ViewModelFlow represents the view model of flow
 type ViewModelFlow struct {
-	ID          string `json:"id"`
-	EntityID    string `json:"entity_id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Expression  string `json:"condition"`
+	ID          string               `json:"id"`
+	EntityID    string               `json:"entity_id"`
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	Expression  string               `json:"condition"`
+	Nodes       []node.ViewModelNode `json:"nodes"`
 }
 
 // NewFlow has information needed to creat new flow

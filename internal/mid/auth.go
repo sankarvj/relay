@@ -22,7 +22,6 @@ var ErrForbidden = web.NewRequestError(
 
 // Authenticate validates a JWT from the `Authorization` header.
 func Authenticate(authenticator *auth.Authenticator) web.Middleware {
-
 	// This is the actual middleware function to be executed.
 	f := func(after web.Handler) web.Handler {
 
