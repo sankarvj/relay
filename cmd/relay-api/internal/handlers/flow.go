@@ -239,6 +239,7 @@ func createViewModelNode(n node.NodeActor) node.ViewModelNode {
 	return node.ViewModelNode{
 		ID:             n.ID,
 		Name:           nameOfType(n.Type),
+		Expression:     n.Expression,
 		ParentNodeID:   n.ParentNodeID,
 		ActorID:        n.ActorID,
 		EntityName:     n.EntityName.String,

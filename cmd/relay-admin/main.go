@@ -127,7 +127,7 @@ func seed(cfg database.Config) error {
 
 func crmadd(cfg database.Config) error {
 	//add entity - status
-	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryConfig, config.StatusFields())
+	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryChildUnit, config.StatusFields())
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add workflows
-	f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowTypeSegment, flow.FlowConditionEntry)
+	f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowTypeFieldUpdate, flow.FlowConditionEntry)
 	if err != nil {
 		return err
 	}

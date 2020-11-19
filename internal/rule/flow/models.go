@@ -52,7 +52,7 @@ type ViewModelFlow struct {
 	EntityID    string               `json:"entity_id"`
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
-	Expression  string               `json:"condition"`
+	Expression  string               `json:"expression"`
 	Nodes       []node.ViewModelNode `json:"nodes"`
 }
 

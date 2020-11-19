@@ -61,6 +61,7 @@ type NodeActor struct {
 type ViewModelNode struct {
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
+	Expression     string            `json:"expression"`
 	ParentNodeID   string            `json:"parent_node_id"`
 	EntityName     string            `json:"entity_name"`
 	EntityCategory int               `json:"entity_category"`
