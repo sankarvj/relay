@@ -17,7 +17,7 @@ func OnFieldUpdate(entityID, itemID string, oldFields, newFields map[string]inte
 	// log.Println("oldFields...", oldFields)
 	// log.Println("newFields...", newFields)
 
-	flows, err := flow.List(context.Background(), []string{entityID}, db)
+	flows, err := flow.List(context.Background(), []string{entityID}, -1, db)
 	if err != nil {
 		log.Println("There is an error while selecting flows...", err)
 	}

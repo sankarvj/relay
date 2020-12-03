@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -31,19 +33,21 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Flow.List")
 	defer span.End()
 
+	ft := flowType(r.URL.Query().Get("ft"))
+
 	var flows []flow.Flow
 	if params["entity_id"] == "0" { //fetch all flows for all entities of the product if entity is zero
 		entities, err := entity.List(ctx, params["team_id"], []int{}, f.db)
 		if err != nil {
 			return err
 		}
-		flows, err = flow.List(ctx, entity.FetchIDs(entities), f.db)
+		flows, err = flow.List(ctx, entity.FetchIDs(entities), ft, f.db)
 		if err != nil {
 			return err
 		}
 	} else {
 		var err error
-		flows, err = flow.List(ctx, []string{params["entity_id"]}, f.db)
+		flows, err = flow.List(ctx, []string{params["entity_id"]}, ft, f.db)
 		if err != nil {
 			return err
 		}
@@ -171,6 +175,7 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.ID = uuid.New().String()
 	nf.AccountID = params["account_id"]
 	nf.EntityID = params["entity_id"]
+	nf.Expression = makeExpression(nf.Queries)
 
 	//TODO: do it in single transaction <|>
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())
@@ -197,6 +202,7 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Name:        f.Name,
 		Description: f.Description,
 		Expression:  f.Expression,
+		Type:        f.Type,
 		Nodes:       nodes,
 	}
 }
@@ -210,12 +216,7 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	if nn.ActorID == "-1" || nn.ActorID == "" {
 		nn.ActorID = node.NoActor
 	}
-	for i, q := range nn.Queries {
-		nn.Expression = fmt.Sprintf("%s %s %s", q.Key, q.Operator, q.Value)
-		if i < len(nn.Queries)-1 {
-			nn.Expression = fmt.Sprintf("%s %s", nn.Expression, "AND")
-		}
-	}
+	nn.Expression = makeExpression(nn.Queries)
 	return nn
 }
 
@@ -260,4 +261,27 @@ func createViewModelActiveNode(n flow.ActiveNode) node.ViewModelActiveNode {
 func nameOfType(typeOfNode int) string {
 	//TODO: Remove it here. Hanlde this in the UI
 	return ""
+}
+
+func makeExpression(queries []node.Query) string {
+	var expression string
+	for i, q := range queries {
+		if q.Key == "" {
+			continue
+		}
+		expression = fmt.Sprintf("{{%s.%s}} %s {%s}", q.EntityID, q.Key, q.Operator, q.Value)
+		if i < len(queries)-1 {
+			expression = fmt.Sprintf("%s %s", expression, "AND")
+		}
+	}
+	return expression
+}
+
+func flowType(flowType string) int {
+	i, err := strconv.Atoi(flowType)
+	if err != nil {
+		log.Printf("cannot parse ft from the request %s", err)
+		return flow.FlowTypeFieldUpdate
+	}
+	return i
 }

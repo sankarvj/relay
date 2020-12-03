@@ -53,6 +53,7 @@ type ViewModelFlow struct {
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
 	Expression  string               `json:"expression"`
+	Type        int                  `json:"type"`
 	Nodes       []node.ViewModelNode `json:"nodes"`
 }
 
@@ -67,6 +68,7 @@ type NewFlow struct {
 	Type        int            `json:"type"`
 	Condition   int            `json:"condition"`
 	Nodes       []node.NewNode `json:"nodes"`
+	Queries     []node.Query   `json:"queries"`
 }
 
 // ActiveNode represents the node which are currently active

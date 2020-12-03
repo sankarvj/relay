@@ -38,18 +38,29 @@ var (
 )
 
 // List retrieves a list of existing flows for the entity change.
-func List(ctx context.Context, entityIDs []string, db *sqlx.DB) ([]Flow, error) {
+func List(ctx context.Context, entityIDs []string, ft int, db *sqlx.DB) ([]Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.List")
 	defer span.End()
 
 	flows := []Flow{}
-	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?);`, entityIDs)
-	if err != nil {
-		return nil, errors.Wrap(err, "selecting in query")
-	}
-	q = db.Rebind(q)
-	if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
-		return nil, errors.Wrap(err, "selecting flows")
+	if ft == -1 {
+		q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?);`, entityIDs)
+		if err != nil {
+			return nil, errors.Wrap(err, "selecting in query")
+		}
+		q = db.Rebind(q)
+		if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
+			return nil, errors.Wrap(err, "selecting flows")
+		}
+	} else {
+		q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND type = (?);`, entityIDs, ft)
+		if err != nil {
+			return nil, errors.Wrap(err, "selecting in query")
+		}
+		q = db.Rebind(q)
+		if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
+			return nil, errors.Wrap(err, "selecting flows")
+		}
 	}
 
 	return flows, nil

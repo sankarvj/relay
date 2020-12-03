@@ -91,6 +91,7 @@ type NewNode struct {
 }
 
 type Query struct {
+	EntityID string `json:"entity_id"`
 	Key      string `json:"key"`
 	Value    string `json:"value"`
 	Operator string `json:"operator"`
