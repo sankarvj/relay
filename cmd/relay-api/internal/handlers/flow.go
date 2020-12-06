@@ -33,24 +33,21 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Flow.List")
 	defer span.End()
 
-	ft := flowType(r.URL.Query().Get("ft"))
+	fm := flowMode(r.URL.Query().Get("fm"))
 
 	var flows []flow.Flow
+	entityIDs := []string{params["entity_id"]}
 	if params["entity_id"] == "0" { //fetch all flows for all entities of the product if entity is zero
 		entities, err := entity.List(ctx, params["team_id"], []int{}, f.db)
 		if err != nil {
 			return err
 		}
-		flows, err = flow.List(ctx, entity.FetchIDs(entities), ft, f.db)
-		if err != nil {
-			return err
-		}
-	} else {
-		var err error
-		flows, err = flow.List(ctx, []string{params["entity_id"]}, ft, f.db)
-		if err != nil {
-			return err
-		}
+		entityIDs = entity.FetchIDs(entities)
+	}
+
+	flows, err := flow.List(ctx, entityIDs, fm, f.db)
+	if err != nil {
+		return err
 	}
 
 	viewModelFlows := make([]flow.ViewModelFlow, len(flows))
@@ -84,6 +81,7 @@ func (f *Flow) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelFlow(fl, viewModelNodes), http.StatusOK)
 }
 
+//remove this method. useful only for verification of flow path
 func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Flow.RetrieveActivedItems")
 	defer span.End()
@@ -177,6 +175,8 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.EntityID = params["entity_id"]
 	nf.Expression = makeExpression(nf.Queries)
 
+	log.Println("nf --> ", nf)
+
 	//TODO: do it in single transaction <|>
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())
 	if err != nil {
@@ -202,6 +202,7 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Name:        f.Name,
 		Description: f.Description,
 		Expression:  f.Expression,
+		Mode:        f.Mode,
 		Type:        f.Type,
 		Nodes:       nodes,
 	}
@@ -220,8 +221,8 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	return nn
 }
 
-func itemIds(actFlows []flow.ActiveFlow) []string {
-	ids := make([]string, len(actFlows))
+func itemIds(actFlows []flow.ActiveFlow) []interface{} {
+	ids := make([]interface{}, len(actFlows))
 	for i, aflow := range actFlows {
 		ids[i] = aflow.ItemID
 	}
@@ -277,11 +278,11 @@ func makeExpression(queries []node.Query) string {
 	return expression
 }
 
-func flowType(flowType string) int {
-	i, err := strconv.Atoi(flowType)
+func flowMode(fm string) int {
+	i, err := strconv.Atoi(fm)
 	if err != nil {
-		log.Printf("cannot parse ft from the request %s", err)
-		return flow.FlowTypeFieldUpdate
+		log.Printf("cannot parse fm from the request %s", err)
+		return flow.FlowModeWorkFlow
 	}
 	return i
 }

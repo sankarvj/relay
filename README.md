@@ -1,8 +1,9 @@
 # Relay
-Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. 
+Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software.
 
 ## Getting Started
 > make run
+> make crm
 
 ## Technical Stack
 - Core Stack - Golang
@@ -33,14 +34,18 @@ Though the events is not an regular entity the relationships still holds true fo
 4. On STRAIGHT, make the field key of the conditinal field as not empty
 5. Refer below section to understand more about the REVERSE use cases.
 
-### Usecase 1 - REVERSE 
+### Usecase 1 - REVERSE (making key="" for the reverse)
 1. Filter the contacts which have deal.amount>1000. Where the deal has contacts and not the other way around.
     a. Create a conditional field with empty key
-    b. Assign the entityID of the deal to the conditional field value & leave the itemID as blank
+    b. Assign the entityID of the deal to the ref field value & leave the value as blank
     c. Assign the where condition properties in the sub-field, just like other fields
     d. If you do like that, the SegmentBaseGNode in pivot.go will create the node with the reverse property enabled.
     e. Enabling reverse property by setting the field key as empty is the one and only active change which we are making here. The rest of the code is just works like the STRAIGHT case and produce the result. 
 #### example: item_test.go,segment_test.go
+
+### The Reference Field
+check README.md inside the entity
+
 
 ### Workflow/Playbook/Pipeline
 1. Sequence of task nodes is called as workflow

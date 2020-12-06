@@ -37,6 +37,11 @@ type NewItem struct {
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
 }
 
+type RefItem struct {
+	ID      string `json:"id"`
+	Display string `json:"display"`
+}
+
 // UpdateItem defines what information may be provided to modify an existing
 // Item. All fields are optional so clients can send just the fields they want
 // changed. It uses pointer fields so we can differentiate between a field that

@@ -14,6 +14,11 @@ const (
 	FlowTypePipeline    = 3
 )
 
+const (
+	FlowModeWorkFlow = 0
+	FlowModePipeLine = 1
+)
+
 //FlowCondition defines exists/entry conditions
 const (
 	FlowConditionBoth  = 0
@@ -29,6 +34,7 @@ type Flow struct {
 	Expression  string    `db:"expression" json:"expression"`
 	Name        string    `db:"name" json:"name"`
 	Description string    `db:"description" json:"description"`
+	Mode        int       `db:"mode" json:"mode"`
 	Type        int       `db:"type" json:"type"`
 	Condition   int       `db:"condition" json:"condition"`
 	Status      int       `db:"status" json:"status"`
@@ -53,6 +59,7 @@ type ViewModelFlow struct {
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
 	Expression  string               `json:"expression"`
+	Mode        int                  `json:"mode"`
 	Type        int                  `json:"type"`
 	Nodes       []node.ViewModelNode `json:"nodes"`
 }
@@ -65,6 +72,7 @@ type NewFlow struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	Expression  string         `json:"expression"`
+	Mode        int            `json:"mode"`
 	Type        int            `json:"type"`
 	Condition   int            `json:"condition"`
 	Nodes       []node.NewNode `json:"nodes"`

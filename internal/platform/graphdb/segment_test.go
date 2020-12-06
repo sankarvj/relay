@@ -82,7 +82,7 @@ var (
 			DataType: graphdb.TypeReference,
 			RefID:    taskEntityID1,
 			Field: &graphdb.Field{
-				Key:      "score",
+				Key:      "id",
 				DataType: graphdb.TypeNumber,
 			},
 		},
@@ -112,7 +112,7 @@ var (
 			UnlinkOffset: 2, // this will remove old task and set a new task relation
 			Value:        []string{taskItemID2, taskItemID1},
 			Field: &graphdb.Field{
-				Key:      "score",
+				Key:      "id",
 				DataType: graphdb.TypeNumber,
 			},
 		},
@@ -138,7 +138,7 @@ var (
 			DataType: graphdb.TypeReference,
 			RefID:    contactEntityID,
 			Field: &graphdb.Field{
-				Key:      "name",
+				Key:      "id",
 				DataType: graphdb.TypeString,
 			},
 		},

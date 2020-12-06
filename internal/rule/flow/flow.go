@@ -38,29 +38,25 @@ var (
 )
 
 // List retrieves a list of existing flows for the entity change.
-func List(ctx context.Context, entityIDs []string, ft int, db *sqlx.DB) ([]Flow, error) {
+func List(ctx context.Context, entityIDs []string, fm int, db *sqlx.DB) ([]Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.List")
 	defer span.End()
 
 	flows := []Flow{}
-	if ft == -1 {
-		q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?);`, entityIDs)
-		if err != nil {
-			return nil, errors.Wrap(err, "selecting in query")
-		}
-		q = db.Rebind(q)
-		if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
-			return nil, errors.Wrap(err, "selecting flows")
-		}
-	} else {
-		q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND type = (?);`, entityIDs, ft)
-		if err != nil {
-			return nil, errors.Wrap(err, "selecting in query")
-		}
-		q = db.Rebind(q)
-		if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
-			return nil, errors.Wrap(err, "selecting flows")
-		}
+	if len(entityIDs) == 0 {
+		return flows, nil
+	}
+	modes := []int{fm}
+	if fm == -1 {
+		modes = []int{FlowModeWorkFlow, FlowModePipeLine}
+	}
+	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?);`, entityIDs, modes)
+	if err != nil {
+		return nil, errors.Wrap(err, "selecting in query")
+	}
+	q = db.Rebind(q)
+	if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
+		return nil, errors.Wrap(err, "selecting flows")
 	}
 
 	return flows, nil
@@ -78,6 +74,7 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 		Name:        nf.Name,
 		Description: nf.Description,
 		Expression:  nf.Expression,
+		Mode:        nf.Mode,
 		Type:        nf.Type,
 		Condition:   nf.Condition,
 		Status:      0,
@@ -86,12 +83,12 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 	}
 
 	const q = `INSERT INTO flows
-		(flow_id, account_id, entity_id, name, description, expression, type, condition, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		(flow_id, account_id, entity_id, name, description, expression, type, mode, condition, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Type, f.Condition, f.Status,
+		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Type, f.Mode, f.Condition, f.Status,
 		f.CreatedAt, f.UpdatedAt,
 	)
 	if err != nil {
@@ -138,7 +135,6 @@ func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields 
 	for key := range dirtyFields {
 		for _, flow := range flows {
 			if strings.Contains(flow.Expression, key) {
-				log.Println("black Sheep ---> ", flow.Name)
 				dirtyFlows = append(dirtyFlows, flow)
 			}
 		}
@@ -159,7 +155,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	}
 	activeFlowMap := activeFlowMap(aflows)
 	for _, f := range flows {
-		log.Printf("check expression for flow ----->  %s", f.Name)
+		log.Printf("check expression for flow ->  %s", f.Name)
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
 		if engine.RunExpEvaluator(ctx, db, rp, n.Expression, n.VariablesMap()) { //entry

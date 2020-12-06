@@ -138,7 +138,7 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 	return i, nil
 }
 
-func BulkRetrieve(ctx context.Context, entityID string, ids []string, db *sqlx.DB) ([]Item, error) {
+func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
@@ -168,7 +168,10 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
 			if ruler.Compare(newItem, oldItem) {
+				log.Printf("-> no change for key %s", key)
 				delete(diffFields, key)
+			} else {
+				log.Printf("->> change captured for key %s !", key)
 			}
 		}
 	}

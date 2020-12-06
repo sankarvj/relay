@@ -23,17 +23,15 @@ func OnFieldUpdate(entityID, itemID string, oldFields, newFields map[string]inte
 	}
 	dirtyFlows := flow.DirtyFlows(context.Background(), flows, oldFields, newFields)
 
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("Tick...\n")
-	log.Println("The flow trigger has been started\n")
-	errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows)
+	log.Printf("This update triggers %d flows", len(dirtyFlows))
+	if len(dirtyFlows) > 0 {
+		log.Print("Tick...\nTick...\nTick...\nTick...\nTick...\nTick...\n")
 
-	if errs != nil {
-		log.Println("There is an error while triggering flows...", errs)
+		log.Println("The flow trigger has been started\n")
+		errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows)
+
+		if len(errs) > 0 {
+			log.Println("There is an error while triggering flows...", errs)
+		}
 	}
 }

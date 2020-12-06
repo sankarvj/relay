@@ -227,3 +227,10 @@ func (f Field) isConfig() bool {
 	}
 	return false
 }
+
+func (f Field) IsReference() (string, string, bool) {
+	if f.DataType == TypeReference {
+		return f.Key, f.RefID, true
+	}
+	return "", "", false
+}

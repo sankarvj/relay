@@ -11,15 +11,12 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-
 	"github.com/ardanlabs/conf"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/config"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
-	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -208,68 +205,71 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
-	//add workflows
-	f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowTypeFieldUpdate, flow.FlowConditionEntry)
-	if err != nil {
-		return err
-	}
+	log.Println("emg %s %s %s", emg, delayi, we)
 
-	//test node push test case - TestCreateItemRuleRunner
-	no1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000018", f.ID, te.ID, node.Root, node.Push, "", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// //add workflows
+	// f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowModeWorkFlow, flow.FlowConditionEntry)
+	// if err != nil {
+	// 	return err
+	// }
 
-	no2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000019", f.ID, "00000000-0000-0000-0000-000000000000", no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// //test node push test case - TestCreateItemRuleRunner
+	// no1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000018", f.ID, te.ID, node.Root, node.Push, "", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	no3, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000020", f.ID, me.ID, no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
-	if err != nil {
-		return err
-	}
+	// no2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000019", f.ID, "00000000-0000-0000-0000-000000000000", no1.ID, node.Decision, "{Vijay} eq {Vijay}", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000021", f.ID, we.ID, no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// no3, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000020", f.ID, me.ID, no2.ID, node.Email, "{{xyz.result}} eq {true}", map[string]string{me.ID: emg.ID})
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000022", f.ID, dele.ID, no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
-	if err != nil {
-		return err
-	}
+	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000021", f.ID, we.ID, no2.ID, node.Hook, "{{xyz.result}} eq {false}", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", ce.ID, "The Pipeline", flow.FlowTypePipeline, flow.FlowConditionEntry)
-	if err != nil {
-		return err
-	}
+	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000022", f.ID, dele.ID, no3.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	// if err != nil {
+	// 	return err
+	// }
 
-	//test node push test case - TestCreateItemRuleRunner
-	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, node.Stage, "", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// //add pipelines
+	// p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", ce.ID, "The Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
+	// if err != nil {
+	// 	return err
+	// }
 
-	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// //test node push test case - TestCreateItemRuleRunner
+	// pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, node.Stage, "", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
-	if err != nil {
-		return err
-	}
+	// pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
-	if err != nil {
-		return err
-	}
+	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
-	if err != nil {
-		return err
-	}
+	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
+	// if err != nil {
+	// 	return err
+	// }
+
+	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

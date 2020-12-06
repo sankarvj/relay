@@ -154,6 +154,7 @@ var migrations = []darwin.Migration{
 			expression    TEXT,
 			name    	  TEXT,
 			description   TEXT,
+			mode      	  INTEGER DEFAULT 0,
 			type      	  INTEGER DEFAULT 0,
 			condition     INTEGER DEFAULT 0,
 			status        INTEGER DEFAULT 0,

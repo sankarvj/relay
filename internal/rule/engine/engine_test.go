@@ -137,8 +137,11 @@ func TestFlow(t *testing.T) {
 			rootNodes := node.ChildNodes(node.Root, branchNodeMap)
 			log.Printf("The rootNodes %v", rootNodes)
 
-			childNodes := node.ChildNodes(rootNodes[0].ID, branchNodeMap)
-			log.Printf("The childNodes %v", childNodes)
+			if len(rootNodes) > 0 {
+				childNodes := node.ChildNodes(rootNodes[0].ID, branchNodeMap)
+				log.Printf("The childNodes %v", childNodes)
+			}
+
 		}
 	}
 }
@@ -161,7 +164,7 @@ func TestTrigger(t *testing.T) {
 			newItemFields["uuid-00-nps-score"] = 99
 			item.UpdateFields(tests.Context(), db, i1, newItemFields)
 			// the above action will trigger this in the background thread
-			flows, _ := flow.List(tests.Context(), []string{e1}, db)
+			flows, _ := flow.List(tests.Context(), []string{e1}, -1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			err := flow.Trigger(tests.Context(), db, nil, i1, dirtyFlows)
 			if err != nil {
@@ -244,7 +247,7 @@ var (
 			RefID:    contactEntityID,
 			DataType: graphdb.TypeReference,
 			Field: &graphdb.Field{
-				Key:      "name",
+				Key:      "name", //may be not needed
 				DataType: graphdb.TypeString,
 			},
 		},

@@ -63,7 +63,7 @@ func ItemAdd(cfg database.Config, id, entityID string, fields map[string]interfa
 	return i, nil
 }
 
-func FlowAdd(cfg database.Config, id, entityID string, name string, typ, condition int) (flow.Flow, error) {
+func FlowAdd(cfg database.Config, id, entityID string, name string, mode, condition int) (flow.Flow, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return flow.Flow{}, err
@@ -75,7 +75,8 @@ func FlowAdd(cfg database.Config, id, entityID string, name string, typ, conditi
 		ID:         id,
 		AccountID:  schema.SeedAccountID,
 		EntityID:   entityID,
-		Type:       typ,
+		Mode:       mode,
+		Type:       flow.FlowTypeFieldUpdate,
 		Condition:  condition,
 		Expression: `{{` + entityID + `.uuid-00-fname}} eq {Vijay} && {{` + entityID + `.uuid-00-nps-score}} gt {98}`,
 		Name:       name,

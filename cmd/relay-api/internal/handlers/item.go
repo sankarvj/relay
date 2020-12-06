@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -49,6 +50,8 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	for i, item := range items {
 		viewModelItems[i] = createViewModelItem(item)
 	}
+
+	viewModelItems = updateReferenceFields(ctx, fields, viewModelItems, i.db)
 
 	response := struct {
 		Items    []item.ViewModelItem `json:"items"`
@@ -161,4 +164,64 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 		ID:     i.ID,
 		Fields: i.Fields(),
 	}
+}
+
+func updateReferenceFields(ctx context.Context, fields []entity.Field, items []item.ViewModelItem, db *sqlx.DB) []item.ViewModelItem {
+	//populating map with only ref fieldID
+	refEntityIDs := make(map[string]string, 0)
+	refFields := make(map[string][]interface{}, 0)
+	for _, f := range fields {
+		if key, refID, ok := f.IsReference(); ok {
+			refFields[key] = []interface{}{}
+			refEntityIDs[key] = refID
+		}
+	}
+
+	for _, item := range items {
+		for key, val := range item.Fields {
+			if existingVals, ok := refFields[key]; ok {
+				refFields[key] = append(existingVals, val.([]interface{})...)
+			}
+		}
+	}
+
+	itemFieldsMap := make(map[string]map[string]interface{}, 0)
+	for key, vals := range refFields {
+		entityID := refEntityIDs[key]
+		items, err := item.BulkRetrieve(ctx, entityID, removeDuplicateValues(vals), db)
+		if err != nil {
+			log.Println("error on retriving reference items. Continuing... ", err)
+		}
+		for _, it := range items {
+			itemFieldsMap[it.ID] = it.Fields()
+		}
+	}
+	log.Println("itemFieldsMap", itemFieldsMap)
+
+	for _, item := range items {
+		for key, _ := range item.Fields {
+			if existingVals, ok := refFields[key]; ok {
+				for _, itemID := range existingVals {
+					if fieldMap, ok := itemFieldsMap[itemID.(string)]; ok {
+						item.Fields[key] = fieldMap
+					}
+				}
+			}
+		}
+	}
+
+	return items
+
+}
+
+func removeDuplicateValues(intSlice []interface{}) []interface{} {
+	keys := make(map[interface{}]bool)
+	list := []interface{}{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
