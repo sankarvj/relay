@@ -205,7 +205,7 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
-	log.Println("emg %s %s %s", emg, delayi, we)
+	log.Println("emg %s %s %s", emg.ID, delayi.ID, we.ID)
 
 	// //add workflows
 	// f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowModeWorkFlow, flow.FlowConditionEntry)

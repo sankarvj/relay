@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
+
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -27,6 +29,7 @@ type Item struct {
 }
 
 // List returns all the existing entities associated with team
+//TODO: add pagination
 func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
@@ -120,7 +123,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &vi)
 	}
 	//TODO push this to stream/queue
-	job.OnFieldUpdate(params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
+	job.OnFieldUpdate(params["account_id"], params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
 
 	return web.Respond(ctx, w, vi, http.StatusOK)
 }
@@ -143,6 +146,9 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
+	//TODO push this to stream/queue
+	job.OnFieldCreate(params["account_id"], params["entity_id"], ni.ID, ni.Fields, i.db)
+
 	return web.Respond(ctx, w, ri, http.StatusCreated)
 }
 
@@ -151,12 +157,36 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Retrieve")
 	defer span.End()
 
-	item, err := item.Retrieve(ctx, params["item_id"], i.db)
+	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
 
-	return web.Respond(ctx, w, createViewModelItem(item), http.StatusOK)
+	fields, err := e.Fields()
+	if err != nil {
+		return err
+	}
+
+	it, err := item.Retrieve(ctx, params["item_id"], i.db)
+	if err != nil {
+		return err
+	}
+
+	bonds, err := relationship.List(ctx, i.db, it.AccountID, it.EntityID)
+	if err != nil {
+		return err
+	}
+
+	vmItem := createViewModelItem(it)
+	viewModelItems := updateReferenceFields(ctx, fields, []item.ViewModelItem{vmItem}, i.db)
+
+	itemDetail := item.ItemDetail{
+		Item:   viewModelItems[0],
+		Bonds:  bonds,
+		Fields: fields,
+	}
+
+	return web.Respond(ctx, w, itemDetail, http.StatusOK)
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {
@@ -167,43 +197,43 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 }
 
 func updateReferenceFields(ctx context.Context, fields []entity.Field, items []item.ViewModelItem, db *sqlx.DB) []item.ViewModelItem {
-	//populating map with only ref fieldID
-	refEntityIDs := make(map[string]string, 0)
-	refFields := make(map[string][]interface{}, 0)
+	refIds := make(map[string]entity.Field, 0) //key as field key and vals are ids
 	for _, f := range fields {
-		if key, refID, ok := f.IsReference(); ok {
-			refFields[key] = []interface{}{}
-			refEntityIDs[key] = refID
+		if f.IsReference() {
+			f.Value = []interface{}{}
+			refIds[f.Key] = f
 		}
 	}
 
+	//populating map with only ref fieldID
 	for _, item := range items {
 		for key, val := range item.Fields {
-			if existingVals, ok := refFields[key]; ok {
-				refFields[key] = append(existingVals, val.([]interface{})...)
+			if f, ok := refIds[key]; ok {
+				f.Value = append(f.Value.([]interface{}), val.([]interface{})...)
+				refIds[key] = f
 			}
 		}
 	}
 
 	itemFieldsMap := make(map[string]map[string]interface{}, 0)
-	for key, vals := range refFields {
-		entityID := refEntityIDs[key]
-		items, err := item.BulkRetrieve(ctx, entityID, removeDuplicateValues(vals), db)
+	for _, f := range refIds {
+		refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(f.Value.([]interface{})), db)
 		if err != nil {
 			log.Println("error on retriving reference items. Continuing... ", err)
 		}
-		for _, it := range items {
-			itemFieldsMap[it.ID] = it.Fields()
+		for _, refIt := range refItems {
+			itemFieldsMap[refIt.ID] = refIt.Fields()
 		}
 	}
-	log.Println("itemFieldsMap", itemFieldsMap)
 
+	//repopulating with actual values
 	for _, item := range items {
-		for key, _ := range item.Fields {
-			if existingVals, ok := refFields[key]; ok {
-				for _, itemID := range existingVals {
+		for key, vals := range item.Fields {
+			if f, ok := refIds[key]; ok {
+				item.Fields[key] = []interface{}{}
+				for _, itemID := range vals.([]interface{}) {
 					if fieldMap, ok := itemFieldsMap[itemID.(string)]; ok {
-						item.Fields[key] = fieldMap
+						item.Fields[key] = append(item.Fields[key].([]interface{}), fieldMap[f.DisplayGex()])
 					}
 				}
 			}

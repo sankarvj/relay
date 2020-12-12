@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
 )
 
@@ -74,6 +75,17 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	)
 	if err != nil {
 		return Entity{}, errors.Wrap(err, "inserting entity")
+	}
+
+	//TODO: do it in the same transaction.
+	//TODO: this relationship should happen only if the user explicitly specifies that.
+	//may be, we can give add the boolean in the meta to identify that.
+	relationships := populateRelationShips(e.AccountID, e.ID, n.Fields)
+	for _, r := range relationships {
+		_, err := relationship.Create(ctx, db, r)
+		if err != nil {
+			return e, errors.Wrapf(err, "Relationship for entity failed: %+v", e.ID)
+		}
 	}
 
 	return e, nil
@@ -228,9 +240,33 @@ func (f Field) isConfig() bool {
 	return false
 }
 
-func (f Field) IsReference() (string, string, bool) {
+func (f Field) IsReference() bool {
 	if f.DataType == TypeReference {
-		return f.Key, f.RefID, true
+		return true
 	}
-	return "", "", false
+	return false
+}
+
+func (f Field) DisplayGex() string {
+	if val, ok := f.Meta["display_gex"]; ok {
+		return val
+	}
+	return ""
+}
+
+func populateRelationShips(accountID, srcEntityId string, fields []Field) []relationship.Relationship {
+	relationships := make([]relationship.Relationship, 0)
+	for _, f := range fields {
+		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
+			relationships = append(relationships, relationship.Relationship{
+				RelationshipID: uuid.New().String(),
+				AccountID:      accountID,
+				SrcEntityID:    srcEntityId,
+				DstEntityID:    f.RefID,
+				FieldID:        f.Key,
+				Type:           relationship.TypeSolo,
+			})
+		}
+	}
+	return relationships
 }

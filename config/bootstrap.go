@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -58,6 +59,8 @@ func ItemAdd(cfg database.Config, id, entityID string, fields map[string]interfa
 	if err != nil {
 		return item.Item{}, err
 	}
+
+	job.OnFieldCreate(schema.SeedAccountID, entityID, ni.ID, ni.Fields, db)
 
 	fmt.Println("Item created with id:", i.ID)
 	return i, nil
@@ -121,17 +124,19 @@ func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, ty
 
 func StatusFields() []entity.Field {
 	nameField := entity.Field{
-		Key:      "uuid-00-name",
-		Name:     "name",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-name",
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	colorField := entity.Field{
-		Key:      "uuid-00-color",
-		Name:     "color",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-color",
+		Name:        "color",
+		DisplayName: "Color",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	return []entity.Field{nameField, colorField}
@@ -147,49 +152,56 @@ func StatusVals(name, color string) map[string]interface{} {
 
 func ContactFields(statusEntityID string) []entity.Field {
 	nameField := entity.Field{
-		Key:      "uuid-00-fname",
-		Name:     "First Name",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-fname",
+		Name:        "first_name",
+		DisplayName: "First Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	emailField := entity.Field{
-		Key:      "uuid-00-email",
-		Name:     "Email",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-email",
+		Name:        "email",
+		DisplayName: "Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	mobileField := entity.Field{
-		Key:      "uuid-00-mobile-numbers",
-		Name:     "Mobile Numbers",
-		DataType: entity.TypeList,
-		DomType:  entity.DomMultiSelect,
+		Key:         "uuid-00-mobile-numbers",
+		Name:        "mobile_numbers",
+		DisplayName: "Mobile Numbers",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 		},
 	}
 
 	npsField := entity.Field{
-		Key:      "uuid-00-nps-score",
-		Name:     "NPS Score",
-		DataType: entity.TypeNumber,
+		Key:         "uuid-00-nps-score",
+		Name:        "nps_score",
+		DisplayName: "NPS Score",
+		DataType:    entity.TypeNumber,
 	}
 
 	lfStageField := entity.Field{
-		Key:      "uuid-00-lf-stage",
-		Name:     "Lifecycle Stage",
-		DomType:  entity.DomSelect,
-		DataType: entity.TypeString,
-		Choices:  []string{"lead", "contact", "won"},
+		Key:         "uuid-00-lf-stage",
+		Name:        "lifecycle_stage",
+		DisplayName: "Lifecycle Stage",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeString,
+		Choices:     []string{"lead", "contact", "won"},
 	}
 
 	statusField := entity.Field{
-		Key:      "uuid-00-status",
-		Name:     "Status",
-		DomType:  entity.DomText,
-		DataType: entity.TypeReference,
-		RefID:    statusEntityID,
+		Key:         "uuid-00-status",
+		Name:        "status",
+		DisplayName: "Status",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeReference,
+		RefID:       statusEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -214,18 +226,21 @@ func ContactVals(name, email, statusID string) map[string]interface{} {
 
 func TaskFields(contactEntityID string) []entity.Field {
 	descField := entity.Field{
-		Key:      "uuid-00-desc",
-		Name:     "desc",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-desc",
+		Name:        "desc",
+		DisplayName: "Description",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	contactField := entity.Field{
-		Key:      "uuid-00-contact",
-		Name:     "Contact",
-		DomType:  entity.DomText,
-		DataType: entity.TypeReference,
-		RefID:    contactEntityID,
+		Key:         "uuid-00-contact",
+		Name:        "contact",
+		DisplayName: "Assigned To",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -246,25 +261,29 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 
 func DealFields(contactEntityID string) []entity.Field {
 	dealName := entity.Field{
-		Key:      "uuid-00-deal-name",
-		Name:     "Deal Name",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		Key:         "uuid-00-deal-name",
+		Name:        "deal_name",
+		DisplayName: "Deal Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	dealAmount := entity.Field{
-		Key:      "uuid-00-deal-amount",
-		Name:     "Deal Amount",
-		DomType:  entity.DomText,
-		DataType: entity.TypeNumber,
+		Key:         "uuid-00-deal-amount",
+		Name:        "deal_amount",
+		DisplayName: "Deal Amount",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
 	}
 
 	contactsField := entity.Field{
-		Key:      "uuid-00-contacts",
-		Name:     "Contacts",
-		DomType:  entity.DomText,
-		DataType: entity.TypeReference,
-		RefID:    contactEntityID,
+		Key:         "uuid-00-contacts",
+		Name:        "contact",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -286,65 +305,72 @@ func DealVals(name string, amount int, contactID1, contactID2 string) map[string
 
 func EmailFields() []entity.Field {
 	domain := entity.Field{
-		Key:      "uuid-00-domain",
-		Name:     "domain",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "sandbox3ab4868d173f4391805389718914b89c.mailgun.org",
+		Key:         "uuid-00-domain",
+		Name:        "domain",
+		DisplayName: "Domain",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "sandbox3ab4868d173f4391805389718914b89c.mailgun.org",
 		Meta: map[string]string{
 			"config": "true",
 		},
 	}
 
 	apiKey := entity.Field{
-		Key:      "uuid-00-api-key",
-		Name:     "api_key",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
+		Key:         "uuid-00-api-key",
+		Name:        "api_key",
+		DisplayName: "Key",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
 		Meta: map[string]string{
 			"config": "true",
 		},
 	}
 
 	sender := entity.Field{
-		Key:      "uuid-00-sender",
-		Name:     "sender",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "vijayasankar.jothi@wayplot.com",
+		Key:         "uuid-00-sender",
+		Name:        "sender",
+		DisplayName: "Sender Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "vijayasankar.jothi@wayplot.com",
 	}
 
 	to := entity.Field{
-		Key:      "uuid-00-to",
-		Name:     "to",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "",
+		Key:         "uuid-00-to",
+		Name:        "to",
+		DisplayName: "To Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "",
 	}
 
 	cc := entity.Field{
-		Key:      "uuid-00-cc",
-		Name:     "cc",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "",
+		Key:         "uuid-00-cc",
+		Name:        "cc",
+		DisplayName: "Cc Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "",
 	}
 
 	subject := entity.Field{
-		Key:      "uuid-00-subject",
-		Name:     "subject",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "",
+		Key:         "uuid-00-subject",
+		Name:        "subject",
+		DisplayName: "Subject",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "",
 	}
 
 	body := entity.Field{
-		Key:      "uuid-00-body",
-		Name:     "body",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "",
+		Key:         "uuid-00-body",
+		Name:        "body",
+		DisplayName: "Body",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "",
 	}
 
 	return []entity.Field{domain, apiKey, sender, to, cc, subject, body}

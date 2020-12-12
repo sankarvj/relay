@@ -3,9 +3,11 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -14,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"go.opencensus.io/trace"
 )
@@ -70,7 +73,7 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ne.AccountID = params["account_id"]
 	ne.TeamID = params["team_id"]
 	//add key with a UUID
-	fieldKeyBinder(ne.Fields)
+	fieldKeyBinder(ne.ID, ne.Fields)
 
 	entity, err := entity.Create(ctx, e.db, ne, time.Now())
 	if err != nil {
@@ -122,8 +125,18 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 	}
 }
 
-func fieldKeyBinder(fields []entity.Field) []entity.Field {
+func fieldKeyBinder(srcEntityId string, fields []entity.Field) []entity.Field {
+	nameChecker := make(map[string]bool, len(fields))
 	for i := 0; i < len(fields); i++ {
+		api_name := fields[i].Name
+		if api_name == "" {
+			api_name = fields[i].DisplayName
+			if _, ok := nameChecker[api_name]; ok {
+				api_name = fmt.Sprintf("%s_%s", api_name, util.RandString(5))
+			}
+			nameChecker[api_name] = true
+			fields[i].Name = strings.ReplaceAll(strings.ToLower(api_name), " ", "_")
+		}
 		fields[i].Key = uuid.New().String()
 	}
 	return fields

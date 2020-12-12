@@ -95,7 +95,8 @@ type FieldMeta struct {
 	Hidden     string `json:"hidden"`
 	Config     string `json:"config"`     //UI property useful only during display
 	Expression string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
-	Link       string `json:"link"`
+	Link       string `json:"link"`       //useful for autocomplete. If no of choices greater than 100
+	DisplayGex string `json:"display_gex"`
 }
 
 //DType defines the data type of field

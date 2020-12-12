@@ -2,6 +2,9 @@ package item
 
 import (
 	"time"
+
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
 // Item represents the individual unit of entity
@@ -27,6 +30,12 @@ type TimeSeriesItem struct {
 type ViewModelItem struct {
 	ID     string                 `json:"id"`
 	Fields map[string]interface{} `json:"fields"`
+}
+
+type ItemDetail struct {
+	Item   ViewModelItem       `json:"item"`
+	Bonds  []relationship.Bond `json:"bonds"`
+	Fields []entity.Field      `json:"fields"`
 }
 
 // NewItem has information needed to creat new item

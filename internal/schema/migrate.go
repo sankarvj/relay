@@ -214,15 +214,30 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     11,
+		Version:     11, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
 		Description: "Add relationships",
 		Script: `
 		CREATE TABLE relationships (
+			relationship_id UUID,
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
 	    	src_entity_id	UUID REFERENCES entities ON DELETE CASCADE,
 			dst_entity_id   UUID REFERENCES entities ON DELETE CASCADE,
-		    type 	   	    INTEGER DEFAULT 0,
-			UNIQUE (account_id,src_entity_id,dst_entity_id)
+			field_id        TEXT, 
+			type 	   	    INTEGER DEFAULT 0,
+			PRIMARY KEY (relationship_id),
+			UNIQUE (account_id,src_entity_id,dst_entity_id,field_id)
+		);
+		`,
+	},
+	{
+		Version:     12, //TODO delete dst_item_id on deletion of the specific item
+		Description: "Add connections",
+		Script: `
+		CREATE TABLE connections (
+			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
+			relationship_id UUID REFERENCES relationships ON DELETE CASCADE,
+			src_item_id 	UUID REFERENCES items ON DELETE CASCADE,
+			dst_item_id 	UUID[25] 
 		);
 		`,
 	},
