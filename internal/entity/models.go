@@ -85,7 +85,7 @@ type Field struct {
 	DomType     Dom               `json:"dom_type" validate:"required"`
 	Field       *Field            `json:"field"`
 	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
-	Choices     []string          `json:"choices"`
+	Choices     []Choice          `json:"choices"`
 	RefID       string            `json:"ref_id"`
 }
 
@@ -95,8 +95,13 @@ type FieldMeta struct {
 	Hidden     string `json:"hidden"`
 	Config     string `json:"config"`     //UI property useful only during display
 	Expression string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
-	Link       string `json:"link"`       //useful for autocomplete. If no of choices greater than 100
+	Link       string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
 	DisplayGex string `json:"display_gex"`
+}
+
+type Choice struct {
+	ID           string      `json:"id"`
+	DisplayValue interface{} `json:"display_value"`
 }
 
 //DType defines the data type of field
@@ -117,15 +122,16 @@ type Dom string
 
 //const defines the types of visual representation dom
 const (
-	DomText         Dom = "TE"
-	DomTextArea         = "TA"
-	DomStatus           = "ST"
-	DomAutoComplete     = "AC"
-	DomSelect           = "SE"
-	DomDate             = "DA"
-	DomTime             = "TI"
-	DomMinute           = "MI"
-	DomMultiSelect      = "MS"
+	DomText          Dom = "TE"
+	DomTextArea          = "TA"
+	DomStatus            = "ST"
+	DomAutoComplete      = "AC"
+	DomSelect            = "SE" // the dom for the reference field units
+	DomDate              = "DA"
+	DomTime              = "TI"
+	DomMinute            = "MI"
+	DomMultiSelect       = "MS"
+	DomNotApplicable     = "NA" // the dom for the reference field with no UI need
 )
 
 //State for the entity specifies the current state of the entity

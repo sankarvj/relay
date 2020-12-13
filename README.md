@@ -13,6 +13,16 @@ Project Relay is the sales/customer-success software built on top of the no-code
 
 ## Features
 
+### Entities
+
+### Items
+
+### Rule Engine
+
+### Work Flow
+
+### Pipeline
+
 ### Relationships
 - Add a new table to maintain the "REVERSE" reference of the reference field. Query that relationship table to find the displayable child entities. The "STRAIGHT" reference of the parent entity is the "REVERSE" reference of the child entity.
 1. one-to-many 
@@ -46,13 +56,16 @@ Though the events is not an regular entity the relationships still holds true fo
 ### The Reference Field
 check README.md inside the entity
 
-
 ### Workflow/Playbook/Pipeline
 1. Sequence of task nodes is called as workflow
 2. Sequence of stages/goals with task nodes in a single direction is called as playbook/pipelines. 
 3. The flow types are:- Segment(1) & Pipeline(3)
 4. The pipeline flows will always hold the node type called stage.
 100. More about this in the package internal/rule READ.ME
+
+### Random Assumptions In This Project Are Captured Here. (Please read & understand before start writing the code)
+1. The reference field with DOM type `DomSelect` implicitly means that the field unit is associated with the reference. So, the choices for that field unit must be populated in the fields section in the item retrive call.
+(check `updateReferenceFields` in the `item.go` for implementation details)
 
 
 ### TODO

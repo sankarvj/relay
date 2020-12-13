@@ -39,7 +39,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	fields, err := e.Fields()
+	fields, err := e.FieldsWithReference()
 	if err != nil {
 		return err
 	}
@@ -54,12 +54,12 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		viewModelItems[i] = createViewModelItem(item)
 	}
 
-	viewModelItems = updateReferenceFields(ctx, fields, viewModelItems, i.db)
+	updateReferenceFields(ctx, fields, viewModelItems, i.db)
 
 	response := struct {
 		Items    []item.ViewModelItem `json:"items"`
 		Category int                  `json:"category"`
-		Fields   []entity.Field       `json:"fields"`
+		Fields   []*entity.Field      `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
@@ -162,7 +162,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	fields, err := e.Fields()
+	fields, err := e.FieldsWithReference()
 	if err != nil {
 		return err
 	}
@@ -177,11 +177,11 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	vmItem := createViewModelItem(it)
-	viewModelItems := updateReferenceFields(ctx, fields, []item.ViewModelItem{vmItem}, i.db)
+	viewModelItem := createViewModelItem(it)
+	updateReferenceFields(ctx, fields, []item.ViewModelItem{viewModelItem}, i.db)
 
 	itemDetail := item.ItemDetail{
-		Item:   viewModelItems[0],
+		Item:   viewModelItem,
 		Bonds:  bonds,
 		Fields: fields,
 	}
@@ -196,52 +196,71 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 	}
 }
 
-func updateReferenceFields(ctx context.Context, fields []entity.Field, items []item.ViewModelItem, db *sqlx.DB) []item.ViewModelItem {
-	refIds := make(map[string]entity.Field, 0) //key as field key and vals are ids
-	for _, f := range fields {
-		if f.IsReference() {
-			f.Value = []interface{}{}
-			refIds[f.Key] = f
-		}
-	}
+func updateReferenceFields(ctx context.Context, fields []*entity.Field, items []item.ViewModelItem, db *sqlx.DB) {
+	referenceFields := make(map[string]*entity.Field, 0)
+	referenceIds := make(map[string][]interface{}, 0)
 
-	//populating map with only ref fieldID
-	for _, item := range items {
-		for key, val := range item.Fields {
-			if f, ok := refIds[key]; ok {
-				f.Value = append(f.Value.([]interface{}), val.([]interface{})...)
-				refIds[key] = f
+	tmpFields := fields[:0]
+	for _, f := range fields {
+		if f.IsNotApplicable() { // remove not appicable fields from the view
+			continue
+		}
+
+		if f.IsReference() {
+			referenceIds[f.Key] = []interface{}{}
+			referenceFields[f.Key] = f
+		}
+		tmpFields = append(tmpFields, f)
+	}
+	fields = tmpFields
+
+	//TODO: Is it efficient. As of now for field unit reference we need to query one time
+	for _, f := range referenceFields {
+		if f.DomType == entity.DomSelect { //field units, the choices has to be pre-populated
+			refItems, err := item.EntityItems(ctx, f.RefID, db)
+			if err != nil {
+				log.Println("error on retriving reference items for field unit entity. continuing... ", err)
+			}
+
+			for _, refItem := range refItems {
+				f.Choices = append(f.Choices, entity.Choice{
+					ID:           refItem.ID,
+					DisplayValue: refItem.Fields()[f.DisplayGex()],
+				})
 			}
 		}
 	}
 
-	itemFieldsMap := make(map[string]map[string]interface{}, 0)
-	for _, f := range refIds {
-		refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(f.Value.([]interface{})), db)
-		if err != nil {
-			log.Println("error on retriving reference items. Continuing... ", err)
-		}
-		for _, refIt := range refItems {
-			itemFieldsMap[refIt.ID] = refIt.Fields()
-		}
-	}
-
-	//repopulating with actual values
 	for _, item := range items {
 		for key, vals := range item.Fields {
-			if f, ok := refIds[key]; ok {
-				item.Fields[key] = []interface{}{}
-				for _, itemID := range vals.([]interface{}) {
-					if fieldMap, ok := itemFieldsMap[itemID.(string)]; ok {
-						item.Fields[key] = append(item.Fields[key].([]interface{}), fieldMap[f.DisplayGex()])
-					}
-				}
+			if refIds, ok := referenceIds[key]; ok {
+				referenceIds[key] = append(refIds, vals.([]interface{})...)
 			}
 		}
 	}
 
-	return items
+	for _, f := range referenceFields {
 
+		if f.DomType == entity.DomSelect { //skipping field units, hence it is already populated in the above step
+			continue
+		}
+
+		refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(referenceIds[f.Key]), db)
+		if err != nil {
+			log.Println("error on retriving reference items for selected items. continuing... ", err)
+		}
+
+		if f.Choices == nil {
+			f.Choices = make([]entity.Choice, 0)
+		}
+
+		for _, refItem := range refItems {
+			f.Choices = append(f.Choices, entity.Choice{
+				ID:           refItem.ID,
+				DisplayValue: refItem.Fields()[f.DisplayGex()],
+			})
+		}
+	}
 }
 
 func removeDuplicateValues(intSlice []interface{}) []interface{} {

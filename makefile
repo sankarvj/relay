@@ -21,6 +21,8 @@ seed: migrate
 
 crm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 crmadd
+hr:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 hradd
 
 relay-api:
 	docker build \

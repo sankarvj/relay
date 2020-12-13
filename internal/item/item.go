@@ -139,14 +139,28 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 }
 
 func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
+	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
 	defer span.End()
 
 	items := []Item{}
 	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2)`
 
 	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items")
+		return items, errors.Wrap(err, "selecting bulk items for entity id and selected item ids")
+	}
+
+	return items, nil
+}
+
+func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 LIMIT 20`
+
+	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for entity id")
 	}
 
 	return items, nil

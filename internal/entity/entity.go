@@ -224,6 +224,18 @@ func (e Entity) Fields() ([]Field, error) {
 	return fields, nil
 }
 
+func (e Entity) FieldsWithReference() ([]*Field, error) {
+	var referencedFields []*Field
+	fields, err := e.Fields()
+	if err != nil {
+		return referencedFields, err
+	}
+	for i := 0; i < len(fields); i++ {
+		referencedFields = append(referencedFields, &fields[i])
+	}
+	return referencedFields, nil
+}
+
 // AllFields parses attribures to fields
 func (e Entity) AllFields() ([]Field, error) {
 	var fields []Field
@@ -242,6 +254,13 @@ func (f Field) isConfig() bool {
 
 func (f Field) IsReference() bool {
 	if f.DataType == TypeReference {
+		return true
+	}
+	return false
+}
+
+func (f Field) IsNotApplicable() bool {
+	if f.DomType == DomNotApplicable {
 		return true
 	}
 	return false

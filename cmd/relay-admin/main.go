@@ -73,6 +73,8 @@ func run() error {
 		err = seed(dbConfig)
 	case "crmadd":
 		err = crmadd(dbConfig)
+	case "hradd":
+		err = hradd(dbConfig)
 	case "useradd":
 		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -124,37 +126,37 @@ func seed(cfg database.Config) error {
 
 func crmadd(cfg database.Config) error {
 	//add entity - status
-	se, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryChildUnit, config.StatusFields())
+	se, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryChildUnit, config.StatusFields())
 	if err != nil {
 		return err
 	}
 	//add entity - contacts
-	ce, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
+	ce, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - task
-	te, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
+	te, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - deal
-	de, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID))
+	de, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID))
 	if err != nil {
 		return err
 	}
 	//add entity - email
-	me, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	me, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
 	if err != nil {
 		return err
 	}
 	//add entity - api-hook
-	we, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
+	we, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
 	if err != nil {
 		return err
 	}
 	//add entity - delay
-	dele, err := config.EntityAdd(cfg, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
+	dele, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
 	if err != nil {
 		return err
 	}
@@ -270,6 +272,21 @@ func crmadd(cfg database.Config) error {
 	// if err != nil {
 	// 	return err
 	// }
+
+	return nil
+}
+
+func hradd(cfg database.Config) error {
+	//add entity - employee
+	se, err := config.EntityAdd(cfg, schema.SeedTeamID2, "00000000-0000-0000-0000-000000000101", "Employee", entity.CategoryChildUnit, config.StatusFields())
+	if err != nil {
+		return err
+	}
+	//add entity - contacts
+	_, err = config.EntityAdd(cfg, schema.SeedTeamID2, "00000000-0000-0000-0000-000000000102", "Leaves", entity.CategoryData, config.ContactFields(se.ID))
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

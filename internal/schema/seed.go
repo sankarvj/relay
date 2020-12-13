@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	SeedTeamID    = "8cf27268-3473-4006-984f-9325122678b7"
+	SeedTeamID1   = "8cf27268-3473-4006-984f-9325122678b7"
+	SeedTeamID2   = "9df27268-3473-4006-984f-9325122678b7"
 	SeedAccountID = "3cf27266-3473-4006-984f-9325122678b7"
 	SeedUserID1   = "5cf37266-3473-4006-984f-9325122678b7"
 	SeedUserID2   = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
@@ -97,6 +98,7 @@ INSERT INTO public.users (user_id, account_id, name, avatar, email, phone, verif
 INSERT INTO public.users (user_id, account_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('65b5fbd3-755f-4379-8f07-a58d4a30fa2f', '3cf27266-3473-4006-984f-9325122678b7', 'saravana', 'http://gravatar/vj', 'saravanaprakas@gmail.com', '9940209164', true, '{USER}', 'sexy_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
 
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('8cf27268-3473-4006-984f-9325122678b7', '3cf27266-3473-4006-984f-9325122678b7', 'CRM', NULL, '2020-02-22 15:03:57.416566', 1582383837);
+INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('9df27268-3473-4006-984f-9325122678b7', '3cf27266-3473-4006-984f-9325122678b7', 'HR Cloud', NULL, '2020-02-22 15:03:57.416566', 1582383837);
 `
 
 const entityItemSeeds = `

@@ -14,7 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func EntityAdd(cfg database.Config, id, name string, cat int, fields []entity.Field) (entity.Entity, error) {
+func EntityAdd(cfg database.Config, teamID, id, name string, cat int, fields []entity.Field) (entity.Entity, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return entity.Entity{}, err
@@ -25,7 +25,7 @@ func EntityAdd(cfg database.Config, id, name string, cat int, fields []entity.Fi
 	ne := entity.NewEntity{
 		ID:        id,
 		AccountID: schema.SeedAccountID,
-		TeamID:    schema.SeedTeamID,
+		TeamID:    teamID,
 		Category:  cat,
 		Name:      name,
 		Fields:    fields,
@@ -191,14 +191,23 @@ func ContactFields(statusEntityID string) []entity.Field {
 		DisplayName: "Lifecycle Stage",
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeString,
-		Choices:     []string{"lead", "contact", "won"},
+		Choices: []entity.Choice{
+			entity.Choice{
+				ID:           "1",
+				DisplayValue: "Lead",
+			},
+			entity.Choice{
+				ID:           "2",
+				DisplayValue: "Contact",
+			},
+		},
 	}
 
 	statusField := entity.Field{
 		Key:         "uuid-00-status",
 		Name:        "status",
 		DisplayName: "Status",
-		DomType:     entity.DomText,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		Meta:        map[string]string{"display_gex": "uuid-00-name"},
@@ -237,7 +246,7 @@ func TaskFields(contactEntityID string) []entity.Field {
 		Key:         "uuid-00-contact",
 		Name:        "contact",
 		DisplayName: "Assigned To",
-		DomType:     entity.DomText,
+		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
 		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
@@ -280,7 +289,7 @@ func DealFields(contactEntityID string) []entity.Field {
 		Key:         "uuid-00-contacts",
 		Name:        "contact",
 		DisplayName: "Associated Contacts",
-		DomType:     entity.DomText,
+		DomType:     entity.DomMultiSelect,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
 		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
