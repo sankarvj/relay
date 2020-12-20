@@ -126,12 +126,12 @@ const (
 	DomTextArea          = "TA"
 	DomStatus            = "ST"
 	DomAutoComplete      = "AC"
-	DomSelect            = "SE" // the dom for the reference field units
+	DomSelect            = "SE" // the default dom for the reference field units. This type mandates the choices limit to 20
 	DomDate              = "DA"
 	DomTime              = "TI"
 	DomMinute            = "MI"
 	DomMultiSelect       = "MS"
-	DomNotApplicable     = "NA" // the dom for the reference field with no UI need
+	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
 )
 
 //State for the entity specifies the current state of the entity

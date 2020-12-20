@@ -214,7 +214,7 @@ func updateReferenceFields(ctx context.Context, fields []*entity.Field, items []
 	}
 	fields = tmpFields
 
-	//TODO: Is it efficient. As of now for field unit reference we need to query one time
+	//TODO: Is it efficient? As of now for field unit reference we need to query n+1 time
 	for _, f := range referenceFields {
 		if f.DomType == entity.DomSelect { //field units, the choices has to be pre-populated
 			refItems, err := item.EntityItems(ctx, f.RefID, db)
@@ -273,4 +273,12 @@ func removeDuplicateValues(intSlice []interface{}) []interface{} {
 		}
 	}
 	return list
+}
+
+func updateChoicesForFieldUnits() {
+
+}
+
+func updateChoicesForOtherSelectDom() {
+
 }
