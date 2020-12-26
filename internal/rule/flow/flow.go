@@ -206,7 +206,7 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, nodeID, ite
 		return ErrInvalidItemEntity
 	}
 
-	//update meta. very important to update meta before calling exp evalustor
+	//update meta. very important to update meta before calling exp evaluator
 	n.UpdateMeta(i.EntityID, i.ID, f.Type)
 	if engine.RunExpEvaluator(ctx, db, rp, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)

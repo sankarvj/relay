@@ -152,7 +152,7 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 	return items, nil
 }
 
-func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+func entityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
 	defer span.End()
 

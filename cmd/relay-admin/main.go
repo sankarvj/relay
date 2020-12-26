@@ -17,6 +17,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -140,11 +142,7 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
-	//add entity - deal
-	de, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID))
-	if err != nil {
-		return err
-	}
+
 	//add entity - email
 	me, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
 	if err != nil {
@@ -191,11 +189,7 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
-	// add deal item with contacts - vijay & senthil (reverse)
-	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID))
-	if err != nil {
-		return err
-	}
+
 	// add email item
 	emg, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000015", me.ID, config.EmailVals(ce.ID))
 	if err != nil {
@@ -207,7 +201,21 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
-	log.Println("emg %s %s %s", emg.ID, delayi.ID, we.ID)
+	pID, nID, err := addPipelines(cfg, ce.ID, me.ID, we.ID, dele.ID, emg.ID, delayi.ID)
+	if err != nil {
+		return err
+	}
+
+	//add entity - deal
+	de, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID, pID))
+	if err != nil {
+		return err
+	}
+	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
+	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
+	if err != nil {
+		return err
+	}
 
 	// //add workflows
 	// f, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000017", ce.ID, "The Workflow", flow.FlowModeWorkFlow, flow.FlowConditionEntry)
@@ -241,39 +249,41 @@ func crmadd(cfg database.Config) error {
 	// 	return err
 	// }
 
-	// //add pipelines
-	// p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", ce.ID, "The Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// //test node push test case - TestCreateItemRuleRunner
-	// pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, node.Stage, "", map[string]string{})
-	// if err != nil {
-	// 	return err
-	// }
-
-	// pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, me.ID, pno1.ID, node.Email, "", map[string]string{me.ID: emg.ID})
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, we.ID, pno1.ID, node.Hook, "", map[string]string{})
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, dele.ID, pno2.ID, node.Delay, "", map[string]string{dele.ID: delayi.ID})
-	// if err != nil {
-	// 	return err
-	// }
-
 	return nil
+}
+
+func addPipelines(cfg database.Config, contactEntityID, mailEntityID, webhookEntityID, delayEntityID, mailItemID, delayItemID string) (string, string, error) {
+	//add pipelines
+	p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
+	if err != nil {
+		return "", "", err
+	}
+
+	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, "Opputunity", node.Stage, "", map[string]string{})
+	if err != nil {
+		return "", "", err
+	}
+
+	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, mailEntityID, pno1.ID, "", node.Email, "", map[string]string{mailEntityID: mailItemID})
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, webhookEntityID, pno1.ID, "", node.Hook, "", map[string]string{})
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, delayEntityID, pno2.ID, "", node.Delay, "", map[string]string{delayEntityID: delayItemID})
+	if err != nil {
+		return "", "", err
+	}
+	return p.ID, pno1.ID, nil
 }
 
 func hradd(cfg database.Config) error {

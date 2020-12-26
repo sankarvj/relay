@@ -57,6 +57,21 @@ func List(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
 	return nodes, nil
 }
 
+// Stages retrieves a list of existing stages for the flow.
+func Stages(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.node.Stages")
+	defer span.End()
+
+	nodes := []Node{}
+	const q = `SELECT * FROM nodes where flow_id = $1 AND type = $2`
+
+	if err := db.SelectContext(ctx, &nodes, q, flowID, Stage); err != nil {
+		return nil, errors.Wrap(err, "selecting stages")
+	}
+
+	return nodes, nil
+}
+
 //NodeActorsList is list with entity details joined
 func NodeActorsList(ctx context.Context, flowID string, db *sqlx.DB) ([]NodeActor, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.node.NodeActorsList")
@@ -88,6 +103,7 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 		AccountID:    nn.AccountID,
 		FlowID:       nn.FlowID,
 		ActorID:      nn.ActorID,
+		Name:         nn.Name,
 		Type:         nn.Type,
 		Expression:   nn.Expression,
 		Actuals:      actuals,
@@ -96,13 +112,13 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 	}
 
 	const q = `INSERT INTO nodes
-		(node_id, parent_node_id, account_id, flow_id, actor_id, type, expression, actuals, 
+		(node_id, parent_node_id, account_id, flow_id, actor_id, name, type, expression, actuals, 
 		created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.Type, n.Expression, n.Actuals,
+		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.Name, n.Type, n.Expression, n.Actuals,
 		n.CreatedAt, n.UpdatedAt,
 	)
 	if err != nil {

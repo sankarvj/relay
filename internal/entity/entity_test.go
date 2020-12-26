@@ -21,7 +21,7 @@ func TestDataEntity(t *testing.T) {
 			ne := entity.NewEntity{
 				Name:      "Contacts",
 				AccountID: schema.SeedAccountID,
-				TeamID:    schema.SeedTeamID,
+				TeamID:    schema.SeedTeamID1,
 				Fields:    contactFields(),
 			}
 			_, err := entity.Create(tests.Context(), db, ne, time.Now())
@@ -63,7 +63,11 @@ func contactFields() []entity.Field {
 		Name:     "Lifecycle Stage",
 		DomType:  entity.DomSelect,
 		DataType: entity.TypeString,
-		Choices:  []string{"lead", "contact", "won"},
+		Choices: []entity.Choice{
+			{ID: "uuid_lead", DisplayValue: "lead"},
+			{ID: "uuid_contact", DisplayValue: "contact"},
+			{ID: "uuid_won", DisplayValue: "won"},
+		},
 	}
 
 	statusField := entity.Field{

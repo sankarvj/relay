@@ -94,7 +94,7 @@ func FlowAdd(cfg database.Config, id, entityID string, name string, mode, condit
 	return f, nil
 }
 
-func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, typ int, exp string, actuals map[string]string) (node.Node, error) {
+func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string) (node.Node, error) {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return node.Node{}, err
@@ -108,6 +108,7 @@ func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, ty
 		FlowID:       flowID,
 		ActorID:      actorID,
 		ParentNodeID: pnodeID,
+		Name:         name,
 		Type:         typ,
 		Expression:   exp,
 		Actuals:      actuals,
@@ -268,7 +269,7 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 	return taskVals
 }
 
-func DealFields(contactEntityID string) []entity.Field {
+func DealFields(contactEntityID, pipeLineID string) []entity.Field {
 	dealName := entity.Field{
 		Key:         "uuid-00-deal-name",
 		Name:        "deal_name",
@@ -300,14 +301,30 @@ func DealFields(contactEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{dealName, dealAmount, contactsField}
+	pipeField := entity.Field{
+		Key:         "uuid-00-pipe",
+		Name:        "pipeline_stage",
+		DisplayName: "Pipeline Stage",
+		DomType:     entity.DomPipeline,
+		DataType:    entity.TypePipe,
+		RefID:       pipeLineID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{dealName, dealAmount, contactsField, pipeField}
 }
 
-func DealVals(name string, amount int, contactID1, contactID2 string) map[string]interface{} {
+func DealVals(name string, amount int, contactID1, contactID2, nodeStageID string) map[string]interface{} {
 	dealVals := map[string]interface{}{
 		"uuid-00-deal-name":   name,
 		"uuid-00-deal-amount": amount,
 		"uuid-00-contacts":    []string{contactID1, contactID2},
+		"uuid-00-pipe":        []string{nodeStageID},
 	}
 	return dealVals
 }

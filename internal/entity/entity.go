@@ -259,6 +259,13 @@ func (f Field) IsReference() bool {
 	return false
 }
 
+func (f Field) IsPipe() bool {
+	if f.DataType == TypePipe {
+		return true
+	}
+	return false
+}
+
 func (f Field) IsNotApplicable() bool {
 	if f.DomType == DomNotApplicable {
 		return true

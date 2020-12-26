@@ -115,6 +115,7 @@ const (
 	TypeDataTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
+	TypePipe            = "P"
 )
 
 //Dom defines the visual representation of the field
@@ -132,6 +133,8 @@ const (
 	DomMinute            = "MI"
 	DomMultiSelect       = "MS"
 	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
+	DomPipeline          = "PL"
+	DomPlayBook          = "PB"
 )
 
 //State for the entity specifies the current state of the entity
@@ -150,4 +153,5 @@ const (
 	CategorySchedule   = 6
 	CategoryDelay      = 7
 	CategoryChildUnit  = 8
+	CategoryTask       = 9
 )

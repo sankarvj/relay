@@ -29,6 +29,8 @@ type Node struct {
 	AccountID    string    `db:"account_id" json:"account_id"`
 	FlowID       string    `db:"flow_id" json:"flow_id"`
 	ActorID      string    `db:"actor_id" json:"actor_id"`
+	Name         string    `db:"name" json:"name"`
+	Weight       string    `db:"weight" json:"weight"`
 	Type         int       `db:"type" json:"type"`
 	Expression   string    `db:"expression" json:"expression"`
 	Variables    string    `db:"-" json:"variables"`     //Variables is to evaluate the expression during the runtime

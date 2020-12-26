@@ -67,15 +67,51 @@ check README.md inside the entity
 1. The reference field with DOM type `DomSelect` implicitly means that the field unit is associated with the reference. So, the choices for that field unit must be populated in the fields section in the item retrive call.
 (check `updateReferenceFields` in the `item.go` for implementation details)
 
+###
 
-### TODO
-1. Stop cyclic looping of references - pivot.go
-2. Done --- Delete/Update references - pivot.go 
-3. Done --- Upsert should include only the modified values - pivot.go
-4. Done* ---Add aggregation funcs in the rGraph segmentation.
-5. Add aggregation <,> in "IN" of list rule engine
-6. MathAny/MatchAll in segmentation/workflow
-7. ******* Write READ.ME in the pipeline/playbooks/workflow ******
 
+### Big Shots
+0. The trigger with references. like, deal > 100 for a contact
+1. E-mail Integ
+2. Phone Integ
+3. Chat
+4. Search
+5. Segmentation
+6. Events
+7. Events as trigger in the workflow
+8. Playbook like hubspot
+9. Use graphDB to fetch records with sorting order
+
+### Small Shots
+0. ******* Write READ.ME in the pipeline/playbooks/workflow ******
+1. AND/OR in segmentation/workflow
+2. Add aggregation <,> in "IN" of list rule engine
+3. Stop cyclic looping of references - pivot.go
+
+### Half Done Shots
+1. Add aggregation funcs in the rGraph segmentation.
+
+### Current Shots
+2. Meetings - Google Calender Intg.
+3. Todo - With Due Date
+4. Activity Feed
+5. Notes, Tickets -  With Association
+6. The entity templates during the Workflow 
+7. Workflow with datatype triggers. Like, on numbers (is gt than, is ls than) on date (before, after)
+8. users/members
+
+### UI Shots
+1. Workflow UI
+2. create/edit item
+3. create/edit entity
+4. pipeline view
+
+### Holy Shots
+1. make the UI on par with hubspot!
+
+### Done Shots
+1. Delete/Update references - pivot.go 
+2. Upsert should include only the modified values - pivot.go
+3. Deal Stage
 
 

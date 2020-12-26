@@ -17,11 +17,11 @@ The engine is the outermost wrapper which handles three important tasks, which a
 4. Send back the pos/neg trigger
 
 ## Lexer
-The lexer is the token fetcher. It fetches the token and given that to lexer.
+The lexer is the token fetcher. It fetches the token and given that to parser.
 Following are the valid lexter tokens:-
 `{{e1.f1}}` - evaluatable operands (usually in entity.field format)
 `{1000}` - non-evaluatable operands (usually a hardcoded value of string/number)
-`<age=50>` - an actionable snippet. Yet to explore.
+`<age=50>` - an actionable snippet. Used for aggregated functions. Yet to explore.
 `&&,||` - conditions
 `eq,lt,gt,in` - operators which act on left and right operands
 
