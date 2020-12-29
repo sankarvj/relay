@@ -22,6 +22,8 @@ const (
 	TokenGTSign
 	TokenLTSign
 	TokenINSign
+	TokenBFSign
+	TokenAFSign
 
 	TokenANDOperation
 	TokenOROperation

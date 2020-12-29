@@ -226,20 +226,19 @@ var migrations = []darwin.Migration{
 			dst_entity_id   UUID REFERENCES entities ON DELETE CASCADE,
 			field_id        TEXT, 
 			type 	   	    INTEGER DEFAULT 0,
-			PRIMARY KEY (relationship_id),
 			UNIQUE (account_id,src_entity_id,dst_entity_id,field_id)
 		);
 		`,
 	},
 	{
-		Version:     12, //TODO delete dst_item_id on deletion of the specific item
+		Version:     12,
 		Description: "Add connections",
 		Script: `
 		CREATE TABLE connections (
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
-			relationship_id UUID REFERENCES relationships ON DELETE CASCADE,
+			relationship_id UUID,
 			src_item_id 	UUID REFERENCES items ON DELETE CASCADE,
-			dst_item_id 	UUID[25] 
+			dst_item_id 	UUID REFERENCES items ON DELETE CASCADE 
 		);
 		`,
 	},

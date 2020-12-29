@@ -24,7 +24,11 @@ type RType int
 //Mode for the entity spcifies certain entity specific characteristics
 //Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
-	TypeSolo   RType = 0
-	TypeMutual       = 1
-	TypeJoint        = 2
+	TypeBond         RType = 0
+	TypeAssociation        = 1
+	TypeImplicitBond       = 2 // useful for bond like one-to-many associations but not as the field property. contact-activities
+)
+
+const (
+	FieldAssociationKey string = "00000000-0000-0000-0000-000000000000"
 )

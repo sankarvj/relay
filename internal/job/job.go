@@ -7,7 +7,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 )
@@ -38,7 +37,7 @@ func validateExpressions(ctx context.Context, db *sqlx.DB, entityID, itemID stri
 	if len(dirtyFlows) > 0 {
 		log.Print("Tick...\nTick...\nTick...\nTick...\nTick...\nTick...\n")
 
-		log.Println("The flow trigger has been started\n")
+		log.Println("The flow trigger has been started")
 		errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows)
 
 		if len(errs) > 0 {
@@ -51,17 +50,26 @@ func addConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, itemI
 	relationMap := relationMap(ctx, db, account_id, entityID)
 	for k, v := range newFields {
 		if r, ok := relationMap[k]; ok {
-			c := connection.Connection{
-				AccountID:      account_id,
-				RelationshipID: r.RelationshipID,
-				SrcItemID:      itemID,
-				DstItemID:      v.([]string),
+			dstItemIds := v.([]string)
+			if len(dstItemIds) == 0 {
+				continue
 			}
-			_, err := connection.Create(ctx, db, c)
-			if err != nil {
-				log.Println("error while adding connection", err)
-				return
+			//TODO: use batch create
+			for _, dstItemID := range dstItemIds {
+				c := connection.Connection{
+					AccountID:      account_id,
+					RelationshipID: r.RelationshipID,
+					SrcItemID:      itemID,
+					DstItemID:      dstItemID,
+				}
+
+				_, err := connection.Create(ctx, db, c)
+				if err != nil {
+					log.Println("error while adding connection", err)
+					return
+				}
 			}
+
 		}
 	}
 }
@@ -71,17 +79,38 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 	dirtyFields := item.Diff(oldFields, newFields)
 	for k, v := range dirtyFields {
 		if r, ok := relationMap[k]; ok {
-			c := connection.Connection{
-				AccountID:      account_id,
-				RelationshipID: r.RelationshipID,
-				SrcItemID:      itemID,
-				DstItemID:      util.ConvertSliceTypeRev(v.([]interface{})),
+			oldDstItemIds := oldFields[k].([]interface{})
+			dstItemIds := v.([]interface{})
+
+			deletedItems, newItems := item.CompareItems(oldDstItemIds, dstItemIds)
+			if len(deletedItems) > 0 {
+				//TODO: use batch delete
+				for _, deletedItem := range deletedItems {
+					err := connection.Delete(ctx, db, r.RelationshipID, deletedItem.(string))
+					if err != nil {
+						log.Println("error while deleting connection", err)
+						return
+					}
+				}
 			}
-			err := connection.Update(ctx, db, c)
-			if err != nil {
-				log.Println("error while updating connection", err)
-				return
+
+			if len(newItems) > 0 {
+				//TODO: use batch create
+				for _, dstItemID := range newItems {
+					c := connection.Connection{
+						AccountID:      account_id,
+						RelationshipID: r.RelationshipID,
+						SrcItemID:      itemID,
+						DstItemID:      dstItemID.(string),
+					}
+					_, err := connection.Create(ctx, db, c)
+					if err != nil {
+						log.Println("error while adding connection", err)
+						return
+					}
+				}
 			}
+
 		}
 	}
 }

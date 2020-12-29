@@ -10,6 +10,8 @@ const (
 	EqualSign          string = "eq"
 	GTSign             string = "gt"
 	LTSign             string = "lt"
+	BFSign             string = "bf"
+	AFSign             string = "af"
 	INSign             string = "in"
 	LeftBrace          string = "{"
 	RightBrace         string = "}"

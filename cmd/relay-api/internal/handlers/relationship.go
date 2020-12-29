@@ -10,7 +10,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
@@ -55,8 +54,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return errors.Wrap(err, "selecting related item ids")
 	}
-
-	childItems, err := item.BulkRetrieve(ctx, params["ref_id"], util.ConvertSliceType(itemIDs), rs.db)
+	childItems, err := item.BulkRetrieve(ctx, params["ref_id"], itemIDs, rs.db)
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")
 	}

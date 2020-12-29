@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	version "github.com/mcuadros/go-version"
 )
@@ -19,6 +20,7 @@ const (
 	NumberDT
 	VersionDT
 	ListDT
+	TimeDT
 )
 
 type caster struct {
@@ -26,6 +28,8 @@ type caster struct {
 	rightNumber   float64
 	leftString    string
 	rightString   string
+	leftTime      time.Time
+	rightTime     time.Time
 	leftDataType  OperandDT
 	rightDataType OperandDT
 	err           error
@@ -80,6 +84,33 @@ func lesserThan(left, right Operand) bool {
 	switch c.leftDataType {
 	case NumberDT:
 		return c.leftNumber < c.rightNumber
+	}
+	return false
+}
+
+func after(left, right Operand) bool {
+	c := cast(left, right, true)
+	if c.err != nil {
+		log.Println("af error comparing operands", c.err)
+		return false
+	}
+
+	switch c.leftDataType {
+	case TimeDT:
+		return c.leftTime.After(c.rightTime)
+	}
+	return false
+}
+
+func before(left, right Operand) bool {
+	c := cast(left, right, true)
+	if c.err != nil {
+		log.Println("bf error comparing operands", c.err)
+		return false
+	}
+	switch c.leftDataType {
+	case TimeDT:
+		return c.leftTime.Before(c.rightTime)
 	}
 	return false
 }
@@ -141,10 +172,10 @@ func (c *caster) setLeft(left Operand) {
 		c.leftDataType = NumberDT
 	case string:
 		c.leftString = left.(string)
-		c.leftDataType = c.deepCaster()
+		c.leftDataType = c.deepCaster(true)
 	case bool:
 		c.leftString = strconv.FormatBool(left.(bool))
-		c.leftDataType = c.deepCaster()
+		c.leftDataType = c.deepCaster(true)
 	case []interface{}:
 		c.casters = left.([]interface{})
 		c.leftDataType = ListDT
@@ -169,35 +200,68 @@ func (c *caster) setRight(right Operand) {
 		c.rightDataType = NumberDT
 	case string:
 		c.rightString = right.(string)
-		c.rightDataType = c.deepCaster()
+		c.rightDataType = c.deepCaster(false)
 	case bool:
 		c.rightString = strconv.FormatBool(right.(bool))
-		c.rightDataType = c.deepCaster()
+		c.rightDataType = c.deepCaster(false)
 	case []interface{}:
 		c.casters = right.([]interface{})
 		c.rightDataType = ListDT
 	}
 }
 
-func (c *caster) deepCaster() OperandDT {
-	if version.ValidSimpleVersionFormat(c.leftString) && version.ValidSimpleVersionFormat(c.rightString) {
-		return VersionDT
-	}
+func (c *caster) deepCaster(left bool) OperandDT {
 
-	f64L, errL := strconv.ParseFloat(c.leftString, 64)
-	f64R, errR := strconv.ParseFloat(c.rightString, 64)
-	if errL == nil && errR == nil {
-		c.leftNumber = float64(f64L)
-		c.rightNumber = float64(f64R)
-		return NumberDT
-	}
-
-	i64L, errL := strconv.ParseInt(c.leftString, 10, 32)
-	i64R, errR := strconv.ParseInt(c.rightString, 10, 32)
-	if errL == nil && errR == nil {
-		c.leftNumber = float64(i64L)
-		c.rightNumber = float64(i64R)
-		return NumberDT
+	if left {
+		//version
+		if version.ValidSimpleVersionFormat(c.leftString) {
+			return VersionDT
+		}
+		//float
+		f64L, errL := strconv.ParseFloat(c.leftString, 64)
+		if errL == nil {
+			c.leftNumber = float64(f64L)
+			return NumberDT
+		}
+		//int
+		i64L, errL := strconv.ParseInt(c.leftString, 10, 32)
+		if errL == nil {
+			c.leftNumber = float64(i64L)
+			return NumberDT
+		}
+		//time
+		tL, errL := time.Parse("2006-01-02 15:04:05 -0700", c.leftString)
+		if errL == nil {
+			c.leftTime = tL
+			return TimeDT
+			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700")
+		}
+	} else {
+		//version
+		if version.ValidSimpleVersionFormat(c.rightString) {
+			return VersionDT
+		}
+		//float
+		f64R, errR := strconv.ParseFloat(c.rightString, 64)
+		if errR == nil {
+			c.rightNumber = float64(f64R)
+			return NumberDT
+		}
+		//int
+		i64R, errR := strconv.ParseInt(c.rightString, 10, 32)
+		if errR == nil {
+			c.rightNumber = float64(i64R)
+			return NumberDT
+		}
+		//time
+		if c.rightString == "now" {
+			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700")
+		}
+		tR, errR := time.Parse("2006-01-02 15:04:05 -0700", c.rightString)
+		if errR == nil {
+			c.rightTime = tR
+			return TimeDT
+		}
 	}
 
 	return StrDT

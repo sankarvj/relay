@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 
 	"github.com/google/uuid"
@@ -152,7 +153,7 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 	return items, nil
 }
 
-func entityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
 	defer span.End()
 
@@ -164,6 +165,19 @@ func entityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, err
 	}
 
 	return items, nil
+}
+
+//Associate items
+func Associate(ctx context.Context, db *sqlx.DB, accountID, relationshipID, srcItemID, dstItemID string) error {
+	c := connection.Connection{
+		AccountID:      accountID,
+		RelationshipID: relationshipID,
+		SrcItemID:      srcItemID,
+		DstItemID:      dstItemID,
+	}
+
+	_, err := connection.Create(ctx, db, c)
+	return err
 }
 
 // Fields parses attribures to fields
@@ -190,4 +204,29 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 		}
 	}
 	return diffFields
+}
+
+func CompareItems(oldItemVals, newItemVals []interface{}) ([]interface{}, []interface{}) {
+	var oi int
+	var oldVal interface{}
+	oldItems := oldItemVals
+	newItems := newItemVals
+	for ni, newVal := range newItemVals {
+		exist := false
+		for oi, oldVal = range oldItemVals {
+			if newVal == oldVal {
+				exist = true
+				break
+			}
+		}
+		if exist {
+			removeIndex(oldItems, oi)
+			removeIndex(newItems, ni)
+		}
+	}
+	return oldItems, newItems
+}
+
+func removeIndex(s []interface{}, index int) []interface{} {
+	return append(s[:index], s[index+1:]...)
 }

@@ -33,9 +33,10 @@ type ViewModelItem struct {
 }
 
 type ItemDetail struct {
-	Item   ViewModelItem       `json:"item"`
-	Bonds  []relationship.Bond `json:"bonds"`
-	Fields []*entity.Field     `json:"fields"`
+	Entity entity.ViewModelEntity `json:"entity"`
+	Item   ViewModelItem          `json:"item"`
+	Bonds  []relationship.Bond    `json:"bonds"`
+	Fields []*entity.Field        `json:"fields"`
 }
 
 // NewItem has information needed to creat new item

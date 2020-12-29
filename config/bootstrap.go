@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
@@ -123,6 +124,42 @@ func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, na
 	return n, nil
 }
 
+func AssociationAdd(cfg database.Config, srcEntityID, dstEntityID string) (string, error) {
+	db, err := database.Open(cfg)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	relationshipID, err := entity.Associate(ctx, db, schema.SeedAccountID, srcEntityID, dstEntityID)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("Association added with id: ", relationshipID)
+	return relationshipID, nil
+}
+
+func AssociatiateConnection(cfg database.Config, relationshipID, srcItemID, dstItemID string) error {
+	db, err := database.Open(cfg)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	err = item.Associate(ctx, db, schema.SeedAccountID, relationshipID, srcItemID, dstItemID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Association connection added with id: ", relationshipID)
+	return nil
+}
+
 func StatusFields() []entity.Field {
 	nameField := entity.Field{
 		Key:         "uuid-00-name",
@@ -158,6 +195,7 @@ func ContactFields(statusEntityID string) []entity.Field {
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	emailField := entity.Field{
@@ -166,6 +204,7 @@ func ContactFields(statusEntityID string) []entity.Field {
 		DisplayName: "Email",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "sub-title"},
 	}
 
 	mobileField := entity.Field{
@@ -193,11 +232,11 @@ func ContactFields(statusEntityID string) []entity.Field {
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeString,
 		Choices: []entity.Choice{
-			entity.Choice{
+			{
 				ID:           "1",
 				DisplayValue: "Lead",
 			},
-			entity.Choice{
+			{
 				ID:           "2",
 				DisplayValue: "Contact",
 			},
@@ -234,19 +273,90 @@ func ContactVals(name, email, statusID string) map[string]interface{} {
 	return contactVals
 }
 
-func TaskFields(contactEntityID string) []entity.Field {
+func CompanyFields() []entity.Field {
+	nameField := entity.Field{
+		Key:         "uuid-00-name",
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	websiteField := entity.Field{
+		Key:         "uuid-00-website",
+		Name:        "website",
+		DisplayName: "Website",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{nameField, websiteField}
+}
+
+func CompanyVals(name, website string) map[string]interface{} {
+	companyVals := map[string]interface{}{
+		"uuid-00-name":    name,
+		"uuid-00-website": website,
+	}
+	return companyVals
+}
+
+func TicketFields(statusEntityID string) []entity.Field {
+	nameField := entity.Field{
+		Key:         "uuid-00-subject",
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	statusField := entity.Field{
+		Key:         "uuid-00-status",
+		Name:        "status",
+		DisplayName: "Status",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       statusEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{nameField, statusField}
+}
+
+func TicketVals(name, statusID string) map[string]interface{} {
+	ticketVals := map[string]interface{}{
+		"uuid-00-subject": name,
+		"uuid-00-status":  []string{statusID},
+	}
+	return ticketVals
+}
+
+func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
 	descField := entity.Field{
 		Key:         "uuid-00-desc",
 		Name:        "desc",
-		DisplayName: "Description",
+		DisplayName: "Notes",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+	}
+
+	dueByField := entity.Field{
+		Key:         "uuid-00-due-by",
+		Name:        "due_by",
+		DisplayName: "Due By",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDataTime,
 	}
 
 	contactField := entity.Field{
 		Key:         "uuid-00-contact",
 		Name:        "contact",
-		DisplayName: "Assigned To",
+		DisplayName: "Associated To",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
@@ -258,13 +368,50 @@ func TaskFields(contactEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{descField, contactField}
+	reminderField := entity.Field{
+		Key:         "uuid-00-reminder",
+		Name:        "reminder",
+		DisplayName: "Reminder",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDataTime,
+		ActionID:    contactField.Key,
+	}
+
+	statusField := entity.Field{
+		Key:         "uuid-00-status",
+		Name:        "status",
+		DisplayName: "Status",
+		DomType:     entity.DomAutoSelect,
+		DataType:    entity.TypeReference,
+		RefID:       statusEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Choices: []entity.Choice{
+			{
+				ID:         stItem1,
+				Expression: fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key),
+			},
+			{
+				ID:         stItem3,
+				Expression: fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key),
+			},
+		},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{descField, contactField, statusField, dueByField, reminderField}
 }
 
 func TaskVals(desc, contactID string) map[string]interface{} {
 	taskVals := map[string]interface{}{
-		"uuid-00-desc":    desc,
-		"uuid-00-contact": []string{contactID},
+		"uuid-00-desc":     desc,
+		"uuid-00-contact":  []string{contactID},
+		"uuid-00-status":   []string{},
+		"uuid-00-reminder": util.FormatTimeGo(time.Now()),
+		"uuid-00-due-by":   util.FormatTimeGo(time.Now()),
 	}
 	return taskVals
 }
@@ -306,7 +453,7 @@ func DealFields(contactEntityID, pipeLineID string) []entity.Field {
 		Name:        "pipeline_stage",
 		DisplayName: "Pipeline Stage",
 		DomType:     entity.DomPipeline,
-		DataType:    entity.TypePipe,
+		DataType:    entity.TypeOdd,
 		RefID:       pipeLineID,
 		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
 		Field: &entity.Field{

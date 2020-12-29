@@ -234,15 +234,15 @@ var (
 		dealRefFieldID: []string{contactItemID},
 	}
 	dealEntityFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "name",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "amount",
 			DataType: graphdb.TypeNumber,
 		},
-		graphdb.Field{
+		{
 			Key:      dealRefFieldID,
 			RefID:    contactEntityID,
 			DataType: graphdb.TypeReference,
@@ -259,7 +259,7 @@ var (
 	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false).MakeBaseGNode(dealItemID, dealFields)
 	//refer segment_test.go more complex conditions
 	conditionFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Expression: "<",
 			Key:        "age",
 			DataType:   graphdb.TypeNumber,

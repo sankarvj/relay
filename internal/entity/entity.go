@@ -80,7 +80,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	//TODO: do it in the same transaction.
 	//TODO: this relationship should happen only if the user explicitly specifies that.
 	//may be, we can give add the boolean in the meta to identify that.
-	relationships := populateRelationShips(e.AccountID, e.ID, n.Fields)
+	relationships := populateBonds(e.AccountID, e.ID, n.Fields)
 	for _, r := range relationships {
 		_, err := relationship.Create(ctx, db, r)
 		if err != nil {
@@ -116,6 +116,19 @@ func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, n
 	}
 
 	return nil
+}
+
+//Associate entities
+func Associate(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
+	relationshipID, relationships := populateAssociation(accountID, srcEntityID, dstEntityID)
+	//TODO batch create
+	for _, r := range relationships {
+		_, err := relationship.Create(ctx, db, r)
+		if err != nil {
+			return relationshipID, errors.Wrapf(err, "Association between entities %s and %s failed", srcEntityID, dstEntityID)
+		}
+	}
+	return relationshipID, nil
 }
 
 // Retrieve gets the specified entity from the database.
@@ -260,7 +273,7 @@ func (f Field) IsReference() bool {
 }
 
 func (f Field) IsPipe() bool {
-	if f.DataType == TypePipe {
+	if f.DomType == DomPipeline || f.DomType == DomPlayBook {
 		return true
 	}
 	return false
@@ -280,7 +293,7 @@ func (f Field) DisplayGex() string {
 	return ""
 }
 
-func populateRelationShips(accountID, srcEntityId string, fields []Field) []relationship.Relationship {
+func populateBonds(accountID, srcEntityId string, fields []Field) []relationship.Relationship {
 	relationships := make([]relationship.Relationship, 0)
 	for _, f := range fields {
 		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
@@ -290,9 +303,30 @@ func populateRelationShips(accountID, srcEntityId string, fields []Field) []rela
 				SrcEntityID:    srcEntityId,
 				DstEntityID:    f.RefID,
 				FieldID:        f.Key,
-				Type:           relationship.TypeSolo,
+				Type:           relationship.TypeBond,
 			})
 		}
 	}
 	return relationships
+}
+
+func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []relationship.Relationship) {
+	relationships := make([]relationship.Relationship, 0)
+	relationshipID := uuid.New().String()
+	relationships = append(relationships, relationship.Relationship{
+		RelationshipID: relationshipID,
+		AccountID:      accountID,
+		SrcEntityID:    srcEntityId,
+		DstEntityID:    dstEntityId,
+		FieldID:        relationship.FieldAssociationKey,
+		Type:           relationship.TypeAssociation,
+	}, relationship.Relationship{
+		RelationshipID: relationshipID,
+		AccountID:      accountID,
+		SrcEntityID:    dstEntityId,
+		DstEntityID:    srcEntityId,
+		FieldID:        relationship.FieldAssociationKey,
+		Type:           relationship.TypeAssociation,
+	})
+	return relationshipID, relationships
 }

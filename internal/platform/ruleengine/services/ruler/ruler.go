@@ -102,6 +102,10 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
 			r.addLTCompareOperation()
+		case lexertoken.TokenAFSign:
+			r.addAFCompareOperation()
+		case lexertoken.TokenBFSign:
+			r.addBFCompareOperation()
 		case lexertoken.TokenINSign:
 			r.addINOperation()
 		case lexertoken.TokenANDOperation:
@@ -184,6 +188,18 @@ func (r *Ruler) addLTCompareOperation() error {
 	return nil
 }
 
+func (r *Ruler) addAFCompareOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = after
+	return nil
+}
+
+func (r *Ruler) addBFCompareOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = before
+	return nil
+}
+
 func (r *Ruler) addINOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = in
@@ -246,7 +262,7 @@ func (r *Ruler) query(q string) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	//log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

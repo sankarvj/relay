@@ -86,7 +86,8 @@ type Field struct {
 	Field       *Field            `json:"field"`
 	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
 	Choices     []Choice          `json:"choices"`
-	RefID       string            `json:"ref_id"`
+	RefID       string            `json:"ref_id"`    // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	ActionID    string            `json:"action_id"` // another field_id for datetime with reminder/dueby
 }
 
 type FieldMeta struct {
@@ -97,11 +98,13 @@ type FieldMeta struct {
 	Expression string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
 	Link       string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
 	DisplayGex string `json:"display_gex"`
+	Layout     string `json:"layout"`
 }
 
 type Choice struct {
 	ID           string      `json:"id"`
 	DisplayValue interface{} `json:"display_value"`
+	Expression   string      `json:"expression"`
 }
 
 //DType defines the data type of field
@@ -115,7 +118,7 @@ const (
 	TypeDataTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
-	TypePipe            = "P"
+	TypeOdd             = "O"
 )
 
 //Dom defines the visual representation of the field
@@ -128,6 +131,7 @@ const (
 	DomStatus            = "ST"
 	DomAutoComplete      = "AC"
 	DomSelect            = "SE" // the default dom for the reference field units. This type mandates the choices limit to 20
+	DomAutoSelect        = "AS" // same as select but with the twist for auto fill.
 	DomDate              = "DA"
 	DomTime              = "TI"
 	DomMinute            = "MI"
@@ -135,6 +139,7 @@ const (
 	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
 	DomPipeline          = "PL"
 	DomPlayBook          = "PB"
+	DomReminder          = "RE"
 )
 
 //State for the entity specifies the current state of the entity
@@ -154,4 +159,12 @@ const (
 	CategoryDelay      = 7
 	CategoryChildUnit  = 8
 	CategoryTask       = 9
+)
+
+//field_unit expression
+const (
+	FuExpNone   = "none"
+	FuExpPos    = "pos"    //set this on positive expression of due_by
+	FuExpNeg    = "neg"    //set this on negative expression of the due_by
+	FuExpManual = "manual" //keep as it is unless manually changes
 )

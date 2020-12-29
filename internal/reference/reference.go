@@ -1,4 +1,4 @@
-package item
+package reference
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -13,7 +15,7 @@ import (
 In this file we map the fields with the reference field value for the specific item
 **/
 
-func UpdateReferenceFields(ctx context.Context, fields []*entity.Field, items []ViewModelItem, db *sqlx.DB) {
+func UpdateReferenceFields(ctx context.Context, fields []*entity.Field, items []*item.ViewModelItem, db *sqlx.DB) {
 	referenceFields := make(map[string]*entity.Field, 0)
 	referenceIds := make(map[string][]interface{}, 0)
 
@@ -42,6 +44,8 @@ func UpdateReferenceFields(ctx context.Context, fields []*entity.Field, items []
 	for _, f := range referenceFields {
 		if f.DomType == entity.DomSelect {
 			updateChoicesForFieldUnits(ctx, db, f)
+		} else if f.DomType == entity.DomAutoSelect {
+			updateChoicesWithExpression(ctx, db, f, items)
 		} else if f.DomType == entity.DomPipeline || f.DomType == entity.DomPlayBook {
 			updateChoicesForPipeLine(ctx, db, f)
 		} else {
@@ -52,7 +56,7 @@ func UpdateReferenceFields(ctx context.Context, fields []*entity.Field, items []
 
 //TODO: Is it efficient? As of now for field unit reference we need to query n+1 time
 func updateChoicesForFieldUnits(ctx context.Context, db *sqlx.DB, f *entity.Field) {
-	refItems, err := entityItems(ctx, f.RefID, db)
+	refItems, err := item.EntityItems(ctx, f.RefID, db)
 	if err != nil {
 		log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 	}
@@ -62,6 +66,24 @@ func updateChoicesForFieldUnits(ctx context.Context, db *sqlx.DB, f *entity.Fiel
 			ID:           refItem.ID,
 			DisplayValue: refItem.Fields()[f.DisplayGex()],
 		})
+	}
+}
+
+func updateChoicesWithExpression(ctx context.Context, db *sqlx.DB, f *entity.Field, items []*item.ViewModelItem) {
+	choiceExpressions := f.Choices //store choice expressions and empty the choices
+	f.Choices = make([]entity.Choice, 0)
+	updateChoicesForFieldUnits(ctx, db, f)
+
+	for i := 0; i < len(items); i++ {
+		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't set auto if the value exist already
+			continue
+		}
+		for _, choice := range choiceExpressions {
+			result := engine.RunExpEvaluator(ctx, db, nil, choice.Expression, items[i].Fields)
+			if result {
+				items[i].Fields[f.Key] = []interface{}{choice.ID}
+			}
+		}
 	}
 }
 
@@ -76,11 +98,10 @@ func updateChoicesForPipeLine(ctx context.Context, db *sqlx.DB, f *entity.Field)
 			DisplayValue: node.Name,
 		})
 	}
-
 }
 
 func updateChoicesForOtherSelectDom(ctx context.Context, db *sqlx.DB, f *entity.Field, referenceIds map[string][]interface{}) {
-	refItems, err := BulkRetrieve(ctx, f.RefID, removeDuplicateValues(referenceIds[f.Key]), db)
+	refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(referenceIds[f.Key]), db)
 	if err != nil {
 		log.Println("error on retriving reference items for selected items. continuing... ", err)
 	}

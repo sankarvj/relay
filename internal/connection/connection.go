@@ -67,16 +67,42 @@ func List(ctx context.Context, db *sqlx.DB, accountID, relationshipID string) ([
 	return connections, nil
 }
 
-func ChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, relationshipID, itemID string) ([]string, error) {
+func ChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, relationshipID, itemID string) ([]interface{}, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.connection.ChildItemIDs")
 	defer span.End()
 
-	var childItemids []string
-	const q = `SELECT src_item_id FROM connections where account_id = $1 AND relationship_id = $2 AND $3 = ANY(dst_item_id)`
+	var childItemids []ConnectionID
+	const q = `SELECT src_item_id,dst_item_id FROM connections where account_id = $1 AND relationship_id = $2 AND ( dst_item_id = $3 OR src_item_id = $3)`
+	//const q = `SELECT src_item_id FROM connections where account_id = $1 AND relationship_id = $2 AND $3 = ANY(dst_item_id)`
 
 	if err := db.SelectContext(ctx, &childItemids, q, accountID, relationshipID, itemID); err != nil {
 		return nil, errors.Wrap(err, "selecting src items for connected dst item")
 	}
 
-	return childItemids, nil
+	return pickOpposites(itemID, childItemids), nil
+}
+
+func Delete(ctx context.Context, db *sqlx.DB, relationshipID, dstItemID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.connection.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM connections WHERE relationship_id = $1 and dst_item_id =$2`
+
+	if _, err := db.ExecContext(ctx, q, relationshipID, dstItemID); err != nil {
+		return errors.Wrapf(err, "deleting connection for relationship %s on %s", relationshipID, dstItemID)
+	}
+
+	return nil
+}
+
+func pickOpposites(itemID string, childItemids []ConnectionID) []interface{} {
+	itemIds := make([]interface{}, len(childItemids))
+	for i, c := range childItemids {
+		if c.SrcItemID == itemID {
+			itemIds[i] = c.DstItemID
+		} else {
+			itemIds[i] = c.SrcItemID
+		}
+	}
+	return itemIds
 }

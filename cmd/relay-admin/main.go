@@ -132,32 +132,6 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
-	//add entity - contacts
-	ce, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
-	if err != nil {
-		return err
-	}
-	//add entity - task
-	te, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID))
-	if err != nil {
-		return err
-	}
-
-	//add entity - email
-	me, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
-	if err != nil {
-		return err
-	}
-	//add entity - api-hook
-	we, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
-	if err != nil {
-		return err
-	}
-	//add entity - delay
-	dele, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
-	if err != nil {
-		return err
-	}
 
 	// add status item - open
 	st1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000008", se.ID, config.StatusVals("Open", "#fb667e"))
@@ -169,6 +143,18 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
+
+	st3, err := config.ItemAdd(cfg, "00000000-0000-0000-0001-000000000009", se.ID, config.StatusVals("OverDue", "#66fb99"))
+	if err != nil {
+		return err
+	}
+
+	//add entity - contacts
+	ce, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
+	if err != nil {
+		return err
+	}
+
 	// add contact item - vijay (straight)
 	con1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000010", ce.ID, config.ContactVals("Vijay", "vijayasankarmail@gmail.com", st1.ID))
 	if err != nil {
@@ -179,6 +165,24 @@ func crmadd(cfg database.Config) error {
 	if err != nil {
 		return err
 	}
+
+	//add entity - companies
+	come, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0001-000000000002", "Companies", entity.CategoryData, config.CompanyFields())
+	if err != nil {
+		return err
+	}
+
+	com1, err := config.ItemAdd(cfg, "00000000-0000-0000-1001-000000000010", come.ID, config.CompanyVals("Zoho", "zoho.com"))
+	if err != nil {
+		return err
+	}
+
+	//add entity - task
+	te, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
+	if err != nil {
+		return err
+	}
+
 	// add task item for contact - vijay (reverse)
 	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000012", te.ID, config.TaskVals("make cake", con1.ID))
 	if err != nil {
@@ -190,8 +194,23 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
+	//add entity - email
+	me, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	if err != nil {
+		return err
+	}
 	// add email item
 	emg, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000015", me.ID, config.EmailVals(ce.ID))
+	if err != nil {
+		return err
+	}
+	//add entity - api-hook
+	we, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
+	if err != nil {
+		return err
+	}
+	//add entity - delay
+	dele, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
 	if err != nil {
 		return err
 	}
@@ -212,7 +231,51 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
+	deal1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
+	if err != nil {
+		return err
+	}
+
+	//add entity - tickets
+	tice, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0002-0000-0001-000000000002", "Tickets", entity.CategoryData, config.TicketFields(se.ID))
+	if err != nil {
+		return err
+	}
+
+	ticket1, err := config.ItemAdd(cfg, "00000000-0002-0000-1001-000000000010", tice.ID, config.TicketVals("My Laptop Is Not Working", st1.ID))
+	if err != nil {
+		return err
+	}
+
+	//contact company association
+	associationID, err := config.AssociationAdd(cfg, ce.ID, come.ID)
+	if err != nil {
+		return err
+	}
+
+	err = config.AssociatiateConnection(cfg, associationID, con1.ID, com1.ID)
+	if err != nil {
+		return err
+	}
+
+	//ticket deal association
+	tdaID, err := config.AssociationAdd(cfg, tice.ID, de.ID)
+	if err != nil {
+		return err
+	}
+
+	err = config.AssociatiateConnection(cfg, tdaID, ticket1.ID, deal1.ID)
+	if err != nil {
+		return err
+	}
+
+	//ticket contact association
+	tcaID, err := config.AssociationAdd(cfg, tice.ID, ce.ID)
+	if err != nil {
+		return err
+	}
+
+	err = config.AssociatiateConnection(cfg, tcaID, ticket1.ID, con1.ID)
 	if err != nil {
 		return err
 	}

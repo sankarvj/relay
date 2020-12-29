@@ -16,6 +16,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"go.opencensus.io/trace"
 )
 
@@ -48,17 +49,18 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	viewModelItems := make([]item.ViewModelItem, len(items))
+	viewModelItems := make([]*item.ViewModelItem, len(items))
 	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
+		viewModelItem := createViewModelItem(item)
+		viewModelItems[i] = &viewModelItem
 	}
 
-	item.UpdateReferenceFields(ctx, fields, viewModelItems, i.db)
+	reference.UpdateReferenceFields(ctx, fields, viewModelItems, i.db)
 
 	response := struct {
-		Items    []item.ViewModelItem `json:"items"`
-		Category int                  `json:"category"`
-		Fields   []*entity.Field      `json:"fields"`
+		Items    []*item.ViewModelItem `json:"items"`
+		Category int                   `json:"category"`
+		Fields   []*entity.Field       `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
@@ -177,9 +179,10 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	viewModelItem := createViewModelItem(it)
-	item.UpdateReferenceFields(ctx, fields, []item.ViewModelItem{viewModelItem}, i.db)
+	reference.UpdateReferenceFields(ctx, fields, []*item.ViewModelItem{&viewModelItem}, i.db)
 
 	itemDetail := item.ItemDetail{
+		Entity: createViewModelEntity(e),
 		Item:   viewModelItem,
 		Bonds:  bonds,
 		Fields: fields,

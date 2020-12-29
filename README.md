@@ -25,15 +25,18 @@ Project Relay is the sales/customer-success software built on top of the no-code
 
 ### Relationships
 - Add a new table to maintain the "REVERSE" reference of the reference field. Query that relationship table to find the displayable child entities. The "STRAIGHT" reference of the parent entity is the "REVERSE" reference of the child entity.
-1. one-to-many 
-If a contact has many tasks. Then the task entity would have the contactID as the reference field with (type = one). So, the relationship will be like (src - task) (dest - contact). In the display panel of the contacts we will show the tasks as the child entity and allow to create the task with contact-id prefilled.
-2. one-to-many 
-If a contact has many assignees. Then the contact entity would have the assigneeID as the reference field with (type = one/zero). So, the relationship will be like (src - contact) (dest - assignee). In the display panel of the contacts we will show the assignees as the field property. In the users panel we will show the associated contacts based on "type=one/zero".
-3. many-to-many 
-If a contact has many deals and a deal has many contacts. The deal will have the multiselect contactID as the reference field with (type = two). So, the relationship will be like (src - deal) (dest - contact). In the display panel of the contacts we will show the deals as the child entity and allow to create the deal with contact-id prefilled (REVERSE). In the similar fashion deals are allowed to associate multiple contacts (STRAIGHT).
-4. special-case
-Though the events is not an regular entity the relationships still holds true for them.
 
+REVERSE - BelongsTo
+STRAIGHT - HasMany
+
+1. one-to-many (TypeBond - STRAIGHT)
+If a contact has many assignees. Then the contact entity would have the assigneeID as the reference field with (type = bond). So, the relationship will be like (src - contact) (dest - assignee). In the display panel of the contacts we will show the assignees as the field property. In the users panel we will show the associated contacts based on "type=bond".
+2. one-to-many (TypeBond - REVERSE)
+If a contact has many tasks. Then the task entity would have the contactID as the reference field with (type = bond). So, the relationship will be like (src - task) (dest - contact). 
+3. many-to-many (TypeAssociation - STRAIGHT/REVERSE) (src - deal) (dest - contact) && (src - contact) (dest - deal)
+If a contact has many deals and a deal has many contacts. The relationship will be like (src - deal) (dest - contact)with (type = TypeImplicitBond). In the display panel of the contacts we will show the deals as the child associations and allow to create the deal with contact-id prefilled and vice-versa.
+4. special-case (TypeAssociation - REVERSE) (src - activity) (dest - contact)
+If a contact has many activities. Then the activity entity would have the contactID as the reference field with (type = association). Though the events is not an regular entity the relationships still holds true for them.
 
 ### Facts Of Fields
 1. Reference - refernce field holds list of map of entityID,itemID.
@@ -67,44 +70,45 @@ check README.md inside the entity
 1. The reference field with DOM type `DomSelect` implicitly means that the field unit is associated with the reference. So, the choices for that field unit must be populated in the fields section in the item retrive call.
 (check `updateReferenceFields` in the `item.go` for implementation details)
 
-###
+---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
 
+### User Shots
+1. Users/Members/Roles/Permissions.
+2. E-mail Integ/Google Calender Intg.
 
-### Big Shots
-0. The trigger with references. like, deal > 100 for a contact
-1. E-mail Integ
-2. Phone Integ
-3. Chat
-4. Search
-5. Segmentation
-6. Events
-7. Events as trigger in the workflow
-8. Playbook like hubspot
-9. Use graphDB to fetch records with sorting order
+### Workflow Shots
+1. The trigger with references. like, deal > 100 for a contact
+2. Events as trigger in the workflow
+3. Adding templates
+
+### Integrations
+1. Phone 
+2. Chat
+3. Mail
+
+### Features
+1. Segmentation
+2. Search
+3. Sort
+4. Events
+5. Playbook like hubspot
+6. Notification
 
 ### Small Shots
-0. ******* Write READ.ME in the pipeline/playbooks/workflow ******
+0. ******* Write README in the pipeline/playbooks/workflow ******
 1. AND/OR in segmentation/workflow
 2. Add aggregation <,> in "IN" of list rule engine
 3. Stop cyclic looping of references - pivot.go
-
-### Half Done Shots
-1. Add aggregation funcs in the rGraph segmentation.
-
-### Current Shots
-2. Meetings - Google Calender Intg.
-3. Todo - With Due Date
-4. Activity Feed
-5. Notes, Tickets -  With Association
-6. The entity templates during the Workflow 
-7. Workflow with datatype triggers. Like, on numbers (is gt than, is ls than) on date (before, after)
-8. users/members
+4. comments for notes/meetings
 
 ### UI Shots
-1. Workflow UI
+1. workflow UI
 2. create/edit item
 3. create/edit entity
 4. pipeline view
+5. rich text for Todo/Notes/Meeting Desc
+
+---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
 
 ### Holy Shots
 1. make the UI on par with hubspot!
@@ -113,5 +117,12 @@ check README.md inside the entity
 1. Delete/Update references - pivot.go 
 2. Upsert should include only the modified values - pivot.go
 3. Deal Stage
+4. Workflow with datatype triggers. Like, on numbers (is gt than, is ls than) on date (before, after)
+5. Todo
+6. Notes, Tickets -  With Association
 
+### Half Done Shots
+1. Add aggregation funcs in the rGraph segmentation.
+2. Reminder - notification
 
+---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
