@@ -42,7 +42,6 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 			if err != nil {
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
-
 			// Add claims to the context so they can be retrieved later.
 			ctx = context.WithValue(ctx, auth.Key, claims)
 
@@ -101,8 +100,8 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 
 			accountID := params["account_id"]
 			userID := claims.Subject
-			expectedAccountID, err := user.RetrieveCurrentAccountID(ctx, db, userID)
-			if err != nil || accountID != expectedAccountID {
+			existingAccountIDs, err := user.RetrieveCurrentAccountID(ctx, db, userID)
+			if err != nil || !isExist(existingAccountIDs, accountID) {
 				return errors.New("Account not associated with this user")
 			}
 
@@ -113,4 +112,13 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 	}
 
 	return f
+}
+
+func isExist(accountIDs []string, accountIDInReqParam string) bool {
+	for _, accountID := range accountIDs {
+		if accountIDInReqParam == accountID {
+			return true
+		}
+	}
+	return false
 }

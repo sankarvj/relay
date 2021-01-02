@@ -9,7 +9,7 @@ import (
 // User represents someone with access to our system.
 type User struct {
 	ID           string         `db:"user_id" json:"id"`
-	AccountID    string         `db:"account_id" json:"account_id"`
+	AccountIDs   pq.StringArray `db:"account_ids" json:"account_ids"`
 	Name         *string        `db:"name" json:"name"`
 	Avatar       *string        `db:"avatar" json:"avatar"`
 	Email        string         `db:"email" json:"email"`
@@ -25,7 +25,7 @@ type User struct {
 
 // NewUser contains information needed to create a new User.
 type NewUser struct {
-	AccountID       string   `json:"account_id" validate:"required"`
+	AccountIDs      []string `json:"account_id" validate:"required"`
 	Name            string   `json:"name" validate:"required"`
 	Email           string   `json:"email" validate:"required"`
 	Roles           []string `json:"roles" validate:"required"`

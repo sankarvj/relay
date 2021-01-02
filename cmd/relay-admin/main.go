@@ -12,8 +12,12 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf"
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/config"
+	"gitlab.com/vjsideprojects/relay/internal/account"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -75,8 +79,6 @@ func run() error {
 		err = seed(dbConfig)
 	case "crmadd":
 		err = crmadd(dbConfig)
-	case "hradd":
-		err = hradd(dbConfig)
 	case "useradd":
 		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -118,164 +120,185 @@ func seed(cfg database.Config) error {
 		return err
 	}
 
-	// if err := schema.SeedEntity(db); err != nil {
-	//    return err
-	// }
+	ctx := context.Background()
+	cuser, err := user.RetrieveUser(ctx, db, schema.SeedUserID1)
+	if err != nil {
+		return err
+	}
+	accountID := schema.SeedAccountID
+	teamID := schema.SeedTeamID
+	nc := account.NewAccount{
+		Name:   "Wayplot",
+		Domain: "wayplot.com"}
+	err = account.AccountBootstrap(ctx, db, cuser, accountID, teamID, nc, time.Now())
+	if err != nil {
+		return err
+	}
 
 	fmt.Println("Seed data complete")
 	return nil
 }
 
 func crmadd(cfg database.Config) error {
-	//add entity - status
-	se, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000001", "Status", entity.CategoryChildUnit, config.StatusFields())
+	accountID := schema.SeedAccountID
+	teamID := schema.SeedTeamID
+
+	fmt.Printf("CRM Bootstrap request received for accountID %s and teamID %s \n", accountID, teamID)
+
+	db, err := database.Open(cfg)
 	if err != nil {
 		return err
 	}
-
+	defer db.Close()
+	ctx := context.Background()
+	ownerEntity, err := bootstrap.RetrievePreDefinedEntity(ctx, db, accountID, bootstrap.OwnerEntity)
+	if err != nil {
+		return err
+	}
+	//add entity - status
+	se, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Status", entity.CategoryChildUnit, config.StatusFields())
+	if err != nil {
+		return err
+	}
 	// add status item - open
-	st1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000008", se.ID, config.StatusVals("Open", "#fb667e"))
+	st1, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), config.StatusVals("Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	st2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000009", se.ID, config.StatusVals("Closed", "#66fb99"))
+	st2, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), config.StatusVals("Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
-
-	st3, err := config.ItemAdd(cfg, "00000000-0000-0000-0001-000000000009", se.ID, config.StatusVals("OverDue", "#66fb99"))
+	// add status item - overdue
+	st3, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), config.StatusVals("OverDue", "#66fb99"))
 	if err != nil {
 		return err
 	}
 
 	//add entity - contacts
-	ce, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000002", "Contacts", entity.CategoryData, config.ContactFields(se.ID))
+	ce, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Contacts", entity.CategoryData, config.ContactFields(se.ID, ownerEntity.ID))
 	if err != nil {
 		return err
 	}
-
 	// add contact item - vijay (straight)
-	con1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000010", ce.ID, config.ContactVals("Vijay", "vijayasankarmail@gmail.com", st1.ID))
+	con1, err := bootstrap.ItemAdd(ctx, db, accountID, ce.ID, uuid.New().String(), config.ContactVals("Vijay", "vijayasankarmail@gmail.com", st1.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	con2, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000011", ce.ID, config.ContactVals("Senthil", "vijayasankarmail@gmail.com", st2.ID))
+	con2, err := bootstrap.ItemAdd(ctx, db, accountID, ce.ID, uuid.New().String(), config.ContactVals("Senthil", "vijayasankarmail@gmail.com", st2.ID))
 	if err != nil {
 		return err
 	}
 
 	//add entity - companies
-	come, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0001-000000000002", "Companies", entity.CategoryData, config.CompanyFields())
+	come, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Companies", entity.CategoryData, config.CompanyFields())
 	if err != nil {
 		return err
 	}
-
-	com1, err := config.ItemAdd(cfg, "00000000-0000-0000-1001-000000000010", come.ID, config.CompanyVals("Zoho", "zoho.com"))
+	com1, err := bootstrap.ItemAdd(ctx, db, accountID, come.ID, uuid.New().String(), config.CompanyVals("Zoho", "zoho.com"))
 	if err != nil {
 		return err
 	}
 
 	//add entity - task
-	te, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000003", "Tasks", entity.CategoryData, config.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
-	if err != nil {
-		return err
-	}
-
-	// add task item for contact - vijay (reverse)
-	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000012", te.ID, config.TaskVals("make cake", con1.ID))
+	te, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Tasks", entity.CategoryData, config.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000013", te.ID, config.TaskVals("make call", con1.ID))
+	_, err = bootstrap.ItemAdd(ctx, db, accountID, te.ID, uuid.New().String(), config.TaskVals("make cake", con1.ID))
+	if err != nil {
+		return err
+	}
+	// add task item for contact - vijay (reverse)
+	_, err = bootstrap.ItemAdd(ctx, db, accountID, te.ID, uuid.New().String(), config.TaskVals("make call", con1.ID))
 	if err != nil {
 		return err
 	}
 
 	//add entity - email
-	me, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000005", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	me, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
 	if err != nil {
 		return err
 	}
 	// add email item
-	emg, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000015", me.ID, config.EmailVals(ce.ID))
-	if err != nil {
-		return err
-	}
-	//add entity - api-hook
-	we, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000006", "WebHook", entity.CategoryAPI, config.APIFields())
-	if err != nil {
-		return err
-	}
-	//add entity - delay
-	dele, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000007", "Delay Timer", entity.CategoryDelay, config.DelayFields())
-	if err != nil {
-		return err
-	}
-	// add delay item
-	delayi, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000016", dele.ID, config.DelayVals())
+	emg, err := bootstrap.ItemAdd(ctx, db, accountID, me.ID, uuid.New().String(), config.EmailVals(ce.ID))
 	if err != nil {
 		return err
 	}
 
-	pID, nID, err := addPipelines(cfg, ce.ID, me.ID, we.ID, dele.ID, emg.ID, delayi.ID)
+	//add entity - api-hook
+	we, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "WebHook", entity.CategoryAPI, config.APIFields())
+	if err != nil {
+		return err
+	}
+
+	//add entity - delay
+	dele, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Delay Timer", entity.CategoryDelay, config.DelayFields())
+	if err != nil {
+		return err
+	}
+	// add delay item
+	delayi, err := bootstrap.ItemAdd(ctx, db, accountID, dele.ID, uuid.New().String(), config.DelayVals())
+	if err != nil {
+		return err
+	}
+
+	pID, nID, err := addPipelines(ctx, db, accountID, ce.ID, me.ID, we.ID, dele.ID, emg.ID, delayi.ID)
 	if err != nil {
 		return err
 	}
 
 	//add entity - deal
-	de, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0000-0000-0000-000000000004", "Deals", entity.CategoryData, config.DealFields(ce.ID, pID))
+	de, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Deals", entity.CategoryData, config.DealFields(ce.ID, pID))
 	if err != nil {
 		return err
 	}
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	deal1, err := config.ItemAdd(cfg, "00000000-0000-0000-0000-000000000014", de.ID, config.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
+	deal1, err := bootstrap.ItemAdd(ctx, db, accountID, de.ID, uuid.New().String(), config.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
 	if err != nil {
 		return err
 	}
 
 	//add entity - tickets
-	tice, err := config.EntityAdd(cfg, schema.SeedTeamID1, "00000000-0002-0000-0001-000000000002", "Tickets", entity.CategoryData, config.TicketFields(se.ID))
+	tice, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Tickets", entity.CategoryData, config.TicketFields(se.ID))
 	if err != nil {
 		return err
 	}
 
-	ticket1, err := config.ItemAdd(cfg, "00000000-0002-0000-1001-000000000010", tice.ID, config.TicketVals("My Laptop Is Not Working", st1.ID))
+	ticket1, err := bootstrap.ItemAdd(ctx, db, accountID, tice.ID, uuid.New().String(), config.TicketVals("My Laptop Is Not Working", st1.ID))
 	if err != nil {
 		return err
 	}
 
 	//contact company association
-	associationID, err := config.AssociationAdd(cfg, ce.ID, come.ID)
+	associationID, err := bootstrap.AssociationAdd(ctx, db, accountID, ce.ID, come.ID)
 	if err != nil {
 		return err
 	}
-
-	err = config.AssociatiateConnection(cfg, associationID, con1.ID, com1.ID)
+	err = bootstrap.ConnectionAdd(ctx, db, accountID, associationID, con1.ID, com1.ID)
 	if err != nil {
 		return err
 	}
 
 	//ticket deal association
-	tdaID, err := config.AssociationAdd(cfg, tice.ID, de.ID)
+	tdaID, err := bootstrap.AssociationAdd(ctx, db, accountID, tice.ID, de.ID)
 	if err != nil {
 		return err
 	}
-
-	err = config.AssociatiateConnection(cfg, tdaID, ticket1.ID, deal1.ID)
+	err = bootstrap.ConnectionAdd(ctx, db, accountID, tdaID, ticket1.ID, deal1.ID)
 	if err != nil {
 		return err
 	}
 
 	//ticket contact association
-	tcaID, err := config.AssociationAdd(cfg, tice.ID, ce.ID)
+	tcaID, err := bootstrap.AssociationAdd(ctx, db, accountID, tice.ID, ce.ID)
 	if err != nil {
 		return err
 	}
-
-	err = config.AssociatiateConnection(cfg, tcaID, ticket1.ID, con1.ID)
+	err = bootstrap.ConnectionAdd(ctx, db, accountID, tcaID, ticket1.ID, con1.ID)
 	if err != nil {
 		return err
 	}
@@ -315,53 +338,38 @@ func crmadd(cfg database.Config) error {
 	return nil
 }
 
-func addPipelines(cfg database.Config, contactEntityID, mailEntityID, webhookEntityID, delayEntityID, mailItemID, delayItemID string) (string, string, error) {
+func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, mailEntityID, webhookEntityID, delayEntityID, mailItemID, delayItemID string) (string, string, error) {
 	//add pipelines
-	p, err := config.FlowAdd(cfg, "00000000-0000-0000-0000-000000000023", contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
+	p, err := bootstrap.FlowAdd(ctx, db, accountID, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
 	if err != nil {
 		return "", "", err
 	}
 
-	pno1, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000024", p.ID, "00000000-0000-0000-0000-000000000000", node.Root, "Opputunity", node.Stage, "", map[string]string{})
+	pno1, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, "00000000-0000-0000-0000-000000000000", node.Root, "Opputunity", node.Stage, "", map[string]string{})
 	if err != nil {
 		return "", "", err
 	}
 
-	pno2, err := config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000025", p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	pno2, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000026", p.ID, mailEntityID, pno1.ID, "", node.Email, "", map[string]string{mailEntityID: mailItemID})
+	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, mailEntityID, pno1.ID, "", node.Email, "", map[string]string{mailEntityID: mailItemID})
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000027", p.ID, webhookEntityID, pno1.ID, "", node.Hook, "", map[string]string{})
+	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, webhookEntityID, pno1.ID, "", node.Hook, "", map[string]string{})
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = config.NodeAdd(cfg, "00000000-0000-0000-0000-000000000028", p.ID, delayEntityID, pno2.ID, "", node.Delay, "", map[string]string{delayEntityID: delayItemID})
+	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, delayEntityID, pno2.ID, "", node.Delay, "", map[string]string{delayEntityID: delayItemID})
 	if err != nil {
 		return "", "", err
 	}
 	return p.ID, pno1.ID, nil
-}
-
-func hradd(cfg database.Config) error {
-	//add entity - employee
-	se, err := config.EntityAdd(cfg, schema.SeedTeamID2, "00000000-0000-0000-0000-000000000101", "Employee", entity.CategoryChildUnit, config.StatusFields())
-	if err != nil {
-		return err
-	}
-	//add entity - contacts
-	_, err = config.EntityAdd(cfg, schema.SeedTeamID2, "00000000-0000-0000-0000-000000000102", "Leaves", entity.CategoryData, config.ContactFields(se.ID))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func useradd(cfg database.Config, email, password string) error {

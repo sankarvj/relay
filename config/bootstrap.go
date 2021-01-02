@@ -1,164 +1,12 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/job"
-	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
-	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
-
-func EntityAdd(cfg database.Config, teamID, id, name string, cat int, fields []entity.Field) (entity.Entity, error) {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return entity.Entity{}, err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-	ne := entity.NewEntity{
-		ID:        id,
-		AccountID: schema.SeedAccountID,
-		TeamID:    teamID,
-		Category:  cat,
-		Name:      name,
-		Fields:    fields,
-	}
-
-	e, err := entity.Create(ctx, db, ne, time.Now())
-	if err != nil {
-		return entity.Entity{}, err
-	}
-
-	fmt.Println("Entity created with id:", e.ID)
-	return e, nil
-}
-
-func ItemAdd(cfg database.Config, id, entityID string, fields map[string]interface{}) (item.Item, error) {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return item.Item{}, err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-	ni := item.NewItem{
-		ID:        id,
-		AccountID: schema.SeedAccountID,
-		EntityID:  entityID,
-		Fields:    fields,
-	}
-
-	i, err := item.Create(ctx, db, ni, time.Now())
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	job.OnFieldCreate(schema.SeedAccountID, entityID, ni.ID, ni.Fields, db)
-
-	fmt.Println("Item created with id:", i.ID)
-	return i, nil
-}
-
-func FlowAdd(cfg database.Config, id, entityID string, name string, mode, condition int) (flow.Flow, error) {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return flow.Flow{}, err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-	nf := flow.NewFlow{
-		ID:         id,
-		AccountID:  schema.SeedAccountID,
-		EntityID:   entityID,
-		Mode:       mode,
-		Type:       flow.FlowTypeFieldUpdate,
-		Condition:  condition,
-		Expression: `{{` + entityID + `.uuid-00-fname}} eq {Vijay} && {{` + entityID + `.uuid-00-nps-score}} gt {98}`,
-		Name:       name,
-	}
-
-	f, err := flow.Create(ctx, db, nf, time.Now())
-	if err != nil {
-		return flow.Flow{}, err
-	}
-
-	fmt.Println("Flow created with id:", f.ID)
-	return f, nil
-}
-
-func NodeAdd(cfg database.Config, id, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string) (node.Node, error) {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return node.Node{}, err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-	nn := node.NewNode{
-		ID:           id,
-		AccountID:    schema.SeedAccountID,
-		FlowID:       flowID,
-		ActorID:      actorID,
-		ParentNodeID: pnodeID,
-		Name:         name,
-		Type:         typ,
-		Expression:   exp,
-		Actuals:      actuals,
-	}
-
-	n, err := node.Create(ctx, db, nn, time.Now())
-	if err != nil {
-		return node.Node{}, err
-	}
-
-	fmt.Println("Node created with id:", n.ID)
-	return n, nil
-}
-
-func AssociationAdd(cfg database.Config, srcEntityID, dstEntityID string) (string, error) {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	relationshipID, err := entity.Associate(ctx, db, schema.SeedAccountID, srcEntityID, dstEntityID)
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Println("Association added with id: ", relationshipID)
-	return relationshipID, nil
-}
-
-func AssociatiateConnection(cfg database.Config, relationshipID, srcItemID, dstItemID string) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	err = item.Associate(ctx, db, schema.SeedAccountID, relationshipID, srcItemID, dstItemID)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Association connection added with id: ", relationshipID)
-	return nil
-}
 
 func StatusFields() []entity.Field {
 	nameField := entity.Field{
@@ -188,7 +36,7 @@ func StatusVals(name, color string) map[string]interface{} {
 	return statusVals
 }
 
-func ContactFields(statusEntityID string) []entity.Field {
+func ContactFields(statusEntityID, ownerEntityID string) []entity.Field {
 	nameField := entity.Field{
 		Key:         "uuid-00-fname",
 		Name:        "first_name",
@@ -258,7 +106,22 @@ func ContactFields(statusEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, statusField}
+	ownerField := entity.Field{
+		Key:         "uuid-00-owner",
+		Name:        "owner",
+		DisplayName: "Owner",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Meta:        map[string]string{"display_gex": "name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, statusField, ownerField}
 }
 
 func ContactVals(name, email, statusID string) map[string]interface{} {
@@ -269,6 +132,7 @@ func ContactVals(name, email, statusID string) map[string]interface{} {
 		"uuid-00-nps-score":      100,
 		"uuid-00-lf-stage":       "lead",
 		"uuid-00-status":         []string{statusID},
+		"uuid-00-owner":          []string{},
 	}
 	return contactVals
 }

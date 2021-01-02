@@ -180,7 +180,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	log.Printf("sk/saravana please replace the word sk_replacetokenhere/sarvana_replacetokenhere in seed.go with this token to login %s", token.UID)
 
-	claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
+	dbUser, claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:
@@ -191,15 +191,16 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	var tkn struct {
-		Token string `json:"token"`
+		Token    string   `json:"token"`
+		Accounts []string `json:"accounts"`
 	}
 	tkn.Token, err = u.authenticator.GenerateToken(claims)
+	tkn.Accounts = dbUser.AccountIDs
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
 
 	//dbuser, err := model.CreateNewUserIfNotExists(name, email, phone, avatar, provider, uid, token.Expires, token.IssuedAt, emailVerified)
-
 	if err != nil {
 		return errors.Wrap(err, "")
 	}

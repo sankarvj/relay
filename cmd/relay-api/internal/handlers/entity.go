@@ -115,7 +115,7 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 	return entity.ViewModelEntity{
 		ID:          e.ID,
 		Name:        e.Name,
-		Description: e.Description,
+		DisplayName: e.DisplayName,
 		Category:    e.Category,
 		State:       e.State,
 		Fields:      fields,

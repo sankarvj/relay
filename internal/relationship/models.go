@@ -12,7 +12,7 @@ type Relationship struct {
 
 type Bond struct {
 	RelationshipID string `db:"relationship_id" json:"relationship_id"`
-	Name           string `db:"name" json:"name"`
+	DisplayName    string `db:"display_name" json:"display_name"`
 	Category       int    `db:"category" json:"category"`
 	EntityID       string `db:"entity_id" json:"entity_id"`
 	Type           RType  `db:"type" json:"type"`

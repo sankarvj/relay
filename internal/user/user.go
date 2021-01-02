@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"go.opencensus.io/trace"
@@ -59,20 +60,20 @@ func RetrieveCurrentUserID(ctx context.Context) (string, error) {
 }
 
 // RetrieveCurrentAccountID gets the current users account id.
-func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) (string, error) {
+func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) ([]string, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentAccountID")
 	defer span.End()
 
-	var accountID string
-	const q = `SELECT account_id FROM users WHERE user_id = $1`
-	if err := db.GetContext(ctx, &accountID, q, id); err != nil {
+	var accountIDs []string
+	const q = `SELECT account_ids FROM users WHERE user_id = $1`
+	if err := db.GetContext(ctx, (*pq.StringArray)(&accountIDs), q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return "", ErrNotFound
+			return nil, ErrNotFound
 		}
-		return "", errors.Wrapf(err, "selecting account for user %q", id)
+		return nil, errors.Wrapf(err, "selecting account for user %q", id)
 	}
 
-	return accountID, nil
+	return accountIDs, nil
 }
 
 // Retrieve gets the specified user from the database.
@@ -103,6 +104,31 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, erro
 	return &u, nil
 }
 
+func RetrieveCurrentUser(ctx context.Context, db *sqlx.DB) (*User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentUser")
+	defer span.End()
+
+	currentUserID, err := RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return RetrieveUser(ctx, db, currentUserID)
+}
+
+func RetrieveUser(ctx context.Context, db *sqlx.DB, currentUserID string) (*User, error) {
+	var u User
+	const q = `SELECT * FROM users WHERE user_id = $1`
+	if err := db.GetContext(ctx, &u, q, currentUserID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrapf(err, "selecting current user %q", currentUserID)
+	}
+
+	return &u, nil
+}
+
 // Create inserts a new user into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Create")
@@ -115,7 +141,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 
 	u := User{
 		ID:           uuid.New().String(),
-		AccountID:    n.AccountID,
+		AccountIDs:   n.AccountIDs,
 		Name:         &n.Name,
 		Email:        n.Email,
 		PasswordHash: hash,
@@ -129,7 +155,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 	_, err = db.ExecContext(
 		ctx, q,
-		u.ID, u.AccountID, u.Name, u.Email,
+		u.ID, u.AccountIDs, u.Name, u.Email,
 		u.PasswordHash, u.Roles,
 		u.CreatedAt, u.UpdatedAt,
 	)
@@ -187,6 +213,27 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	return nil
 }
 
+func AddAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
+	defer span.End()
+
+	u.AccountIDs = removeDuplicateValues(append(u.AccountIDs, accountID))
+	u.UpdatedAt = now.Unix()
+
+	const q = `UPDATE users SET
+		"account_ids" = $2,
+		"updated_at" = $3
+		WHERE user_id = $1`
+	_, err := db.ExecContext(ctx, q, u.ID,
+		u.AccountIDs, u.UpdatedAt,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating user with new account id")
+	}
+
+	return nil
+}
+
 // Delete removes a user from the database.
 func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Delete")
@@ -208,7 +255,7 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 // Authenticate finds a user by their email and verifies their password. On
 // success it returns a Claims value representing this user. The claims can be
 // used to generate a token for future authentication.
-func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, password string) (auth.Claims, error) {
+func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, password string) (User, auth.Claims, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Authenticate")
 	defer span.End()
 
@@ -220,16 +267,28 @@ func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, passwo
 		// Normally we would return ErrNotFound in this scenario but we do not want
 		// to leak to an unauthenticated user which emails are in the system.
 		if err == sql.ErrNoRows {
-			return auth.Claims{}, ErrAuthenticationFailure
+			return u, auth.Claims{}, ErrAuthenticationFailure
 		}
 
-		return auth.Claims{}, errors.Wrap(err, "selecting single user")
+		return u, auth.Claims{}, errors.Wrap(err, "selecting single user")
 	}
 
 	res := bytes.Compare(u.PasswordHash, []byte(password))
 	if res != 0 { //not equal
-		return auth.Claims{}, ErrAuthenticationFailure
+		return u, auth.Claims{}, ErrAuthenticationFailure
 	}
-	return auth.NewClaims(u.ID, u.Roles, now, 24*time.Hour), nil
+	return u, auth.NewClaims(u.ID, u.Roles, now, 24*time.Hour), nil
 
+}
+
+func removeDuplicateValues(intSlice pq.StringArray) pq.StringArray {
+	keys := make(map[interface{}]bool)
+	list := pq.StringArray{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }

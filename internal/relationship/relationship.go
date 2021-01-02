@@ -52,7 +52,7 @@ func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond,
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, e.name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE r.account_id = $1 AND r.dst_entity_id = $2`
+	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE r.account_id = $1 AND r.dst_entity_id = $2`
 
 	if err := db.SelectContext(ctx, &bonds, q, accountID, entityID); err != nil {
 		return nil, errors.Wrap(err, "selecting bonds/relationships for dst entity")

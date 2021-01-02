@@ -53,24 +53,25 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	}
 
 	e := Entity{
-		ID:        n.ID,
-		AccountID: n.AccountID,
-		TeamID:    n.TeamID,
-		Name:      n.Name,
-		Category:  n.Category,
-		State:     n.State,
-		Fieldsb:   string(fieldsBytes),
-		CreatedAt: now.UTC(),
-		UpdatedAt: now.UTC().Unix(),
+		ID:          n.ID,
+		AccountID:   n.AccountID,
+		TeamID:      n.TeamID,
+		Name:        n.Name,
+		DisplayName: n.DisplayName,
+		Category:    n.Category,
+		State:       n.State,
+		Fieldsb:     string(fieldsBytes),
+		CreatedAt:   now.UTC(),
+		UpdatedAt:   now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO entities
-		(entity_id, account_id, team_id, name, category, state, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		(entity_id, account_id, team_id, name, display_name, category, state, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		e.ID, e.AccountID, e.TeamID, e.Name, e.Category, e.State, e.Fieldsb,
+		e.ID, e.AccountID, e.TeamID, e.Name, e.DisplayName, e.Category, e.State, e.Fieldsb,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {

@@ -64,7 +64,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (Team, e
 		Name:      "Members",
 		AccountID: t.AccountID,
 		TeamID:    t.ID,
-		Category:  entity.CategoryUserSeries,
+		Category:  entity.CategoryUsers,
 		Fields:    makeMemberSeriesFields(),
 	}
 	_, err = entity.Create(ctx, db, ne, now)

@@ -24,6 +24,21 @@ func TimeSeriesList(ctx context.Context, entityID string, db *sqlx.DB) ([]TimeSe
 	return items, nil
 }
 
+//convert this to graphDB
+func SearchByKey(ctx context.Context, entityID, key, term string, db *sqlx.DB) ([]TimeSeriesItem, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.SearchByKey")
+	defer span.End()
+
+	items := []TimeSeriesItem{}
+	const q = `SELECT fieldsb->>'9f9ade37-9549-4d12-a82d-c69495e85980' AS status, date_trunc('hour', ("fieldsb"->>'d3e572e1-3950-46db-a230-d41b2f4cd8d0')::timestamp) AS date , count(*) AS "value" from items where entity_id = $1 group by date,status;`
+
+	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+		return nil, errors.Wrap(err, "selecting timeseries items")
+	}
+
+	return items, nil
+}
+
 //TimeSeriesSameDayViewModel presents the item inside a time ticker map
 func TimeSeriesSameDayViewModel(items []TimeSeriesItem, start time.Time, loop int) map[time.Time]TimeSeriesItem {
 	timeSeriesMap := make(map[time.Time]TimeSeriesItem, 0)

@@ -58,21 +58,26 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	reference.UpdateReferenceFields(ctx, fields, viewModelItems, i.db)
 
 	response := struct {
-		Items    []*item.ViewModelItem `json:"items"`
-		Category int                   `json:"category"`
-		Fields   []*entity.Field       `json:"fields"`
+		Items    []*item.ViewModelItem  `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []*entity.Field        `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
 		Fields:   fields,
+		Entity:   createViewModelEntity(e),
 	}
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-// TimeSeriesList returns all the existing items associated with the entity
-func (i *Item) TimeSeriesList(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Item.TimeSeriesList")
+// Search returns the items for the given term & key
+func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.Search")
 	defer span.End()
+
+	// key := r.URL.Query().Get("k")
+	// term := r.URL.Query().Get("t")
 
 	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
 	if err != nil {

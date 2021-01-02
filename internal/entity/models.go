@@ -12,7 +12,7 @@ type Entity struct {
 	AccountID   string         `db:"account_id" json:"account_id"`
 	TeamID      string         `db:"team_id" json:"team_id"`
 	Name        string         `db:"name" json:"name"`
-	Description *string        `db:"description" json:"description"`
+	DisplayName string         `db:"display_name" json:"display_name"`
 	Category    int            `db:"category" json:"category"`
 	State       int            `db:"state" json:"state"`
 	Status      int            `db:"status" json:"status"`
@@ -28,7 +28,7 @@ type Entity struct {
 type ViewModelEntity struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
-	Description *string   `json:"description"`
+	DisplayName string    `json:"display_name"`
 	Category    int       `json:"category"`
 	State       int       `json:"state"`
 	Status      int       `json:"status"`
@@ -40,13 +40,14 @@ type ViewModelEntity struct {
 
 // NewEntity has information needed to creat new entity
 type NewEntity struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name" validate:"required"`
-	AccountID string  `json:"account_id"`
-	TeamID    string  `json:"team_id"`
-	Fields    []Field `json:"fields" validate:"required"`
-	Category  int     `json:"category"`
-	State     int     `json:"state"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	DisplayName string  `json:"display_name" validate:"required"`
+	AccountID   string  `json:"account_id"`
+	TeamID      string  `json:"team_id"`
+	Fields      []Field `json:"fields" validate:"required"`
+	Category    int     `json:"category"`
+	State       int     `json:"state"`
 }
 
 // EmailEntity represents structural format of email entity
@@ -154,7 +155,7 @@ const (
 	CategoryAPI        = 2
 	CategoryTimeSeries = 3
 	CategoryEmail      = 4
-	CategoryUserSeries = 5
+	CategoryUsers      = 5
 	CategorySchedule   = 6
 	CategoryDelay      = 7
 	CategoryChildUnit  = 8

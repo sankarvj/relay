@@ -209,7 +209,7 @@ func (test *Test) Teardown() {
 func (test *Test) Token(email, pass string) string {
 	test.t.Helper()
 
-	claims, err := user.Authenticate(
+	_, claims, err := user.Authenticate(
 		context.Background(), test.DB, time.Now(),
 		email, pass,
 	)

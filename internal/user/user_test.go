@@ -44,7 +44,7 @@ func TestUser(t *testing.T) {
 			t.Logf("\t%s\tShould be able to create account.", tests.Success)
 
 			nu := user.NewUser{
-				AccountID:       a.ID,
+				AccountIDs:      []string{a.ID},
 				Name:            "Bill Kennedy",
 				Email:           "bill@ardanlabs.com",
 				Roles:           []string{auth.RoleAdmin},
@@ -139,7 +139,7 @@ func TestAuthenticate(t *testing.T) {
 			t.Logf("\t%s\tShould be able to create account.", tests.Success)
 
 			nu := user.NewUser{
-				AccountID:       a.ID, //this data is created using seed data.
+				AccountIDs:      []string{a.ID}, //this data is created using seed data.
 				Name:            "Anna Walker",
 				Email:           "anna@ardanlabs.com",
 				Roles:           []string{auth.RoleAdmin},
@@ -153,7 +153,7 @@ func TestAuthenticate(t *testing.T) {
 			}
 			t.Logf("\t%s\tShould be able to create user.", tests.Success)
 
-			claims, err := user.Authenticate(ctx, db, now, "anna@ardanlabs.com", "goroutines")
+			_, claims, err := user.Authenticate(ctx, db, now, "anna@ardanlabs.com", "goroutines")
 			if err != nil {
 				t.Fatalf("\t%s\tShould be able to generate claims : %s.", tests.Failed, err)
 			}

@@ -55,7 +55,7 @@ var migrations = []darwin.Migration{
 		Script: `
 		CREATE TABLE users (
 			user_id       UUID,
-			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			account_ids   UUID[25],
 			name          TEXT,
 			avatar 		  TEXT,
 			email         TEXT,
@@ -68,7 +68,7 @@ var migrations = []darwin.Migration{
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
 			PRIMARY KEY (user_id),
-			UNIQUE (account_id, email)
+			UNIQUE (email)
 		);
 		`,
 	},
@@ -89,24 +89,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     4, //do we need this table at all, keep members as one of the entity.
-		Description: "Add members",
-		Script: `
-		CREATE TABLE members (
-			member_id     UUID,
-			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
-			team_id       UUID REFERENCES teams ON DELETE CASCADE,
-			user_id       UUID REFERENCES users ON DELETE CASCADE,
-			roles         TEXT[],
-			created_at    TIMESTAMP,
-			updated_at    BIGINT,
-			PRIMARY KEY (member_id),
-			UNIQUE (team_id,user_id)
-		);
-		`,
-	},
-	{
-		Version:     5,
+		Version:     4,
 		Description: "Add entities",
 		Script: `
 		CREATE TABLE entities (
@@ -114,7 +97,7 @@ var migrations = []darwin.Migration{
 			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
 			team_id       UUID REFERENCES teams ON DELETE CASCADE,
 			name          TEXT,
-			description   TEXT,
+			display_name  TEXT,
 			category      INTEGER DEFAULT 0,
 			state         INTEGER DEFAULT 0,
 			status        INTEGER DEFAULT 0,
@@ -123,12 +106,12 @@ var migrations = []darwin.Migration{
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
 			PRIMARY KEY (entity_id),
-			UNIQUE (team_id,name)
+			UNIQUE (team_id,display_name)
 		);
 		`,
 	},
 	{
-		Version:     6,
+		Version:     5,
 		Description: "Add items",
 		Script: `
 		CREATE TABLE items (
@@ -144,7 +127,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     7,
+		Version:     6,
 		Description: "Add flows",
 		Script: `
 		CREATE TABLE flows (
@@ -165,7 +148,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     8,
+		Version:     7,
 		Description: "Add nodes",
 		Script: `
 		CREATE TABLE nodes (
@@ -186,7 +169,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     9,
+		Version:     8,
 		Description: "Add active_flows",
 		Script: `
 		CREATE TABLE active_flows (
@@ -201,7 +184,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     10,
+		Version:     9,
 		Description: "Add active_nodes",
 		Script: `
 		CREATE TABLE active_nodes (
@@ -216,7 +199,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     11, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
+		Version:     10, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
 		Description: "Add relationships",
 		Script: `
 		CREATE TABLE relationships (
@@ -231,7 +214,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     12,
+		Version:     11,
 		Description: "Add connections",
 		Script: `
 		CREATE TABLE connections (

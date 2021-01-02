@@ -19,10 +19,10 @@ func TestDataEntity(t *testing.T) {
 		t.Log("\tWhen adding the data entity")
 		{
 			ne := entity.NewEntity{
-				Name:      "Contacts",
-				AccountID: schema.SeedAccountID,
-				TeamID:    schema.SeedTeamID1,
-				Fields:    contactFields(),
+				DisplayName: "Contacts",
+				AccountID:   schema.SeedAccountID,
+				TeamID:      schema.SeedTeamID,
+				Fields:      contactFields(),
 			}
 			_, err := entity.Create(tests.Context(), db, ne, time.Now())
 			if err != nil {
@@ -34,35 +34,35 @@ func TestDataEntity(t *testing.T) {
 
 func contactFields() []entity.Field {
 	nameField := entity.Field{
-		Name:     "First Name",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		DisplayName: "First Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	emailField := entity.Field{
-		Name:     "Email",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
+		DisplayName: "Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
 	}
 
 	mobileField := entity.Field{
-		Name:     "Mobile Numbers",
-		DataType: entity.TypeList,
-		DomType:  entity.DomMultiSelect,
+		DisplayName: "Mobile Numbers",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 		},
 	}
 
 	npsField := entity.Field{
-		Name:     "NPS Score",
-		DataType: entity.TypeNumber,
+		DisplayName: "NPS Score",
+		DataType:    entity.TypeNumber,
 	}
 
 	lfStageField := entity.Field{
-		Name:     "Lifecycle Stage",
-		DomType:  entity.DomSelect,
-		DataType: entity.TypeString,
+		DisplayName: "Lifecycle Stage",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeString,
 		Choices: []entity.Choice{
 			{ID: "uuid_lead", DisplayValue: "lead"},
 			{ID: "uuid_contact", DisplayValue: "contact"},
@@ -71,10 +71,10 @@ func contactFields() []entity.Field {
 	}
 
 	statusField := entity.Field{
-		Name:     "Status",
-		DomType:  entity.DomText,
-		DataType: entity.TypeReference,
-		RefID:    "refID",
+		DisplayName: "Status",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeReference,
+		RefID:       "refID",
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "refKey",
