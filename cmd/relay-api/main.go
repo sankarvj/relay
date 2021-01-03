@@ -68,7 +68,7 @@ func run() error {
 			KeyID          string `conf:"default:1"`
 			PrivateKeyFile string `conf:"default:private.pem"`
 			Algorithm      string `conf:"default:RS256"`
-			GoogleKeyFile  string `conf:"default:config/mobile-pwa-project-e0f81b1c14b0.json"`
+			GoogleKeyFile  string `conf:"default:config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"`
 		}
 		Zipkin struct {
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`

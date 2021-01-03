@@ -182,7 +182,7 @@ func NewIntegration(t *testing.T) *Test {
 		t.Fatal(err)
 	}
 
-	googleFilePath := "../../config/mobile-pwa-project-e0f81b1c14b0.json"
+	googleFilePath := "../../config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"
 	// Build an authenticator using this static key.
 	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
 	kf := auth.NewSimpleKeyLookupFunc(kid, key.Public().(*rsa.PublicKey))

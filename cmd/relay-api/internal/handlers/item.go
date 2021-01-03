@@ -76,35 +76,31 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Search")
 	defer span.End()
 
-	// key := r.URL.Query().Get("k")
-	// term := r.URL.Query().Get("t")
+	key := r.URL.Query().Get("k")
+	term := r.URL.Query().Get("t")
 
 	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
-	fields, err := e.Fields()
+
+	items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
 	if err != nil {
 		return err
 	}
 
-	items, err := item.TimeSeriesList(ctx, e.ID, i.db)
-	if err != nil {
-		return err
+	viewModelItems := make([]*item.ViewModelItem, len(items))
+	for i, item := range items {
+		viewModelItem := createViewModelItem(item)
+		viewModelItems[i] = &viewModelItem
 	}
-
-	start := time.Now()
-	startRounded := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
-	itemsMap := item.TimeSeriesSameDayViewModel(items, startRounded, 24)
 
 	response := struct {
-		ItemsMap map[time.Time]item.TimeSeriesItem `json:"items_map"`
-		Category int                               `json:"category"`
-		Fields   []entity.Field                    `json:"fields"`
+		Items []*item.ViewModelItem `json:"items"`
+		Key   string                `json:"key"`
 	}{
-		ItemsMap: itemsMap,
-		Category: e.Category,
-		Fields:   fields,
+		Items: viewModelItems,
+		Key:   key,
 	}
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
