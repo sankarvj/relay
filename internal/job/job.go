@@ -14,7 +14,7 @@ import (
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 
 func OnFieldUpdate(account_id, entityID, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB) {
-	validateExpressions(context.Background(), db, entityID, itemID, oldFields, newFields)
+	validateWorkflows(context.Background(), db, entityID, itemID, oldFields, newFields)
 	updateConnection(context.Background(), db, account_id, entityID, itemID, oldFields, newFields)
 }
 
@@ -22,7 +22,7 @@ func OnFieldCreate(account_id, entityID, itemID string, newFields map[string]int
 	addConnection(context.Background(), db, account_id, entityID, itemID, newFields)
 }
 
-func validateExpressions(ctx context.Context, db *sqlx.DB, entityID, itemID string, oldFields, newFields map[string]interface{}) {
+func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string, oldFields, newFields map[string]interface{}) {
 	// log.Println("entityID...", entityID)
 	// log.Println("itemID...", itemID)
 	// log.Println("oldFields...", oldFields)

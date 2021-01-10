@@ -340,7 +340,7 @@ func DealVals(name string, amount int, contactID1, contactID2, nodeStageID strin
 	return dealVals
 }
 
-func EmailFields() []entity.Field {
+func EmailFields(ownerEntityID string) []entity.Field {
 	domain := entity.Field{
 		Key:         "uuid-00-domain",
 		Name:        "domain",
@@ -410,7 +410,22 @@ func EmailFields() []entity.Field {
 		Value:       "",
 	}
 
-	return []entity.Field{domain, apiKey, sender, to, cc, subject, body}
+	ownerField := entity.Field{
+		Key:         "uuid-00-owner",
+		Name:        "owner",
+		DisplayName: "Associated To",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Meta:        map[string]string{"display_gex": "name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{domain, apiKey, sender, to, cc, subject, body, ownerField}
 }
 
 func EmailVals(contactEntityID string) map[string]interface{} {
@@ -422,6 +437,7 @@ func EmailVals(contactEntityID string) map[string]interface{} {
 		"uuid-00-cc":      "vijayasankarmobile@gmail.com",
 		"uuid-00-subject": `This mail is sent you to tell that your NPS scrore is {{` + contactEntityID + `.uuid-00-nps-score}}. We are very proud of you! `,
 		"uuid-00-body":    `Hello {{` + contactEntityID + `.uuid-00-fname}}`,
+		"uuid-00-owner":   `common`,
 	}
 	return emailValues
 }

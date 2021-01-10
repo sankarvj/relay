@@ -158,11 +158,11 @@ func TestTrigger(t *testing.T) {
 		{
 			e1 := "00000000-0000-0000-0000-000000000002" //contact-entity-id
 			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i, _ := item.Retrieve(tests.Context(), i1, db)
+			i, _ := item.Retrieve(tests.Context(), e1, i1, db)
 			oldItemFields := i.Fields()
 			newItemFields := i.Fields()
 			newItemFields["uuid-00-nps-score"] = 99
-			item.UpdateFields(tests.Context(), db, i1, newItemFields)
+			item.UpdateFields(tests.Context(), db, e1, i1, newItemFields)
 			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), []string{e1}, -1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
@@ -179,15 +179,16 @@ func TestDirectTrigger(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
 	tests.SeedEntity(t, db)
-	tests.SeedPipelines(t, db)
+	tests.SeedRelationShips(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine for a trigger")
 	{
 		t.Log("\twhen updating the event mrr in contact1")
 		{
+			e1 := "00000000-0000-0000-0000-000000000002"
 			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
 			n2 := "00000000-0000-0000-0000-000000000025" //node-stage-2
-			err := flow.DirectTrigger(tests.Context(), db, nil, n2, i1)
+			err := flow.DirectTrigger(tests.Context(), db, nil, n2, e1, i1)
 			if err != nil {
 				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
 			}
@@ -212,11 +213,11 @@ var (
 
 	//gbp1
 	contactEntityFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "id",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "age",
 			DataType: graphdb.TypeNumber,
 		},

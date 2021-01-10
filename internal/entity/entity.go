@@ -201,6 +201,16 @@ func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
 	return whe, err
 }
 
+func ParseUserEntity(params map[string]interface{}) (UserEntity, error) {
+	var ue UserEntity
+	jsonbody, err := json.Marshal(params)
+	if err != nil {
+		return ue, err
+	}
+	err = json.Unmarshal(jsonbody, &ue)
+	return ue, err
+}
+
 // FillFieldValues updates the
 func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
 	updatedFields := make([]Field, 0)
@@ -330,4 +340,20 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		Type:           relationship.TypeAssociation,
 	})
 	return relationshipID, relationships
+}
+
+func NamedFieldsMap(entityFields []Field) map[string]interface{} {
+	params := map[string]interface{}{}
+	for _, field := range entityFields {
+		params[field.Name] = field.Value
+	}
+	return params
+}
+
+func KeyedFieldsMap(entityFields []Field, namedFields map[string]interface{}) map[string]interface{} {
+	params := map[string]interface{}{}
+	for _, field := range entityFields {
+		params[field.Key] = namedFields[field.Name]
+	}
+	return params
 }

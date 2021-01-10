@@ -70,10 +70,10 @@ func fields(ctx context.Context, db *sqlx.DB, entityID string) ([]entity.Field, 
 	return e.AllFields()
 }
 
-func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, itemIDs ...string) ([]entity.Field, error) {
+func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, entityID string, itemIDs ...string) ([]entity.Field, error) {
 	for _, itemID := range itemIDs {
 		if itemID != "" {
-			i, err := item.Retrieve(ctx, itemID, db)
+			i, err := item.Retrieve(ctx, entityID, itemID, db)
 			if err != nil {
 				return nil, err
 			}
@@ -90,7 +90,7 @@ func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, actorID string, act
 		return nil, err
 	}
 
-	entityFields, err = fillItemFieldValues(ctx, db, entityFields, actualsMap[actorID])
+	entityFields, err = fillItemFieldValues(ctx, db, entityFields, actorID, actualsMap[actorID])
 	if err != nil {
 		return nil, err
 	}

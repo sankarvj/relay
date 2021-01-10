@@ -22,6 +22,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/cmd/relay-api/internal/handlers"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
 )
 
 // build is the git version of this program. It is set using build flags in the makefile.
@@ -64,11 +65,15 @@ func run() error {
 			Host     string `conf:"default:127.0.0.1:6379"`
 			Name     string `conf:"default:relaydb"`
 		}
+		PubSub struct {
+			GmailPublisherTopic string `conf:"default:projects/relay-94b69/topics/receive-gmail-message"`
+		}
 		Auth struct {
-			KeyID          string `conf:"default:1"`
-			PrivateKeyFile string `conf:"default:private.pem"`
-			Algorithm      string `conf:"default:RS256"`
-			GoogleKeyFile  string `conf:"default:config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"`
+			KeyID           string `conf:"default:1"`
+			PrivateKeyFile  string `conf:"default:private.pem"`
+			Algorithm       string `conf:"default:RS256"`
+			GoogleKeyFile   string `conf:"default:config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"`
+			GoogleOAuthFile string `conf:"default:config/client_secret_112071162327-3rokctm5fv0r9imsgpmc2ar5nm0aq6ii.apps.googleusercontent.com.json"`
 		}
 		Zipkin struct {
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`
@@ -120,7 +125,7 @@ func run() error {
 	}
 
 	f := auth.NewSimpleKeyLookupFunc(cfg.Auth.KeyID, privateKey.Public().(*rsa.PublicKey))
-	authenticator, err := auth.NewAuthenticator(privateKey, cfg.Auth.GoogleKeyFile, cfg.Auth.KeyID, cfg.Auth.Algorithm, f)
+	authenticator, err := auth.NewAuthenticator(privateKey, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleOAuthFile, cfg.Auth.KeyID, cfg.Auth.Algorithm, f)
 	if err != nil {
 		return errors.Wrap(err, "constructing authenticator")
 	}
@@ -186,7 +191,12 @@ func run() error {
 		AllowedHeaders:   []string{"Content-Type", "X-Requested-With", "Authorization"},
 		AllowCredentials: true,
 	})
-	handler := c.Handler(handlers.API(shutdown, log, db, redisPool, authenticator))
+
+	publisher := &pubsub.Publisher{
+		Topic: cfg.PubSub.GmailPublisherTopic,
+	}
+
+	handler := c.Handler(handlers.API(shutdown, log, db, redisPool, authenticator, publisher))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

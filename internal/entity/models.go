@@ -76,6 +76,15 @@ type WebHookEntity struct {
 	Headers map[string]string `json:"headers"`
 }
 
+// UserEntity represents structural format of user entity
+type UserEntity struct {
+	UserID string `json:"user_id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+	Email  string `json:"email"`
+	Gtoken string `json:"gtoken"`
+}
+
 // Field represents structural format of attributes in entity
 type Field struct {
 	Name        string            `json:"name" validate:"required"`

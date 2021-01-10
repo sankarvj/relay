@@ -71,6 +71,14 @@ check README.md inside the entity
 (check `updateReferenceFields` in the `item.go` for implementation details)
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
+### Current shots
+E-mail Integ
+E-Mail entity
+Calendar Integ
+Meeting entity
+Inbox
+Comments
+Notes with @mention
 
 ### User Shots
 1. Users/Members/Roles/Permissions.

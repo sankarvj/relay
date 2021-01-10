@@ -9,11 +9,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/mid"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, authenticator *auth.Authenticator) http.Handler {
+func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, authenticator *auth.Authenticator, publisher *pubsub.Publisher) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
@@ -45,6 +46,15 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	// Register accounts management endpoints.
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
 	// app.Handle("POST", "/v1/accounts", a.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+
+	integ := Integration{
+		db:            db,
+		authenticator: authenticator,
+		publisher:     publisher,
+	}
+	app.Handle("POST", "/receive/gmail/message", integ.ReceiveEmail)
+	app.Handle("GET", "/v1/accounts/:account_id/integrations/:integration_id", integ.AccessIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id", integ.SaveIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	t := Team{
 		db:            db,

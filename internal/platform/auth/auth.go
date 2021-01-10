@@ -42,6 +42,7 @@ type Authenticator struct {
 	pubKeyLookupFunc KeyLookupFunc
 	parser           *jwt.Parser
 	GoogleKeyFile    string
+	GoogleOAuthFile  string
 }
 
 // NewAuthenticator creates an *Authenticator for use. It will error if:
@@ -49,7 +50,7 @@ type Authenticator struct {
 // - The public key func is nil.
 // - The key ID is blank.
 // - The specified algorithm is unsupported.
-func NewAuthenticator(privateKey *rsa.PrivateKey, googleKeyFile string, activeKID, algorithm string, publicKeyLookupFunc KeyLookupFunc) (*Authenticator, error) {
+func NewAuthenticator(privateKey *rsa.PrivateKey, googleKeyFile, googleOAuthFile string, activeKID, algorithm string, publicKeyLookupFunc KeyLookupFunc) (*Authenticator, error) {
 	if privateKey == nil {
 		return nil, errors.New("private key cannot be nil")
 	}
@@ -77,6 +78,7 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, googleKeyFile string, activeKI
 		pubKeyLookupFunc: publicKeyLookupFunc,
 		parser:           &parser,
 		GoogleKeyFile:    googleKeyFile,
+		GoogleOAuthFile:  googleOAuthFile,
 	}
 
 	return &a, nil

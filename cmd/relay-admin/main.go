@@ -219,7 +219,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - email
-	me, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "MailGun Intg", entity.CategoryEmail, config.EmailFields())
+	me, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "MailGun Intg", entity.CategoryEmail, config.EmailFields(ownerEntity.ID))
 	if err != nil {
 		return err
 	}

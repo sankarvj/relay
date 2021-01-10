@@ -60,7 +60,7 @@ func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, erro
 
 func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, entityID, itemID string) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	item, err := item.Retrieve(ctx, itemID, db)
+	item, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
 		return result, err
 	}

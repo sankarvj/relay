@@ -39,7 +39,8 @@ func BootstrapUserEntity(ctx context.Context, db *sqlx.DB, currentUser *user.Use
 		return err
 	}
 	// add owner item
-	_, err = ItemAdd(ctx, db, accountID, ue.ID, uuid.New().String(), itemVals)
+	// pass the currentUserID as the itemID. Is it okay to do like that? seems like a anti pattern.
+	_, err = ItemAdd(ctx, db, accountID, ue.ID, currentUser.ID, itemVals)
 	if err != nil {
 		return err
 	}

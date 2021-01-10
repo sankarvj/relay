@@ -76,7 +76,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 }
 
 //UpdateFields patches the field data
-func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields map[string]interface{}) error {
+func UpdateFields(ctx context.Context, db *sqlx.DB, entityID, id string, fields map[string]interface{}) error {
 	input, err := json.Marshal(fields)
 	if err != nil {
 		return errors.Wrap(err, "encode fields to input")
@@ -85,15 +85,15 @@ func UpdateFields(ctx context.Context, db *sqlx.DB, id string, fields map[string
 	upd := UpdateItem{
 		Fieldsb: &inputStr,
 	}
-	return update(ctx, db, id, upd, time.Now())
+	return update(ctx, db, entityID, id, upd, time.Now())
 }
 
 // Update replaces a item document in the database.
-func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now time.Time) error {
+func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateItem, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
 	defer span.End()
 
-	i, err := Retrieve(ctx, id, db)
+	i, err := Retrieve(ctx, entityID, id, db)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func update(ctx context.Context, db *sqlx.DB, id string, upd UpdateItem, now tim
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
+func Retrieve(ctx context.Context, entityID, id string, db *sqlx.DB) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
@@ -127,8 +127,8 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Item, error) {
 	}
 
 	var i Item
-	const q = `SELECT * FROM items WHERE item_id = $1`
-	if err := db.GetContext(ctx, &i, q, id); err != nil {
+	const q = `SELECT * FROM items WHERE entity_id = $1 AND item_id = $2`
+	if err := db.GetContext(ctx, &i, q, entityID, id); err != nil {
 		if err == sql.ErrNoRows {
 			return Item{}, ErrNotFound
 		}

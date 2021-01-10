@@ -114,13 +114,13 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &vi); err != nil {
 		return errors.Wrap(err, "")
 	}
-
-	existingItem, err := item.Retrieve(ctx, vi.ID, i.db)
+	entityID := params["item_id"]
+	existingItem, err := item.Retrieve(ctx, entityID, vi.ID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "Item Get During Update")
 	}
 
-	err = item.UpdateFields(ctx, i.db, params["item_id"], vi.Fields)
+	err = item.UpdateFields(ctx, i.db, entityID, params["item_id"], vi.Fields)
 	if err != nil {
 		return errors.Wrapf(err, "Item Update: %+v", &vi)
 	}
@@ -169,7 +169,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	it, err := item.Retrieve(ctx, params["item_id"], i.db)
+	it, err := item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
 	if err != nil {
 		return err
 	}
