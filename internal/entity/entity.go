@@ -81,15 +81,9 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	//TODO: do it in the same transaction.
 	//TODO: this relationship should happen only if the user explicitly specifies that.
 	//may be, we can give add the boolean in the meta to identify that.
-	relationships := populateBonds(e.AccountID, e.ID, n.Fields)
-	for _, r := range relationships {
-		_, err := relationship.Create(ctx, db, r)
-		if err != nil {
-			return e, errors.Wrapf(err, "Relationship for entity failed: %+v", e.ID)
-		}
-	}
+	err = relationship.Bonding(ctx, db, e.AccountID, e.ID, refFields(n.Fields))
 
-	return e, nil
+	return e, err
 }
 
 // Update replaces a item document in the database.
@@ -117,19 +111,6 @@ func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, n
 	}
 
 	return nil
-}
-
-//Associate entities
-func Associate(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
-	relationshipID, relationships := populateAssociation(accountID, srcEntityID, dstEntityID)
-	//TODO batch create
-	for _, r := range relationships {
-		_, err := relationship.Create(ctx, db, r)
-		if err != nil {
-			return relationshipID, errors.Wrapf(err, "Association between entities %s and %s failed", srcEntityID, dstEntityID)
-		}
-	}
-	return relationshipID, nil
 }
 
 // Retrieve gets the specified entity from the database.
@@ -168,54 +149,23 @@ func BulkRetrieve(ctx context.Context, ids []string, db *sqlx.DB) ([]Entity, err
 	return entities, nil
 }
 
-//ParseEmailEntity creates the email entity from the field map provided
-func ParseEmailEntity(params map[string]interface{}) (EmailEntity, error) {
-	var eme EmailEntity
-	jsonbody, err := json.Marshal(params)
-	if err != nil {
-		return eme, err
-	}
-	err = json.Unmarshal(jsonbody, &eme)
-	return eme, err
-}
-
-//ParseDelayEntity creates the delay entity from the field map provided
-func ParseDelayEntity(params map[string]interface{}) (DelayEntity, error) {
-	var de DelayEntity
-	jsonbody, err := json.Marshal(params)
-	if err != nil {
-		return de, err
-	}
-	err = json.Unmarshal(jsonbody, &de)
-	return de, err
-}
-
-//ParseHookEntity creates the hook entity from the field map provided
-func ParseHookEntity(params map[string]interface{}) (WebHookEntity, error) {
-	var whe WebHookEntity
-	jsonbody, err := json.Marshal(params)
-	if err != nil {
-		return whe, err
-	}
-	err = json.Unmarshal(jsonbody, &whe)
-	return whe, err
-}
-
-func ParseUserEntity(params map[string]interface{}) (UserEntity, error) {
-	var ue UserEntity
-	jsonbody, err := json.Marshal(params)
-	if err != nil {
-		return ue, err
-	}
-	err = json.Unmarshal(jsonbody, &ue)
-	return ue, err
-}
-
-// FillFieldValues updates the
+// FillFieldValues updates the values of entity fields except the config
 func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
 	updatedFields := make([]Field, 0)
 	for _, field := range entityFields {
 		if val, ok := itemFields[field.Key]; ok && !field.isConfig() {
+			field.Value = val
+		}
+		updatedFields = append(updatedFields, field)
+	}
+	return updatedFields
+}
+
+//FillAllFieldValues updates the values of entity fields along with the config
+func FillAllFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
+	updatedFields := make([]Field, 0)
+	for _, field := range entityFields {
+		if val, ok := itemFields[field.Key]; ok {
 			field.Value = val
 		}
 		updatedFields = append(updatedFields, field)
@@ -304,56 +254,20 @@ func (f Field) DisplayGex() string {
 	return ""
 }
 
-func populateBonds(accountID, srcEntityId string, fields []Field) []relationship.Relationship {
-	relationships := make([]relationship.Relationship, 0)
+func refFields(fields []Field) map[string]string {
+	referenceFieldsMap := make(map[string]string, 0)
 	for _, f := range fields {
 		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
-			relationships = append(relationships, relationship.Relationship{
-				RelationshipID: uuid.New().String(),
-				AccountID:      accountID,
-				SrcEntityID:    srcEntityId,
-				DstEntityID:    f.RefID,
-				FieldID:        f.Key,
-				Type:           relationship.TypeBond,
-			})
+			referenceFieldsMap[f.Key] = f.RefID
 		}
 	}
-	return relationships
+	return referenceFieldsMap
 }
 
-func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []relationship.Relationship) {
-	relationships := make([]relationship.Relationship, 0)
-	relationshipID := uuid.New().String()
-	relationships = append(relationships, relationship.Relationship{
-		RelationshipID: relationshipID,
-		AccountID:      accountID,
-		SrcEntityID:    srcEntityId,
-		DstEntityID:    dstEntityId,
-		FieldID:        relationship.FieldAssociationKey,
-		Type:           relationship.TypeAssociation,
-	}, relationship.Relationship{
-		RelationshipID: relationshipID,
-		AccountID:      accountID,
-		SrcEntityID:    dstEntityId,
-		DstEntityID:    srcEntityId,
-		FieldID:        relationship.FieldAssociationKey,
-		Type:           relationship.TypeAssociation,
-	})
-	return relationshipID, relationships
-}
-
-func NamedFieldsMap(entityFields []Field) map[string]interface{} {
-	params := map[string]interface{}{}
+func NamedKeysMap(entityFields []Field) map[string]string {
+	params := map[string]string{}
 	for _, field := range entityFields {
-		params[field.Name] = field.Value
-	}
-	return params
-}
-
-func KeyedFieldsMap(entityFields []Field, namedFields map[string]interface{}) map[string]interface{} {
-	params := map[string]interface{}{}
-	for _, field := range entityFields {
-		params[field.Key] = namedFields[field.Name]
+		params[field.Name] = field.Key
 	}
 	return params
 }

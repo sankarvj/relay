@@ -155,7 +155,7 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return web.NewShutdownError("web value missing from context")
 	}
 
-	opt := option.WithCredentialsFile(u.authenticator.GoogleKeyFile)
+	opt := option.WithCredentialsFile(u.authenticator.FireBaseAdminSDK)
 	// Initialize default app
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {

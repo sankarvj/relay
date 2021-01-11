@@ -182,13 +182,17 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	viewModelItem := createViewModelItem(it)
 	reference.UpdateReferenceFields(ctx, fields, []*item.ViewModelItem{&viewModelItem}, i.db)
 
-	itemDetail := item.ItemDetail{
-		Entity: createViewModelEntity(e),
-		Item:   viewModelItem,
-		Bonds:  bonds,
-		Fields: fields,
+	itemDetail := struct {
+		Entity entity.ViewModelEntity `json:"entity"`
+		Item   item.ViewModelItem     `json:"item"`
+		Bonds  []relationship.Bond    `json:"bonds"`
+		Fields []*entity.Field        `json:"fields"`
+	}{
+		createViewModelEntity(e),
+		viewModelItem,
+		bonds,
+		fields,
 	}
-
 	return web.Respond(ctx, w, itemDetail, http.StatusOK)
 }
 

@@ -7,11 +7,12 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -40,8 +41,8 @@ func (g *Integration) AccessIntegration(ctx context.Context, w http.ResponseWrit
 		err     error
 	)
 	switch integrationID {
-	case "gmail":
-		authURL, err = integration.AskGmailAccessURL(ctx, g.authenticator.GoogleOAuthFile)
+	case integration.TypeGmail:
+		authURL, err = integration.AskGmailAccessURL(ctx, g.authenticator.GoogleClientSecret)
 	}
 	if err != nil {
 		return err
@@ -63,18 +64,31 @@ func (g *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 	}
 
 	var (
-		tokenJson string
-		err       error
+		emailAddress string
+		tokenJson    string
+		err          error
 	)
 	switch integrationID {
-	case "gmail":
-		tokenJson, err = integration.Watch(ctx, g.db, g.authenticator.GoogleOAuthFile, code.Code, g.publisher.Topic)
+	case integration.TypeGmail:
+		tokenJson, err = integration.GetToken(g.authenticator.GoogleClientSecret, code.Code)
+		if err != nil {
+			return err
+		}
+		emailAddress, err = integration.WatchMessage(g.authenticator.GoogleClientSecret, tokenJson, g.publisher.Topic)
+		if err != nil {
+			return err
+		}
 	}
 	if err != nil {
 		return err
 	}
 
-	err = bootstrap.SaveToken(ctx, accountID, tokenJson, g.db)
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = entity.SaveEmailIntegration(ctx, accountID, currentUserID, integration.DomainGMail, tokenJson, emailAddress, g.db)
 	if err != nil {
 		return err
 	}

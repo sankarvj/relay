@@ -7,16 +7,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
-)
-
-const (
-	OwnerEntity = "owners"
 )
 
 func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
@@ -31,10 +29,10 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 	return err
 }
 
-func BootstrapUserEntity(ctx context.Context, db *sqlx.DB, currentUser *user.User, accountID, teamID string) error {
+func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, currentUser *user.User, accountID, teamID string) error {
 	fields, itemVals := ownerFields(currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
-	ue, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), OwnerEntity, "Owners", entity.CategoryUsers, fields)
+	ue, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, fields)
 	if err != nil {
 		return err
 	}
@@ -45,6 +43,40 @@ func BootstrapUserEntity(ctx context.Context, db *sqlx.DB, currentUser *user.Use
 		return err
 	}
 	return nil
+}
+
+func BootstrapEmailConfigEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityOwner)
+	if err != nil {
+		return err
+	}
+	ownerFields, err := ownerEntity.Fields()
+	if err != nil {
+		return err
+	}
+
+	fields := emailConfigFields(ownerEntity.ID, entity.NamedKeysMap(ownerFields)["email"])
+	// add entity - email- configs
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, fields)
+
+	return err
+}
+
+func BootstrapEmailsEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
+	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityEmailConfig)
+	if err != nil {
+		return err
+	}
+	emailConfigFields, err := emailConfigEntity.Fields()
+	if err != nil {
+		return err
+	}
+
+	fields := emailFields(emailConfigEntity.ID, entity.NamedKeysMap(emailConfigFields)["owner"])
+	// add entity - email
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, fields)
+
+	return err
 }
 
 func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, name, displayName string, category int, fields []entity.Field) (entity.Entity, error) {
@@ -82,7 +114,7 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID strin
 
 	job.OnFieldCreate(accountID, entityID, ni.ID, ni.Fields, db)
 
-	fmt.Printf("%s - Item Added\n", i.ID)
+	fmt.Printf("Item Added\n")
 	return i, nil
 }
 
@@ -130,20 +162,20 @@ func NodeAdd(ctx context.Context, db *sqlx.DB, accountID, nodeID, flowID, actorI
 }
 
 func AssociationAdd(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
-	relationshipID, err := entity.Associate(ctx, db, accountID, srcEntityID, dstEntityID)
+	relationshipID, err := relationship.Associate(ctx, db, accountID, srcEntityID, dstEntityID)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Printf("Association '%s' Added\n", relationshipID)
+	fmt.Printf("Association added between entities '%s' and '%s'\n", srcEntityID, dstEntityID)
 	return relationshipID, nil
 }
 
 func ConnectionAdd(ctx context.Context, db *sqlx.DB, accountID, relationshipID, srcItemID, dstItemID string) error {
-	err := item.Associate(ctx, db, accountID, relationshipID, srcItemID, dstItemID)
+	err := connection.Associate(ctx, db, accountID, relationshipID, srcItemID, dstItemID)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Connection '%s' Added\n", relationshipID)
+	fmt.Printf("Connection added between items '%s' and '%s' for the relationship '%s'\n", srcItemID, dstItemID, relationshipID)
 	return nil
 }

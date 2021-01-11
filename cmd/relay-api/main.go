@@ -69,11 +69,11 @@ func run() error {
 			GmailPublisherTopic string `conf:"default:projects/relay-94b69/topics/receive-gmail-message"`
 		}
 		Auth struct {
-			KeyID           string `conf:"default:1"`
-			PrivateKeyFile  string `conf:"default:private.pem"`
-			Algorithm       string `conf:"default:RS256"`
-			GoogleKeyFile   string `conf:"default:config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"`
-			GoogleOAuthFile string `conf:"default:config/client_secret_112071162327-3rokctm5fv0r9imsgpmc2ar5nm0aq6ii.apps.googleusercontent.com.json"`
+			KeyID              string `conf:"default:1"`
+			PrivateKeyFile     string `conf:"default:private.pem"`
+			Algorithm          string `conf:"default:RS256"`
+			GoogleKeyFile      string `conf:"default:config/dev/relay-firebase-adminsdk.json"`
+			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json"`
 		}
 		Zipkin struct {
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`
@@ -125,7 +125,7 @@ func run() error {
 	}
 
 	f := auth.NewSimpleKeyLookupFunc(cfg.Auth.KeyID, privateKey.Public().(*rsa.PublicKey))
-	authenticator, err := auth.NewAuthenticator(privateKey, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleOAuthFile, cfg.Auth.KeyID, cfg.Auth.Algorithm, f)
+	authenticator, err := auth.NewAuthenticator(privateKey, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleClientSecret, cfg.Auth.KeyID, cfg.Auth.Algorithm, f)
 	if err != nil {
 		return errors.Wrap(err, "constructing authenticator")
 	}

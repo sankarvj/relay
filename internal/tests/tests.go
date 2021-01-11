@@ -162,6 +162,13 @@ func SeedRelationShips(t *testing.T, db *sqlx.DB) {
 	}
 }
 
+// SeedPipelines db
+func SeedPipelines(t *testing.T, db *sqlx.DB) {
+	if err := schema.SeedPipelines(db); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // NewIntegration creates a database, seeds it, constructs an authenticator.
 func NewIntegration(t *testing.T) *Test {
 	t.Helper()
@@ -182,12 +189,12 @@ func NewIntegration(t *testing.T) *Test {
 		t.Fatal(err)
 	}
 
-	googleFilePath := "../../config/relay-94b69-firebase-adminsdk-rff9p-dc29a4c75d.json"
-	googleOauthFilePath := "../../config/client_secret_112071162327-3rokctm5fv0r9imsgpmc2ar5nm0aq6ii.apps.googleusercontent.com.json"
+	firebaseAdminSdkPath := "../../config/dev/relay-firebase-adminsdk.json"
+	googleClientSecretPath := "../../config/dev/google-apps-client-secret.json"
 	// Build an authenticator using this static key.
 	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
 	kf := auth.NewSimpleKeyLookupFunc(kid, key.Public().(*rsa.PublicKey))
-	authenticator, err := auth.NewAuthenticator(key, googleFilePath, googleOauthFilePath, kid, "RS256", kf)
+	authenticator, err := auth.NewAuthenticator(key, firebaseAdminSdkPath, googleClientSecretPath, kid, "RS256", kf)
 	if err != nil {
 		t.Fatal(err)
 	}

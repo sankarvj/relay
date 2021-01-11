@@ -41,7 +41,6 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n
 }
 
 func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	log.Println("executeNegCase ActorID ---> ", n.ActorID)
 	ruleResult.Executed = false
 	executionResponse := map[string]interface{}{}
 	switch n.Type {
@@ -53,10 +52,10 @@ func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n
 	return nil
 }
 
-func namedFieldsMap(entityFields []entity.Field) map[string]interface{} {
-	params := map[string]interface{}{}
+func namedFieldsObjMap(entityFields []entity.Field) map[string]entity.Field {
+	params := map[string]entity.Field{}
 	for _, field := range entityFields {
-		params[field.Name] = field.Value
+		params[field.Name] = field
 	}
 	return params
 }
@@ -77,7 +76,7 @@ func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity
 			if err != nil {
 				return nil, err
 			}
-			entityFields = entity.FillFieldValues(entityFields, i.Fields())
+			entityFields = entity.FillAllFieldValues(entityFields, i.Fields())
 		}
 	}
 

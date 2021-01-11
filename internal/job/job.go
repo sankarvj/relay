@@ -49,7 +49,7 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string
 func addConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, itemID string, newFields map[string]interface{}) {
 	relationMap := relationMap(ctx, db, account_id, entityID)
 	for k, v := range newFields {
-		if r, ok := relationMap[k]; ok {
+		if relationshipID, ok := relationMap[k]; ok {
 			dstItemIds := v.([]string)
 			if len(dstItemIds) == 0 {
 				continue
@@ -58,7 +58,7 @@ func addConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, itemI
 			for _, dstItemID := range dstItemIds {
 				c := connection.Connection{
 					AccountID:      account_id,
-					RelationshipID: r.RelationshipID,
+					RelationshipID: relationshipID,
 					SrcItemID:      itemID,
 					DstItemID:      dstItemID,
 				}
@@ -78,7 +78,7 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 	relationMap := relationMap(ctx, db, account_id, entityID)
 	dirtyFields := item.Diff(oldFields, newFields)
 	for k, v := range dirtyFields {
-		if r, ok := relationMap[k]; ok {
+		if relationshipID, ok := relationMap[k]; ok {
 			oldDstItemIds := oldFields[k].([]interface{})
 			dstItemIds := v.([]interface{})
 
@@ -86,7 +86,7 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 			if len(deletedItems) > 0 {
 				//TODO: use batch delete
 				for _, deletedItem := range deletedItems {
-					err := connection.Delete(ctx, db, r.RelationshipID, deletedItem.(string))
+					err := connection.Delete(ctx, db, relationshipID, deletedItem.(string))
 					if err != nil {
 						log.Println("error while deleting connection", err)
 						return
@@ -99,7 +99,7 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 				for _, dstItemID := range newItems {
 					c := connection.Connection{
 						AccountID:      account_id,
-						RelationshipID: r.RelationshipID,
+						RelationshipID: relationshipID,
 						SrcItemID:      itemID,
 						DstItemID:      dstItemID.(string),
 					}
@@ -115,16 +115,16 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 	}
 }
 
-func relationMap(ctx context.Context, db *sqlx.DB, account_id, entityID string) map[string]relationship.Relationship {
-	relationMap := make(map[string]relationship.Relationship, 0)
-	relationships, err := relationship.Relationships(ctx, db, account_id, entityID)
+func relationMap(ctx context.Context, db *sqlx.DB, accountID, entityID string) map[string]string {
+	relationMap := make(map[string]string, 0)
+	relationshipIDs, err := relationship.RelationshipIDs(ctx, db, accountID, entityID)
 	if err != nil {
 		log.Println("There is an error while selecting relationships...", err)
 		return relationMap
 	}
 
-	for _, r := range relationships {
-		relationMap[r.FieldID] = r
+	for _, relationshipID := range relationshipIDs {
+		relationMap[relationshipID.FieldID] = relationshipID.RelationshipID
 	}
 	return relationMap
 }

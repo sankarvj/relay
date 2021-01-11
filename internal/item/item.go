@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 
 	"github.com/google/uuid"
@@ -92,7 +91,6 @@ func UpdateFields(ctx context.Context, db *sqlx.DB, entityID, id string, fields 
 func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateItem, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
 	defer span.End()
-
 	i, err := Retrieve(ctx, entityID, id, db)
 	if err != nil {
 		return err
@@ -165,19 +163,6 @@ func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, err
 	}
 
 	return items, nil
-}
-
-//Associate items
-func Associate(ctx context.Context, db *sqlx.DB, accountID, relationshipID, srcItemID, dstItemID string) error {
-	c := connection.Connection{
-		AccountID:      accountID,
-		RelationshipID: relationshipID,
-		SrcItemID:      srcItemID,
-		DstItemID:      dstItemID,
-	}
-
-	_, err := connection.Create(ctx, db, c)
-	return err
 }
 
 // Fields parses attribures to fields

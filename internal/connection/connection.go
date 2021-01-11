@@ -16,6 +16,19 @@ var (
 	ErrInvalidID = errors.New("ID is not in its proper form")
 )
 
+//Associate items
+func Associate(ctx context.Context, db *sqlx.DB, accountID, relationshipID, srcItemID, dstItemID string) error {
+	c := Connection{
+		AccountID:      accountID,
+		RelationshipID: relationshipID,
+		SrcItemID:      srcItemID,
+		DstItemID:      dstItemID,
+	}
+
+	_, err := Create(ctx, db, c)
+	return err
+}
+
 // Create add new connection with respective types.
 func Create(ctx context.Context, db *sqlx.DB, c Connection) (Connection, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.connection.Create")

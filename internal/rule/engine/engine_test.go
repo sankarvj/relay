@@ -24,10 +24,10 @@ func TestEmailRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a send email engine for the given contact - default case")
 		{
-			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
-			e2 := "00000000-0000-0000-0000-000000000005" //mail-intg
-			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i2 := "00000000-0000-0000-0000-000000000015" //mail-item-id (assuming the item has incorparated the contacts fields as vars in its body/subject)
+			e1 := "17b61c5a-c6f9-4894-82b4-8b0e4b2d5d44" //contacts-entity-id
+			e2 := "447a9c03-ad0c-4543-9dcf-fce1a8fbceed" //mails-entity-id
+			i1 := "9d9ab317-897d-4297-9818-088674ce497e" //contact-item-id
+			i2 := "ef068193-426d-4155-b00b-378c8fcc82be" //mail-item-id (assuming the item has incorparated the contacts fields as vars in its body/subject)
 
 			vars, _ := node.MapToJSONB(map[string]string{e1: i1}) // this will get populated only during the trigger
 			acts, _ := node.MapToJSONB(map[string]string{e2: i2}) // this will get populated during the workflow creation
@@ -59,8 +59,8 @@ func TestCreateItemRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a create item engine - default case")
 		{
-			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
-			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
+			e1 := "17b61c5a-c6f9-4894-82b4-8b0e4b2d5d44" //contacts-entity-id
+			i1 := "9d9ab317-897d-4297-9818-088674ce497e" //contact-item-id
 			e2 := "00000000-0000-0000-0000-000000000003" //task-entity-id
 			i2 := "00000000-0000-0000-0000-000000000012" //task-item-id (the task blue-print which will be used to create other tasks)
 
@@ -179,7 +179,7 @@ func TestDirectTrigger(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
 	tests.SeedEntity(t, db)
-	tests.SeedRelationShips(t, db)
+	tests.SeedPipelines(t, db)
 	defer teardown()
 	t.Log("Given the need to run the engine for a trigger")
 	{

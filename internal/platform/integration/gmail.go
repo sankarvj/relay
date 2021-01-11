@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -22,7 +21,7 @@ func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
 	return config.AuthCodeURL("state-token", oauth2.AccessTypeOffline), nil
 }
 
-func Watch(ctx context.Context, db *sqlx.DB, oAuthFile, code, topic string) (string, error) {
+func GetToken(oAuthFile, code string) (string, error) {
 	config, err := getConfig(oAuthFile)
 	if err != nil {
 		return "", err
@@ -37,29 +36,43 @@ func Watch(ctx context.Context, db *sqlx.DB, oAuthFile, code, topic string) (str
 		return "", errors.Wrap(err, "unable to marshal token")
 	}
 
-	return string(tokenJson), watchMessage(config, string(tokenJson), topic)
+	return string(tokenJson), nil
 }
 
-func watchMessage(config *oauth2.Config, tokenJson, topicName string) error {
+func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
+	config, err := getConfig(oAuthFile)
+	if err != nil {
+		return "", err
+	}
+
+	var emailAddress string
 	client, err := client(config, tokenJson)
 	if err != nil {
-		return err
+		return emailAddress, err
 	}
 
 	srv, err := gmail.New(client)
 	if err != nil {
-		return err
+		return emailAddress, err
 	}
+
 	user := "me"
+	profileCall := srv.Users.GetProfile(user)
+	profile, err := profileCall.Do()
+	emailAddress = profile.EmailAddress
+	if err != nil {
+		return emailAddress, err
+	}
+
 	watchCall := srv.Users.Watch(user, &gmail.WatchRequest{
 		TopicName: topicName,
 	})
 	_, err = watchCall.Do()
 	if err != nil {
-		return err
+		return emailAddress, err
 	}
 	log.Println("started watching the user")
-	return nil
+	return emailAddress, nil
 }
 
 func getConfig(oAuthFile string) (*oauth2.Config, error) {

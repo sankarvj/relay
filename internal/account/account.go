@@ -72,9 +72,20 @@ func AccountBootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, accountID
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
 
-	err = bootstrap.BootstrapUserEntity(ctx, db, cu, a.ID, teamID)
+	err = bootstrap.BootstrapOwnerEntity(ctx, db, cu, a.ID, teamID)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but users bootstrap failed")
 	}
+
+	err = bootstrap.BootstrapEmailConfigEntity(ctx, db, a.ID, teamID)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but email config bootstrap failed")
+	}
+
+	err = bootstrap.BootstrapEmailsEntity(ctx, db, a.ID, teamID)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but emails bootstrap failed")
+	}
+
 	return nil
 }

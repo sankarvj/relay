@@ -1,4 +1,4 @@
-package config
+package bootstrap
 
 import (
 	"fmt"
@@ -338,108 +338,6 @@ func DealVals(name string, amount int, contactID1, contactID2, nodeStageID strin
 		"uuid-00-pipe":        []string{nodeStageID},
 	}
 	return dealVals
-}
-
-func EmailFields(ownerEntityID string) []entity.Field {
-	domain := entity.Field{
-		Key:         "uuid-00-domain",
-		Name:        "domain",
-		DisplayName: "Domain",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "sandbox3ab4868d173f4391805389718914b89c.mailgun.org",
-		Meta: map[string]string{
-			"config": "true",
-		},
-	}
-
-	apiKey := entity.Field{
-		Key:         "uuid-00-api-key",
-		Name:        "api_key",
-		DisplayName: "Key",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
-		Meta: map[string]string{
-			"config": "true",
-		},
-	}
-
-	sender := entity.Field{
-		Key:         "uuid-00-sender",
-		Name:        "sender",
-		DisplayName: "Sender Email",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "vijayasankar.jothi@wayplot.com",
-	}
-
-	to := entity.Field{
-		Key:         "uuid-00-to",
-		Name:        "to",
-		DisplayName: "To Email",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "",
-	}
-
-	cc := entity.Field{
-		Key:         "uuid-00-cc",
-		Name:        "cc",
-		DisplayName: "Cc Email",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "",
-	}
-
-	subject := entity.Field{
-		Key:         "uuid-00-subject",
-		Name:        "subject",
-		DisplayName: "Subject",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "",
-	}
-
-	body := entity.Field{
-		Key:         "uuid-00-body",
-		Name:        "body",
-		DisplayName: "Body",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Value:       "",
-	}
-
-	ownerField := entity.Field{
-		Key:         "uuid-00-owner",
-		Name:        "owner",
-		DisplayName: "Associated To",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeReference,
-		RefID:       ownerEntityID,
-		Meta:        map[string]string{"display_gex": "name"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	return []entity.Field{domain, apiKey, sender, to, cc, subject, body, ownerField}
-}
-
-func EmailVals(contactEntityID string) map[string]interface{} {
-	emailValues := map[string]interface{}{
-		"uuid-00-domain":  "sandbox3ab4868d173f4391805389718914b89c.mailgun.org",
-		"uuid-00-api-key": "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
-		"uuid-00-sender":  "vijayasankar.jothi@wayplot.com",
-		"uuid-00-to":      `{{` + contactEntityID + `.uuid-00-email}}`,
-		"uuid-00-cc":      "vijayasankarmobile@gmail.com",
-		"uuid-00-subject": `This mail is sent you to tell that your NPS scrore is {{` + contactEntityID + `.uuid-00-nps-score}}. We are very proud of you! `,
-		"uuid-00-body":    `Hello {{` + contactEntityID + `.uuid-00-fname}}`,
-		"uuid-00-owner":   `common`,
-	}
-	return emailValues
 }
 
 func APIFields() []entity.Field {

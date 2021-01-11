@@ -36,13 +36,13 @@ func NewSimpleKeyLookupFunc(activeKID string, publicKey *rsa.PublicKey) KeyLooku
 // Authenticator is used to authenticate clients. It can generate a token for a
 // set of user claims and recreate the claims by parsing the token.
 type Authenticator struct {
-	privateKey       *rsa.PrivateKey
-	activeKID        string
-	algorithm        string
-	pubKeyLookupFunc KeyLookupFunc
-	parser           *jwt.Parser
-	GoogleKeyFile    string
-	GoogleOAuthFile  string
+	privateKey         *rsa.PrivateKey
+	activeKID          string
+	algorithm          string
+	pubKeyLookupFunc   KeyLookupFunc
+	parser             *jwt.Parser
+	FireBaseAdminSDK   string
+	GoogleClientSecret string
 }
 
 // NewAuthenticator creates an *Authenticator for use. It will error if:
@@ -50,7 +50,7 @@ type Authenticator struct {
 // - The public key func is nil.
 // - The key ID is blank.
 // - The specified algorithm is unsupported.
-func NewAuthenticator(privateKey *rsa.PrivateKey, googleKeyFile, googleOAuthFile string, activeKID, algorithm string, publicKeyLookupFunc KeyLookupFunc) (*Authenticator, error) {
+func NewAuthenticator(privateKey *rsa.PrivateKey, firebaseAdminSDKPath, clientSecret string, activeKID, algorithm string, publicKeyLookupFunc KeyLookupFunc) (*Authenticator, error) {
 	if privateKey == nil {
 		return nil, errors.New("private key cannot be nil")
 	}
@@ -72,13 +72,13 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, googleKeyFile, googleOAuthFile
 	}
 
 	a := Authenticator{
-		privateKey:       privateKey,
-		activeKID:        activeKID,
-		algorithm:        algorithm,
-		pubKeyLookupFunc: publicKeyLookupFunc,
-		parser:           &parser,
-		GoogleKeyFile:    googleKeyFile,
-		GoogleOAuthFile:  googleOAuthFile,
+		privateKey:         privateKey,
+		activeKID:          activeKID,
+		algorithm:          algorithm,
+		pubKeyLookupFunc:   publicKeyLookupFunc,
+		parser:             &parser,
+		FireBaseAdminSDK:   firebaseAdminSDKPath,
+		GoogleClientSecret: clientSecret,
 	}
 
 	return &a, nil

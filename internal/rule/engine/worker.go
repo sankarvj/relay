@@ -73,16 +73,16 @@ func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, entityID, itemID 
 }
 
 func populateAPIParams(entityFields []entity.Field) (net.APIParams, error) {
-	params := namedFieldsMap(entityFields)
-	whe, err := entity.ParseHookEntity(params)
+	var webHookEntityItem entity.WebHookEntity
+	err := entity.ParseFixedEntity(entityFields, &webHookEntityItem)
 	if err != nil {
 		return net.APIParams{}, err
 	}
 	apiParams := net.APIParams{
-		Path:    whe.Path,
-		Host:    whe.Host,
-		Method:  whe.Method,
-		Headers: whe.Headers,
+		Path:    webHookEntityItem.Path,
+		Host:    webHookEntityItem.Host,
+		Method:  webHookEntityItem.Method,
+		Headers: webHookEntityItem.Headers,
 	}
 	return apiParams, nil
 }

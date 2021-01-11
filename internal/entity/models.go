@@ -50,41 +50,6 @@ type NewEntity struct {
 	State       int     `json:"state"`
 }
 
-// EmailEntity represents structural format of email entity
-type EmailEntity struct {
-	Domain  string `json:"domain"`
-	APIKey  string `json:"api_key"`
-	Sender  string `json:"sender"`
-	To      string `json:"to"`
-	Cc      string `json:"cc"`
-	Bcc     string `json:"bcc"`
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
-
-//DelayEntity represents the structural format of delay entity
-type DelayEntity struct {
-	DelayBy string `json:"delay_by"`
-	Repeat  string `json:"repeat"`
-}
-
-// WebHookEntity represents structural format of webhook entity
-type WebHookEntity struct {
-	Path    string            `json:"path"`
-	Host    string            `json:"host"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers"`
-}
-
-// UserEntity represents structural format of user entity
-type UserEntity struct {
-	UserID string `json:"user_id"`
-	Name   string `json:"name"`
-	Avatar string `json:"avatar"`
-	Email  string `json:"email"`
-	Gtoken string `json:"gtoken"`
-}
-
 // Field represents structural format of attributes in entity
 type Field struct {
 	Name        string            `json:"name" validate:"required"`
@@ -159,16 +124,17 @@ const (
 
 //Category specifies the different type of entities
 const (
-	CategoryUnknown    = 0
-	CategoryData       = 1
-	CategoryAPI        = 2
-	CategoryTimeSeries = 3
-	CategoryEmail      = 4
-	CategoryUsers      = 5
-	CategorySchedule   = 6
-	CategoryDelay      = 7
-	CategoryChildUnit  = 8
-	CategoryTask       = 9
+	CategoryUnknown     = 0
+	CategoryData        = 1
+	CategoryAPI         = 2
+	CategoryTimeSeries  = 3
+	CategoryEmail       = 4
+	CategoryUsers       = 5
+	CategorySchedule    = 6
+	CategoryDelay       = 7
+	CategoryChildUnit   = 8
+	CategoryTask        = 9
+	CategoryEmailConfig = 10
 )
 
 //field_unit expression

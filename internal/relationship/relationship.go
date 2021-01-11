@@ -3,6 +3,7 @@ package relationship
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -25,6 +26,31 @@ var (
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidID = errors.New("ID is not in its proper form")
 )
+
+// Bonding creates the implicit relationships between two entities based on the reference fields
+// This type of associations are always 1:N
+func Bonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]string) error {
+	relationships := populateBonds(accountID, srcEntityID, rFields)
+	return BulkCreate(ctx, db, relationships)
+}
+
+// Associate creates the explicit relationships between two entities given by the customer
+// This type of associations are always N:N
+func Associate(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
+	relationshipID, relationships := populateAssociation(accountID, srcEntityID, dstEntityID)
+	return relationshipID, BulkCreate(ctx, db, relationships)
+}
+
+//TODO: implement bulk create
+func BulkCreate(ctx context.Context, db *sqlx.DB, relationships []Relationship) error {
+	for _, r := range relationships {
+		_, err := Create(ctx, db, r)
+		if err != nil {
+			return errors.Wrapf(err, "Association between entities %s and %s failed", r.SrcEntityID, r.DstEntityID)
+		}
+	}
+	return nil
+}
 
 // Create add new relationship with respective types.
 func Create(ctx context.Context, db *sqlx.DB, r Relationship) (Relationship, error) {
@@ -61,16 +87,53 @@ func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond,
 	return bonds, nil
 }
 
-func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Relationship, error) {
+func RelationshipIDs(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]RelationshipID, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
 	defer span.End()
 
-	var relationships []Relationship
-	const q = `SELECT * FROM relationships WHERE account_id = $1 AND src_entity_id = $2`
+	var relationshipIDs []RelationshipID
+	const q = `SELECT relationship_id, field_id FROM relationships WHERE account_id = $1 AND src_entity_id = $2`
 
-	if err := db.SelectContext(ctx, &relationships, q, accountID, entityID); err != nil {
-		return nil, errors.Wrap(err, "selecting relationships for src entity")
+	if err := db.SelectContext(ctx, &relationshipIDs, q, accountID, entityID); err != nil {
+		return nil, errors.Wrap(err, "selecting relationship id for src entity")
 	}
 
-	return relationships, nil
+	return relationshipIDs, nil
+}
+
+func populateBonds(accountID, srcEntityId string, referenceFields map[string]string) []Relationship {
+	relationships := make([]Relationship, 0)
+	for fieldKey, refID := range referenceFields {
+		relationships = append(relationships, Relationship{
+			RelationshipID: uuid.New().String(),
+			AccountID:      accountID,
+			SrcEntityID:    srcEntityId,
+			DstEntityID:    refID,
+			FieldID:        fieldKey,
+			Type:           TypeBond,
+		})
+
+	}
+	return relationships
+}
+
+func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []Relationship) {
+	relationships := make([]Relationship, 0)
+	relationshipID := uuid.New().String()
+	relationships = append(relationships, Relationship{
+		RelationshipID: relationshipID,
+		AccountID:      accountID,
+		SrcEntityID:    srcEntityId,
+		DstEntityID:    dstEntityId,
+		FieldID:        FieldAssociationKey,
+		Type:           TypeAssociation,
+	}, Relationship{
+		RelationshipID: relationshipID,
+		AccountID:      accountID,
+		SrcEntityID:    dstEntityId,
+		DstEntityID:    srcEntityId,
+		FieldID:        FieldAssociationKey,
+		Type:           TypeAssociation,
+	})
+	return relationshipID, relationships
 }
