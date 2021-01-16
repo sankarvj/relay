@@ -213,7 +213,7 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	return nil
 }
 
-func AddAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string, now time.Time) error {
+func UpdateAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
 	defer span.End()
 

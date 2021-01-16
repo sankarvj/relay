@@ -40,11 +40,11 @@ type EmailEntity struct {
 
 // EmailConfigEntity represents structural format of email config entity
 type EmailConfigEntity struct {
-	Domain string `json:"domain"`
-	APIKey string `json:"api_key"`
-	Email  string `json:"email"`
-	Owner  string `json:"owner"`
-	Common string `json:"common"`
+	Domain string   `json:"domain"`
+	APIKey string   `json:"api_key"`
+	Email  string   `json:"email"`
+	Owner  []string `json:"owner"`
+	Common string   `json:"common"`
 }
 
 //DelayEntity represents the structural format of delay entity
@@ -113,7 +113,7 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 		return nil, nil, err
 	}
 
-	entityFields = FillFieldValues(entityFields, it.Fields())
+	entityFields = ValueAddFields(entityFields, it.Fields())
 
 	return entityFields, updateFields(accountID, preDefinedEntity.ID, it.ID, entityFields), err
 }
@@ -138,7 +138,7 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 	emailConfigEntityItem.Domain = domain
 	emailConfigEntityItem.Email = emailAddress
 	emailConfigEntityItem.Common = "false"
-	emailConfigEntityItem.Owner = currentUserID
+	emailConfigEntityItem.Owner = []string{currentUserID}
 
 	ni := item.NewItem{
 		ID:        uuid.New().String(),

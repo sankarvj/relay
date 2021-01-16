@@ -2,10 +2,13 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/mail"
 
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
@@ -14,7 +17,7 @@ import (
 )
 
 func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
-	config, err := getConfig(oAuthFile)
+	config, err := config(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -22,7 +25,7 @@ func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
 }
 
 func GetToken(oAuthFile, code string) (string, error) {
-	config, err := getConfig(oAuthFile)
+	config, err := config(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +43,7 @@ func GetToken(oAuthFile, code string) (string, error) {
 }
 
 func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
-	config, err := getConfig(oAuthFile)
+	config, err := config(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +78,31 @@ func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
 	return emailAddress, nil
 }
 
-func getConfig(oAuthFile string) (*oauth2.Config, error) {
+func SendMail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName, toEmail string, subject string, body string) error {
+	config, err := config(oAuthFile)
+	if err != nil {
+		return err
+	}
+
+	client, err := client(config, tokenJson)
+	if err != nil {
+		return err
+	}
+
+	srv, err := gmail.New(client)
+	if err != nil {
+		return err
+	}
+
+	gmsg := msg(fromName, fromEmail, toName, toEmail, subject, body)
+	_, err = srv.Users.Messages.Send(user, &gmsg).Do()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func config(oAuthFile string) (*oauth2.Config, error) {
 	b, err := ioutil.ReadFile(oAuthFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read client secret file")
@@ -89,6 +116,29 @@ func client(config *oauth2.Config, tokenJson string) (*http.Client, error) {
 		return nil, err
 	}
 	return config.Client(context.Background(), &token), nil
+}
+
+func msg(fromName, fromEmail string, toName, toEmail string, subject string, body string) gmail.Message {
+	from := mail.Address{fromName, fromEmail}
+	to := mail.Address{toName, toEmail}
+
+	header := make(map[string]string)
+	header["From"] = from.String()
+	header["To"] = to.String()
+	header["Subject"] = subject
+	header["MIME-Version"] = "1.0"
+	header["Content-Type"] = "text/plain; charset=\"utf-8\""
+	header["Content-Transfer-Encoding"] = "base64"
+
+	var msg string
+	for k, v := range header {
+		msg += fmt.Sprintf("%s: %s\r\n", k, v)
+	}
+	msg += "\r\n" + body
+
+	return gmail.Message{
+		Raw: base64.RawURLEncoding.EncodeToString([]byte(msg)),
+	}
 }
 
 type Code struct {

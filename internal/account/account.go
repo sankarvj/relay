@@ -56,13 +56,17 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	return a, nil
 }
 
-func AccountBootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, accountID, teamID string, n NewAccount, now time.Time) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, accountID, teamID string, n NewAccount, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
+	defer span.End()
 	n.ID = accountID
 	a, err := Create(ctx, db, n, now)
 	if err != nil {
 		return err
 	}
-	err = user.AddAccounts(ctx, db, cu, a.ID, time.Now())
+
+	//TODO: all bootsrapping should happen in a single step
+	err = user.UpdateAccounts(ctx, db, cu, a.ID, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "account inserted but user update failed")
 	}

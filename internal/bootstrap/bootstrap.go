@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -67,16 +68,22 @@ func BootstrapEmailsEntity(ctx context.Context, db *sqlx.DB, accountID, teamID s
 	if err != nil {
 		return err
 	}
-	emailConfigFields, err := emailConfigEntity.Fields()
-	if err != nil {
-		return err
-	}
 
-	fields := emailFields(emailConfigEntity.ID, entity.NamedKeysMap(emailConfigFields)["owner"])
+	fields := emailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "")
 	// add entity - email
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, fields)
 
 	return err
+}
+
+func EntityUpdate(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, fields []entity.Field) error {
+	input, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Entity '%s' Updated\n", entityID)
+	return entity.Update(ctx, db, entityID, string(input), time.Now())
 }
 
 func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, name, displayName string, category int, fields []entity.Field) (entity.Entity, error) {
@@ -112,7 +119,7 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID strin
 		return item.Item{}, err
 	}
 
-	job.OnFieldCreate(accountID, entityID, ni.ID, ni.Fields, db)
+	job.EventItemCreated(accountID, entityID, ni.ID, ni.Fields, db)
 
 	fmt.Printf("Item Added\n")
 	return i, nil

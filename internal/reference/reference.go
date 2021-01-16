@@ -15,23 +15,16 @@ import (
 In this file we map the fields with the reference field value for the specific item
 **/
 
-func UpdateReferenceFields(ctx context.Context, fields []*entity.Field, items []*item.ViewModelItem, db *sqlx.DB) {
+func UpdateReferenceFields(ctx context.Context, fields []entity.Field, items []*item.ViewModelItem, db *sqlx.DB) {
 	referenceFields := make(map[string]*entity.Field, 0)
 	referenceIds := make(map[string][]interface{}, 0)
 
-	tmpFields := fields[:0]
-	for _, f := range fields {
-		if f.IsNotApplicable() { // remove not appicable fields from the view
-			continue
+	for i := 0; i < len(fields); i++ {
+		if fields[i].IsReference() || fields[i].IsPipe() {
+			referenceIds[fields[i].Key] = []interface{}{}
+			referenceFields[fields[i].Key] = &fields[i]
 		}
-
-		if f.IsReference() || f.IsPipe() {
-			referenceIds[f.Key] = []interface{}{}
-			referenceFields[f.Key] = f
-		}
-		tmpFields = append(tmpFields, f)
 	}
-	fields = tmpFields
 
 	for _, item := range items {
 		for key, vals := range item.Fields {

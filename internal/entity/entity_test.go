@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
@@ -110,7 +111,7 @@ func TestSaveEmailIntegration(t *testing.T) {
 				},
 			})
 
-			_, err := bootstrap.SaveEmailIntegration(ctx, schema.SeedAccountID, schema.SeedUserID1, "google.com", "token", "vijayasankarmail@gmail.com", db)
+			_, err := entity.SaveEmailIntegration(ctx, schema.SeedAccountID, schema.SeedUserID1, "google.com", "token", "vijayasankarmail@gmail.com", db)
 			if err != nil {
 				t.Fatalf("\tCould not able to save token on current user - %s", err)
 			}

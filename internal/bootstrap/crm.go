@@ -36,7 +36,7 @@ func StatusVals(name, color string) map[string]interface{} {
 	return statusVals
 }
 
-func ContactFields(statusEntityID, ownerEntityID string) []entity.Field {
+func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) []entity.Field {
 	nameField := entity.Field{
 		Key:         "uuid-00-fname",
 		Name:        "first_name",
@@ -113,7 +113,7 @@ func ContactFields(statusEntityID, ownerEntityID string) []entity.Field {
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		Meta:        map[string]string{"display_gex": "name"},
+		Meta:        map[string]string{"display_gex": ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

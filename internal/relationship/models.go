@@ -18,11 +18,6 @@ type Bond struct {
 	Type           RType  `db:"type" json:"type"`
 }
 
-type RelationshipID struct {
-	RelationshipID string `db:"relationship_id" json:"relationship_id"`
-	FieldID        string `db:"field_id" json:"field_id"`
-}
-
 //RType defines the type of relationships
 type RType int
 

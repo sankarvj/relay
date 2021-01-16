@@ -38,8 +38,8 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Connections.List")
 	defer span.End()
-
-	e, err := entity.Retrieve(ctx, params["ref_id"], rs.db)
+	actualEntityID := params["entity_id"]
+	e, err := entity.Retrieve(ctx, actualEntityID, rs.db)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return errors.Wrap(err, "selecting related item ids")
 	}
-	childItems, err := item.BulkRetrieve(ctx, params["ref_id"], itemIDs, rs.db)
+	childItems, err := item.BulkRetrieve(ctx, actualEntityID, itemIDs, rs.db)
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")
 	}

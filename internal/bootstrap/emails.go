@@ -61,7 +61,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField}
 }
 
-func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []entity.Field {
+func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, contactFieldKey string) []entity.Field {
 
 	configFieldID := uuid.New().String()
 	configField := entity.Field{
@@ -83,7 +83,7 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		Key:         fromFieldID,
 		Name:        "from",
 		DisplayName: "From",
-		DomType:     entity.DomSelect,
+		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       emailConfigEntityID,
 		Meta:        map[string]string{"display_gex": emailConfigOwnerFieldKey},
@@ -99,8 +99,15 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		Key:         toFieldID,
 		Name:        "to",
 		DisplayName: "To",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": contactFieldKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
 	}
 
 	ccFieldID := uuid.New().String()
@@ -108,8 +115,15 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		Key:         ccFieldID,
 		Name:        "cc",
 		DisplayName: "Cc",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       emailConfigEntityID,
+		Meta:        map[string]string{"display_gex": emailConfigOwnerFieldKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
 	}
 
 	bccFieldID := uuid.New().String()
@@ -117,8 +131,15 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		Key:         bccFieldID,
 		Name:        "bcc",
 		DisplayName: "Bcc",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       emailConfigEntityID,
+		Meta:        map[string]string{"display_gex": emailConfigOwnerFieldKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
 	}
 
 	subjectFieldID := uuid.New().String()
@@ -135,7 +156,7 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		Key:         bodyFieldID,
 		Name:        "body",
 		DisplayName: "Body",
-		DomType:     entity.DomText,
+		DomType:     entity.DomTextArea,
 		DataType:    entity.TypeString,
 	}
 

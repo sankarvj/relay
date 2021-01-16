@@ -88,7 +88,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 
 // Update replaces a item document in the database.
 func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
+	ctx, span := trace.StartSpan(ctx, "internal.entity.Update")
 	defer span.End()
 
 	e, err := Retrieve(ctx, entityID, db)
@@ -109,6 +109,13 @@ func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, n
 	if err != nil {
 		return err
 	}
+
+	//TODO: do it in the same transaction.
+	updatedFields, err := e.AllFields()
+	if err != nil {
+		return err
+	}
+	err = relationship.Bonding(ctx, db, e.AccountID, e.ID, refFields(updatedFields))
 
 	return nil
 }
@@ -149,125 +156,10 @@ func BulkRetrieve(ctx context.Context, ids []string, db *sqlx.DB) ([]Entity, err
 	return entities, nil
 }
 
-// FillFieldValues updates the values of entity fields except the config
-func FillFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
-	updatedFields := make([]Field, 0)
-	for _, field := range entityFields {
-		if val, ok := itemFields[field.Key]; ok && !field.isConfig() {
-			field.Value = val
-		}
-		updatedFields = append(updatedFields, field)
-	}
-	return updatedFields
-}
-
-//FillAllFieldValues updates the values of entity fields along with the config
-func FillAllFieldValues(entityFields []Field, itemFields map[string]interface{}) []Field {
-	updatedFields := make([]Field, 0)
-	for _, field := range entityFields {
-		if val, ok := itemFields[field.Key]; ok {
-			field.Value = val
-		}
-		updatedFields = append(updatedFields, field)
-	}
-	return updatedFields
-}
-
 func FetchIDs(entities []Entity) []string {
 	ids := make([]string, 0)
 	for _, e := range entities {
 		ids = append(ids, e.ID)
 	}
 	return ids
-}
-
-// Fields parses attribures to fields
-func (e Entity) Fields() ([]Field, error) {
-	fields, err := e.AllFields()
-	if err != nil {
-		return nil, err
-	}
-	//remove all config fields
-	temp := fields[:0]
-	for _, field := range fields {
-		if !field.isConfig() {
-			temp = append(temp, field)
-		}
-	}
-	fields = temp
-	return fields, nil
-}
-
-func (e Entity) FieldsWithReference() ([]*Field, error) {
-	var referencedFields []*Field
-	fields, err := e.Fields()
-	if err != nil {
-		return referencedFields, err
-	}
-	for i := 0; i < len(fields); i++ {
-		referencedFields = append(referencedFields, &fields[i])
-	}
-	return referencedFields, nil
-}
-
-// AllFields parses attribures to fields
-func (e Entity) AllFields() ([]Field, error) {
-	var fields []Field
-	if err := json.Unmarshal([]byte(e.Fieldsb), &fields); err != nil {
-		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
-	}
-	return fields, nil
-}
-
-func (f Field) isConfig() bool {
-	if val, ok := f.Meta["config"]; ok && val == "true" {
-		return true
-	}
-	return false
-}
-
-func (f Field) IsReference() bool {
-	if f.DataType == TypeReference {
-		return true
-	}
-	return false
-}
-
-func (f Field) IsPipe() bool {
-	if f.DomType == DomPipeline || f.DomType == DomPlayBook {
-		return true
-	}
-	return false
-}
-
-func (f Field) IsNotApplicable() bool {
-	if f.DomType == DomNotApplicable {
-		return true
-	}
-	return false
-}
-
-func (f Field) DisplayGex() string {
-	if val, ok := f.Meta["display_gex"]; ok {
-		return val
-	}
-	return ""
-}
-
-func refFields(fields []Field) map[string]string {
-	referenceFieldsMap := make(map[string]string, 0)
-	for _, f := range fields {
-		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
-			referenceFieldsMap[f.Key] = f.RefID
-		}
-	}
-	return referenceFieldsMap
-}
-
-func NamedKeysMap(entityFields []Field) map[string]string {
-	params := map[string]string{}
-	for _, field := range entityFields {
-		params[field.Name] = field.Key
-	}
-	return params
 }

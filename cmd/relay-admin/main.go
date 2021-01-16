@@ -129,7 +129,7 @@ func seed(cfg database.Config) error {
 	nc := account.NewAccount{
 		Name:   "Wayplot",
 		Domain: "wayplot.com"}
-	err = account.AccountBootstrap(ctx, db, cuser, accountID, teamID, nc, time.Now())
+	err = account.Bootstrap(ctx, db, cuser, accountID, teamID, nc, time.Now())
 	if err != nil {
 		log.Println("!!!! TODO: Should Implement Roll Back Option Here.")
 		return err
@@ -156,6 +156,11 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
+	emailsEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityEmails)
+	if err != nil {
+		return err
+	}
+
 	//add entity - status
 	se, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Status", entity.CategoryChildUnit, bootstrap.StatusFields())
 	if err != nil {
@@ -178,7 +183,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - contacts
-	ce, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Contacts", entity.CategoryData, bootstrap.ContactFields(se.ID, ownerEntity.ID))
+	ce, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Contacts", entity.CategoryData, bootstrap.ContactFields(se.ID, ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
 		return err
 	}
@@ -219,17 +224,17 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
+	//adding sandbox email-config item (this needs to be removed from here.)
 	ei, err := entity.SaveEmailIntegration(ctx, accountID, schema.SeedUserID1, "sandbox3ab4868d173f4391805389718914b89c.mailgun.org", "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35", "vijayasankar.jothi@wayplot.com", db)
 	if err != nil {
 		return err
 	}
 
-	fields, _ := ce.Fields()
-	namedKeysMap := entity.NamedKeysMap(fields)
-	to := fmt.Sprintf("{{%s.%s}}", ce.ID, namedKeysMap["email"])
+	//adding sandbox email-template item (this needs to be removed from here.)
+	to := fmt.Sprintf("{{%s.%s}}", ce.ID, ce.Key("email"))
 	cc := "vijayasankarmobile@gmail.com"
-	subject := fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", ce.ID, namedKeysMap["nps_score"])
-	body := fmt.Sprintf("Hello {{%s.%s}}", ce.ID, namedKeysMap["email"])
+	subject := fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", ce.ID, ce.Key("nps_score"))
+	body := fmt.Sprintf("Hello {{%s.%s}}", ce.ID, ce.Key("email"))
 	emg, err := entity.SaveEmailTemplate(ctx, accountID, ei.ID, to, cc, "", subject, body, db)
 	if err != nil {
 		return err
@@ -305,6 +310,35 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 	err = bootstrap.ConnectionAdd(ctx, db, accountID, tcaID, ticket1.ID, con1.ID)
+	if err != nil {
+		return err
+	}
+
+	//update emails entity with contactEntityID. When we move the contactEntity Inside. Move this also
+	emailFields, err := emailsEntity.Fields()
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(emailFields); i++ {
+		field := &emailFields[i]
+		if field.Name == "to" {
+			field.RefID = ce.ID
+			field.SetDisplayGex(ce.Key("email"))
+		}
+	}
+	err = bootstrap.EntityUpdate(ctx, db, accountID, teamID, emailsEntity.ID, emailFields)
+	if err != nil {
+		return err
+	}
+
+	//contact email association
+	_, err = bootstrap.AssociationAdd(ctx, db, accountID, ce.ID, emailsEntity.ID)
+	if err != nil {
+		return err
+	}
+
+	//deal email association
+	_, err = bootstrap.AssociationAdd(ctx, db, accountID, de.ID, emailsEntity.ID)
 	if err != nil {
 		return err
 	}

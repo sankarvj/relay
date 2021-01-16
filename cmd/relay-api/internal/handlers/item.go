@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -39,9 +40,13 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	fields, err := e.FieldsWithReference()
+	fields, err := e.AllFields()
 	if err != nil {
 		return err
+	}
+
+	for i := 0; i < len(fields); i++ {
+		log.Printf("item fields %+v", fields[i])
 	}
 
 	items, err := item.List(ctx, e.ID, i.db)
@@ -60,7 +65,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	response := struct {
 		Items    []*item.ViewModelItem  `json:"items"`
 		Category int                    `json:"category"`
-		Fields   []*entity.Field        `json:"fields"`
+		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
 	}{
 		Items:    viewModelItems,
@@ -68,6 +73,11 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Fields:   fields,
 		Entity:   createViewModelEntity(e),
 	}
+
+	for i := 0; i < len(fields); i++ {
+		log.Printf("item fields %+v", fields[i])
+	}
+
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
@@ -92,9 +102,10 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	viewModelItems := make([]*item.ViewModelItem, len(items))
 	for i, item := range items {
 		viewModelItem := createViewModelItem(item)
+		log.Printf("viewModelItem  %+v", viewModelItem)
 		viewModelItems[i] = &viewModelItem
 	}
-
+	log.Printf("key  %s", key)
 	response := struct {
 		Items []*item.ViewModelItem `json:"items"`
 		Key   string                `json:"key"`
@@ -114,7 +125,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &vi); err != nil {
 		return errors.Wrap(err, "")
 	}
-	entityID := params["item_id"]
+	entityID := params["entity_id"]
 	existingItem, err := item.Retrieve(ctx, entityID, vi.ID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "Item Get During Update")
@@ -125,7 +136,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &vi)
 	}
 	//TODO push this to stream/queue
-	job.OnFieldUpdate(params["account_id"], params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
+	job.EventItemUpdated(params["account_id"], params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
 
 	return web.Respond(ctx, w, vi, http.StatusOK)
 }
@@ -149,7 +160,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//TODO push this to stream/queue
-	job.OnFieldCreate(params["account_id"], params["entity_id"], ni.ID, ni.Fields, i.db)
+	job.EventItemCreated(params["account_id"], params["entity_id"], ni.ID, ni.Fields, i.db)
 
 	return web.Respond(ctx, w, ri, http.StatusCreated)
 }
@@ -164,7 +175,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	fields, err := e.FieldsWithReference()
+	fields, err := e.AllFields()
 	if err != nil {
 		return err
 	}
@@ -186,7 +197,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		Entity entity.ViewModelEntity `json:"entity"`
 		Item   item.ViewModelItem     `json:"item"`
 		Bonds  []relationship.Bond    `json:"bonds"`
-		Fields []*entity.Field        `json:"fields"`
+		Fields []entity.Field         `json:"fields"`
 	}{
 		createViewModelEntity(e),
 		viewModelItem,

@@ -2,6 +2,7 @@ package relationship
 
 import (
 	"context"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -31,22 +32,72 @@ var (
 // This type of associations are always 1:N
 func Bonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]string) error {
 	relationships := populateBonds(accountID, srcEntityID, rFields)
-	return BulkCreate(ctx, db, relationships)
+	return BulkCreate(ctx, db, accountID, relationships)
+}
+
+// ReBonding updates the implicit relationships between two entities based on the reference fields on the event of entity update
+func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]string) error {
+	existingRelationships, err := Relationships(ctx, db, accountID, srcEntityID)
+	if err != nil {
+		return err
+	}
+
+	existingRelationshipMap := make(map[string]Relationship, 0)
+	for _, relationship := range existingRelationships {
+		if relationship.FieldID != FieldAssociationKey {
+			existingRelationshipMap[relationship.FieldID] = relationship
+		}
+	}
+	newlyAddedRShips, updatedRShips, deletedRIds := updateBonds(accountID, srcEntityID, existingRelationshipMap, rFields)
+	err = BulkCreate(ctx, db, accountID, newlyAddedRShips)
+	if err != nil {
+		return err
+	}
+	err = BulkUpdate(ctx, db, accountID, updatedRShips)
+	if err != nil {
+		return err
+	}
+	err = BulkDelete(ctx, db, accountID, deletedRIds)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Associate creates the explicit relationships between two entities given by the customer
 // This type of associations are always N:N
 func Associate(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
 	relationshipID, relationships := populateAssociation(accountID, srcEntityID, dstEntityID)
-	return relationshipID, BulkCreate(ctx, db, relationships)
+	return relationshipID, BulkCreate(ctx, db, accountID, relationships)
 }
 
 //TODO: implement bulk create
-func BulkCreate(ctx context.Context, db *sqlx.DB, relationships []Relationship) error {
+func BulkCreate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
 	for _, r := range relationships {
 		_, err := Create(ctx, db, r)
 		if err != nil {
 			return errors.Wrapf(err, "Association between entities %s and %s failed", r.SrcEntityID, r.DstEntityID)
+		}
+	}
+	return nil
+}
+
+//TODO: implement bulk update
+func BulkUpdate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
+	for _, r := range relationships {
+		err := Update(ctx, db, r)
+		if err != nil {
+			return errors.Wrapf(err, "Association update between entities %s and %s failed", r.SrcEntityID, r.DstEntityID)
+		}
+	}
+	return nil
+}
+
+func BulkDelete(ctx context.Context, db *sqlx.DB, accountID string, relationshipIDs []string) error {
+	for _, rID := range relationshipIDs {
+		err := Delete(ctx, db, accountID, rID)
+		if err != nil {
+			return errors.Wrapf(err, "Association delete for %s failed", rID)
 		}
 	}
 	return nil
@@ -72,6 +123,34 @@ func Create(ctx context.Context, db *sqlx.DB, r Relationship) (Relationship, err
 	return r, nil
 }
 
+func Update(ctx context.Context, db *sqlx.DB, r Relationship) error {
+	ctx, span := trace.StartSpan(ctx, "internal.relationship.Update")
+	defer span.End()
+
+	const q = `UPDATE relationships SET
+		"dst_entity_id" = $3,
+		WHERE account_id = $1 AND relationship_id = $2`
+	_, err := db.ExecContext(ctx, q, r.AccountID, r.RelationshipID, r.DstEntityID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Delete(ctx context.Context, db *sqlx.DB, accountID, relationshipID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.relationship.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM relationships WHERE account_id = $1 and relationship_id =$2`
+
+	if _, err := db.ExecContext(ctx, q, accountID, relationshipID); err != nil {
+		return errors.Wrapf(err, "deleting relationship %s", relationshipID)
+	}
+
+	return nil
+}
+
 // List gets the relationships for the destination entity
 func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
@@ -87,23 +166,27 @@ func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond,
 	return bonds, nil
 }
 
-func RelationshipIDs(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]RelationshipID, error) {
+func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Relationship, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
 	defer span.End()
 
-	var relationshipIDs []RelationshipID
-	const q = `SELECT relationship_id, field_id FROM relationships WHERE account_id = $1 AND src_entity_id = $2`
+	var relationships []Relationship
+	const q = `SELECT * FROM relationships WHERE account_id = $1 AND src_entity_id = $2`
 
-	if err := db.SelectContext(ctx, &relationshipIDs, q, accountID, entityID); err != nil {
-		return nil, errors.Wrap(err, "selecting relationship id for src entity")
+	if err := db.SelectContext(ctx, &relationships, q, accountID, entityID); err != nil {
+		return nil, errors.Wrap(err, "selecting relationships for src entity")
 	}
 
-	return relationshipIDs, nil
+	return relationships, nil
 }
 
 func populateBonds(accountID, srcEntityId string, referenceFields map[string]string) []Relationship {
 	relationships := make([]Relationship, 0)
 	for fieldKey, refID := range referenceFields {
+		if srcEntityId == "" || refID == "" {
+			log.Printf("either src_entity_id (%s) or ref_entity_id (%s) is empty. Bonding skipped", srcEntityId, refID)
+			continue
+		}
 		relationships = append(relationships, Relationship{
 			RelationshipID: uuid.New().String(),
 			AccountID:      accountID,
@@ -115,6 +198,25 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]str
 
 	}
 	return relationships
+}
+
+func updateBonds(accountID, srcEntityId string, existingRelationshipMap map[string]Relationship, referenceFields map[string]string) ([]Relationship, []Relationship, []string) {
+	var deletedRelationshipIDs []string
+	updatedRelationships := make([]Relationship, 0)
+
+	for _, relationship := range existingRelationshipMap {
+		if value, ok := referenceFields[relationship.FieldID]; ok {
+			delete(referenceFields, relationship.FieldID)
+			if value != relationship.DstEntityID {
+				relationship.DstEntityID = value
+				updatedRelationships = append(updatedRelationships, relationship)
+			}
+		} else {
+			deletedRelationshipIDs = append(deletedRelationshipIDs, relationship.RelationshipID)
+		}
+	}
+
+	return populateBonds(accountID, srcEntityId, referenceFields), updatedRelationships, deletedRelationshipIDs
 }
 
 func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []Relationship) {

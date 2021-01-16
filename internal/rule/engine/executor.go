@@ -76,7 +76,7 @@ func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity
 			if err != nil {
 				return nil, err
 			}
-			entityFields = entity.FillAllFieldValues(entityFields, i.Fields())
+			entityFields = entity.ValueAddFields(entityFields, i.Fields())
 		}
 	}
 
