@@ -11,6 +11,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		Key:         domainFieldID,
 		Name:        "domain",
 		DisplayName: "Domain",
+		Meta:        map[string]string{"config": "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -20,6 +21,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		Key:         apiKeyFieldID,
 		Name:        "api_key",
 		DisplayName: "API Key",
+		Meta:        map[string]string{"config": "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -38,6 +40,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		Key:         commanFieldID,
 		Name:        "common",
 		DisplayName: "",
+		Meta:        map[string]string{"config": "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}

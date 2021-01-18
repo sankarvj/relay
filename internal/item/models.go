@@ -29,21 +29,6 @@ type ViewModelItem struct {
 	Fields map[string]interface{} `json:"fields"`
 }
 
-type ViewModelItem1 struct {
-	ID     string                  `json:"id"`
-	Fields map[string]ItemProperty `json:"fields"`
-}
-
-type ItemProperty struct {
-	Key         string `json:"key"`
-	Value       string `json:"value"`
-	DisplayName string `json:"display_name"`
-	DataType    int    `json:"data_type"`
-	DomType     int    `json:"dom_type"`
-	RefID       string `json:"ref_id"`
-	RefKey      string `json:"ref_key"`
-}
-
 // NewItem has information needed to creat new item
 type NewItem struct {
 	ID        string                 `json:"id"`

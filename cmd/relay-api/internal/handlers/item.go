@@ -40,7 +40,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	fields, err := e.AllFields()
+	fields, err := e.Fields()
 	if err != nil {
 		return err
 	}
