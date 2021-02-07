@@ -96,28 +96,24 @@ func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, n
 		return err
 	}
 
-	e.UpdatedAt = now.Unix()
-	e.Fieldsb = fieldsB
-
 	const q = `UPDATE entities SET
 		"fieldsb" = $2,
 		"updated_at" = $3
 		WHERE entity_id = $1`
 	_, err = db.ExecContext(ctx, q, e.ID,
-		e.Fieldsb, e.UpdatedAt,
+		fieldsB, now.Unix(),
 	)
 	if err != nil {
 		return err
 	}
 
-	//TODO: do it in the same transaction.
-	updatedFields, err := e.AllFields()
+	updatedFields, err := unmarshalFields(fieldsB)
 	if err != nil {
 		return err
 	}
-	err = relationship.Bonding(ctx, db, e.AccountID, e.ID, refFields(updatedFields))
 
-	return nil
+	//TODO: do it in the same transaction.
+	return relationship.ReBonding(ctx, db, e.AccountID, e.ID, refFields(updatedFields))
 }
 
 // Retrieve gets the specified entity from the database.

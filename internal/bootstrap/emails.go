@@ -66,21 +66,6 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 
 func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, contactFieldKey string) []entity.Field {
 
-	configFieldID := uuid.New().String()
-	configField := entity.Field{
-		Key:      configFieldID,
-		Name:     "config",
-		DomType:  entity.DomNotApplicable,
-		DataType: entity.TypeReference,
-		RefID:    emailConfigEntityID,
-		Meta:     map[string]string{"config": "true"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
 	fromFieldID := uuid.New().String()
 	fromField := entity.Field{
 		Key:         fromFieldID,
@@ -163,5 +148,5 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{configField, fromField, toField, ccField, bccField, subjectField, bodyField}
+	return []entity.Field{fromField, toField, ccField, bccField, subjectField, bodyField}
 }

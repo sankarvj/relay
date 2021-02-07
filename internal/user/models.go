@@ -25,7 +25,7 @@ type User struct {
 
 // NewUser contains information needed to create a new User.
 type NewUser struct {
-	AccountIDs      []string `json:"account_id" validate:"required"`
+	AccountIDs      []string `json:"account_ids" validate:"required"`
 	Name            string   `json:"name" validate:"required"`
 	Email           string   `json:"email" validate:"required"`
 	Roles           []string `json:"roles" validate:"required"`

@@ -175,7 +175,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	fields, err := e.AllFields()
+	fields, err := e.Fields()
 	if err != nil {
 		return err
 	}

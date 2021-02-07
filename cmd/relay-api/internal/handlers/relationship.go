@@ -54,6 +54,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return errors.Wrap(err, "selecting related item ids")
 	}
+
 	childItems, err := item.BulkRetrieve(ctx, actualEntityID, itemIDs, rs.db)
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")

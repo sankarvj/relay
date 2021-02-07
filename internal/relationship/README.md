@@ -1,3 +1,11 @@
+# Relationships
+
+There are two kinds of relationships.
+    - Implicit - relationships created by lookup field (ex - a lookupfield (to) in emails references contact)
+    When an item gets added/updated the related connections will be updated automatically.
+    - Explicit - relationships can be created explicitly (ex - user can create a relationship between contact & company). A new item should be created manually
+
+
 NOTE: Right now, we are going with the psql way for finding the sub-items using the connections table.
 But in future, please use redis graph to directly fetch the child items
 

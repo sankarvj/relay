@@ -96,38 +96,11 @@ func ValueAddFields(entityFields []Field, itemFields map[string]interface{}) []F
 
 // Fields parses attribures to fields
 func (e Entity) Fields() ([]Field, error) {
-	fields, err := e.AllFields()
+	fields, err := unmarshalFields(e.Fieldsb)
 	if err != nil {
-		return nil, err
-	}
-	//remove all config fields
-	temp := fields[:0]
-	for _, field := range fields {
-		if !field.isConfig() {
-			temp = append(temp, field)
-		}
-	}
-	fields = temp
-	return fields, nil
-}
-
-func (e Entity) FieldsWithReference() ([]*Field, error) {
-	var referencedFields []*Field
-	fields, err := e.AllFields()
-	if err != nil {
-		return referencedFields, err
-	}
-	for i := 0; i < len(fields); i++ {
-		referencedFields = append(referencedFields, &fields[i])
-	}
-	return referencedFields, nil
-}
-
-// AllFields parses attribures to fields
-func (e Entity) AllFields() ([]Field, error) {
-	var fields []Field
-	if err := json.Unmarshal([]byte(e.Fieldsb), &fields); err != nil {
-		return nil, errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+		err = errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+		log.Println(err)
+		return make([]Field, 0), err
 	}
 	return fields, nil
 }
@@ -135,11 +108,9 @@ func (e Entity) AllFields() ([]Field, error) {
 func (e Entity) Key(name string) string {
 	fields, err := e.Fields()
 	if err != nil {
-		log.Println(err)
 		return ""
 	}
-	params := NamedKeysMap(fields)
-	return params[name]
+	return NamedKeysMap(fields)[name]
 }
 
 func (f *Field) SetDisplayGex(key string) {
@@ -202,10 +173,10 @@ func NamedKeysMap(entityFields []Field) map[string]string {
 	return params
 }
 
-func NamedFieldMap(entityFields []Field) map[string]Field {
-	params := map[string]Field{}
-	for _, field := range entityFields {
-		params[field.Name] = field
+func unmarshalFields(fieldsB string) ([]Field, error) {
+	var fields []Field
+	if err := json.Unmarshal([]byte(fieldsB), &fields); err != nil {
+		return nil, err
 	}
-	return params
+	return fields, nil
 }

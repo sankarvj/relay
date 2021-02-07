@@ -1,11 +1,13 @@
 package job
 
 import (
+	"log"
+
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 func sendMail(e entity.Entity, itemID string, vals map[string]interface{}) error {
-	fields, err := e.AllFields()
+	fields, err := e.Fields()
 	if err != nil {
 		return err
 	}
@@ -15,6 +17,8 @@ func sendMail(e entity.Entity, itemID string, vals map[string]interface{}) error
 	if err != nil {
 		return err
 	}
+
+	log.Printf("TODO: SEND MAIL PART IS PENDING %+v", emailEntityItem)
 
 	return nil
 }

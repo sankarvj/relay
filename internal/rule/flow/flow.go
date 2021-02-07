@@ -33,8 +33,8 @@ var (
 	// ErrInvalidItemEntity occurs when an item's entity is different from the flow entity
 	ErrInvalidItemEntity = errors.New("Item cannot be added to the flow. Entity mismatch")
 
-	// ErrInvalidFlowType occurs direct trigger is executed for any flow type but pipeline
-	ErrInvalidFlowType = errors.New("This operation is cannot be performed for this flow type")
+	// ErrInvalidFlowMode occurs direct trigger is executed for any flow mode but pipeline
+	ErrInvalidFlowMode = errors.New("This operation is cannot be performed for this flow mode")
 )
 
 // List retrieves a list of existing flows for the entity change.
@@ -199,8 +199,8 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, nodeID, ent
 	if n.Type != node.Stage {
 		return node.ErrInvalidNodeType
 	}
-	if f.Type != FlowTypePipeline {
-		return ErrInvalidFlowType
+	if f.Mode != FlowModePipeLine {
+		return ErrInvalidFlowMode
 	}
 	if i.EntityID != f.EntityID {
 		return ErrInvalidItemEntity

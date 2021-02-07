@@ -18,11 +18,12 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	if err != nil {
 		return err
 	}
-
 	namedFieldsObj := namedFieldsObjMap(mailFields)
 	fromField := namedFieldsObj["from"]
 
-	mailConfigFields, err := mergeActualsWithActor(ctx, db, fromField.RefID, map[string]string{fromField.RefID: fromField.Value.(string)})
+	fromConfigID := fromField.Value.([]interface{})[0].(string)
+
+	mailConfigFields, err := mergeActualsWithActor(ctx, db, fromField.RefID, map[string]string{fromField.RefID: fromConfigID})
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,11 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	//get config
 	variables := n.VariablesMap()
 	emailEntityItem.Body = RunExpRenderer(ctx, db, emailEntityItem.Body, variables)
-	emailEntityItem.To = RunExpRenderer(ctx, db, emailEntityItem.To, variables)
+	tos := []string{}
+	for _, to := range emailEntityItem.To {
+		tos = append(tos, RunExpRenderer(ctx, db, to, variables))
+	}
+	emailEntityItem.To = tos
 	emailEntityItem.Subject = RunExpRenderer(ctx, db, emailEntityItem.Subject, variables)
 
 	switch {
@@ -57,13 +62,13 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	return nil
 }
 
-func sendSimpleMessage(domain, key, from, to, subject, body string) (string, error) {
+func sendSimpleMessage(domain, key, from string, to []string, subject, body string) (string, error) {
 	mg := mailgun.NewMailgun(domain, key)
 	m := mg.NewMessage(
 		from,
 		subject,
 		body,
-		to,
+		to...,
 	)
 	resMsg, id, err := mg.Send(m)
 	log.Println("resMsg ", resMsg)

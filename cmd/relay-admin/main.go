@@ -162,7 +162,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - status
-	se, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Status", entity.CategoryChildUnit, bootstrap.StatusFields())
+	se, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedStatusEntityName, "Status", entity.CategoryChildUnit, bootstrap.StatusFields())
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - contacts
-	ce, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Contacts", entity.CategoryData, bootstrap.ContactFields(se.ID, ownerEntity.ID, ownerEntity.Key("email")))
+	ce, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedContactsEntityName, "Contacts", entity.CategoryData, bootstrap.ContactFields(se.ID, ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - companies
-	come, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Companies", entity.CategoryData, bootstrap.CompanyFields())
+	come, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, bootstrap.CompanyFields())
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - task
-	te, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Tasks", entity.CategoryData, bootstrap.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
+	te, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryData, bootstrap.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
 	if err != nil {
 		return err
 	}
@@ -235,19 +235,19 @@ func crmadd(cfg database.Config) error {
 	cc := "vijayasankarmobile@gmail.com"
 	subject := fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", ce.ID, ce.Key("nps_score"))
 	body := fmt.Sprintf("Hello {{%s.%s}}", ce.ID, ce.Key("email"))
-	emg, err := entity.SaveEmailTemplate(ctx, accountID, ei.ID, to, cc, "", subject, body, db)
+	emg, err := entity.SaveEmailTemplate(ctx, accountID, ei.ID, []string{to}, []string{cc}, []string{}, subject, body, db)
 	if err != nil {
 		return err
 	}
 
 	//add entity - api-hook
-	we, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "WebHook", entity.CategoryAPI, bootstrap.APIFields())
+	we, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedWebHookEntityName, "WebHook", entity.CategoryAPI, bootstrap.APIFields())
 	if err != nil {
 		return err
 	}
 
 	//add entity - delay
-	dele, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Delay Timer", entity.CategoryDelay, bootstrap.DelayFields())
+	dele, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, bootstrap.DelayFields())
 	if err != nil {
 		return err
 	}
@@ -263,7 +263,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - deal
-	de, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Deals", entity.CategoryData, bootstrap.DealFields(ce.ID, pID))
+	de, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, bootstrap.DealFields(ce.ID, pID))
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - tickets
-	tice, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), "", "Tickets", entity.CategoryData, bootstrap.TicketFields(se.ID))
+	tice, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, bootstrap.TicketFields(se.ID))
 	if err != nil {
 		return err
 	}
@@ -332,10 +332,10 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//contact email association
-	_, err = bootstrap.AssociationAdd(ctx, db, accountID, ce.ID, emailsEntity.ID)
-	if err != nil {
-		return err
-	}
+	// _, err = bootstrap.AssociationAdd(ctx, db, accountID, ce.ID, emailsEntity.ID)
+	// if err != nil {
+	// 	return err
+	// }
 
 	//deal email association
 	_, err = bootstrap.AssociationAdd(ctx, db, accountID, de.ID, emailsEntity.ID)

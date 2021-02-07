@@ -66,7 +66,7 @@ func fields(ctx context.Context, db *sqlx.DB, entityID string) ([]entity.Field, 
 	if err != nil {
 		return []entity.Field{}, err
 	}
-	return e.AllFields()
+	return e.Fields()
 }
 
 func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, entityID string, itemIDs ...string) ([]entity.Field, error) {

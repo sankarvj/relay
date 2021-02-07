@@ -6,6 +6,7 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 func StatusFields() []entity.Field {
@@ -38,7 +39,7 @@ func StatusVals(name, color string) map[string]interface{} {
 
 func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) []entity.Field {
 	nameField := entity.Field{
-		Key:         "uuid-00-fname",
+		Key:         schema.SeedFieldFNameKey,
 		Name:        "first_name",
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
@@ -67,7 +68,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 	}
 
 	npsField := entity.Field{
-		Key:         "uuid-00-nps-score",
+		Key:         schema.SeedFieldNPSKey,
 		Name:        "nps_score",
 		DisplayName: "NPS Score",
 		DataType:    entity.TypeNumber,
@@ -126,13 +127,13 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 
 func ContactVals(name, email, statusID string) map[string]interface{} {
 	contactVals := map[string]interface{}{
-		"uuid-00-fname":          name,
+		schema.SeedFieldFNameKey: name,
 		"uuid-00-email":          email,
-		"uuid-00-mobile-numbers": []string{"9944293499", "9940209164"},
-		"uuid-00-nps-score":      100,
+		"uuid-00-mobile-numbers": []interface{}{"9944293499", "9940209164"},
+		schema.SeedFieldNPSKey:   100,
 		"uuid-00-lf-stage":       "lead",
-		"uuid-00-status":         []string{statusID},
-		"uuid-00-owner":          []string{},
+		"uuid-00-status":         []interface{}{statusID},
+		"uuid-00-owner":          []interface{}{},
 	}
 	return contactVals
 }
@@ -195,7 +196,7 @@ func TicketFields(statusEntityID string) []entity.Field {
 func TicketVals(name, statusID string) map[string]interface{} {
 	ticketVals := map[string]interface{}{
 		"uuid-00-subject": name,
-		"uuid-00-status":  []string{statusID},
+		"uuid-00-status":  []interface{}{statusID},
 	}
 	return ticketVals
 }
@@ -272,8 +273,8 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 func TaskVals(desc, contactID string) map[string]interface{} {
 	taskVals := map[string]interface{}{
 		"uuid-00-desc":     desc,
-		"uuid-00-contact":  []string{contactID},
-		"uuid-00-status":   []string{},
+		"uuid-00-contact":  []interface{}{contactID},
+		"uuid-00-status":   []interface{}{},
 		"uuid-00-reminder": util.FormatTimeGo(time.Now()),
 		"uuid-00-due-by":   util.FormatTimeGo(time.Now()),
 	}
@@ -334,8 +335,8 @@ func DealVals(name string, amount int, contactID1, contactID2, nodeStageID strin
 	dealVals := map[string]interface{}{
 		"uuid-00-deal-name":   name,
 		"uuid-00-deal-amount": amount,
-		"uuid-00-contacts":    []string{contactID1, contactID2},
-		"uuid-00-pipe":        []string{nodeStageID},
+		"uuid-00-contacts":    []interface{}{contactID1, contactID2},
+		"uuid-00-pipe":        []interface{}{nodeStageID},
 	}
 	return dealVals
 }

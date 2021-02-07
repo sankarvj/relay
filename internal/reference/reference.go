@@ -29,6 +29,9 @@ func UpdateReferenceFields(ctx context.Context, fields []entity.Field, items []*
 	for _, item := range items {
 		for key, vals := range item.Fields {
 			if refIds, ok := referenceIds[key]; ok {
+				if vals == nil {
+					vals = []interface{}{}
+				}
 				referenceIds[key] = append(refIds, vals.([]interface{})...)
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
@@ -24,19 +25,19 @@ func TestEmailRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a send email engine for the given contact - default case")
 		{
-			e1 := "17b61c5a-c6f9-4894-82b4-8b0e4b2d5d44" //contacts-entity-id
-			e2 := "447a9c03-ad0c-4543-9dcf-fce1a8fbceed" //mails-entity-id
-			i1 := "9d9ab317-897d-4297-9818-088674ce497e" //contact-item-id
-			i2 := "ef068193-426d-4155-b00b-378c8fcc82be" //mail-item-id (assuming the item has incorparated the contacts fields as vars in its body/subject)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			emailConfigEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, entity.FixedEntityEmails)
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+			emailTemplateItems, _ := item.List(tests.Context(), emailConfigEntity.ID, db)
 
-			vars, _ := node.MapToJSONB(map[string]string{e1: i1}) // this will get populated only during the trigger
-			acts, _ := node.MapToJSONB(map[string]string{e2: i2}) // this will get populated during the workflow creation
+			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})           // this will get populated only during the trigger
+			acts, _ := node.MapToJSONB(map[string]string{emailConfigEntity.ID: emailTemplateItems[0].ID}) // this will get populated during the workflow creation
 
 			node := node.Node{
-				Expression: fmt.Sprintf("{{%s.uuid-00-fname}} eq {Vijay}", e1),
+				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", contactEntity.ID, schema.SeedFieldFNameKey),
 				Variables:  vars,
 				Actuals:    acts,
-				ActorID:    e2,
+				ActorID:    emailConfigEntity.ID,
 				Type:       node.Email,
 			}
 
@@ -59,20 +60,21 @@ func TestCreateItemRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a create item engine - default case")
 		{
-			e1 := "17b61c5a-c6f9-4894-82b4-8b0e4b2d5d44" //contacts-entity-id
-			i1 := "9d9ab317-897d-4297-9818-088674ce497e" //contact-item-id
-			e2 := "00000000-0000-0000-0000-000000000003" //task-entity-id
-			i2 := "00000000-0000-0000-0000-000000000012" //task-item-id (the task blue-print which will be used to create other tasks)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			taskEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTasksEntityName)
 
-			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
-			acts, _ := node.MapToJSONB(map[string]string{e2: i2})
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+			taskItems, _ := item.List(tests.Context(), taskEntity.ID, db)
+
+			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})
+			acts, _ := node.MapToJSONB(map[string]string{taskEntity.ID: taskItems[0].ID})
 
 			node := node.Node{
 				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
 				AccountID: schema.SeedAccountID,
 				Variables: vars,
 				Actuals:   acts,
-				ActorID:   e2,
+				ActorID:   taskEntity.ID,
 				Type:      node.Push,
 			}
 			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
@@ -94,19 +96,18 @@ func TestUpdateRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running update item engine - default case")
 		{
-			e1 := "00000000-0000-0000-0000-000000000002" //contacts-entity-id
-			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i2 := "00000000-0000-0000-0000-000000000011" //updatable-contact-id (Has blue-print of the values to be updated when triggered)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 
-			vars, _ := node.MapToJSONB(map[string]string{e1: i1})
-			acts, _ := node.MapToJSONB(map[string]string{e1: i2})
+			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})
+			acts, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[1].ID}) //updatable-contact-id (Has blue-print of the values to be updated when triggered)
 
 			node := node.Node{
 				//Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", e1, k1),
 				AccountID: schema.SeedAccountID,
 				Variables: vars,
 				Actuals:   acts,
-				ActorID:   e1,
+				ActorID:   contactEntity.ID,
 				Type:      node.Modify,
 			}
 			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
@@ -154,21 +155,23 @@ func TestTrigger(t *testing.T) {
 	defer teardown()
 	t.Log("Given the need to run the engine for a trigger")
 	{
-		t.Log("\tWhen updating the event mrr in contact1")
+		t.Log("\tWhen updating the event NPS score in contact")
 		{
-			e1 := "00000000-0000-0000-0000-000000000002" //contact-entity-id
-			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			i, _ := item.Retrieve(tests.Context(), e1, i1, db)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+			i, _ := item.Retrieve(tests.Context(), contactEntity.ID, contactItems[0].ID, db)
 			oldItemFields := i.Fields()
 			newItemFields := i.Fields()
-			newItemFields["uuid-00-nps-score"] = 99
-			item.UpdateFields(tests.Context(), db, e1, i1, newItemFields)
+			newItemFields[schema.SeedFieldNPSKey] = 99
+			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
-			flows, _ := flow.List(tests.Context(), []string{e1}, -1, db)
+			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, -1, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
-			err := flow.Trigger(tests.Context(), db, nil, i1, dirtyFlows)
-			if err != nil {
-				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
+			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows)
+			for _, err := range errs {
+				if err != nil {
+					t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
+				}
 			}
 			t.Logf("\t%s should flow without error", tests.Success)
 		}
@@ -185,17 +188,17 @@ func TestDirectTrigger(t *testing.T) {
 	{
 		t.Log("\twhen updating the event mrr in contact1")
 		{
-			e1 := "00000000-0000-0000-0000-000000000002"
-			i1 := "00000000-0000-0000-0000-000000000010" //contact-item-id
-			n2 := "00000000-0000-0000-0000-000000000025" //node-stage-2
-			err := flow.DirectTrigger(tests.Context(), db, nil, n2, e1, i1)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+			n2 := "82adc579-b4df-48cc-a22e-dd42178d962c" //node-stage-2
+			err := flow.DirectTrigger(tests.Context(), db, nil, n2, contactEntity.ID, contactItems[0].ID)
 			if err != nil {
 				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
 			}
 			t.Logf("\t%s should flow without error", tests.Success)
 
-			afs, _ := flow.ActiveFlows(tests.Context(), []string{"00000000-0000-0000-0000-000000000023"}, db) //pipeline-id
-			ans, _ := flow.ActiveNodes(tests.Context(), []string{"00000000-0000-0000-0000-000000000023"}, db) //pipeline-id
+			afs, _ := flow.ActiveFlows(tests.Context(), []string{"437834ca-2dc3-4bdf-8d6f-27efb73d41f7"}, db) //pipeline-id
+			ans, _ := flow.ActiveNodes(tests.Context(), []string{"437834ca-2dc3-4bdf-8d6f-27efb73d41f7"}, db) //pipeline-id
 			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
 			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 

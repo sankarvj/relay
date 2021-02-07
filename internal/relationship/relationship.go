@@ -49,6 +49,7 @@ func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, 
 		}
 	}
 	newlyAddedRShips, updatedRShips, deletedRIds := updateBonds(accountID, srcEntityID, existingRelationshipMap, rFields)
+
 	err = BulkCreate(ctx, db, accountID, newlyAddedRShips)
 	if err != nil {
 		return err
@@ -76,7 +77,9 @@ func BulkCreate(ctx context.Context, db *sqlx.DB, accountID string, relationship
 	for _, r := range relationships {
 		_, err := Create(ctx, db, r)
 		if err != nil {
-			return errors.Wrapf(err, "Association between entities %s and %s failed", r.SrcEntityID, r.DstEntityID)
+			err = errors.Wrapf(err, "Association between entities %s and %s failed", r.SrcEntityID, r.DstEntityID)
+			log.Println(err)
+			return err
 		}
 	}
 	return nil
@@ -195,7 +198,6 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]str
 			FieldID:        fieldKey,
 			Type:           TypeBond,
 		})
-
 	}
 	return relationships
 }

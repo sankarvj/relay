@@ -136,7 +136,7 @@ Notes with @mention
 ### Ad-Hoc Shots
 fix the email view? How to connect the inbox?
 fix the task view with remainders and all
-define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related.
+define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related in the relationship table.
 e-mail integration watch needs to be called every day.
 status field - DomAutoSelect
 ref_key as the separate var instead of display_gex

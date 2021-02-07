@@ -151,7 +151,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	}
 
 	const q = `INSERT INTO users
-		(user_id, account_id, name, email, password_hash, roles, created_at, updated_at)
+		(user_id, account_ids, name, email, password_hash, roles, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 	_, err = db.ExecContext(
 		ctx, q,

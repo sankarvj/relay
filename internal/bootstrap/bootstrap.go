@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -133,7 +134,7 @@ func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID strin
 		Mode:       mode,
 		Type:       flow.FlowTypeFieldUpdate,
 		Condition:  condition,
-		Expression: `{{` + entityID + `.uuid-00-fname}} eq {Vijay} && {{` + entityID + `.uuid-00-nps-score}} gt {98}`,
+		Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", entityID, schema.SeedFieldFNameKey, entityID, schema.SeedFieldNPSKey),
 		Name:       name,
 	}
 

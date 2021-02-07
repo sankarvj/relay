@@ -14,27 +14,32 @@ import (
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 
-func EventItemUpdated(account_id, entityID, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB) {
+func EventItemUpdated(accountID, entityID, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB) {
 	validateWorkflows(context.Background(), db, entityID, itemID, oldFields, newFields)
-	updateConnection(context.Background(), db, account_id, entityID, itemID, oldFields, newFields)
+	updateConnection(context.Background(), db, accountID, entityID, itemID, oldFields, newFields)
 }
 
-func EventItemCreated(account_id, entityID, itemID string, vals map[string]interface{}, db *sqlx.DB) {
+func EventItemCreated(accountID, entityID, itemID string, newFields map[string]interface{}, db *sqlx.DB) {
+	//validateWorkflows(context.Background(), db, entityID, itemID, oldFields, newFields)
+	addConnection(context.Background(), db, accountID, entityID, itemID, newFields)
 
 	e, err := entity.Retrieve(context.Background(), entityID, db)
 	if err != nil {
-		log.Println("There is an error while retriving entity...", err)
+		log.Println("error while retriving entity on job", err)
+		return
 	}
 
 	switch e.Category {
 	case entity.CategoryEmail:
-		sendMail(e, itemID, vals)
+		err = sendMail(e, itemID, newFields)
+	}
+	if err != nil {
+		log.Println("error while performing the job", err)
 	}
 
-	addConnection(context.Background(), db, account_id, entityID, itemID, vals)
 }
 
-func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string, oldFields, vals map[string]interface{}) {
+func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string, oldFields, newFields map[string]interface{}) {
 	// log.Println("entityID...", entityID)
 	// log.Println("itemID...", itemID)
 	// log.Println("oldFields...", oldFields)
@@ -43,7 +48,7 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string
 	if err != nil {
 		log.Println("There is an error while selecting flows...", err)
 	}
-	dirtyFlows := flow.DirtyFlows(context.Background(), flows, oldFields, vals)
+	dirtyFlows := flow.DirtyFlows(context.Background(), flows, oldFields, newFields)
 
 	log.Printf("This update triggers %d flows", len(dirtyFlows))
 	if len(dirtyFlows) > 0 {
@@ -58,21 +63,20 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string
 	}
 }
 
-func addConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, itemID string, newFields map[string]interface{}) {
-	relationMap := relationMap(ctx, db, account_id, entityID)
+func addConnection(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string, newFields map[string]interface{}) {
+	relationMap := relationMap(ctx, db, accountID, entityID)
 	for k, v := range newFields {
 		if relationshipID, ok := relationMap[k]; ok {
-			dstItemIds := v.([]string)
-			if len(dstItemIds) == 0 {
+			if v == nil || v == "" || len(v.([]interface{})) == 0 {
 				continue
 			}
 			//TODO: use batch create
-			for _, dstItemID := range dstItemIds {
+			for _, dstItemID := range v.([]interface{}) {
 				c := connection.Connection{
-					AccountID:      account_id,
+					AccountID:      accountID,
 					RelationshipID: relationshipID,
 					SrcItemID:      itemID,
-					DstItemID:      dstItemID,
+					DstItemID:      dstItemID.(string),
 				}
 
 				_, err := connection.Create(ctx, db, c)
@@ -81,7 +85,6 @@ func addConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, itemI
 					return
 				}
 			}
-
 		}
 	}
 }

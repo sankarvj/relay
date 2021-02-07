@@ -29,13 +29,12 @@ type updaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB)
 
 // EmailEntity represents structural format of email entity
 type EmailEntity struct {
-	Config  string `json:"config"`
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Cc      string `json:"cc"`
-	Bcc     string `json:"bcc"`
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
+	From    []string `json:"from"`
+	To      []string `json:"to"`
+	Cc      []string `json:"cc"`
+	Bcc     []string `json:"bcc"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body"`
 }
 
 // EmailConfigEntity represents structural format of email config entity
@@ -124,7 +123,7 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 		return item.Item{}, err
 	}
 
-	entityFields, err := emailConfigEntity.AllFields()
+	entityFields, err := emailConfigEntity.Fields()
 	if err != nil {
 		return item.Item{}, err
 	}
@@ -151,13 +150,13 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 
 }
 
-func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID, to, cc, bcc, subject, body string, db *sqlx.DB) (item.Item, error) {
+func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
 	emailEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityEmails)
 	if err != nil {
 		return item.Item{}, err
 	}
 
-	entityFields, err := emailEntity.AllFields()
+	entityFields, err := emailEntity.Fields()
 	if err != nil {
 		return item.Item{}, err
 	}
@@ -167,8 +166,7 @@ func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID, to, cc
 	if err != nil {
 		return item.Item{}, err
 	}
-	emailEntityItem.Config = emailConfigItemID
-	emailEntityItem.From = emailConfigItemID
+	emailEntityItem.From = []string{emailConfigItemID}
 	emailEntityItem.To = to
 	emailEntityItem.Cc = cc
 	emailEntityItem.Bcc = bcc
