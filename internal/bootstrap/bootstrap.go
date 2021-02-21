@@ -84,7 +84,7 @@ func EntityUpdate(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID 
 	}
 
 	fmt.Printf("Entity '%s' Updated\n", entityID)
-	return entity.Update(ctx, db, entityID, string(input), time.Now())
+	return entity.Update(ctx, db, accountID, entityID, string(input), time.Now())
 }
 
 func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, name, displayName string, category int, fields []entity.Field) (entity.Entity, error) {

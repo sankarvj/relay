@@ -53,18 +53,19 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 		ID:        n.ID,
 		AccountID: n.AccountID,
 		EntityID:  n.EntityID,
+		UserID:    n.UserID,
 		Fieldsb:   string(fieldsBytes),
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO items
-		(item_id, account_id, entity_id, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(item_id, account_id, entity_id, user_id, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		i.ID, i.AccountID, i.EntityID, i.Fieldsb,
+		i.ID, i.AccountID, i.EntityID, i.UserID, i.Fieldsb,
 		i.CreatedAt, i.UpdatedAt,
 	)
 	if err != nil {
@@ -116,22 +117,22 @@ func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateIte
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, entityID, id string, db *sqlx.DB) (Item, error) {
+func Retrieve(ctx context.Context, entityID, itemID string, db *sqlx.DB) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Retrieve")
 	defer span.End()
 
-	if _, err := uuid.Parse(id); err != nil {
+	if _, err := uuid.Parse(itemID); err != nil {
 		return Item{}, ErrInvalidID
 	}
 
 	var i Item
 	const q = `SELECT * FROM items WHERE entity_id = $1 AND item_id = $2`
-	if err := db.GetContext(ctx, &i, q, entityID, id); err != nil {
+	if err := db.GetContext(ctx, &i, q, entityID, itemID); err != nil {
 		if err == sql.ErrNoRows {
 			return Item{}, ErrNotFound
 		}
 
-		return Item{}, errors.Wrapf(err, "selecting item %q", id)
+		return Item{}, errors.Wrapf(err, "selecting item %q", itemID)
 	}
 
 	return i, nil
@@ -163,6 +164,33 @@ func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, err
 	}
 
 	return items, nil
+}
+
+func UserEntityItems(ctx context.Context, entityID, userID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 AND user_id = $2 LIMIT 20`
+
+	if err := db.SelectContext(ctx, &items, q, entityID, userID); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for entity id with user")
+	}
+
+	return items, nil
+}
+
+func DeleteAll(ctx context.Context, db *sqlx.DB, accountID, entityID, userID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM items WHERE account_id = $1 and entity_id = $2 and user_id = $3`
+
+	if _, err := db.ExecContext(ctx, q, accountID, entityID, userID); err != nil {
+		return errors.Wrapf(err, "deleting items for account %s on entity %s", accountID, entityID)
+	}
+
+	return nil
 }
 
 // Fields parses attribures to fields

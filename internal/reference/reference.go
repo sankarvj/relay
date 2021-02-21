@@ -15,7 +15,7 @@ import (
 In this file we map the fields with the reference field value for the specific item
 **/
 
-func UpdateReferenceFields(ctx context.Context, fields []entity.Field, items []*item.ViewModelItem, db *sqlx.DB) {
+func UpdateReferenceFields(ctx context.Context, accountID string, fields []entity.Field, items []*item.ViewModelItem, db *sqlx.DB) {
 	referenceFields := make(map[string]*entity.Field, 0)
 	referenceIds := make(map[string][]interface{}, 0)
 
@@ -41,11 +41,11 @@ func UpdateReferenceFields(ctx context.Context, fields []entity.Field, items []*
 		if f.DomType == entity.DomSelect {
 			updateChoicesForFieldUnits(ctx, db, f)
 		} else if f.DomType == entity.DomAutoSelect {
-			updateChoicesWithExpression(ctx, db, f, items)
+			updateChoicesWithExpression(ctx, db, accountID, f, items)
 		} else if f.DomType == entity.DomPipeline || f.DomType == entity.DomPlayBook {
 			updateChoicesForPipeLine(ctx, db, f)
 		} else {
-			updateChoicesForOtherSelectDom(ctx, db, f, referenceIds)
+			updateChoices(ctx, db, f, referenceIds[f.Key])
 		}
 	}
 }
@@ -65,17 +65,17 @@ func updateChoicesForFieldUnits(ctx context.Context, db *sqlx.DB, f *entity.Fiel
 	}
 }
 
-func updateChoicesWithExpression(ctx context.Context, db *sqlx.DB, f *entity.Field, items []*item.ViewModelItem) {
+func updateChoicesWithExpression(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []*item.ViewModelItem) {
 	choiceExpressions := f.Choices //store choice expressions and empty the choices
 	f.Choices = make([]entity.Choice, 0)
 	updateChoicesForFieldUnits(ctx, db, f)
 
 	for i := 0; i < len(items); i++ {
-		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't set auto if the value exist already
+		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't execute the choice expressions and set the value if it is already set. for more details go to README
 			continue
 		}
 		for _, choice := range choiceExpressions {
-			result := engine.RunExpEvaluator(ctx, db, nil, choice.Expression, items[i].Fields)
+			result := engine.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
 			if result {
 				items[i].Fields[f.Key] = []interface{}{choice.ID}
 			}
@@ -96,8 +96,8 @@ func updateChoicesForPipeLine(ctx context.Context, db *sqlx.DB, f *entity.Field)
 	}
 }
 
-func updateChoicesForOtherSelectDom(ctx context.Context, db *sqlx.DB, f *entity.Field, referenceIds map[string][]interface{}) {
-	refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(referenceIds[f.Key]), db)
+func updateChoices(ctx context.Context, db *sqlx.DB, f *entity.Field, referenceIds []interface{}) {
+	refItems, err := item.BulkRetrieve(ctx, f.RefID, removeDuplicateValues(referenceIds), db)
 	if err != nil {
 		log.Println("error on retriving reference items for selected items. continuing... ", err)
 	}
@@ -111,6 +111,15 @@ func updateChoicesForOtherSelectDom(ctx context.Context, db *sqlx.DB, f *entity.
 			ID:           refItem.ID,
 			DisplayValue: refItem.Fields()[f.DisplayGex()],
 		})
+	}
+}
+
+//UpdateChoicesWrapper updates only the choices for reference fields
+func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, valueAddedFields []entity.Field) {
+	for i := 0; i < len(valueAddedFields); i++ {
+		if valueAddedFields[i].IsReference() {
+			updateChoices(ctx, db, &valueAddedFields[i], valueAddedFields[i].Value.([]interface{}))
+		}
 	}
 }
 

@@ -87,11 +87,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 }
 
 // Update replaces a item document in the database.
-func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, now time.Time) error {
+func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fieldsB string, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Update")
 	defer span.End()
 
-	e, err := Retrieve(ctx, entityID, db)
+	e, err := Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return err
 	}
@@ -117,22 +117,22 @@ func Update(ctx context.Context, db *sqlx.DB, entityID string, fieldsB string, n
 }
 
 // Retrieve gets the specified entity from the database.
-func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Entity, error) {
+func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Retrieve")
 	defer span.End()
 
-	if _, err := uuid.Parse(id); err != nil {
+	if _, err := uuid.Parse(entityID); err != nil {
 		return Entity{}, ErrInvalidID
 	}
 
 	var e Entity
-	const q = `SELECT * FROM entities WHERE entity_id = $1`
-	if err := db.GetContext(ctx, &e, q, id); err != nil {
+	const q = `SELECT * FROM entities WHERE account_id = $1 AND entity_id = $2`
+	if err := db.GetContext(ctx, &e, q, accountID, entityID); err != nil {
 		if err == sql.ErrNoRows {
 			return Entity{}, ErrNotFound
 		}
 
-		return Entity{}, errors.Wrapf(err, "selecting entity %q", id)
+		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityID)
 	}
 
 	return e, nil

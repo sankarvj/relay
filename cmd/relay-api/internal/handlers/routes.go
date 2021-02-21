@@ -55,6 +55,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("POST", "/receive/gmail/message", integ.ReceiveEmail)
 	app.Handle("GET", "/v1/accounts/:account_id/integrations/:integration_id", integ.AccessIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id", integ.SaveIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/watch", integ.DailyWatch, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	t := Team{
 		db:            db,

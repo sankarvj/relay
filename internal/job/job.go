@@ -15,15 +15,17 @@ import (
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 
 func EventItemUpdated(accountID, entityID, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB) {
-	validateWorkflows(context.Background(), db, entityID, itemID, oldFields, newFields)
-	updateConnection(context.Background(), db, accountID, entityID, itemID, oldFields, newFields)
+	ctx := context.Background()
+	validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
+	updateConnection(ctx, db, accountID, entityID, itemID, oldFields, newFields)
 }
 
 func EventItemCreated(accountID, entityID, itemID string, newFields map[string]interface{}, db *sqlx.DB) {
-	//validateWorkflows(context.Background(), db, entityID, itemID, oldFields, newFields)
-	addConnection(context.Background(), db, accountID, entityID, itemID, newFields)
+	ctx := context.Background()
+	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
+	addConnection(ctx, db, accountID, entityID, itemID, newFields)
 
-	e, err := entity.Retrieve(context.Background(), entityID, db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		log.Println("error while retriving entity on job", err)
 		return
@@ -31,7 +33,7 @@ func EventItemCreated(accountID, entityID, itemID string, newFields map[string]i
 
 	switch e.Category {
 	case entity.CategoryEmail:
-		err = sendMail(e, itemID, newFields)
+		err = sendMail(ctx, accountID, e.ID, itemID, e.FieldsIgnoreError(), newFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)

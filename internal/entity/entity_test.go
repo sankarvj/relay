@@ -70,7 +70,7 @@ func TestDataEntity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("\tShould be able to marshal the fields - %s", err)
 			}
-			err = entity.Update(tests.Context(), db, "00000000-0000-0000-0001-000000000000", string(input), time.Now())
+			err = entity.Update(tests.Context(), db, schema.SeedAccountID, "00000000-0000-0000-0001-000000000000", string(input), time.Now())
 			if err != nil {
 				t.Fatalf("\tShould be able to update an entity - %s", err)
 			}

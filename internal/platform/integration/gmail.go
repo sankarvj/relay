@@ -17,7 +17,7 @@ import (
 )
 
 func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
-	config, err := config(oAuthFile)
+	config, err := getConfig(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -25,7 +25,7 @@ func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
 }
 
 func GetToken(oAuthFile, code string) (string, error) {
-	config, err := config(oAuthFile)
+	config, err := getConfig(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func GetToken(oAuthFile, code string) (string, error) {
 }
 
 func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
-	config, err := config(oAuthFile)
+	config, err := getConfig(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -62,24 +62,24 @@ func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
 	user := "me"
 	profileCall := srv.Users.GetProfile(user)
 	profile, err := profileCall.Do()
-	emailAddress = profile.EmailAddress
 	if err != nil {
 		return emailAddress, err
 	}
+	emailAddress = profile.EmailAddress
 
-	watchCall := srv.Users.Watch(user, &gmail.WatchRequest{
+	watchCall := srv.Users.Watch(emailAddress, &gmail.WatchRequest{
 		TopicName: topicName,
 	})
 	_, err = watchCall.Do()
 	if err != nil {
 		return emailAddress, err
 	}
-	log.Println("started watching the user")
+	log.Printf("started watching the user %s", emailAddress)
 	return emailAddress, nil
 }
 
-func SendMail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName, toEmail string, subject string, body string) error {
-	config, err := config(oAuthFile)
+func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
+	config, err := getConfig(oAuthFile)
 	if err != nil {
 		return err
 	}
@@ -94,20 +94,45 @@ func SendMail(oAuthFile, tokenJson string, user string, fromName, fromEmail stri
 		return err
 	}
 
-	gmsg := msg(fromName, fromEmail, toName, toEmail, subject, body)
-	_, err = srv.Users.Messages.Send(user, &gmsg).Do()
+	rgmsg, err := srv.Users.History.List(user).StartHistoryId(historyID).Do()
 	if err != nil {
 		return err
 	}
+	log.Printf("history msg %+v", rgmsg)
 	return nil
 }
 
-func config(oAuthFile string) (*oauth2.Config, error) {
+func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName string, toEmail []string, subject string, body string) error {
+	config, err := getConfig(oAuthFile)
+	if err != nil {
+		return err
+	}
+
+	client, err := client(config, tokenJson)
+	if err != nil {
+		return err
+	}
+
+	srv, err := gmail.New(client)
+	if err != nil {
+		return err
+	}
+
+	gmsg := msg(fromName, fromEmail, toName, toEmail[0], subject, body) //TODO how to send multiple to address
+	rgmsg, err := srv.Users.Messages.Send(user, &gmsg).Do()
+	if err != nil {
+		return err
+	}
+	log.Printf("rgmsg %+v", rgmsg)
+	return nil
+}
+
+func getConfig(oAuthFile string) (*oauth2.Config, error) {
 	b, err := ioutil.ReadFile(oAuthFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to read client secret file")
 	}
-	return google.ConfigFromJSON(b, gmail.GmailReadonlyScope)
+	return google.ConfigFromJSON(b, gmail.GmailReadonlyScope, gmail.GmailSendScope)
 }
 
 func client(config *oauth2.Config, tokenJson string) (*http.Client, error) {
@@ -119,8 +144,8 @@ func client(config *oauth2.Config, tokenJson string) (*http.Client, error) {
 }
 
 func msg(fromName, fromEmail string, toName, toEmail string, subject string, body string) gmail.Message {
-	from := mail.Address{fromName, fromEmail}
-	to := mail.Address{toName, toEmail}
+	from := mail.Address{Name: fromName, Address: fromEmail}
+	to := mail.Address{Name: toName, Address: toEmail}
 
 	header := make(map[string]string)
 	header["From"] = from.String()
@@ -135,6 +160,9 @@ func msg(fromName, fromEmail string, toName, toEmail string, subject string, bod
 		msg += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 	msg += "\r\n" + body
+
+	fmt.Printf("header --> %+v", header)
+	fmt.Println("msg --> ", msg)
 
 	return gmail.Message{
 		Raw: base64.RawURLEncoding.EncodeToString([]byte(msg)),

@@ -26,18 +26,19 @@ func TestEmailRuleRunner(t *testing.T) {
 		t.Log("\twhen running a send email engine for the given contact - default case")
 		{
 			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
-			emailConfigEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, entity.FixedEntityEmails)
+			emailsEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, entity.FixedEntityEmails)
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
-			emailTemplateItems, _ := item.List(tests.Context(), emailConfigEntity.ID, db)
+			emailTemplateItems, _ := item.List(tests.Context(), emailsEntity.ID, db)
 
-			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})           // this will get populated only during the trigger
-			acts, _ := node.MapToJSONB(map[string]string{emailConfigEntity.ID: emailTemplateItems[0].ID}) // this will get populated during the workflow creation
+			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})      // this will get populated only during the trigger
+			acts, _ := node.MapToJSONB(map[string]string{emailsEntity.ID: emailTemplateItems[0].ID}) // this will get populated during the workflow creation
 
 			node := node.Node{
+				AccountID:  schema.SeedAccountID,
 				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", contactEntity.ID, schema.SeedFieldFNameKey),
 				Variables:  vars,
 				Actuals:    acts,
-				ActorID:    emailConfigEntity.ID,
+				ActorID:    emailsEntity.ID,
 				Type:       node.Email,
 			}
 

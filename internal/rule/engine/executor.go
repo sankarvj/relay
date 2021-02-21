@@ -52,17 +52,9 @@ func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n
 	return nil
 }
 
-func namedFieldsObjMap(entityFields []entity.Field) map[string]entity.Field {
-	params := map[string]entity.Field{}
-	for _, field := range entityFields {
-		params[field.Name] = field
-	}
-	return params
-}
-
-func fields(ctx context.Context, db *sqlx.DB, entityID string) ([]entity.Field, error) {
+func fields(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]entity.Field, error) {
 	//Load entity maps If valid entity exists.
-	e, err := entity.Retrieve(ctx, entityID, db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return []entity.Field{}, err
 	}
@@ -83,13 +75,13 @@ func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity
 	return entityFields, nil
 }
 
-func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, actorID string, actualsMap map[string]string) ([]entity.Field, error) {
-	entityFields, err := fields(ctx, db, actorID)
+func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, accountID, actorEntityID, actorItemID string) ([]entity.Field, error) {
+	entityFields, err := fields(ctx, db, accountID, actorEntityID)
 	if err != nil {
 		return nil, err
 	}
 
-	entityFields, err = fillItemFieldValues(ctx, db, entityFields, actorID, actualsMap[actorID])
+	entityFields, err = fillItemFieldValues(ctx, db, entityFields, actorEntityID, actorItemID)
 	if err != nil {
 		return nil, err
 	}

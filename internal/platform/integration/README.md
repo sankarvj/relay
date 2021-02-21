@@ -11,6 +11,9 @@ The Server will store the token and call the watch with the topic name. So, that
 - Since we can't give the localhost here. We are running the ngRok to receive the callback. 
 - ngrok http -hostname=vjrelay.ngrok.io 3000
 
+# Scopes
+Scopes is present at the getConfig
+
 # Todo
 - Add authentication for the push URL
 - Process the received message

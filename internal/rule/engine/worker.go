@@ -14,7 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func worker(ctx context.Context, db *sqlx.DB, expression string, input map[string]interface{}) (map[string]interface{}, error) {
+func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (map[string]interface{}, error) {
 	log.Printf("running worker for expression %s : %v", expression, input)
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
@@ -22,7 +22,7 @@ func worker(ctx context.Context, db *sqlx.DB, expression string, input map[strin
 	} else if entityID == node.SelfEntity {
 		return buildResultant(node.SelfEntity, input), nil
 	}
-	e, err := entity.Retrieve(ctx, entityID, db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return map[string]interface{}{}, err
 	}

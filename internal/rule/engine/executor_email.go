@@ -2,28 +2,24 @@ package engine
 
 import (
 	"context"
-	"errors"
-	"log"
-	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/mailgun/mailgun-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
 func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	mailFields, err := mergeActualsWithActor(ctx, db, n.ActorID, n.ActualsMap())
+	mailFields, err := mergeActualsWithActor(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
-	namedFieldsObj := namedFieldsObjMap(mailFields)
+	//fetch e-mail integration config from the from field of the mail
+	namedFieldsObj := entity.NamedFieldsObjMap(mailFields)
 	fromField := namedFieldsObj["from"]
+	fromFieldValue := fromField.Value.([]interface{})[0].(string)
 
-	fromConfigID := fromField.Value.([]interface{})[0].(string)
-
-	mailConfigFields, err := mergeActualsWithActor(ctx, db, fromField.RefID, map[string]string{fromField.RefID: fromConfigID})
+	mailConfigFields, err := mergeActualsWithActor(ctx, db, n.AccountID, fromField.RefID, fromFieldValue)
 	if err != nil {
 		return err
 	}
@@ -42,37 +38,13 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 
 	//get config
 	variables := n.VariablesMap()
-	emailEntityItem.Body = RunExpRenderer(ctx, db, emailEntityItem.Body, variables)
+	emailEntityItem.Body = RunExpRenderer(ctx, db, n.AccountID, emailEntityItem.Body, variables)
 	tos := []string{}
 	for _, to := range emailEntityItem.To {
-		tos = append(tos, RunExpRenderer(ctx, db, to, variables))
+		tos = append(tos, RunExpRenderer(ctx, db, n.AccountID, to, variables))
 	}
 	emailEntityItem.To = tos
-	emailEntityItem.Subject = RunExpRenderer(ctx, db, emailEntityItem.Subject, variables)
+	emailEntityItem.Subject = RunExpRenderer(ctx, db, n.AccountID, emailEntityItem.Subject, variables)
 
-	switch {
-	case strings.HasSuffix(emailConfigEntityItem.Domain, integration.DomainMailGun):
-		sendSimpleMessage(emailConfigEntityItem.Domain, emailConfigEntityItem.APIKey, emailConfigEntityItem.Email, emailEntityItem.To, emailEntityItem.Subject, emailEntityItem.Body)
-	case strings.HasSuffix(emailConfigEntityItem.Domain, integration.DomainGMail):
-		return errors.New("G-Mail send message not implemented yet")
-	default:
-		return errors.New("No e-mail client configured to send the mail template")
-	}
-
-	return nil
-}
-
-func sendSimpleMessage(domain, key, from string, to []string, subject, body string) (string, error) {
-	mg := mailgun.NewMailgun(domain, key)
-	m := mg.NewMessage(
-		from,
-		subject,
-		body,
-		to...,
-	)
-	resMsg, id, err := mg.Send(m)
-	log.Println("resMsg ", resMsg)
-	log.Println("resMsg id ", id)
-	log.Println("resMsg err ", err)
-	return id, err
+	return integration.SendEmail(emailConfigEntityItem.Domain, emailConfigEntityItem.APIKey, emailConfigEntityItem.Email, emailEntityItem.To, emailEntityItem.Subject, emailEntityItem.Body)
 }

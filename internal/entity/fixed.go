@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/subscription"
 	"go.opencensus.io/trace"
 )
 
@@ -97,12 +98,12 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID string, pre
 }
 
 func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB) ([]Field, updaterFunc, error) {
-	preDefinedEntity, err := RetrieveFixedEntity(ctx, db, accountID, preDefinedEntityID)
+	preDefinedEntity, err := Retrieve(ctx, accountID, preDefinedEntityID, db)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	it, err := item.Retrieve(ctx, preDefinedEntity.ID, itemID, db)
+	it, err := item.Retrieve(ctx, preDefinedEntityID, itemID, db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -139,18 +140,43 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 	emailConfigEntityItem.Common = "false"
 	emailConfigEntityItem.Owner = []string{currentUserID}
 
+	//delete the old-integrations if present
+	err = item.DeleteAll(ctx, db, accountID, emailConfigEntity.ID, currentUserID)
+	if err != nil {
+		return item.Item{}, err
+	}
+
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		AccountID: accountID,
 		EntityID:  emailConfigEntity.ID,
+		UserID:    &currentUserID,
 		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(emailConfigEntityItem)),
 	}
 
-	return item.Create(ctx, db, ni, time.Now())
+	it, err := item.Create(ctx, db, ni, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	ns := subscription.NewSubscription{
+		ID:        emailAddress,
+		AccountID: accountID,
+		EntityID:  emailConfigEntity.ID,
+		ItemID:    it.ID,
+		UserID:    currentUserID,
+	}
+
+	_, err = subscription.Create(ctx, db, ns, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	return it, nil
 
 }
 
-func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
+func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, currentUserID *string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
 	emailEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityEmails)
 	if err != nil {
 		return item.Item{}, err
@@ -177,6 +203,7 @@ func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string,
 		ID:        uuid.New().String(),
 		AccountID: accountID,
 		EntityID:  emailEntity.ID,
+		UserID:    currentUserID,
 		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(emailEntityItem)),
 	}
 

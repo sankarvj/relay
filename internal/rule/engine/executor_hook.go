@@ -9,7 +9,7 @@ import (
 )
 
 func executeHook(ctx context.Context, db *sqlx.DB, n node.Node) (map[string]interface{}, error) {
-	entityFields, err := fields(ctx, db, n.ActorID)
+	entityFields, err := fields(ctx, db, n.AccountID, n.ActorID)
 	if err != nil {
 		return map[string]interface{}{}, err
 	}

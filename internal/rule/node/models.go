@@ -118,3 +118,8 @@ func (n Node) ActualsMap() map[string]string {
 	}
 	return actuals
 }
+
+// ActualsMap parses actuals jsonb to map
+func (n Node) ActualsItemID() string {
+	return n.ActualsMap()[n.ActorID]
+}

@@ -147,3 +147,8 @@ use the same logic for itemproperties in the properties.ts just like item-card.t
 
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
+
+
+
+# Run all the tests 
+go test ./...

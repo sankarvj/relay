@@ -52,7 +52,7 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Retrieve")
 	defer span.End()
 
-	entity, err := entity.Retrieve(ctx, params["entity_id"], e.db)
+	entity, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], e.db)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "encode fields to input")
 	}
 
-	err = entity.Update(ctx, e.db, params["entity_id"], string(input), time.Now())
+	err = entity.Update(ctx, e.db, params["account_id"], params["entity_id"], string(input), time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &ve)
 	}

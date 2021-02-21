@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
@@ -35,7 +35,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
 
-	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
@@ -43,10 +43,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	fields, err := e.Fields()
 	if err != nil {
 		return err
-	}
-
-	for i := 0; i < len(fields); i++ {
-		log.Printf("item fields %+v", fields[i])
 	}
 
 	items, err := item.List(ctx, e.ID, i.db)
@@ -60,7 +56,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		viewModelItems[i] = &viewModelItem
 	}
 
-	reference.UpdateReferenceFields(ctx, fields, viewModelItems, i.db)
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, i.db)
 
 	response := struct {
 		Items    []*item.ViewModelItem  `json:"items"`
@@ -74,10 +70,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Entity:   createViewModelEntity(e),
 	}
 
-	for i := 0; i < len(fields); i++ {
-		log.Printf("item fields %+v", fields[i])
-	}
-
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
@@ -89,7 +81,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
 
-	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
@@ -102,10 +94,8 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	viewModelItems := make([]*item.ViewModelItem, len(items))
 	for i, item := range items {
 		viewModelItem := createViewModelItem(item)
-		log.Printf("viewModelItem  %+v", viewModelItem)
 		viewModelItems[i] = &viewModelItem
 	}
-	log.Printf("key  %s", key)
 	response := struct {
 		Items []*item.ViewModelItem `json:"items"`
 		Key   string                `json:"key"`
@@ -146,12 +136,18 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Create")
 	defer span.End()
 
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
 	var ni item.NewItem
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
+	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
 	ri, err := item.Create(ctx, i.db, ni, time.Now())
@@ -170,7 +166,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Retrieve")
 	defer span.End()
 
-	e, err := entity.Retrieve(ctx, params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
@@ -191,7 +187,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	viewModelItem := createViewModelItem(it)
-	reference.UpdateReferenceFields(ctx, fields, []*item.ViewModelItem{&viewModelItem}, i.db)
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []*item.ViewModelItem{&viewModelItem}, i.db)
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

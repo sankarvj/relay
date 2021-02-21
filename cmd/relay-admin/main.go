@@ -235,7 +235,7 @@ func crmadd(cfg database.Config) error {
 	cc := "vijayasankarmobile@gmail.com"
 	subject := fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", ce.ID, ce.Key("nps_score"))
 	body := fmt.Sprintf("Hello {{%s.%s}}", ce.ID, ce.Key("email"))
-	emg, err := entity.SaveEmailTemplate(ctx, accountID, ei.ID, []string{to}, []string{cc}, []string{}, subject, body, db)
+	emg, err := entity.SaveEmailTemplate(ctx, accountID, ei.ID, nil, []string{to}, []string{cc}, []string{}, subject, body, db)
 	if err != nil {
 		return err
 	}

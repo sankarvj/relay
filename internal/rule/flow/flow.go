@@ -158,7 +158,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 		log.Printf("check expression for flow ->  %s", f.Name)
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
-		if engine.RunExpEvaluator(ctx, db, rp, n.Expression, n.VariablesMap()) { //entry
+		if engine.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Condition) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
 			} else {
@@ -208,7 +208,7 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, nodeID, ent
 
 	//update meta. very important to update meta before calling exp evaluator
 	n.UpdateMeta(i.EntityID, i.ID, f.Type)
-	if engine.RunExpEvaluator(ctx, db, rp, n.Expression, n.VariablesMap()) {
+	if engine.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)
 		if err != nil && err != ErrNotFound {
 			return err

@@ -2,6 +2,7 @@ package entity
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/pkg/errors"
@@ -94,13 +95,19 @@ func ValueAddFields(entityFields []Field, itemFields map[string]interface{}) []F
 	return valueAddedFields
 }
 
+func (e Entity) FieldsIgnoreError() []Field {
+	fields, err := e.Fields()
+	if err != nil {
+		log.Println(err)
+	}
+	return fields
+}
+
 // Fields parses attribures to fields
 func (e Entity) Fields() ([]Field, error) {
 	fields, err := unmarshalFields(e.Fieldsb)
 	if err != nil {
-		err = errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
-		log.Println(err)
-		return make([]Field, 0), err
+		return make([]Field, 0), errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
 	}
 	return fields, nil
 }
@@ -155,16 +162,6 @@ func (f Field) DisplayGex() string {
 	return ""
 }
 
-func refFields(fields []Field) map[string]string {
-	referenceFieldsMap := make(map[string]string, 0)
-	for _, f := range fields {
-		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
-			referenceFieldsMap[f.Key] = f.RefID
-		}
-	}
-	return referenceFieldsMap
-}
-
 func NamedKeysMap(entityFields []Field) map[string]string {
 	params := map[string]string{}
 	for _, field := range entityFields {
@@ -173,10 +170,36 @@ func NamedKeysMap(entityFields []Field) map[string]string {
 	return params
 }
 
+func NamedFieldsObjMap(entityFields []Field) map[string]Field {
+	params := map[string]Field{}
+	for _, field := range entityFields {
+		params[field.Name] = field
+	}
+	return params
+}
+
+func (f Field) DisplayValues() []string {
+	s := make([]string, len(f.Choices))
+	for i, choice := range f.Choices {
+		s[i] = fmt.Sprint(choice.DisplayValue)
+	}
+	return s
+}
+
 func unmarshalFields(fieldsB string) ([]Field, error) {
 	var fields []Field
 	if err := json.Unmarshal([]byte(fieldsB), &fields); err != nil {
 		return nil, err
 	}
 	return fields, nil
+}
+
+func refFields(fields []Field) map[string]string {
+	referenceFieldsMap := make(map[string]string, 0)
+	for _, f := range fields {
+		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
+			referenceFieldsMap[f.Key] = f.RefID
+		}
+	}
+	return referenceFieldsMap
 }

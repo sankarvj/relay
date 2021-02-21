@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 )
 
@@ -16,7 +17,7 @@ func ConvertSliceType(s []string) []interface{} {
 func ConvertSliceTypeRev(inf []interface{}) []string {
 	s := make([]string, len(inf))
 	for i, v := range inf {
-		s[i] = v.(string)
+		s[i] = fmt.Sprint(v)
 	}
 	return s
 }

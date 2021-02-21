@@ -26,7 +26,7 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			if result, err := worker(ctx, db, work.Expression, n.VariablesMap()); err != nil {
+			if result, err := worker(ctx, db, n.AccountID, work.Expression, n.VariablesMap()); err != nil {
 				return nil, err
 			} else {
 				work.Resp <- result
@@ -48,7 +48,7 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node
 }
 
 //RunExpRenderer run the expression and returns evaluated string
-func RunExpRenderer(ctx context.Context, db *sqlx.DB, exp string, variables map[string]interface{}) string {
+func RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) string {
 	var lexedContent string
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, false, signalsChan)
@@ -56,7 +56,7 @@ func RunExpRenderer(ctx context.Context, db *sqlx.DB, exp string, variables map[
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			if result, err := worker(ctx, db, work.Expression, variables); err != nil {
+			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
 				return err.Error()
 			} else {
 				work.Resp <- result
@@ -69,7 +69,7 @@ func RunExpRenderer(ctx context.Context, db *sqlx.DB, exp string, variables map[
 }
 
 //RunExpEvaluator runs the expression to see whether the condition met or not
-func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, exp string, variables map[string]interface{}) bool {
+func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string, variables map[string]interface{}) bool {
 	positive := false
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, true, signalsChan)
@@ -77,7 +77,7 @@ func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, exp strin
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			if result, err := worker(ctx, db, work.Expression, variables); err != nil {
+			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
 				log.Println("error in expression evaluator ", err)
 				return false
 			} else {

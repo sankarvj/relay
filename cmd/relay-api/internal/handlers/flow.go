@@ -91,7 +91,7 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
-	e, err := entity.Retrieve(ctx, params["entity_id"], f.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], f.db)
 	if err != nil {
 		return err
 	}

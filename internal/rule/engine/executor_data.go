@@ -13,7 +13,7 @@ import (
 )
 
 func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	entityFields, err := mergeActualsWithActor(ctx, db, n.ActorID, n.ActualsMap())
+	entityFields, err := mergeActualsWithActor(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 		AccountID: n.AccountID,
 		EntityID:  n.ActorID,
 	}
-	ni.Fields = evaluateFieldValues(ctx, db, entityFields, n.VariablesMap())
+	ni.Fields = evaluateFieldValues(ctx, db, n.AccountID, entityFields, n.VariablesMap())
 
 	log.Printf("ni %+v ", ni)
 
@@ -42,13 +42,13 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	return err
 }
 
-func evaluateFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, vars map[string]interface{}) map[string]interface{} {
+func evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, entityFields []entity.Field, vars map[string]interface{}) map[string]interface{} {
 	evaluatedItemFields := map[string]interface{}{}
 	for _, field := range entityFields {
 		switch field.DataType {
 		case entity.TypeString:
 			if field.Value != nil {
-				valuatedValue := RunExpRenderer(ctx, db, field.Value.(string), vars)
+				valuatedValue := RunExpRenderer(ctx, db, accountID, field.Value.(string), vars)
 				evaluatedItemFields[field.Key] = valuatedValue
 			}
 		case entity.TypeReference:

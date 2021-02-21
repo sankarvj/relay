@@ -39,7 +39,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	ctx, span := trace.StartSpan(ctx, "handlers.Connections.List")
 	defer span.End()
 	actualEntityID := params["entity_id"]
-	e, err := entity.Retrieve(ctx, actualEntityID, rs.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], actualEntityID, rs.db)
 	if err != nil {
 		return err
 	}
