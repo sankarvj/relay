@@ -6,7 +6,7 @@ import (
 	"github.com/mailgun/mailgun-go"
 )
 
-func sendViaMailGun(domain, key, from string, to []string, subject, body string) (string, error) {
+func sendViaMailGun(domain, key, from string, to []string, subject, body string) (*string, error) {
 	mg := mailgun.NewMailgun(domain, key)
 	m := mg.NewMessage(
 		from,
@@ -18,5 +18,5 @@ func sendViaMailGun(domain, key, from string, to []string, subject, body string)
 	log.Println("resMsg ", resMsg)
 	log.Println("resMsg id ", id)
 	log.Println("resMsg err ", err)
-	return id, err
+	return &id, err
 }

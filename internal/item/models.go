@@ -9,7 +9,8 @@ type Item struct {
 	ID        string    `db:"item_id" json:"id"`
 	AccountID string    `db:"account_id" json:"account_id"`
 	EntityID  string    `db:"entity_id" json:"entity_id"`
-	UserID    *string   `db:"user_id" json:"user_id"` // * because it could be null
+	GenieID   *string   `db:"genie_id" json:"genie_id"` // * because it could be null
+	UserID    *string   `db:"user_id" json:"user_id"`   // * because it could be null
 	State     int       `db:"state" json:"state"`
 	Fieldsb   string    `db:"fieldsb" json:"fieldsb"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
@@ -35,6 +36,7 @@ type NewItem struct {
 	ID        string                 `json:"id"`
 	AccountID string                 `json:"account_id"`
 	EntityID  string                 `json:"entity_id"`
+	GenieID   *string                `json:"genie_id"`
 	UserID    *string                `json:"user_id"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
 }

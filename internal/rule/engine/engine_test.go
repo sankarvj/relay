@@ -27,7 +27,7 @@ func TestEmailRuleRunner(t *testing.T) {
 		{
 			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
 			emailsEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, entity.FixedEntityEmails)
-			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+			contactItems, err := item.List(tests.Context(), contactEntity.ID, db)
 			emailTemplateItems, _ := item.List(tests.Context(), emailsEntity.ID, db)
 
 			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})      // this will get populated only during the trigger
@@ -42,7 +42,7 @@ func TestEmailRuleRunner(t *testing.T) {
 				Type:       node.Email,
 			}
 
-			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
+			_, err = engine.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould send email : %s.", tests.Failed, err)
 			}

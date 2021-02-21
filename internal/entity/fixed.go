@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
-	"gitlab.com/vjsideprojects/relay/internal/subscription"
 	"go.opencensus.io/trace"
 )
 
@@ -141,7 +141,7 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 	emailConfigEntityItem.Owner = []string{currentUserID}
 
 	//delete the old-integrations if present
-	err = item.DeleteAll(ctx, db, accountID, emailConfigEntity.ID, currentUserID)
+	err = item.DeleteAllByUser(ctx, db, accountID, emailConfigEntity.ID, currentUserID)
 	if err != nil {
 		return item.Item{}, err
 	}
@@ -159,15 +159,14 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 		return item.Item{}, err
 	}
 
-	ns := subscription.NewSubscription{
+	ns := discovery.NewDiscovery{
 		ID:        emailAddress,
 		AccountID: accountID,
 		EntityID:  emailConfigEntity.ID,
 		ItemID:    it.ID,
-		UserID:    currentUserID,
 	}
 
-	_, err = subscription.Create(ctx, db, ns, time.Now())
+	_, err = discovery.Create(ctx, db, ns, time.Now())
 	if err != nil {
 		return item.Item{}, err
 	}
@@ -176,7 +175,7 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 
 }
 
-func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, currentUserID *string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
+func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, currentUserID string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
 	emailEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityEmails)
 	if err != nil {
 		return item.Item{}, err
@@ -203,7 +202,7 @@ func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string,
 		ID:        uuid.New().String(),
 		AccountID: accountID,
 		EntityID:  emailEntity.ID,
-		UserID:    currentUserID,
+		UserID:    &currentUserID,
 		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(emailEntityItem)),
 	}
 

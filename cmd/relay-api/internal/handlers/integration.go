@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -11,13 +10,13 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/subscription"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 	"golang.org/x/net/context"
@@ -139,8 +138,6 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err := web.Decode(r, &pushMsgPayload); err != nil {
 		return errors.Wrap(err, "parsing push message payload")
 	}
-	log.Printf("pushMsgPayload-- %+v", pushMsgPayload)
-
 	raw, err := base64.StdEncoding.DecodeString(pushMsgPayload.Message.Data)
 	if err != nil {
 		return errors.Wrap(err, "decoding data in push message payload")
@@ -151,10 +148,15 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "unmarshal data from the data bytes")
 	}
 
-	fmt.Printf("Decoded: %+v\n", data)
-	sub, err := subscription.Retrieve(ctx, data.EmailAddress, g.db)
+	sub, err := discovery.Retrieve(ctx, data.EmailAddress, g.db)
 	if err != nil {
+		if err == discovery.ErrDiscoveryFailed { //means we don't want to listen to that mailbox
+			//TODO call stop here.
+			log.Println("Silently Killing The Unwanted Messages...")
+			return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
+		}
 		return err
+
 	}
 
 	valueAddedConfigFields, _, err := entity.RetrieveFixedItem(ctx, sub.AccountID, sub.EntityID, sub.ItemID, g.db)

@@ -1,17 +1,18 @@
-package job
+package email
 
 import (
 	"context"
+	"log"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
-	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
 
-func sendMail(ctx context.Context, accountID, entityID, itemID string, fields []entity.Field, mailFields map[string]interface{}, db *sqlx.DB) error {
-	valueAddedMailFields := entity.ValueAddFields(fields, mailFields)
-	reference.UpdateChoicesWrapper(ctx, db, valueAddedMailFields)
+func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, db *sqlx.DB) error {
+
 	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedMailFields)
 	fromField := namedFieldsObj["from"]
 	fromFieldValue := fromField.Value.([]interface{})[0].(string)
@@ -33,5 +34,27 @@ func sendMail(ctx context.Context, accountID, entityID, itemID string, fields []
 		return err
 	}
 
-	return integration.SendEmail(emailConfigEntityItem.Domain, emailConfigEntityItem.APIKey, emailConfigEntityItem.Email, to, subject, body)
+	log.Printf("from --> %+v", emailConfigEntityItem.Email)
+	log.Printf("subject --> %+v", subject)
+	log.Printf("body --> %+v", body)
+	log.Printf("toField --> %+v", to)
+
+	threadID, err := integration.SendEmail(emailConfigEntityItem.Domain, emailConfigEntityItem.APIKey, emailConfigEntityItem.Email, to, subject, body)
+	if err != nil {
+		return err
+	}
+
+	ns := discovery.NewDiscovery{
+		ID:        *threadID,
+		AccountID: accountID,
+		EntityID:  entityID,
+		ItemID:    itemID,
+	}
+
+	_, err = discovery.Create(ctx, db, ns, time.Now())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

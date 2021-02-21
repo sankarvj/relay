@@ -6,8 +6,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
+	"gitlab.com/vjsideprojects/relay/internal/email"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 )
@@ -33,7 +35,9 @@ func EventItemCreated(accountID, entityID, itemID string, newFields map[string]i
 
 	switch e.Category {
 	case entity.CategoryEmail:
-		err = sendMail(ctx, accountID, e.ID, itemID, e.FieldsIgnoreError(), newFields, db)
+		valueAddedMailFields := entity.ValueAddFields(e.FieldsIgnoreError(), newFields)
+		reference.UpdateChoicesWrapper(ctx, db, valueAddedMailFields)
+		err = email.SendMail(ctx, accountID, e.ID, itemID, valueAddedMailFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)

@@ -118,6 +118,7 @@ var migrations = []darwin.Migration{
 			item_id          UUID,
 			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
+			genie_id         TEXT,
 			user_id          UUID,
 			state            INTEGER DEFAULT 0,
 			fieldsb          JSONB,
@@ -228,15 +229,16 @@ var migrations = []darwin.Migration{
 	},
 	{
 		Version:     12,
-		Description: "Add subscriptions",
+		Description: "Add discoveries",
 		Script: `
-		CREATE TABLE subscriptions (
-			subscription_id TEXT,
+		CREATE TABLE discoveries (
+			discovery_id    TEXT,
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id 	    UUID REFERENCES entities ON DELETE CASCADE,
 			item_id 	    UUID REFERENCES items ON DELETE CASCADE,
-			user_id 	    UUID REFERENCES users ON DELETE CASCADE,
-			UNIQUE (subscription_id)
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			UNIQUE (discovery_id)
 		);
 		`,
 	},

@@ -98,33 +98,47 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("history msg %+v", rgmsg)
+
+	for _, history := range rgmsg.History {
+		for _, m := range history.Messages {
+			mesg, err := srv.Users.Messages.Get(user, m.Id).Do()
+			if err != nil {
+				return err
+			}
+			raw, err := base64.StdEncoding.DecodeString(mesg.Payload.Body.Data)
+			if err != nil {
+				return errors.Wrap(err, "decoding message payload")
+			}
+			log.Printf("raw msg %s", raw)
+		}
+	}
+
 	return nil
 }
 
-func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName string, toEmail []string, subject string, body string) error {
+func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
 	config, err := getConfig(oAuthFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	client, err := client(config, tokenJson)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	srv, err := gmail.New(client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	gmsg := msg(fromName, fromEmail, toName, toEmail[0], subject, body) //TODO how to send multiple to address
 	rgmsg, err := srv.Users.Messages.Send(user, &gmsg).Do()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	log.Printf("rgmsg %+v", rgmsg)
-	return nil
+	log.Printf("rgmsg %+v", rgmsg.ThreadId)
+	return &rgmsg.ThreadId, nil
 }
 
 func getConfig(oAuthFile string) (*oauth2.Config, error) {

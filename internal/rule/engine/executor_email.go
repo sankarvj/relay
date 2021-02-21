@@ -2,10 +2,11 @@ package engine
 
 import (
 	"context"
+	"log"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/email"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -14,37 +15,45 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	if err != nil {
 		return err
 	}
-	//fetch e-mail integration config from the from field of the mail
 	namedFieldsObj := entity.NamedFieldsObjMap(mailFields)
-	fromField := namedFieldsObj["from"]
-	fromFieldValue := fromField.Value.([]interface{})[0].(string)
-
-	mailConfigFields, err := mergeActualsWithActor(ctx, db, n.AccountID, fromField.RefID, fromFieldValue)
-	if err != nil {
-		return err
+	var (
+		subject string
+		body    string
+		to      []interface{}
+	)
+	if namedFieldsObj["subject"].Value != nil {
+		subject = namedFieldsObj["subject"].Value.(string)
+	}
+	if namedFieldsObj["body"].Value != nil {
+		body = namedFieldsObj["body"].Value.(string)
+	}
+	if namedFieldsObj["to"].Value != nil {
+		to = namedFieldsObj["to"].Value.([]interface{})
 	}
 
-	var emailConfigEntityItem entity.EmailConfigEntity
-	err = entity.ParseFixedEntity(mailConfigFields, &emailConfigEntityItem)
-	if err != nil {
-		return err
-	}
-
-	var emailEntityItem entity.EmailEntity
-	err = entity.ParseFixedEntity(mailFields, &emailEntityItem)
-	if err != nil {
-		return err
-	}
-
-	//get config
+	choices := make([]entity.Choice, 0)
 	variables := n.VariablesMap()
-	emailEntityItem.Body = RunExpRenderer(ctx, db, n.AccountID, emailEntityItem.Body, variables)
-	tos := []string{}
-	for _, to := range emailEntityItem.To {
-		tos = append(tos, RunExpRenderer(ctx, db, n.AccountID, to, variables))
-	}
-	emailEntityItem.To = tos
-	emailEntityItem.Subject = RunExpRenderer(ctx, db, n.AccountID, emailEntityItem.Subject, variables)
 
-	return integration.SendEmail(emailConfigEntityItem.Domain, emailConfigEntityItem.APIKey, emailConfigEntityItem.Email, emailEntityItem.To, emailEntityItem.Subject, emailEntityItem.Body)
+	subject = RunExpRenderer(ctx, db, n.AccountID, subject, variables)
+	body = RunExpRenderer(ctx, db, n.AccountID, body, variables)
+	//Very confusing step.
+	//To satisfy the SendMail func in the job we are populating the to mails in the choices.
+	for _, t := range to {
+		choices = append(choices, entity.Choice{DisplayValue: RunExpRenderer(ctx, db, n.AccountID, t.(string), variables)})
+	}
+
+	log.Printf("mailFields --> %+v", mailFields)
+
+	for i := 0; i < len(mailFields); i++ {
+		switch mailFields[i].Name {
+		case "subject":
+			mailFields[i].Value = subject
+		case "body":
+			mailFields[i].Value = body
+		case "to":
+			mailFields[i].Choices = choices
+		}
+	}
+
+	return email.SendMail(ctx, n.AccountID, n.ActorID, n.ActualsItemID(), mailFields, db)
 }
