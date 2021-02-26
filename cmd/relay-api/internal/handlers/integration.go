@@ -168,7 +168,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return err
 	}
-	integration.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, data.HistoryID)
+	integration.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 1709032)
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }

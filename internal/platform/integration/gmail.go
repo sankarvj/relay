@@ -98,18 +98,55 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 	if err != nil {
 		return err
 	}
-
+	log.Printf("rgmsg %+v for historyID %d", rgmsg, historyID)
 	for _, history := range rgmsg.History {
 		for _, m := range history.Messages {
-			mesg, err := srv.Users.Messages.Get(user, m.Id).Do()
+			log.Printf("m ID ----> %s", m.Id)
+			msg, err := srv.Users.Messages.Get(user, m.Id).Format("full").Do()
 			if err != nil {
 				return err
 			}
-			raw, err := base64.StdEncoding.DecodeString(mesg.Payload.Body.Data)
+			log.Printf("msg msg %+v", msg)
+			raw, err := base64.StdEncoding.DecodeString(msg.Raw)
 			if err != nil {
 				return errors.Wrap(err, "decoding message payload")
 			}
-			log.Printf("raw msg %s", raw)
+			log.Printf("msg msg msg msg msg msg msg msg  %+v", raw)
+
+			if len(msg.Payload.Parts) > 0 {
+				log.Printf("msg payload %+v", msg.Payload)
+				for _, part := range msg.Payload.Parts {
+					log.Printf("msg part %+v", part)
+					if part.MimeType == "text/html" {
+						data, err := base64.StdEncoding.DecodeString(part.Body.Data)
+						log.Printf("msg data %+v", data)
+						log.Printf("msg err %+v", err)
+						if err != nil {
+							return errors.Wrap(err, "decoding message payload")
+						}
+						html := string(data)
+						fmt.Println("JTML1-->", html)
+					} else if part.MimeType == "text/plain" {
+						data, err := base64.StdEncoding.DecodeString(part.Body.Data)
+						log.Printf("msg data %+v", data)
+						log.Printf("msg err %+v", err)
+						if err != nil {
+							return errors.Wrap(err, "decoding message payload")
+						}
+						html := string(data)
+						fmt.Println("JTML1-->", html)
+					}
+				}
+			} else {
+				log.Printf("msg part %+v", msg.Payload.Body.Data)
+				data, err := base64.StdEncoding.DecodeString(msg.Payload.Body.Data)
+				if err != nil {
+					return errors.Wrap(err, "decoding message payload")
+				}
+				html := string(data)
+				fmt.Println("JTML2-->", html)
+			}
+
 		}
 	}
 
