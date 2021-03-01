@@ -15,8 +15,14 @@ The Server will store the token and call the watch with the topic name. So, that
 Scopes is present at the getConfig
 
 # Todo
+- Watch needs to be called in the cron job
 - Add authentication for the push URL
-- Process the received message
+- Process the received message via push and update the emails thread using the threadID
+    - We are receving the message historyID.
+    - Need to store the old historyID
+    - Need to fetch the messages till the new historyID
+    - Need to save those messages to the corresponding records using the threadID
+    - IMPORTANT: make use of discoveries to find the item related to the threadID
 
 # Production Todo
 - Create a new prod topic and give that topic to the config

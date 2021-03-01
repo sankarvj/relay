@@ -36,6 +36,7 @@ type FieldMeta struct {
 
 type Choice struct {
 	ID           string      `json:"id"`
+	Verb         interface{} `json:"verb"`
 	DisplayValue interface{} `json:"display_value"`
 	Expression   string      `json:"expression"`
 }
@@ -78,6 +79,7 @@ const (
 //field_unit expression
 const (
 	FuExpNone   = "none"
+	FuExpDone   = "done"
 	FuExpPos    = "pos"    //set this on positive expression of due_by
 	FuExpNeg    = "neg"    //set this on negative expression of the due_by
 	FuExpManual = "manual" //keep as it is unless manually changes
@@ -157,6 +159,13 @@ func (f Field) IsNotApplicable() bool {
 
 func (f Field) DisplayGex() string {
 	if val, ok := f.Meta["display_gex"]; ok {
+		return val
+	}
+	return ""
+}
+
+func (f Field) Verb() string {
+	if val, ok := f.Meta["verb"]; ok {
 		return val
 	}
 	return ""

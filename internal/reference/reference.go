@@ -60,6 +60,7 @@ func updateChoicesForFieldUnits(ctx context.Context, db *sqlx.DB, f *entity.Fiel
 	for _, refItem := range refItems {
 		f.Choices = append(f.Choices, entity.Choice{
 			ID:           refItem.ID,
+			Verb:         refItem.Fields()[f.Verb()],
 			DisplayValue: refItem.Fields()[f.DisplayGex()],
 		})
 	}

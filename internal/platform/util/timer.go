@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	smallLayout      = "Jan 2 2006, 3:04PM"
-	dateTimeGoLayout = "2006-01-02 15:04:05 -0700"
+	smallLayout           = "Jan 2 2006, 3:04PM"
+	dateTimeGoLayout      = "2006-01-02 15:04:05 -0700"
+	dateTimeAngularLayout = "2006-01-02T15:04"
 )
 
 func GetMilliSeconds(now time.Time) int64 {

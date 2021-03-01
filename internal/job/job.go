@@ -101,9 +101,9 @@ func updateConnection(ctx context.Context, db *sqlx.DB, account_id, entityID, it
 	for k, v := range dirtyFields {
 		if relationshipID, ok := relationMap[k]; ok {
 			oldDstItemIds := oldFields[k].([]interface{})
-			dstItemIds := v.([]interface{})
+			newDstItemIds := v.([]interface{})
 
-			deletedItems, newItems := item.CompareItems(oldDstItemIds, dstItemIds)
+			deletedItems, newItems := item.CompareItems(oldDstItemIds, newDstItemIds)
 			if len(deletedItems) > 0 {
 				//TODO: use batch delete
 				for _, deletedItem := range deletedItems {

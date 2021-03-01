@@ -10,6 +10,14 @@ import (
 )
 
 func StatusFields() []entity.Field {
+	verbField := entity.Field{
+		Key:         "uuid-00-verb",
+		Name:        "verb",
+		DisplayName: "Verb",
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+	}
+
 	nameField := entity.Field{
 		Key:         "uuid-00-name",
 		Name:        "name",
@@ -26,11 +34,12 @@ func StatusFields() []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{nameField, colorField}
+	return []entity.Field{verbField, nameField, colorField}
 }
 
-func StatusVals(name, color string) map[string]interface{} {
+func StatusVals(verb, name, color string) map[string]interface{} {
 	statusVals := map[string]interface{}{
+		"uuid-00-verb":  verb,
 		"uuid-00-name":  name,
 		"uuid-00-color": color,
 	}
@@ -99,7 +108,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -249,7 +258,7 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 		DomType:     entity.DomAutoSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb"},
 		Choices: []entity.Choice{
 			{
 				ID:         stItem1,

@@ -11,6 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
 )
@@ -60,15 +61,18 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "fetching items from selected ids")
 	}
 
-	viewModelItems := make([]item.ViewModelItem, len(childItems))
+	viewModelItems := make([]*item.ViewModelItem, len(childItems))
 	for i, item := range childItems {
-		viewModelItems[i] = createViewModelItem(item)
+		viewModelItem := createViewModelItem(item)
+		viewModelItems[i] = &viewModelItem
 	}
 
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, rs.db)
+
 	response := struct {
-		Items    []item.ViewModelItem `json:"items"`
-		Category int                  `json:"category"`
-		Fields   []entity.Field       `json:"fields"`
+		Items    []*item.ViewModelItem `json:"items"`
+		Category int                   `json:"category"`
+		Fields   []entity.Field        `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,

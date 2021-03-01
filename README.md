@@ -134,16 +134,16 @@ Notes with @mention
 2. Reminder - notification
 
 ### Ad-Hoc Shots
-fix the email view? How to connect the inbox?
-fix the task view with remainders and all
-define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related in the relationship table.
-e-mail integration watch needs to be called every day.
-status field - DomAutoSelect
-ref_key as the separate var instead of display_gex
-implement BulkCreate/BulkUpdate/BulkDelete in relationship
-all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
-reference.go line-no:39//// can we check of the vals are []interface{}?
-use the same logic for itemproperties in the properties.ts just like item-card.ts
+- fix the email view? How to connect the inbox?
+- fix the task view with remainders and all
+- define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related in the relationship table.
+- e-mail integration watch needs to be called every day.
+- status field - DomAutoSelect
+- ref_key as the separate var instead of display_gex
+- implement BulkCreate/BulkUpdate/BulkDelete in relationship
+- all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
+- reference.go line-no:39//// can we check of the vals are []interface{}?
+- use the same logic for itemproperties in the properties.ts just like item-card.ts
 
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------

@@ -24,16 +24,17 @@ const (
 )
 
 type caster struct {
-	leftNumber    float64
-	rightNumber   float64
-	leftString    string
-	rightString   string
-	leftTime      time.Time
-	rightTime     time.Time
-	leftDataType  OperandDT
-	rightDataType OperandDT
-	err           error
-	casters       []interface{}
+	leftNumber         float64
+	rightNumber        float64
+	leftString         string
+	rightString        string
+	leftTime           time.Time
+	rightTime          time.Time
+	leftDataType       OperandDT
+	rightDataType      OperandDT
+	err                error
+	leftInterfaceList  []interface{}
+	rightInterfaceList []interface{}
 }
 
 func Compare(left, right interface{}) bool {
@@ -57,6 +58,8 @@ func compare(left, right Operand) bool {
 		if version.CompareSimple(c.leftString, c.rightString) == 0 {
 			return true
 		}
+	case ListDT:
+		return same(c.leftInterfaceList, c.rightInterfaceList)
 	}
 	return false
 }
@@ -115,7 +118,7 @@ func before(left, right Operand) bool {
 	return false
 }
 
-func in(left, right Operand) bool {
+func in(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {
 		log.Println("in error comparing operands", c.err)
@@ -123,22 +126,34 @@ func in(left, right Operand) bool {
 	}
 	switch c.leftDataType {
 	case ListDT:
-		switch c.rightDataType {
-		case StrDT:
-			for _, v := range c.casters {
-				if compare(v, c.rightString) {
-					return true
-				}
-			}
-		case NumberDT:
-			for _, v := range c.casters {
-				if compare(v, c.rightNumber) {
-					return true
-				}
+		for _, v := range c.leftInterfaceList {
+			if compare(v, right) {
+				return true
 			}
 		}
 	}
 	return false
+}
+
+func same(leftList, rightList []interface{}) bool {
+	matched := false
+	if len(leftList) != len(rightList) {
+		return matched
+	}
+
+	for _, lv := range leftList {
+		matched = false
+		for _, rv := range rightList {
+			if compare(lv, rv) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return matched
 }
 
 func cast(left, right Operand, checkEquality bool) caster {
@@ -177,7 +192,7 @@ func (c *caster) setLeft(left Operand) {
 		c.leftString = strconv.FormatBool(left.(bool))
 		c.leftDataType = c.deepCaster(true)
 	case []interface{}:
-		c.casters = left.([]interface{})
+		c.leftInterfaceList = left.([]interface{})
 		c.leftDataType = ListDT
 	}
 }
@@ -205,7 +220,7 @@ func (c *caster) setRight(right Operand) {
 		c.rightString = strconv.FormatBool(right.(bool))
 		c.rightDataType = c.deepCaster(false)
 	case []interface{}:
-		c.casters = right.([]interface{})
+		c.rightInterfaceList = right.([]interface{})
 		c.rightDataType = ListDT
 	}
 }

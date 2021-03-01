@@ -167,17 +167,17 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 	// add status item - open
-	st1, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals("Open", "#fb667e"))
+	st1, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals(entity.FuExpNone, "Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	st2, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals("Closed", "#66fb99"))
+	st2, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	st3, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals("OverDue", "#66fb99"))
+	st3, err := bootstrap.ItemAdd(ctx, db, accountID, se.ID, uuid.New().String(), bootstrap.StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func crmadd(cfg database.Config) error {
 	}
 
 	//add entity - task
-	te, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryData, bootstrap.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
+	te, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, bootstrap.TaskFields(ce.ID, se.ID, st1.ID, st2.ID, st3.ID))
 	if err != nil {
 		return err
 	}
