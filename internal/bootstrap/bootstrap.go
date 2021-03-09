@@ -147,14 +147,16 @@ func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID strin
 	return f, nil
 }
 
-func NodeAdd(ctx context.Context, db *sqlx.DB, accountID, nodeID, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string) (node.Node, error) {
+func NodeAdd(ctx context.Context, db *sqlx.DB, accountID, nodeID, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string, stageID, description string) (node.Node, error) {
 	nn := node.NewNode{
 		ID:           nodeID,
 		AccountID:    accountID,
 		FlowID:       flowID,
 		ActorID:      actorID,
 		ParentNodeID: pnodeID,
+		StageID:      stageID,
 		Name:         name,
+		Description:  description,
 		Type:         typ,
 		Expression:   exp,
 		Actuals:      actuals,

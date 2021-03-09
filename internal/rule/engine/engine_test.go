@@ -192,7 +192,8 @@ func TestDirectTrigger(t *testing.T) {
 			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 			n2 := "82adc579-b4df-48cc-a22e-dd42178d962c" //node-stage-2
-			err := flow.DirectTrigger(tests.Context(), db, nil, n2, contactEntity.ID, contactItems[0].ID)
+			flID := "437834ca-2dc3-4bdf-8d6f-27efb73d41f7"
+			err := flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flID, n2, contactEntity.ID, contactItems[0].ID)
 			if err != nil {
 				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
 			}

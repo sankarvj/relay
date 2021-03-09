@@ -180,9 +180,9 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 }
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
-func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, nodeID, entityID, itemID string) error {
+func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string) error {
 	//retrival of primary components item,flow,node
-	n, err := node.Retrieve(ctx, nodeID, db)
+	n, err := node.Retrieve(ctx, accountID, flowID, nodeID, db)
 	if err != nil {
 		return err
 	}

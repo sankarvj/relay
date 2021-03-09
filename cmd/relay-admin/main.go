@@ -385,31 +385,33 @@ func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, 
 		return "", "", err
 	}
 
-	pno1, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, "00000000-0000-0000-0000-000000000000", node.Root, "opportunity", node.Stage, "", map[string]string{})
+	dummyID := "00000000-0000-0000-0000-000000000000"
+
+	sno1, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, dummyID, node.Root, "Opportunity", node.Stage, "", map[string]string{}, dummyID, " Opportunity Deals")
 	if err != nil {
 		return "", "", err
 	}
 
-	pno2, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, "00000000-0000-0000-0000-000000000000", pno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{})
+	sno2, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, dummyID, sno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{}, dummyID, "Won Deals")
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, mailEntityID, pno1.ID, "", node.Email, "", map[string]string{mailEntityID: mailItemID})
+	no1, err := bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, mailEntityID, sno1.ID, "Email", node.Email, "", map[string]string{mailEntityID: mailItemID}, sno1.ID, "Send mail to customer")
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, webhookEntityID, pno1.ID, "", node.Hook, "", map[string]string{})
+	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, webhookEntityID, no1.ID, "Hook", node.Hook, "", map[string]string{}, sno1.ID, " Hit customer API")
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, delayEntityID, pno2.ID, "", node.Delay, "", map[string]string{delayEntityID: delayItemID})
+	_, err = bootstrap.NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, delayEntityID, sno2.ID, "Delay", node.Delay, "", map[string]string{delayEntityID: delayItemID}, sno2.ID, "Wait for 5 mins")
 	if err != nil {
 		return "", "", err
 	}
-	return p.ID, pno1.ID, nil
+	return p.ID, sno1.ID, nil
 }
 
 func useradd(cfg database.Config, email, password string) error {

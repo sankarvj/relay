@@ -81,6 +81,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		Name:        "nps_score",
 		DisplayName: "NPS Score",
 		DataType:    entity.TypeNumber,
+		DomType:     entity.DomText,
 	}
 
 	lfStageField := entity.Field{

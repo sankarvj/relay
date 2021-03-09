@@ -29,8 +29,10 @@ type Node struct {
 	AccountID    string    `db:"account_id" json:"account_id"`
 	FlowID       string    `db:"flow_id" json:"flow_id"`
 	ActorID      string    `db:"actor_id" json:"actor_id"`
+	StageID      string    `db:"stage_id" json:"stage_id"`
 	Name         string    `db:"name" json:"name"`
-	Weight       string    `db:"weight" json:"weight"`
+	Description  string    `db:"description" json:"description"`
+	Weight       int       `db:"weight" json:"weight"`
 	Type         int       `db:"type" json:"type"`
 	Expression   string    `db:"expression" json:"expression"`
 	Variables    string    `db:"-" json:"variables"`     //Variables is to evaluate the expression during the runtime
@@ -50,9 +52,14 @@ type Meta struct {
 //Node struct defines the structure of each node in the workflow
 type NodeActor struct {
 	ID             string         `db:"node_id" json:"id"`
+	FlowID         string         `db:"flow_id" json:"flow_id"`
 	ParentNodeID   string         `db:"parent_node_id" json:"parent_node_id"`
+	StageID        string         `db:"stage_id" json:"stage_id"`
+	Name           string         `db:"name" json:"name"`
+	Description    string         `db:"description" json:"description"`
+	Weight         int            `db:"weight" json:"weight"`
 	ActorID        string         `db:"actor_id" json:"actor_id"`
-	EntityName     sql.NullString `db:"name" json:"name"`
+	EntityName     sql.NullString `db:"entity_name" json:"entity_name"`
 	EntityCategory sql.NullInt32  `db:"category" json:"category"`
 	Type           int            `db:"type" json:"type"`
 	Expression     string         `db:"expression" json:"expression"`
@@ -62,7 +69,11 @@ type NodeActor struct {
 // ViewModelNode represents the view model of node
 type ViewModelNode struct {
 	ID             string            `json:"id"`
+	FlowID         string            `json:"flow_id"`
+	StageID        string            `json:"stage_id"`
 	Name           string            `json:"name"`
+	Description    string            `json:"description"`
+	Weight         int               `json:"weight"`
 	Expression     string            `json:"expression"`
 	ParentNodeID   string            `json:"parent_node_id"`
 	EntityName     string            `json:"entity_name"`
@@ -82,10 +93,13 @@ type ViewModelActiveNode struct {
 type NewNode struct {
 	ID           string            `json:"id"`
 	Name         string            `json:"name"`
+	Description  string            `json:"description"`
+	Weight       int               `json:"weight"`
 	ParentNodeID string            `json:"parent_node_id"`
 	AccountID    string            `json:"account_id"`
 	FlowID       string            `json:"flow_id"`
 	ActorID      string            `json:"actor_id"`
+	StageID      string            `json:"stage_id"`
 	Type         int               `json:"type" validate:"required"`
 	Expression   string            `json:"expression"`
 	Actuals      map[string]string `json:"actuals"`

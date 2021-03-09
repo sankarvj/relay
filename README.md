@@ -128,22 +128,21 @@ Notes with @mention
 4. Workflow with datatype triggers. Like, on numbers (is gt than, is ls than) on date (before, after)
 5. Todo
 6. Notes, Tickets -  With Association
+7. fix the email view? How to connect the inbox
+8. fix the task view with remainders and all
 
 ### Half Done Shots
 1. Add aggregation funcs in the rGraph segmentation.
 2. Reminder - notification
+3. e-mail integration watch needs to be called every day.
 
 ### Ad-Hoc Shots
-- fix the email view? How to connect the inbox?
-- fix the task view with remainders and all
+- receive email and associate - more info on email readme
 - define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related in the relationship table.
-- e-mail integration watch needs to be called every day.
-- status field - DomAutoSelect
 - ref_key as the separate var instead of display_gex
 - implement BulkCreate/BulkUpdate/BulkDelete in relationship
 - all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
 - reference.go line-no:39//// can we check of the vals are []interface{}?
-- use the same logic for itemproperties in the properties.ts just like item-card.ts
 
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------

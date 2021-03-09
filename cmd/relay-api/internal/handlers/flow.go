@@ -75,7 +75,7 @@ func (f *Flow) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	viewModelNodes := make([]node.ViewModelNode, len(nodes))
 	for i, node := range nodes {
-		viewModelNodes[i] = createViewModelNode(node)
+		viewModelNodes[i] = createViewModelNodeActor(node)
 	}
 
 	return web.Respond(ctx, w, createViewModelFlow(fl, viewModelNodes), http.StatusOK)
@@ -114,7 +114,7 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 
 	viewModelNodes := make([]node.ViewModelNode, len(nodes))
 	for i, node := range nodes {
-		viewModelNodes[i] = createViewModelNode(node)
+		viewModelNodes[i] = createViewModelNodeActor(node)
 	}
 
 	items, err := item.BulkRetrieve(ctx, e.ID, itemIds(aflows), f.db)
@@ -184,13 +184,13 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	for _, nn := range nf.Nodes {
-		//TODO: do it in single transaction >|<
 		nn = makeNode(flow.AccountID, flow.ID, nn)
 		n, err := node.Create(ctx, f.db, nn, time.Now())
 		if err != nil {
 			return errors.Wrapf(err, "Node: %+v", n)
 		}
 	}
+	//TODO: do it in single transaction >|<
 
 	return web.Respond(ctx, w, flow, http.StatusCreated)
 }
@@ -206,19 +206,6 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Type:        f.Type,
 		Nodes:       nodes,
 	}
-}
-
-func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
-	nn.FlowID = flowID
-	nn.AccountID = accountID
-	if nn.ParentNodeID == "-1" || nn.ParentNodeID == "" {
-		nn.ParentNodeID = node.Root
-	}
-	if nn.ActorID == "-1" || nn.ActorID == "" {
-		nn.ActorID = node.NoActor
-	}
-	nn.Expression = makeExpression(nn.Queries)
-	return nn
 }
 
 func itemIds(actFlows []flow.ActiveFlow) []interface{} {
@@ -237,13 +224,17 @@ func entityIds(nodes []node.Node) []string {
 	return ids
 }
 
-func createViewModelNode(n node.NodeActor) node.ViewModelNode {
+func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {
 	return node.ViewModelNode{
 		ID:             n.ID,
-		Name:           nameOfType(n.Type),
+		FlowID:         n.FlowID,
+		StageID:        n.StageID,
+		Name:           n.Name,
+		Description:    n.Description,
 		Expression:     n.Expression,
 		ParentNodeID:   n.ParentNodeID,
 		ActorID:        n.ActorID,
+		Weight:         n.Weight,
 		EntityName:     n.EntityName.String,
 		EntityCategory: int(n.EntityCategory.Int32),
 		Type:           n.Type,
