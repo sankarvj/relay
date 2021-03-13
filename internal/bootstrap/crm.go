@@ -9,6 +9,30 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
+func FlowFields() []entity.Field {
+	actualFlowID := entity.Field{
+		Key:         "uuid-00-flow-id",
+		Name:        "flow_id",
+		DisplayName: "ID",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+	}
+
+	return []entity.Field{actualFlowID}
+}
+
+func NodeFields() []entity.Field {
+	actualFlowID := entity.Field{
+		Key:         "uuid-00-node-id",
+		Name:        "node_id",
+		DisplayName: "ID",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+	}
+
+	return []entity.Field{actualFlowID}
+}
+
 func StatusFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         "uuid-00-verb",
@@ -291,7 +315,7 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 	return taskVals
 }
 
-func DealFields(contactEntityID, pipeLineID string) []entity.Field {
+func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []entity.Field {
 	dealName := entity.Field{
 		Key:         "uuid-00-deal-name",
 		Name:        "deal_name",
@@ -325,12 +349,12 @@ func DealFields(contactEntityID, pipeLineID string) []entity.Field {
 
 	pipeField := entity.Field{
 		Key:         "uuid-00-pipe",
-		Name:        "pipeline_stage",
-		DisplayName: "Pipeline Stage",
-		DomType:     entity.DomPipeline,
-		DataType:    entity.TypeOdd,
-		RefID:       pipeLineID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Name:        "pipeline",
+		DisplayName: "Pipeline",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       flowEntityID,
+		Meta:        map[string]string{"flow": "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -338,15 +362,35 @@ func DealFields(contactEntityID, pipeLineID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{dealName, dealAmount, contactsField, pipeField}
+	pipeStageField := entity.Field{
+		Key:         "uuid-00-pipe-stage",
+		Name:        "pipeline_stage",
+		DisplayName: "Pipeline Stage",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       nodeEntityID,
+		Dependent: &entity.Dependent{
+			ParentKey:    pipeField.Key,
+			ReferenceKey: "flow_id",
+		},
+		Meta: map[string]string{"display_gex": "uuid-00-fname", "node": "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      pipeField.Key,
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{dealName, dealAmount, contactsField, pipeField, pipeStageField}
 }
 
-func DealVals(name string, amount int, contactID1, contactID2, nodeStageID string) map[string]interface{} {
+func DealVals(name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
 	dealVals := map[string]interface{}{
 		"uuid-00-deal-name":   name,
 		"uuid-00-deal-amount": amount,
 		"uuid-00-contacts":    []interface{}{contactID1, contactID2},
-		"uuid-00-pipe":        []interface{}{nodeStageID},
+		"uuid-00-pipe":        []interface{}{flowID},
+		"uuid-00-pipe-stage":  []interface{}{},
 	}
 	return dealVals
 }

@@ -15,6 +15,7 @@ const (
 )
 
 const (
+	FlowModeAll      = -1
 	FlowModeWorkFlow = 0
 	FlowModePipeLine = 1
 )

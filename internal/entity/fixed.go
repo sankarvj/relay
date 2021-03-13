@@ -70,6 +70,22 @@ type UserEntity struct {
 	Gtoken string `json:"gtoken"`
 }
 
+// FlowEntity represents structural format of flow entity
+type FlowEntity struct {
+	FlowID      string `json:"flow_id"`
+	AccountID   string `json:"account_id"`
+	EntityID    string `json:"entity_id"`
+	Name        string `json:"name"`
+	Expression  string `json:"expression"`
+	Description string `json:"description"`
+	Mode        int    `json:"mode"`
+	Type        int    `json:"type"`
+	Condition   int    `json:"condition"`
+	Status      int    `json:"status"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
 //ParseFixedEntity creates the entity from the given value added fields
 func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 	jsonbody, err := json.Marshal(namedFieldsMap(valueAddedFields))

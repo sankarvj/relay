@@ -68,4 +68,6 @@ const (
 	CategoryChildUnit   = 8
 	CategoryTask        = 9
 	CategoryEmailConfig = 10
+	CategoryFlow        = 11 // alais for actual flow
+	CategoryNode        = 12 // alais for actual node
 )

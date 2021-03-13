@@ -24,20 +24,21 @@ func EventItemUpdated(accountID, entityID, itemID string, oldFields, newFields m
 
 func EventItemCreated(accountID, entityID, itemID string, newFields map[string]interface{}, db *sqlx.DB) {
 	ctx := context.Background()
-	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
-	addConnection(ctx, db, accountID, entityID, itemID, newFields)
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		log.Println("error while retriving entity on job", err)
 		return
 	}
+	valueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), newFields)
+	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
+	addConnection(ctx, db, accountID, entityID, itemID, valueAddedFields)
 
 	switch e.Category {
 	case entity.CategoryEmail:
-		valueAddedMailFields := entity.ValueAddFields(e.FieldsIgnoreError(), newFields)
-		reference.UpdateChoicesWrapper(ctx, db, valueAddedMailFields)
-		err = email.SendMail(ctx, accountID, e.ID, itemID, valueAddedMailFields, db)
+
+		reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
+		err = email.SendMail(ctx, accountID, e.ID, itemID, valueAddedFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)
@@ -69,15 +70,21 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string
 	}
 }
 
-func addConnection(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string, newFields map[string]interface{}) {
+func addConnection(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string, valueAddedFields []entity.Field) {
 	relationMap := relationMap(ctx, db, accountID, entityID)
-	for k, v := range newFields {
-		if relationshipID, ok := relationMap[k]; ok {
-			if v == nil || v == "" || len(v.([]interface{})) == 0 {
+	for _, field := range valueAddedFields {
+
+		//skip for node & flow
+		if field.IsFlow() || field.IsNode() {
+			continue
+		}
+
+		if relationshipID, ok := relationMap[field.Key]; ok {
+			if field.Value == nil || field.Value == "" || len(field.Value.([]interface{})) == 0 {
 				continue
 			}
 			//TODO: use batch create
-			for _, dstItemID := range v.([]interface{}) {
+			for _, dstItemID := range field.Value.([]interface{}) {
 				c := connection.Connection{
 					AccountID:      accountID,
 					RelationshipID: relationshipID,

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -34,6 +35,20 @@ func SearchByKey(ctx context.Context, entityID, key, term string, db *sqlx.DB) (
 
 	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
 		return nil, errors.Wrap(err, "searching items")
+	}
+
+	return items, nil
+}
+
+func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2)`
+
+	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for entity id and selected item ids")
 	}
 
 	return items, nil

@@ -166,7 +166,7 @@ func TestTrigger(t *testing.T) {
 			newItemFields[schema.SeedFieldNPSKey] = 99
 			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
-			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, -1, db)
+			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
 			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows)
 			for _, err := range errs {

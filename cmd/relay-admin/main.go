@@ -161,6 +161,18 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
+	//add entity - flow - it is a wrapper for actual flow table
+	fe, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, bootstrap.FlowFields())
+	if err != nil {
+		return err
+	}
+
+	//add entity - flow - it is a wrapper for actual flow table
+	ne, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedNodeEntityName, "Node", entity.CategoryNode, bootstrap.NodeFields())
+	if err != nil {
+		return err
+	}
+
 	//add entity - status
 	se, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedStatusEntityName, "Status", entity.CategoryChildUnit, bootstrap.StatusFields())
 	if err != nil {
@@ -257,18 +269,18 @@ func crmadd(cfg database.Config) error {
 		return err
 	}
 
-	pID, nID, err := addPipelines(ctx, db, accountID, ce.ID, ei.ID, we.ID, dele.ID, emg.ID, delayi.ID)
+	//add entity - deal
+	de, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, bootstrap.DealFields(ce.ID, fe.ID, ne.ID))
 	if err != nil {
 		return err
 	}
 
-	//add entity - deal
-	de, err := bootstrap.EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, bootstrap.DealFields(ce.ID, pID))
+	pID, _, err := addPipelines(ctx, db, accountID, de.ID, ei.ID, we.ID, dele.ID, emg.ID, delayi.ID)
 	if err != nil {
 		return err
 	}
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	deal1, err := bootstrap.ItemAdd(ctx, db, accountID, de.ID, uuid.New().String(), bootstrap.DealVals("Big Deal", 1000, con1.ID, con2.ID, nID))
+	deal1, err := bootstrap.ItemAdd(ctx, db, accountID, de.ID, uuid.New().String(), bootstrap.DealVals("Big Deal", 1000, con1.ID, con2.ID, pID))
 	if err != nil {
 		return err
 	}

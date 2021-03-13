@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
 	"github.com/gomodule/redigo/redis"
@@ -80,30 +83,57 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
+	parentEntityID := r.URL.Query().Get("e")
+	filterID := r.URL.Query().Get("fi")
+	filterKey := r.URL.Query().Get("fk")
+	log.Println("filterKey--> ", filterKey)
 
 	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
 		return err
 	}
-
-	items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
-	if err != nil {
-		return err
+	choices := make([]entity.Choice, 0)
+	// Its a fixed wrapper entity. Call the respective items
+	if e.Category == entity.CategoryFlow { // temp flow handler
+		flows, err := flow.SearchByKey(ctx, params["account_id"], parentEntityID, key, term, i.db)
+		if err != nil {
+			return err
+		}
+		for _, flow := range flows {
+			choice := entity.Choice{
+				ID:           flow.ID,
+				DisplayValue: flow.Name,
+			}
+			choices = append(choices, choice)
+		}
+	} else if e.Category == entity.CategoryNode { // temp flow handler
+		//here filterID is the flowID...
+		flows, err := node.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
+		if err != nil {
+			return err
+		}
+		for _, flow := range flows {
+			choice := entity.Choice{
+				ID:           flow.ID,
+				DisplayValue: flow.Name,
+			}
+			choices = append(choices, choice)
+		}
+	} else {
+		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			choice := entity.Choice{
+				ID:           item.ID,
+				DisplayValue: item.Fields()[key],
+			}
+			choices = append(choices, choice)
+		}
 	}
 
-	viewModelItems := make([]*item.ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItem := createViewModelItem(item)
-		viewModelItems[i] = &viewModelItem
-	}
-	response := struct {
-		Items []*item.ViewModelItem `json:"items"`
-		Key   string                `json:"key"`
-	}{
-		Items: viewModelItems,
-		Key:   key,
-	}
-	return web.Respond(ctx, w, response, http.StatusOK)
+	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
 //Update updates the item

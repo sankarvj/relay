@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -68,6 +69,34 @@ func Stages(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
 
 	if err := db.SelectContext(ctx, &nodes, q, flowID, Stage); err != nil {
 		return nil, errors.Wrap(err, "selecting stages")
+	}
+
+	return nodes, nil
+}
+
+func SearchByKey(ctx context.Context, accountID, flowID, key, term string, db *sqlx.DB) ([]Node, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.flow.SearchByKey")
+	defer span.End()
+
+	nodes := []Node{}
+	const q = `SELECT * FROM nodes where account_id = $1 AND flow_id = $2`
+
+	if err := db.SelectContext(ctx, &nodes, q, accountID, flowID); err != nil {
+		return nil, errors.Wrap(err, "searching nodes")
+	}
+
+	return nodes, nil
+}
+
+func BulkRetrieve(ctx context.Context, ids []interface{}, db *sqlx.DB) ([]Node, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.node.BulkRetrieveStages")
+	defer span.End()
+
+	nodes := []Node{}
+	const q = `SELECT * FROM nodes where node_id = any($1) AND type = $2`
+
+	if err := db.SelectContext(ctx, &nodes, q, pq.Array(ids), Stage); err != nil {
+		return nodes, errors.Wrap(err, "selecting bulk stages for flow id")
 	}
 
 	return nodes, nil

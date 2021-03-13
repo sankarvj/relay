@@ -20,6 +20,7 @@ type Field struct {
 	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
 	Choices     []Choice          `json:"choices"`
 	RefID       string            `json:"ref_id"`    // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
 	ActionID    string            `json:"action_id"` // another field_id for datetime with reminder/dueby
 }
 
@@ -41,6 +42,11 @@ type Choice struct {
 	Expression   string      `json:"expression"`
 }
 
+type Dependent struct {
+	ParentKey    string `json:"parent_key"`
+	ReferenceKey string `json:"reference_key"`
+}
+
 //DType defines the data type of field
 type DType string
 
@@ -52,7 +58,6 @@ const (
 	TypeDataTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
-	TypeOdd             = "O"
 )
 
 //Dom defines the visual representation of the field
@@ -63,17 +68,23 @@ const (
 	DomText          Dom = "TE"
 	DomTextArea          = "TA"
 	DomStatus            = "ST"
+	DomAutoSelect        = "AS" // same as select but with the twist for auto fill. refer status
 	DomAutoComplete      = "AC"
 	DomSelect            = "SE" // the default dom for the reference field units. This type mandates the choices limit to 20
-	DomAutoSelect        = "AS" // same as select but with the twist for auto fill. refer status
+	DomMultiSelect       = "MS"
 	DomDate              = "DA"
 	DomTime              = "TI"
 	DomMinute            = "MI"
-	DomMultiSelect       = "MS"
-	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
-	DomPipeline          = "PL"
-	DomPlayBook          = "PB"
 	DomReminder          = "RE"
+	DomDueBy             = "DB"
+	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
+)
+
+const (
+	PipeReferenceID     = "pipelines"
+	FlowsReferenceID    = "flows"
+	UsersReferenceID    = "users"
+	AccountsReferenceID = "accounts"
 )
 
 //field_unit expression
@@ -136,6 +147,20 @@ func (f Field) isConfig() bool {
 	return false
 }
 
+func (f Field) IsFlow() bool {
+	if val, ok := f.Meta["flow"]; ok && val == "true" {
+		return true
+	}
+	return false
+}
+
+func (f Field) IsNode() bool {
+	if val, ok := f.Meta["node"]; ok && val == "true" {
+		return true
+	}
+	return false
+}
+
 func (f Field) IsReference() bool {
 	if f.DataType == TypeReference {
 		return true
@@ -143,8 +168,8 @@ func (f Field) IsReference() bool {
 	return false
 }
 
-func (f Field) IsPipe() bool {
-	if f.DomType == DomPipeline || f.DomType == DomPlayBook {
+func (f Field) IsDependent() bool {
+	if f.Dependent != nil {
 		return true
 	}
 	return false

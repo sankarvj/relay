@@ -10,6 +10,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
@@ -47,7 +48,7 @@ func List(ctx context.Context, entityIDs []string, fm int, db *sqlx.DB) ([]Flow,
 		return flows, nil
 	}
 	modes := []int{fm}
-	if fm == -1 {
+	if fm == FlowModeAll {
 		modes = []int{FlowModeWorkFlow, FlowModePipeLine}
 	}
 	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?);`, entityIDs, modes)
@@ -118,6 +119,34 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Flow, error) {
 	}
 
 	return f, nil
+}
+
+func SearchByKey(ctx context.Context, accountID, entityID, key, term string, db *sqlx.DB) ([]Flow, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.flow.SearchByKey")
+	defer span.End()
+
+	flows := []Flow{}
+	const q = `SELECT * FROM flows where account_id = $1 AND entity_id = $2`
+
+	if err := db.SelectContext(ctx, &flows, q, accountID, entityID); err != nil {
+		return nil, errors.Wrap(err, "searching flows")
+	}
+
+	return flows, nil
+}
+
+func BulkRetrieve(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Flow, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
+	defer span.End()
+
+	flows := []Flow{}
+	const q = `SELECT * FROM flows where account_id = $1 AND flow_id = any($2)`
+
+	if err := db.SelectContext(ctx, &flows, q, accountID, pq.Array(ids)); err != nil {
+		return flows, errors.Wrap(err, "selecting bulk flows for selected flow ids")
+	}
+
+	return flows, nil
 }
 
 // DirtyFlows filters the flows which matches the field name in the rules with the modified fields during the update/insert
