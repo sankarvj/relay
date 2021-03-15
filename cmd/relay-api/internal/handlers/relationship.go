@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -39,8 +40,22 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Connections.List")
 	defer span.End()
-	actualEntityID := params["entity_id"]
-	e, err := entity.Retrieve(ctx, params["account_id"], actualEntityID, rs.db)
+	sourceEntityID := params["entity_id"]
+	sourceItemID := params["item_id"]
+	accountID := params["account_id"]
+	relationshipID := params["relationship_id"]
+
+	relation, err := relationship.Retrieve(ctx, accountID, relationshipID, rs.db)
+	if err != nil {
+		return err
+	}
+
+	relatedEntityID := relation.SrcEntityID
+	if relatedEntityID == sourceEntityID {
+		relatedEntityID = relation.DstEntityID
+	}
+
+	e, err := entity.Retrieve(ctx, accountID, relatedEntityID, rs.db)
 	if err != nil {
 		return err
 	}
@@ -51,28 +66,32 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	//TODO: add pagination
-	itemIDs, err := connection.ChildItemIDs(ctx, rs.db, params["account_id"], params["relationship_id"], params["item_id"])
+	itemIDs, err := connection.ChildItemIDs(ctx, rs.db, accountID, relationshipID, sourceItemID)
 	if err != nil {
 		return errors.Wrap(err, "selecting related item ids")
 	}
 
-	childItems, err := item.BulkRetrieve(ctx, actualEntityID, itemIDs, rs.db)
+	childItems, err := item.BulkRetrieve(ctx, e.ID, itemIDs, rs.db)
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")
 	}
 
-	viewModelItems := make([]*item.ViewModelItem, len(childItems))
+	log.Println("relation.childItems ", childItems)
+
+	viewModelItems := make([]item.ViewModelItem, len(childItems))
 	for i, item := range childItems {
-		viewModelItem := createViewModelItem(item)
-		viewModelItems[i] = &viewModelItem
+		viewModelItems[i] = createViewModelItem(item)
 	}
 
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, rs.db)
+	sourceMap := make(map[string]interface{}, 0)
+	sourceMap[sourceEntityID] = sourceItemID
+	//When populating the fields for the child items please populate the parent id also
+	reference.UpdateReferenceFields(ctx, accountID, fields, viewModelItems, sourceMap, rs.db)
 
 	response := struct {
-		Items    []*item.ViewModelItem `json:"items"`
-		Category int                   `json:"category"`
-		Fields   []entity.Field        `json:"fields"`
+		Items    []item.ViewModelItem `json:"items"`
+		Category int                  `json:"category"`
+		Fields   []entity.Field       `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,

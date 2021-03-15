@@ -25,14 +25,18 @@ type Field struct {
 }
 
 type FieldMeta struct {
-	Unique     string `json:"unique"`
-	Mandatory  string `json:"mandatory"`
-	Hidden     string `json:"hidden"`
-	Config     string `json:"config"`     //UI property useful only during display
-	Expression string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
-	Link       string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
-	DisplayGex string `json:"display_gex"`
-	Layout     string `json:"layout"`
+	Unique      string `json:"unique"`
+	Mandatory   string `json:"mandatory"`
+	Hidden      string `json:"hidden"`
+	Config      string `json:"config"`     //UI property useful only during display
+	Expression  string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
+	Link        string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
+	DisplayGex  string `json:"display_gex"`
+	Layout      string `json:"layout"`
+	Verb        string `json:"verb"`
+	Flow        string `json:"flow"`
+	Node        string `json:"node"`
+	LoadChoices string `json:"load_choices"`
 }
 
 type Choice struct {
@@ -43,8 +47,9 @@ type Choice struct {
 }
 
 type Dependent struct {
-	ParentKey    string `json:"parent_key"`
-	ReferenceKey string `json:"reference_key"`
+	ParentKey     string `json:"parent_key"`
+	ReferenceKey  string `json:"reference_key"`
+	EvalutedValue string // this will be populated in the reference.go
 }
 
 //DType defines the data type of field
@@ -156,6 +161,13 @@ func (f Field) IsFlow() bool {
 
 func (f Field) IsNode() bool {
 	if val, ok := f.Meta["node"]; ok && val == "true" {
+		return true
+	}
+	return false
+}
+
+func (f Field) ForceLoadChoices() bool {
+	if val, ok := f.Meta["load_choices"]; ok && val == "true" {
 		return true
 	}
 	return false

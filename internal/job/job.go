@@ -36,7 +36,6 @@ func EventItemCreated(accountID, entityID, itemID string, newFields map[string]i
 
 	switch e.Category {
 	case entity.CategoryEmail:
-
 		reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
 		err = email.SendMail(ctx, accountID, e.ID, itemID, valueAddedFields, db)
 	}

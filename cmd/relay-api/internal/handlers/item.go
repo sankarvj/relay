@@ -53,16 +53,15 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	viewModelItems := make([]*item.ViewModelItem, len(items))
+	viewModelItems := make([]item.ViewModelItem, len(items))
 	for i, item := range items {
-		viewModelItem := createViewModelItem(item)
-		viewModelItems[i] = &viewModelItem
+		viewModelItems[i] = createViewModelItem(item)
 	}
 
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, i.db)
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db)
 
 	response := struct {
-		Items    []*item.ViewModelItem  `json:"items"`
+		Items    []item.ViewModelItem   `json:"items"`
 		Category int                    `json:"category"`
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
@@ -217,7 +216,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	viewModelItem := createViewModelItem(it)
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []*item.ViewModelItem{&viewModelItem}, i.db)
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []item.ViewModelItem{viewModelItem}, map[string]interface{}{}, i.db)
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

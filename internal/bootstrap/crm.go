@@ -165,7 +165,7 @@ func ContactVals(name, email, statusID string) map[string]interface{} {
 		"uuid-00-email":          email,
 		"uuid-00-mobile-numbers": []interface{}{"9944293499", "9940209164"},
 		schema.SeedFieldNPSKey:   100,
-		"uuid-00-lf-stage":       "lead",
+		"uuid-00-lf-stage":       []interface{}{"1"},
 		"uuid-00-status":         []interface{}{statusID},
 		"uuid-00-owner":          []interface{}{},
 	}
@@ -283,7 +283,7 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 		DomType:     entity.DomAutoSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb"},
+		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb", "load_choices": "true"},
 		Choices: []entity.Choice{
 			{
 				ID:         stItem1,
@@ -366,7 +366,7 @@ func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []ent
 		Key:         "uuid-00-pipe-stage",
 		Name:        "pipeline_stage",
 		DisplayName: "Pipeline Stage",
-		DomType:     entity.DomAutoComplete,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       nodeEntityID,
 		Dependent: &entity.Dependent{

@@ -2,6 +2,7 @@ package relationship
 
 import (
 	"context"
+	"database/sql"
 	"log"
 
 	"github.com/google/uuid"
@@ -152,6 +153,27 @@ func Delete(ctx context.Context, db *sqlx.DB, accountID, relationshipID string) 
 	}
 
 	return nil
+}
+
+func Retrieve(ctx context.Context, accountID, relationshipID string, db *sqlx.DB) (Relationship, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.relationship.Retrieve")
+	defer span.End()
+
+	if _, err := uuid.Parse(relationshipID); err != nil {
+		return Relationship{}, ErrInvalidID
+	}
+
+	var r Relationship
+	const q = `SELECT * FROM relationships WHERE account_id = $1 AND relationship_id = $2`
+	if err := db.GetContext(ctx, &r, q, accountID, relationshipID); err != nil {
+		if err == sql.ErrNoRows {
+			return Relationship{}, ErrNotFound
+		}
+
+		return Relationship{}, errors.Wrapf(err, "selecting relationship %q", relationshipID)
+	}
+
+	return r, nil
 }
 
 // List gets the relationships for the destination entity
