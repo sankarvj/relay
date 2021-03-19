@@ -31,13 +31,13 @@ var (
 
 // Bonding creates the implicit relationships between two entities based on the reference fields
 // This type of associations are always 1:N
-func Bonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]string) error {
+func Bonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]Relatable) error {
 	relationships := populateBonds(accountID, srcEntityID, rFields)
 	return BulkCreate(ctx, db, accountID, relationships)
 }
 
 // ReBonding updates the implicit relationships between two entities based on the reference fields on the event of entity update
-func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]string) error {
+func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]Relatable) error {
 	existingRelationships, err := Relationships(ctx, db, accountID, srcEntityID)
 	if err != nil {
 		return err
@@ -176,6 +176,23 @@ func Retrieve(ctx context.Context, accountID, relationshipID string, db *sqlx.DB
 	return r, nil
 }
 
+func RetriveAssociation(ctx context.Context, accountID, srcEntityID, dstEntityID string, db *sqlx.DB) (Relationship, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.relationship.RetriveAssociation")
+	defer span.End()
+
+	var r Relationship
+	const q = `SELECT * FROM relationships WHERE account_id = $1 AND src_entity_id = $2 AND dst_entity_id = $3 AND field_id = $4`
+	if err := db.GetContext(ctx, &r, q, accountID, srcEntityID, dstEntityID, FieldAssociationKey); err != nil {
+		if err == sql.ErrNoRows {
+			return Relationship{}, ErrNotFound
+		}
+
+		return Relationship{}, errors.Wrapf(err, "selecting explicit relationship using entity ids %q & %q", srcEntityID, dstEntityID)
+	}
+
+	return r, nil
+}
+
 // List gets the relationships for the destination entity
 func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
@@ -205,34 +222,49 @@ func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string)
 	return relationships, nil
 }
 
-func populateBonds(accountID, srcEntityId string, referenceFields map[string]string) []Relationship {
+func populateBonds(accountID, srcEntityId string, referenceFields map[string]Relatable) []Relationship {
 	relationships := make([]Relationship, 0)
-	for fieldKey, refID := range referenceFields {
-		if srcEntityId == "" || refID == "" {
-			log.Printf("either src_entity_id (%s) or ref_entity_id (%s) is empty. Bonding skipped", srcEntityId, refID)
+	for fieldKey, relatable := range referenceFields {
+		if srcEntityId == "" || relatable.RefID == "" {
+			log.Printf("either src_entity_id (%s) or ref_entity_id (%s) is empty. Bonding skipped", srcEntityId, relatable.RefID)
 			continue
 		}
-		relationships = append(relationships, Relationship{
-			RelationshipID: uuid.New().String(),
-			AccountID:      accountID,
-			SrcEntityID:    srcEntityId,
-			DstEntityID:    refID,
-			FieldID:        fieldKey,
-			Type:           TypeBond,
-		})
+		relationshipID := uuid.New().String()
+		if relatable.RType == RTypeBothSide || relatable.RType == RTypeSrcSide {
+			relationships = append(relationships, Relationship{
+				RelationshipID: relationshipID,
+				AccountID:      accountID,
+				SrcEntityID:    srcEntityId,
+				DstEntityID:    relatable.RefID,
+				FieldID:        fieldKey,
+				Type:           relatable.RType,
+			})
+		}
+
+		if relatable.RType == RTypeBothSide || relatable.RType == RTypeDstSide {
+			relationships = append(relationships, Relationship{
+				RelationshipID: relationshipID,
+				AccountID:      accountID,
+				SrcEntityID:    relatable.RefID,
+				DstEntityID:    srcEntityId,
+				FieldID:        fieldKey,
+				Type:           relatable.RType,
+			})
+		}
+
 	}
 	return relationships
 }
 
-func updateBonds(accountID, srcEntityId string, existingRelationshipMap map[string]Relationship, referenceFields map[string]string) ([]Relationship, []Relationship, []string) {
+func updateBonds(accountID, srcEntityId string, existingRelationshipMap map[string]Relationship, referenceFields map[string]Relatable) ([]Relationship, []Relationship, []string) {
 	var deletedRelationshipIDs []string
 	updatedRelationships := make([]Relationship, 0)
 
 	for _, relationship := range existingRelationshipMap {
-		if value, ok := referenceFields[relationship.FieldID]; ok {
+		if relatable, ok := referenceFields[relationship.FieldID]; ok {
 			delete(referenceFields, relationship.FieldID)
-			if value != relationship.DstEntityID {
-				relationship.DstEntityID = value
+			if relatable.RefID != relationship.DstEntityID {
+				relationship.DstEntityID = relatable.RefID
 				updatedRelationships = append(updatedRelationships, relationship)
 			}
 		} else {
@@ -252,14 +284,14 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		SrcEntityID:    srcEntityId,
 		DstEntityID:    dstEntityId,
 		FieldID:        FieldAssociationKey,
-		Type:           TypeAssociation,
+		Type:           RTypeBothSide,
 	}, Relationship{
 		RelationshipID: relationshipID,
 		AccountID:      accountID,
 		SrcEntityID:    dstEntityId,
 		DstEntityID:    srcEntityId,
 		FieldID:        FieldAssociationKey,
-		Type:           TypeAssociation,
+		Type:           RTypeBothSide,
 	})
 	return relationshipID, relationships
 }

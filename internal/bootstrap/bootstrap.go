@@ -83,7 +83,7 @@ func EntityUpdate(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID 
 		return err
 	}
 
-	fmt.Printf("Entity '%s' Updated\n", entityID)
+	fmt.Printf("\t\tEntity '%s' Updated\n", entityID)
 	return entity.Update(ctx, db, accountID, entityID, string(input), time.Now())
 }
 
@@ -103,15 +103,16 @@ func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, na
 		return entity.Entity{}, err
 	}
 
-	fmt.Printf("Entity '%s' Bootstraped\n", e.DisplayName)
+	fmt.Printf("\t\tEntity '%s' Bootstraped\n", e.DisplayName)
 	return e, nil
 }
 
-func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string, fields map[string]interface{}) (item.Item, error) {
+func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, userID string, fields map[string]interface{}) (item.Item, error) {
 	ni := item.NewItem{
-		ID:        itemID,
+		ID:        userID,
 		AccountID: accountID,
 		EntityID:  entityID,
+		UserID:    &userID,
 		Fields:    fields,
 	}
 
@@ -120,9 +121,9 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID strin
 		return item.Item{}, err
 	}
 
-	job.EventItemCreated(accountID, entityID, ni.ID, ni.Fields, db)
+	job.EventItemCreated(accountID, entityID, ni, db)
 
-	fmt.Printf("Item Added\n")
+	fmt.Printf("\t\t\tItem Added\n")
 	return i, nil
 }
 
@@ -143,7 +144,7 @@ func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID strin
 		return flow.Flow{}, err
 	}
 
-	fmt.Printf("Flow '%s' Bootstraped\n", name)
+	fmt.Printf("\t\tFlow '%s' Bootstraped\n", name)
 	return f, nil
 }
 
@@ -167,7 +168,7 @@ func NodeAdd(ctx context.Context, db *sqlx.DB, accountID, nodeID, flowID, actorI
 		return node.Node{}, err
 	}
 
-	fmt.Printf("Node '%s' Added For Flow %s\n", name, flowID)
+	fmt.Printf("\t\t\tNode '%s' Added For Flow %s\n", name, flowID)
 	return n, nil
 }
 
@@ -177,7 +178,7 @@ func AssociationAdd(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, ds
 		return "", err
 	}
 
-	fmt.Printf("Association added between entities '%s' and '%s'\n", srcEntityID, dstEntityID)
+	fmt.Printf("\t\tAssociation added between entities '%s' and '%s'\n", srcEntityID, dstEntityID)
 	return relationshipID, nil
 }
 
@@ -186,6 +187,6 @@ func ConnectionAdd(ctx context.Context, db *sqlx.DB, accountID, relationshipID, 
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Connection added between items '%s' and '%s' for the relationship '%s'\n", srcItemID, dstItemID, relationshipID)
+	fmt.Printf("\t\t\tConnection added between items '%s' and '%s' for the relationship '%s'\n", srcItemID, dstItemID, relationshipID)
 	return nil
 }

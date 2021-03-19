@@ -22,7 +22,7 @@ func EventItemUpdated(accountID, entityID, itemID string, oldFields, newFields m
 	updateConnection(ctx, db, accountID, entityID, itemID, oldFields, newFields)
 }
 
-func EventItemCreated(accountID, entityID, itemID string, newFields map[string]interface{}, db *sqlx.DB) {
+func EventItemCreated(accountID, entityID string, ni item.NewItem, db *sqlx.DB) {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -30,14 +30,18 @@ func EventItemCreated(accountID, entityID, itemID string, newFields map[string]i
 		log.Println("error while retriving entity on job", err)
 		return
 	}
-	valueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), newFields)
+	valueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), ni.Fields)
 	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
-	addConnection(ctx, db, accountID, entityID, itemID, valueAddedFields)
+	for sourceEntityID, sourceItemID := range ni.Source {
+		associateConnection(ctx, db, accountID, sourceEntityID, sourceItemID, entityID, ni.ID)
+	}
+	addConnection(ctx, db, accountID, base, entityID, ni.ID, valueAddedFields)
+
+	reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
 
 	switch e.Category {
 	case entity.CategoryEmail:
-		reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
-		err = email.SendMail(ctx, accountID, e.ID, itemID, valueAddedFields, db)
+		err = email.SendMail(ctx, accountID, e.ID, ni.ID, valueAddedFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)
@@ -69,9 +73,34 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string
 	}
 }
 
-func addConnection(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string, valueAddedFields []entity.Field) {
+// It connects the explicit relationships which is added manually
+func associateConnection(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, srcItemID, dstEntityID, dstItemID string) {
+	r, err := relationship.RetriveAssociation(ctx, accountID, srcEntityID, dstEntityID, db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Println("ni.Connection added --> ", r.RelationshipID)
+	err = connection.Associate(ctx, db, accountID, r.RelationshipID, srcItemID, dstItemID)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+// It connects the implicit relationships which as inferred by the field
+func addConnection(ctx context.Context, db *sqlx.DB, accountID string, base map[string]string, entityID, itemID string, valueAddedFields []entity.Field) {
+	relationships, err := relationship.Relationships(ctx, db, accountID, entityID)
+	if err != nil {
+		log.Println("There is an error while querying relationships...", err)
+		return
+	}
+
 	relationMap := relationMap(ctx, db, accountID, entityID)
 	for _, field := range valueAddedFields {
+
+		for _, relationship := range relationships {
+
+		}
 
 		//skip for node & flow
 		if field.IsFlow() || field.IsNode() {
@@ -151,7 +180,9 @@ func relationMap(ctx context.Context, db *sqlx.DB, accountID, entityID string) m
 	}
 
 	for _, r := range relationships {
-		relationMap[r.FieldID] = r.RelationshipID
+		if r.FieldID != relationship.FieldAssociationKey { // skip it. hence the connection for explicit-association, should be created explicitly by calling addConecction API
+			relationMap[r.FieldID] = r.RelationshipID
+		}
 	}
 	return relationMap
 }

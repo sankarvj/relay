@@ -56,29 +56,30 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	return a, nil
 }
 
-func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, accountID, teamID string, n NewAccount, now time.Time) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, n NewAccount, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
 	defer span.End()
-	n.ID = accountID
 	a, err := Create(ctx, db, n, now)
 	if err != nil {
 		return err
 	}
+	//Setting the accountID as the teamID for the base team of an account
+	teamID := a.ID
 
-	//TODO: all bootsrapping should happen in a single step
+	//TODO: all bootsrapping should happen in a single transaction
 	err = user.UpdateAccounts(ctx, db, cu, a.ID, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "account inserted but user update failed")
 	}
 
-	err = bootstrap.BootstrapTeam(ctx, db, a.ID, teamID, "CRM")
+	err = bootstrap.BootstrapTeam(ctx, db, a.ID, teamID, "Base")
 	if err != nil {
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
 
 	err = bootstrap.BootstrapOwnerEntity(ctx, db, cu, a.ID, teamID)
 	if err != nil {
-		return errors.Wrap(err, "account inserted but users bootstrap failed")
+		return errors.Wrap(err, "account inserted but owner bootstrap failed")
 	}
 
 	err = bootstrap.BootstrapEmailConfigEntity(ctx, db, a.ID, teamID)

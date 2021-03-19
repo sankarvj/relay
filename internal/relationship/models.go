@@ -18,17 +18,29 @@ type Bond struct {
 	Type           RType  `db:"type" json:"type"`
 }
 
+type Relatable struct {
+	RefID string
+	RType RType
+}
+
 //RType defines the type of relationships
 type RType int
 
-//Mode for the entity spcifies certain entity specific characteristics
-//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
+//Relationships could be defind in the fields itself (ex: deals has associated contacts field) or
+//Relationships could be defind explicitly (ex: deals has tickets and tickets has deals but not exposed explicitly)
 const (
-	TypeBond         RType = 0
-	TypeAssociation        = 1
-	TypeImplicitBond       = 2 // useful for bond like one-to-many associations but not as the field property. contact-activities
+	RTypeBothSide RType = 0
+	RTypeSrcSide        = 1
+	RTypeDstSide        = 2
 )
 
 const (
 	FieldAssociationKey string = "00000000-0000-0000-0000-000000000000"
 )
+
+func MakeRelatable(refID string, rtype RType) Relatable {
+	return Relatable{
+		RefID: refID,
+		RType: rtype,
+	}
+}

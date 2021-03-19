@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -29,12 +28,12 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 	ctx, span := trace.StartSpan(ctx, "handlers.Relationship.List")
 	defer span.End()
 
-	accounts, err := relationship.List(ctx, rs.db, params["account_id"], params["entity_id"])
+	relationships, err := relationship.List(ctx, rs.db, params["account_id"], params["entity_id"])
 	if err != nil {
 		return errors.Wrap(err, "selecting relationships for the entity id")
 	}
 
-	return web.Respond(ctx, w, accounts, http.StatusOK)
+	return web.Respond(ctx, w, relationships, http.StatusOK)
 }
 
 func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -75,8 +74,6 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")
 	}
-
-	log.Println("relation.childItems ", childItems)
 
 	viewModelItems := make([]item.ViewModelItem, len(childItems))
 	for i, item := range childItems {

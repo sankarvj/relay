@@ -39,6 +39,7 @@ type NewItem struct {
 	GenieID   *string                `json:"genie_id"`
 	UserID    *string                `json:"user_id"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
+	Source    map[string]string      `json:"source"`
 }
 
 type RefItem struct {

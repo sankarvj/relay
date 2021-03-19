@@ -142,7 +142,6 @@ Notes with @mention
 - ref_key as the separate var instead of display_gex
 - implement BulkCreate/BulkUpdate/BulkDelete in relationship
 - all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
-- reference.go line-no:39//// can we check of the vals are []interface{}?
 
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------

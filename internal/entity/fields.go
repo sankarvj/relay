@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
 // Field represents structural format of attributes in entity
@@ -19,7 +20,8 @@ type Field struct {
 	Field       *Field            `json:"field"`
 	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
 	Choices     []Choice          `json:"choices"`
-	RefID       string            `json:"ref_id"`    // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	RefID       string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	RefType     string            `json:"ref_type"`
 	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
 	ActionID    string            `json:"action_id"` // another field_id for datetime with reminder/dueby
 }
@@ -99,6 +101,12 @@ const (
 	FuExpPos    = "pos"    //set this on positive expression of due_by
 	FuExpNeg    = "neg"    //set this on negative expression of the due_by
 	FuExpManual = "manual" //keep as it is unless manually changes
+)
+
+const (
+	RefTypeBothSides = ""   //respective childreans will be visible from src/dst details page (from contacts's detail - view deals associated & vice-versa)
+	RefTypeSrcSide   = "SD" //only the src entity childrean will be visible (from deal's detail - view contacts associated)
+	RefTypeDstSide   = "DS" //only the dst entity childrean will be visible (from contacts's detail - view deals associated)
 )
 
 //ValueAddFields updates the values of entity fields along with the config
@@ -240,11 +248,17 @@ func unmarshalFields(fieldsB string) ([]Field, error) {
 	return fields, nil
 }
 
-func refFields(fields []Field) map[string]string {
-	referenceFieldsMap := make(map[string]string, 0)
+func refFields(fields []Field) map[string]relationship.Relatable {
+	referenceFieldsMap := make(map[string]relationship.Relatable, 0)
 	for _, f := range fields {
 		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
-			referenceFieldsMap[f.Key] = f.RefID
+			if f.RefType == RefTypeSrcSide {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeSrcSide)
+			} else if f.RefType == RefTypeDstSide {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeDstSide)
+			} else if f.RefType == RefTypeBothSides {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeBothSide)
+			}
 		}
 	}
 	return referenceFieldsMap

@@ -140,24 +140,24 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Update")
 	defer span.End()
 
-	var vi item.ViewModelItem
-	if err := web.Decode(r, &vi); err != nil {
+	var ni item.NewItem
+	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
 	entityID := params["entity_id"]
-	existingItem, err := item.Retrieve(ctx, entityID, vi.ID, i.db)
+	existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "Item Get During Update")
 	}
 
-	err = item.UpdateFields(ctx, i.db, entityID, params["item_id"], vi.Fields)
+	err = item.UpdateFields(ctx, i.db, entityID, params["item_id"], ni.Fields)
 	if err != nil {
-		return errors.Wrapf(err, "Item Update: %+v", &vi)
+		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	job.EventItemUpdated(params["account_id"], params["entity_id"], vi.ID, existingItem.Fields(), vi.Fields, i.db)
+	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, existingItem.Fields(), ni.Fields, i.db)
 
-	return web.Respond(ctx, w, vi, http.StatusOK)
+	return web.Respond(ctx, w, ni, http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -174,6 +174,8 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
+
+	log.Printf("ni %v", ni)
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
 	ni.UserID = &currentUserID
@@ -185,7 +187,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//TODO push this to stream/queue
-	job.EventItemCreated(params["account_id"], params["entity_id"], ni.ID, ni.Fields, i.db)
+	job.EventItemCreated(params["account_id"], params["entity_id"], ni, i.db)
 
 	return web.Respond(ctx, w, ri, http.StatusCreated)
 }
