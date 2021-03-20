@@ -189,18 +189,18 @@ func TestDirectTrigger(t *testing.T) {
 	{
 		t.Log("\twhen updating the event mrr in contact1")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
-			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
-			n2 := "82adc579-b4df-48cc-a22e-dd42178d962c" //node-stage-2
-			flID := "437834ca-2dc3-4bdf-8d6f-27efb73d41f7"
-			err := flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flID, n2, contactEntity.ID, contactItems[0].ID)
+			n2 := "441f84e8-f120-49dc-9d13-ee33b4ccc650" //node-stage-2
+			flowID := "243a5090-7ef9-468a-be3c-9d7ad9544658"
+			f, _ := flow.Retrieve(tests.Context(), flowID, db)
+			contactItems, _ := item.List(tests.Context(), f.EntityID, db)
+			err := flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID)
 			if err != nil {
-				t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
+				t.Fatalf("\t%s should flow with out error : %s.", tests.Failed, err)
 			}
-			t.Logf("\t%s should flow without error", tests.Success)
+			t.Logf("\t%s should flow with out error", tests.Success)
 
-			afs, _ := flow.ActiveFlows(tests.Context(), []string{"437834ca-2dc3-4bdf-8d6f-27efb73d41f7"}, db) //pipeline-id
-			ans, _ := flow.ActiveNodes(tests.Context(), []string{"437834ca-2dc3-4bdf-8d6f-27efb73d41f7"}, db) //pipeline-id
+			afs, _ := flow.ActiveFlows(tests.Context(), []string{flowID}, db) //pipeline-id
+			ans, _ := flow.ActiveNodes(tests.Context(), []string{flowID}, db) //pipeline-id
 			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
 			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 

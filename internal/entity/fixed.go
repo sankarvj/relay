@@ -229,7 +229,8 @@ func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string,
 //updateFields func encloses the update func
 func updateFields(accountID, entityID, itemID string, fields []Field) updaterFunc {
 	return func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error {
-		return item.UpdateFields(ctx, db, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
+		_, err := item.UpdateFields(ctx, db, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
+		return err
 	}
 }
 

@@ -202,6 +202,14 @@ func (f Field) IsNotApplicable() bool {
 	return false
 }
 
+func (f Field) ValidRefField() bool {
+	return f.IsReference() && f.Value != nil && f.Value != "" && len(f.Value.([]interface{})) > 0
+}
+
+func (f Field) RefValues() []interface{} {
+	return f.Value.([]interface{})
+}
+
 func (f Field) DisplayGex() string {
 	if val, ok := f.Meta["display_gex"]; ok {
 		return val
@@ -218,16 +226,24 @@ func (f Field) Verb() string {
 
 func NamedKeysMap(entityFields []Field) map[string]string {
 	params := map[string]string{}
-	for _, field := range entityFields {
-		params[field.Name] = field.Key
+	for _, f := range entityFields {
+		params[f.Name] = f.Key
 	}
 	return params
 }
 
 func NamedFieldsObjMap(entityFields []Field) map[string]Field {
 	params := map[string]Field{}
-	for _, field := range entityFields {
-		params[field.Name] = field
+	for _, f := range entityFields {
+		params[f.Name] = f
+	}
+	return params
+}
+
+func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
+	params := map[string]Field{}
+	for _, f := range entityFields {
+		params[f.Key] = f
 	}
 	return params
 }

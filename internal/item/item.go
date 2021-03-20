@@ -76,10 +76,10 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 }
 
 //UpdateFields patches the field data
-func UpdateFields(ctx context.Context, db *sqlx.DB, entityID, id string, fields map[string]interface{}) error {
+func UpdateFields(ctx context.Context, db *sqlx.DB, entityID, id string, fields map[string]interface{}) (Item, error) {
 	input, err := json.Marshal(fields)
 	if err != nil {
-		return errors.Wrap(err, "encode fields to input")
+		return Item{}, errors.Wrap(err, "encode fields to input")
 	}
 	inputStr := string(input)
 	upd := UpdateItem{
@@ -89,12 +89,12 @@ func UpdateFields(ctx context.Context, db *sqlx.DB, entityID, id string, fields 
 }
 
 // Update replaces a item document in the database.
-func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateItem, now time.Time) error {
+func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateItem, now time.Time) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Update")
 	defer span.End()
 	i, err := Retrieve(ctx, entityID, id, db)
 	if err != nil {
-		return err
+		return Item{}, err
 	}
 
 	if upd.Fieldsb != nil {
@@ -110,10 +110,10 @@ func update(ctx context.Context, db *sqlx.DB, entityID, id string, upd UpdateIte
 		i.Fieldsb, i.UpdatedAt,
 	)
 	if err != nil {
-		return errors.Wrap(err, "updating item")
+		return Item{}, errors.Wrap(err, "updating item")
 	}
 
-	return nil
+	return i, nil
 }
 
 // Retrieve gets the specified user from the database.

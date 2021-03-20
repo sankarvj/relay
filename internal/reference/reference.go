@@ -183,7 +183,7 @@ func choicesMakerNode(f *entity.Field, nodes []node.Node) {
 //UpdateChoicesWrapper updates only the choices for reference fields
 func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID string, valueAddedFields []entity.Field) {
 	for i := 0; i < len(valueAddedFields); i++ {
-		if valueAddedFields[i].IsReference() {
+		if valueAddedFields[i].ValidRefField() {
 			updateChoices(ctx, db, accountID, &valueAddedFields[i], valueAddedFields[i].Value.([]interface{}), []item.ViewModelItem{})
 		}
 	}

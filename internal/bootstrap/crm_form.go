@@ -133,6 +133,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -148,6 +149,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Meta:        map[string]string{"display_gex": ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -172,7 +174,7 @@ func ContactVals(name, email, statusID string) map[string]interface{} {
 	return contactVals
 }
 
-func CompanyFields() []entity.Field {
+func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 	nameField := entity.Field{
 		Key:         "uuid-00-name",
 		Name:        "name",
@@ -184,12 +186,68 @@ func CompanyFields() []entity.Field {
 	websiteField := entity.Field{
 		Key:         "uuid-00-website",
 		Name:        "website",
-		DisplayName: "Website",
+		DisplayName: "Domain",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{nameField, websiteField}
+	cityField := entity.Field{
+		Key:         "uuid-00-city",
+		Name:        "city",
+		DisplayName: "City",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	stateField := entity.Field{
+		Key:         "uuid-00-state",
+		Name:        "state",
+		DisplayName: "State",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	annualRevenueField := entity.Field{
+		Key:         "uuid-00-revenue",
+		Name:        "revenue",
+		DisplayName: "Annual Revenue",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	countryField := entity.Field{
+		Key:         "uuid-00-country",
+		Name:        "country",
+		DisplayName: "Country",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	employeesCountField := entity.Field{
+		Key:         "uuid-00-employees-count",
+		Name:        "employees_count",
+		DisplayName: "Employees Count",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	ownerField := entity.Field{
+		Key:         "uuid-00-owner",
+		Name:        "owner",
+		DisplayName: "Company Owner",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		RefType:     entity.RefTypeDstSide,
+		Meta:        map[string]string{"display_gex": ownerEntityKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{nameField, websiteField, cityField, stateField, ownerField, annualRevenueField, countryField, employeesCountField}
 }
 
 func CompanyVals(name, website string) map[string]interface{} {
@@ -200,7 +258,7 @@ func CompanyVals(name, website string) map[string]interface{} {
 	return companyVals
 }
 
-func TicketFields(statusEntityID string) []entity.Field {
+func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []entity.Field {
 	nameField := entity.Field{
 		Key:         "uuid-00-subject",
 		Name:        "name",
@@ -216,6 +274,7 @@ func TicketFields(statusEntityID string) []entity.Field {
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Meta:        map[string]string{"display_gex": "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -224,7 +283,37 @@ func TicketFields(statusEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{nameField, statusField}
+	contactField := entity.Field{
+		Key:         "uuid-00-contact",
+		Name:        "contact",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyField := entity.Field{
+		Key:         "uuid-00-company",
+		Name:        "company",
+		DisplayName: "Associated Companies",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{nameField, statusField, contactField, companyField}
 }
 
 func TicketVals(name, statusID string) map[string]interface{} {
@@ -235,7 +324,7 @@ func TicketVals(name, statusID string) map[string]interface{} {
 	return ticketVals
 }
 
-func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
+func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
 	descField := entity.Field{
 		Key:         "uuid-00-desc",
 		Name:        "desc",
@@ -267,6 +356,36 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 		},
 	}
 
+	dealField := entity.Field{
+		Key:         "uuid-00-deal",
+		Name:        "deal",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       dealEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-deal-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyField := entity.Field{
+		Key:         "uuid-00-company",
+		Name:        "company",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
 	reminderField := entity.Field{
 		Key:         "uuid-00-reminder",
 		Name:        "reminder",
@@ -283,6 +402,7 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 		DomType:     entity.DomAutoSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb", "load_choices": "true"},
 		Choices: []entity.Choice{
 			{
@@ -301,7 +421,7 @@ func TaskFields(contactEntityID, statusEntityID string, stItem1, stItem2, stItem
 		},
 	}
 
-	return []entity.Field{descField, contactField, statusField, dueByField, reminderField}
+	return []entity.Field{descField, contactField, statusField, dueByField, dealField, companyField, reminderField}
 }
 
 func TaskVals(desc, contactID string) map[string]interface{} {
@@ -315,7 +435,7 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 	return taskVals
 }
 
-func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []entity.Field {
+func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntityID string) []entity.Field {
 	dealName := entity.Field{
 		Key:         "uuid-00-deal-name",
 		Name:        "deal_name",
@@ -347,6 +467,21 @@ func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []ent
 		},
 	}
 
+	companyField := entity.Field{
+		Key:         "uuid-00-company",
+		Name:        "company",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
 	pipeField := entity.Field{
 		Key:         "uuid-00-pipe",
 		Name:        "pipeline",
@@ -354,6 +489,7 @@ func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []ent
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       flowEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Meta:        map[string]string{"flow": "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -369,6 +505,7 @@ func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []ent
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       nodeEntityID,
+		RefType:     entity.RefTypeDstSide,
 		Dependent: &entity.Dependent{
 			ParentKey:    pipeField.Key,
 			ReferenceKey: "flow_id",
@@ -381,7 +518,7 @@ func DealFields(contactEntityID string, flowEntityID, nodeEntityID string) []ent
 		},
 	}
 
-	return []entity.Field{dealName, dealAmount, contactsField, pipeField, pipeStageField}
+	return []entity.Field{dealName, dealAmount, contactsField, companyField, pipeField, pipeStageField}
 }
 
 func DealVals(name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
@@ -393,6 +530,145 @@ func DealVals(name string, amount int, contactID1, contactID2, flowID string) ma
 		"uuid-00-pipe-stage":  []interface{}{},
 	}
 	return dealVals
+}
+
+func NoteFields(contactEntityID, companyEntityID, dealEntityID string) []entity.Field {
+	descField := entity.Field{
+		Key:         "uuid-00-desc",
+		Name:        "desc",
+		DisplayName: "Notes",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	contactField := entity.Field{
+		Key:         "uuid-00-contact",
+		Name:        "contact",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	dealField := entity.Field{
+		Key:         "uuid-00-deal",
+		Name:        "deal",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       dealEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-deal-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyField := entity.Field{
+		Key:         "uuid-00-company",
+		Name:        "company",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{descField, contactField, dealField, companyField}
+}
+
+func NoteVals(desc, contactID string) map[string]interface{} {
+	noteVals := map[string]interface{}{
+		"uuid-00-desc":    desc,
+		"uuid-00-contact": []interface{}{contactID},
+	}
+	return noteVals
+}
+
+func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []entity.Field {
+	descField := entity.Field{
+		Key:         "uuid-00-desc",
+		Name:        "desc",
+		DisplayName: "Notes",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	dueByField := entity.Field{
+		Key:         "uuid-00-due-by",
+		Name:        "due_by",
+		DisplayName: "Due By",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDataTime,
+	}
+
+	contactField := entity.Field{
+		Key:         "uuid-00-contact",
+		Name:        "contact",
+		DisplayName: "Associated Contact",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	dealField := entity.Field{
+		Key:         "uuid-00-deal",
+		Name:        "deal",
+		DisplayName: "Associated Deal",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       dealEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-deal-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyField := entity.Field{
+		Key:         "uuid-00-company",
+		Name:        "company",
+		DisplayName: "Associated Company",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	reminderField := entity.Field{
+		Key:         "uuid-00-reminder",
+		Name:        "reminder",
+		DisplayName: "Reminder",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDataTime,
+		ActionID:    contactField.Key,
+	}
+
+	return []entity.Field{descField, contactField, dueByField, dealField, companyField, reminderField}
 }
 
 func APIFields() []entity.Field {

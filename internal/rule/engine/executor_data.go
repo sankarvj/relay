@@ -32,7 +32,7 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 		_, err = item.Create(ctx, db, ni, time.Now())
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
-		err = item.UpdateFields(ctx, db, n.ActorID, actualItemID, ni.Fields)
+		_, err = item.UpdateFields(ctx, db, n.ActorID, actualItemID, ni.Fields)
 		if err != nil {
 			return err
 		}

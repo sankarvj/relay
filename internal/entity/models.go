@@ -70,4 +70,6 @@ const (
 	CategoryEmailConfig = 10
 	CategoryFlow        = 11 // alais for actual flow
 	CategoryNode        = 12 // alais for actual node
+	CategoryNotes       = 13
+	CategoryMeeting     = 14
 )

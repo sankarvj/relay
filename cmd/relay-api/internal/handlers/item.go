@@ -150,14 +150,14 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Get During Update")
 	}
 
-	err = item.UpdateFields(ctx, i.db, entityID, params["item_id"], ni.Fields)
+	it, err := item.UpdateFields(ctx, i.db, entityID, params["item_id"], ni.Fields)
 	if err != nil {
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
 	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, existingItem.Fields(), ni.Fields, i.db)
 
-	return web.Respond(ctx, w, ni, http.StatusOK)
+	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -181,7 +181,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
-	ri, err := item.Create(ctx, i.db, ni, time.Now())
+	it, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
@@ -189,7 +189,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	//TODO push this to stream/queue
 	job.EventItemCreated(params["account_id"], params["entity_id"], ni, i.db)
 
-	return web.Respond(ctx, w, ri, http.StatusCreated)
+	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
 // Retrieve gets the specified item with field meta from the database.

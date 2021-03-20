@@ -96,7 +96,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	fmt.Println("\tContact Entity With It's Two Contacts Items Created")
 
 	// add entity - companies
-	companyEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, CompanyFields())
+	companyEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, CompanyFields(ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
 		return err
 	}
@@ -105,23 +105,6 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	fmt.Println("\tCompany Entity With It's One Company Item Created")
-
-	// add entity - task
-	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, statusEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID))
-	if err != nil {
-		return err
-	}
-	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
-	if err != nil {
-		return err
-	}
-	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tTask Entity With It's Two Task Items Created")
 
 	// add entity - api-hook
 	webhookEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedWebHookEntityName, "WebHook", entity.CategoryAPI, APIFields())
@@ -151,7 +134,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	fmt.Println("\tEmail Config Entity And It's Item Created")
 
 	// add entity - deal
-	dealEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, DealFields(contactEntity.ID, flowEntity.ID, nodeEntity.ID))
+	dealEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, DealFields(contactEntity.ID, companyEntity.ID, flowEntity.ID, nodeEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -170,8 +153,37 @@ func BootCRM(cfg database.Config, accountID string) error {
 	}
 	fmt.Println("\tDeal Item Created")
 
+	// add entity - task
+	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, companyEntity.ID, dealEntity.ID, statusEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID))
+	if err != nil {
+		return err
+	}
+	// add task item for contact - vijay (reverse)
+	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
+	if err != nil {
+		return err
+	}
+	// add task item for contact - vijay (reverse)
+	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tTask Entity With It's Two Task Items Created")
+
+	// add entity - notes
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, NoteFields(contactEntity.ID, companyEntity.ID, dealEntity.ID))
+	if err != nil {
+		return err
+	}
+
+	// add entity - meetings
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, MeetingFields(contactEntity.ID, companyEntity.ID, dealEntity.ID))
+	if err != nil {
+		return err
+	}
+
 	// add entity - tickets
-	ticketEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, TicketFields(statusEntity.ID))
+	ticketEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, TicketFields(contactEntity.ID, companyEntity.ID, statusEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -188,6 +200,6 @@ func BootCRM(cfg database.Config, accountID string) error {
 	}
 	fmt.Println("\tA Web Of Associations Created Between All The Above Entities")
 
-	fmt.Printf("\n\tCRM Bootstrap Successfull!!!! for the account %s\n", accountID)
+	fmt.Printf("\n\tCRM Bootstrap Successfull!!!! for the account%s\n", accountID)
 	return nil
 }
