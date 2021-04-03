@@ -29,9 +29,9 @@ type RType int
 //Relationships could be defind in the fields itself (ex: deals has associated contacts field) or
 //Relationships could be defind explicitly (ex: deals has tickets and tickets has deals but not exposed explicitly)
 const (
-	RTypeBothSide RType = 0
-	RTypeSrcSide        = 1
-	RTypeDstSide        = 2
+	RTypeAbsolute RType = 0
+	RTypeStraight       = 1
+	RTypeReverse        = 2
 )
 
 const (

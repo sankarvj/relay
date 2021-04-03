@@ -133,7 +133,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -149,7 +149,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -238,7 +238,7 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -274,7 +274,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -402,7 +402,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		DomType:     entity.DomAutoSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb", "load_choices": "true"},
 		Choices: []entity.Choice{
 			{
@@ -470,7 +470,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 	companyField := entity.Field{
 		Key:         "uuid-00-company",
 		Name:        "company",
-		DisplayName: "Associated To",
+		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
@@ -489,7 +489,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       flowEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"flow": "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -505,7 +505,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       nodeEntityID,
-		RefType:     entity.RefTypeDstSide,
+		RefType:     entity.RefTypeStraight,
 		Dependent: &entity.Dependent{
 			ParentKey:    pipeField.Key,
 			ReferenceKey: "flow_id",

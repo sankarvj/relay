@@ -45,7 +45,7 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2)`
+	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2) LIMIT 100`
 
 	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
 		return items, errors.Wrap(err, "selecting bulk items for entity id and selected item ids")

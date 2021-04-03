@@ -1,9 +1,31 @@
 # Relationships
 
-There are two kinds of relationships.
+There are three types of relationships
+ABSOLUTE
+STRAIGHT
+REVERSE
+
+- ABSOLUTE: When we create a relationship between two entities using the lookup field, by default the relationship will be created from both sides. For the same relationshipID one relation has src/dst with base entity as source and the referenced item as the dst and vice-versa.
+Most of the references needs the two way relationships. For example, deals has contacts as its reference field so that, contacts will also accepts deals as its children. Its implicitly means that both the entities are many to many related. 
+- STRAIGHT: When contacts has status / owner. Here there is only one way relation needed which is, the contact has the status.or the contact has the owner/owners and the other entity don't have to keep the track. Even the contact entity don't have to show the status/owner as its child hence it is STRAIGHT. Here we need to map src as contact and dst as the owner and we should not map the other way.
+- REVERSE: It could be useful when we don't want to keep the track of the STRAIGHT but the REVERSE. So far, I couldn't think of any usecases per say. The reverse case is not yet categorized as one of the type of relationship but it could be useful for the segmentation. check the segmentation use case.
+
+Apart from STRAIGHT, REVERSE & ABSOLUTE
+### There are two kinds of relationships.
     - Implicit - relationships created by lookup field (ex - a lookupfield (to) in emails references contact)
     When an item gets added/updated the related connections will be updated automatically.
     - Explicit - relationships can be created explicitly (ex - user can create a relationship between contact & company). A new item should be created manually.
+
+### Facts Of Fields
+1. Reference - refernce field holds list of itemIDs as Values for the RefID(EntityID).
+2. On Segmentation - we have to handle to use cases. 
+    a. STRAIGHT - A has B (on segmenting A)
+    b. REVERSE  - B has A (on segmenting A)
+3. On REVERSE, make the field key of the conditional field as empty
+4. On STRAIGHT, make the field key of the conditinal field as not empty
+5. Refer below section to understand more about the REVERSE use cases.
+
+
 
 
 NOTE: Right now, we are going with the psql way for finding the sub-items using the connections table.

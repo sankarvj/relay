@@ -2,8 +2,12 @@
 Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software.
 
 ## Getting Started
-> make run
+> make seed
 > make crm
+> make run
+
+## Running Tests
+go test ./...
 
 ## Technical Stack
 - Core Stack - Golang
@@ -17,35 +21,24 @@ Project Relay is the sales/customer-success software built on top of the no-code
 
 ### Items
 
-### Rule Engine
+### RuleEngine
 
-### Work Flow
+### WorkFlow
 
-### Pipeline
+### Pipeline/Playbook
 
 ### Relationships
-- Add a new table to maintain the "REVERSE" reference of the reference field. Query that relationship table to find the displayable child entities. The "STRAIGHT" reference of the parent entity is the "REVERSE" reference of the child entity.
 
-REVERSE - BelongsTo
-STRAIGHT - HasMany
+### Search
 
-1. one-to-many (TypeBond - STRAIGHT)
-If a contact has many assignees. Then the contact entity would have the assigneeID as the reference field with (type = bond). So, the relationship will be like (src - contact) (dest - assignee). In the display panel of the contacts we will show the assignees as the field property. In the users panel we will show the associated contacts based on "type=bond".
-2. one-to-many (TypeBond - REVERSE)
-If a contact has many tasks. Then the task entity would have the contactID as the reference field with (type = bond). So, the relationship will be like (src - task) (dest - contact). 
-3. many-to-many (TypeAssociation - STRAIGHT/REVERSE) (src - deal) (dest - contact) && (src - contact) (dest - deal)
-If a contact has many deals and a deal has many contacts. The relationship will be like (src - deal) (dest - contact)with (type = TypeImplicitBond). In the display panel of the contacts we will show the deals as the child associations and allow to create the deal with contact-id prefilled and vice-versa.
-4. special-case (TypeAssociation - REVERSE) (src - activity) (dest - contact)
-If a contact has many activities. Then the activity entity would have the contactID as the reference field with (type = association). Though the events is not an regular entity the relationships still holds true for them.
+### Segmentation
 
-### Facts Of Fields
-1. Reference - refernce field holds list of map of entityID,itemID.
-2. On Segmentation - we have to handle to use cases. 
-    a. STRAIGHT - A has B (on segmenting A)
-    b. REVERSE  - B has A (on segmenting A)
-3. On REVERSE, make the field key of the conditional field as empty
-4. On STRAIGHT, make the field key of the conditinal field as not empty
-5. Refer below section to understand more about the REVERSE use cases.
+### Activity Feeds
+
+### Analytics
+
+### Reports
+
 
 ### Usecase 1 - REVERSE (making key="" for the reverse)
 1. Filter the contacts which have deal.amount>1000. Where the deal has contacts and not the other way around.
@@ -66,9 +59,6 @@ check README.md inside the entity
 4. The pipeline flows will always hold the node type called stage.
 100. More about this in the package internal/rule READ.ME
 
-### Random Assumptions In This Project Are Captured Here. (Please read & understand before start writing the code)
-1. The reference field with DOM type `DomSelect` implicitly means that the field unit is associated with the reference. So, the choices for that field unit must be populated in the fields section in the item retrive call.
-(check `updateReferenceFields` in the `item.go` for implementation details)
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
 ### Current shots
@@ -148,5 +138,6 @@ Notes with @mention
 
 
 
-# Run all the tests 
-go test ./...
+# Activities
+# Templates in workflow
+# pipelines/playbooks view

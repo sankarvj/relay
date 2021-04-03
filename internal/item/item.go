@@ -220,7 +220,7 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	return diffFields
 }
 
-func CompareItems(oldItemVals, newItemVals []interface{}) ([]interface{}, []interface{}) {
+func CompareItems(newItemVals, oldItemVals []interface{}) ([]interface{}, []interface{}) {
 	var oi int
 	var oldVal interface{}
 	oldItems := oldItemVals

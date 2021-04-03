@@ -1,0 +1,12 @@
+delete from discoveries;
+delete from connections;
+delete from relationships;
+delete from active_nodes;
+delete from active_flows;
+delete from nodes;
+delete from flows;
+delete from items;
+delete from entities;
+delete from teams;
+delete from accounts;
+delete from users;

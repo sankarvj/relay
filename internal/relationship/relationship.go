@@ -199,9 +199,9 @@ func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond,
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE r.account_id = $1 AND r.dst_entity_id = $2 AND r.type != $3`
+	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE r.account_id = $1 AND r.dst_entity_id = $2 AND r.type = $3`
 
-	if err := db.SelectContext(ctx, &bonds, q, accountID, entityID, RTypeDstSide); err != nil {
+	if err := db.SelectContext(ctx, &bonds, q, accountID, entityID, RTypeAbsolute); err != nil {
 		return nil, errors.Wrap(err, "selecting bonds/relationships for dst entity")
 	}
 
@@ -230,7 +230,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 			continue
 		}
 		relationshipID := uuid.New().String()
-		if relatable.RType == RTypeBothSide || relatable.RType == RTypeSrcSide {
+		if relatable.RType == RTypeAbsolute || relatable.RType == RTypeStraight {
 			relationships = append(relationships, Relationship{
 				RelationshipID: relationshipID,
 				AccountID:      accountID,
@@ -241,7 +241,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 			})
 		}
 
-		if relatable.RType == RTypeBothSide || relatable.RType == RTypeDstSide {
+		if relatable.RType == RTypeAbsolute || relatable.RType == RTypeReverse {
 			relationships = append(relationships, Relationship{
 				RelationshipID: relationshipID,
 				AccountID:      accountID,
@@ -284,14 +284,14 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		SrcEntityID:    srcEntityId,
 		DstEntityID:    dstEntityId,
 		FieldID:        FieldAssociationKey,
-		Type:           RTypeBothSide,
+		Type:           RTypeAbsolute,
 	}, Relationship{
 		RelationshipID: relationshipID,
 		AccountID:      accountID,
 		SrcEntityID:    dstEntityId,
 		DstEntityID:    srcEntityId,
 		FieldID:        FieldAssociationKey,
-		Type:           RTypeBothSide,
+		Type:           RTypeAbsolute,
 	})
 	return relationshipID, relationships
 }

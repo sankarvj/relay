@@ -155,7 +155,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, existingItem.Fields(), ni.Fields, i.db)
+	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, ni.Fields, existingItem.Fields(), i.db)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }

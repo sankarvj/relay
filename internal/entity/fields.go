@@ -104,9 +104,9 @@ const (
 )
 
 const (
-	RefTypeBothSides = ""   //respective childreans will be visible from src/dst details page (from contacts's detail - view deals associated & vice-versa)
-	RefTypeSrcSide   = "SD" //only the src entity childrean will be visible (from deal's detail - view contacts associated)
-	RefTypeDstSide   = "DS" //only the dst entity childrean will be visible (from contacts's detail - view deals associated)
+	RefTypeAbsolute = ""         //respective childreans will be visible from src/dst details page (from contacts's detail - view deals associated & vice-versa)
+	RefTypeStraight = "STRAIGHT" //only the src entity childrean will be visible (from deal's detail - view contacts associated)
+	RefTypeReverse  = "REVERSE"  //only the dst entity childrean will be visible (from contacts's detail - view status/owner associated)
 )
 
 //ValueAddFields updates the values of entity fields along with the config
@@ -242,8 +242,10 @@ func NamedFieldsObjMap(entityFields []Field) map[string]Field {
 
 func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
 	params := map[string]Field{}
-	for _, f := range entityFields {
-		params[f.Key] = f
+	if entityFields != nil { // does this check needed
+		for _, f := range entityFields {
+			params[f.Key] = f
+		}
 	}
 	return params
 }
@@ -268,12 +270,12 @@ func refFields(fields []Field) map[string]relationship.Relatable {
 	referenceFieldsMap := make(map[string]relationship.Relatable, 0)
 	for _, f := range fields {
 		if f.IsReference() { // TODO: also check if customer explicitly asks for it. Don't do this for all the reference fields
-			if f.RefType == RefTypeSrcSide {
-				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeSrcSide)
-			} else if f.RefType == RefTypeDstSide {
-				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeDstSide)
-			} else if f.RefType == RefTypeBothSides {
-				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeBothSide)
+			if f.RefType == RefTypeStraight {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeStraight)
+			} else if f.RefType == RefTypeReverse {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeReverse)
+			} else if f.RefType == RefTypeAbsolute {
+				referenceFieldsMap[f.Key] = relationship.MakeRelatable(f.RefID, relationship.RTypeAbsolute)
 			}
 		}
 	}
