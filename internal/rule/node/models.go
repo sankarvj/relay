@@ -11,15 +11,15 @@ import (
 
 //consts for different node types
 const (
-	Unknown  int = -1
-	Decision     = 0
-	Push         = 1
-	Modify       = 2
-	Email        = 3
-	Hook         = 4
-	Schedule     = 5
-	Delay        = 6
-	Stage        = 7
+	Unknown  int = 0
+	Decision     = 1
+	Push         = 2
+	Modify       = 3
+	Email        = 4
+	Hook         = 5
+	Schedule     = 6
+	Delay        = 7
+	Stage        = 8
 )
 
 //Node struct defines the structure of each node in the workflow

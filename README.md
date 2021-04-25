@@ -83,6 +83,7 @@ Notes with @mention
 1. Phone 
 2. Chat
 3. Mail
+4. Meetings
 
 ### Features
 1. Segmentation
@@ -129,7 +130,6 @@ Notes with @mention
 ### Ad-Hoc Shots
 - receive email and associate - more info on email readme
 - define the types in the relationship to answer the following question. (How should people viewing a record be able to view the associated records) Can I introduce new status called related in the relationship table.
-- ref_key as the separate var instead of display_gex
 - implement BulkCreate/BulkUpdate/BulkDelete in relationship
 - all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
 

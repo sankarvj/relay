@@ -121,6 +121,8 @@ var migrations = []darwin.Migration{
 			genie_id         TEXT,
 			user_id          UUID,
 			state            INTEGER DEFAULT 0,
+			type             INTEGER DEFAULT 0,
+			name             TEXT,
 			fieldsb          JSONB,
 			created_at       TIMESTAMP,
 			updated_at       BIGINT,

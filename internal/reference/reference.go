@@ -80,7 +80,7 @@ func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *enti
 func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
 	for i := 0; i < len(items); i++ {
 		parentField := items[i].Fields[f.Dependent.ParentKey]
-		if parentField == nil || len(parentField.([]interface{})) == 0 {
+		if parentField == nil || len(parentField.([]interface{})) == 0 || parentField.([]interface{})[0] == nil {
 			continue
 		}
 		//what happens if more than one value exists
@@ -109,7 +109,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 			nodes, err = node.BulkRetrieve(ctx, referenceIds, db)
 		}
 		if err != nil {
-			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
+			log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
 			return
 		}
 		choicesMakerNode(f, nodes)
@@ -121,13 +121,14 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 		}
 		choicesMakerFlow(f, flows)
 	} else if e.Category == entity.CategoryChildUnit { // select. with pre-populated drop-down choices
-		var refItems []item.Item
-		var err error
-		if len(items) == 1 || f.ForceLoadChoices() { // force load happens in tasks list.
-			refItems, err = item.EntityItems(ctx, e.ID, db)
-		} else {
-			refItems, err = item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(referenceIds), db)
-		}
+		refItems, err := item.EntityItems(ctx, e.ID, db)
+		// var refItems []item.Item
+		// var err error
+		// if len(items) == 1 || f.ForceLoadChoices() { // force load happens in tasks list.
+		// 	refItems, err = item.EntityItems(ctx, e.ID, db)
+		// } else {
+		// 	refItems, err = item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(referenceIds), db)
+		// }
 		if err != nil {
 			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 		}
@@ -183,8 +184,13 @@ func choicesMakerNode(f *entity.Field, nodes []node.Node) {
 //UpdateChoicesWrapper updates only the choices for reference fields
 func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID string, valueAddedFields []entity.Field) {
 	for i := 0; i < len(valueAddedFields); i++ {
-		if valueAddedFields[i].ValidRefField() {
-			updateChoices(ctx, db, accountID, &valueAddedFields[i], valueAddedFields[i].Value.([]interface{}), []item.ViewModelItem{})
+		if valueAddedFields[i].IsReference() {
+			var refIds []interface{}
+			if valueAddedFields[i].Value != nil {
+				refIds = valueAddedFields[i].Value.([]interface{})
+			}
+
+			updateChoices(ctx, db, accountID, &valueAddedFields[i], refIds, []item.ViewModelItem{})
 		}
 	}
 }

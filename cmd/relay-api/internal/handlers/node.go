@@ -34,7 +34,7 @@ func (n *Node) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nn.ID = uuid.New().String()
 	nn = makeNode(params["account_id"], params["flow_id"], nn)
 
-	log.Println("nn --> ", nn)
+	log.Printf("nn %+v--> ", nn)
 	//TODO: do it in single transaction <|>
 	no, err := node.Create(ctx, n.db, nn, time.Now())
 	if err != nil {

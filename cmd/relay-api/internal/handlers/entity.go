@@ -40,8 +40,8 @@ func (e *Entity) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
-	for i, entity := range entities {
-		viewModelEntities[i] = createViewModelEntity(entity)
+	for i, entt := range entities {
+		viewModelEntities[i] = createViewModelEntity(entt)
 	}
 
 	return web.Respond(ctx, w, viewModelEntities, http.StatusOK)
@@ -52,12 +52,12 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Retrieve")
 	defer span.End()
 
-	entity, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], e.db)
+	enty, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], e.db)
 	if err != nil {
 		return err
 	}
 
-	return web.Respond(ctx, w, createViewModelEntity(entity), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -107,18 +107,13 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 }
 
 func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
-	fields, err := e.Fields()
-	if err != nil {
-		log.Println(err)
-	}
-
 	return entity.ViewModelEntity{
 		ID:          e.ID,
 		Name:        e.Name,
 		DisplayName: e.DisplayName,
 		Category:    e.Category,
 		State:       e.State,
-		Fields:      fields,
+		Fields:      e.FieldsIgnoreError(),
 		Tags:        e.Tags,
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,

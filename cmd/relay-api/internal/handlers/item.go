@@ -75,6 +75,47 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
+func (i *Item) Templates(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
+	defer span.End()
+
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+	if err != nil {
+		return err
+	}
+
+	fields, err := e.Fields()
+	if err != nil {
+		return err
+	}
+
+	items, err := item.List(ctx, e.ID, i.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelItems := make([]item.ViewModelItem, len(items))
+	for i, item := range items {
+		viewModelItems[i] = createViewModelItem(item)
+	}
+
+	reference.UpdateChoicesWrapper(ctx, i.db, params["account_id"], fields)
+
+	response := struct {
+		Items    []item.ViewModelItem   `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+	}{
+		Items:    viewModelItems,
+		Category: e.Category,
+		Fields:   fields,
+		Entity:   createViewModelEntity(e),
+	}
+
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
 // Search returns the items for the given term & key
 func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Search")
@@ -237,6 +278,9 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 func createViewModelItem(i item.Item) item.ViewModelItem {
 	return item.ViewModelItem{
 		ID:     i.ID,
+		Name:   i.Name,
+		Type:   i.Type,
+		State:  i.State,
 		Fields: i.Fields(),
 	}
 }
