@@ -48,16 +48,11 @@ func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, currentUser *user.Us
 }
 
 func BootstrapEmailConfigEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
-	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityOwner)
+	coEntityID, coEmail, err := currentOwner(ctx, db, accountID)
 	if err != nil {
 		return err
 	}
-	ownerFields, err := ownerEntity.Fields()
-	if err != nil {
-		return err
-	}
-
-	fields := emailConfigFields(ownerEntity.ID, entity.NamedKeysMap(ownerFields)["email"])
+	fields := emailConfigFields(coEntityID, coEmail)
 	// add entity - email- configs
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, fields)
 
@@ -75,6 +70,30 @@ func BootstrapEmailsEntity(ctx context.Context, db *sqlx.DB, accountID, teamID s
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, fields)
 
 	return err
+}
+
+func BootstrapCalendarEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
+	coEntityID, coEmail, err := currentOwner(ctx, db, accountID)
+	if err != nil {
+		return err
+	}
+	fields := calendarFields(coEntityID, coEmail)
+	// add entity - calendar
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, fields)
+
+	return err
+}
+
+func currentOwner(ctx context.Context, db *sqlx.DB, accountID string) (string, string, error) {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityOwner)
+	if err != nil {
+		return "", "", err
+	}
+	ownerFields, err := ownerEntity.Fields()
+	if err != nil {
+		return "", "", err
+	}
+	return ownerEntity.ID, entity.NamedKeysMap(ownerFields)["email"], nil
 }
 
 func EntityUpdate(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, fields []entity.Field) error {

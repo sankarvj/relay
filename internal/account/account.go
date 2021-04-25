@@ -92,5 +92,10 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, n NewAccount, no
 		return errors.Wrap(err, "account inserted but emails bootstrap failed")
 	}
 
+	err = bootstrap.BootstrapCalendarEntity(ctx, db, a.ID, teamID)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but calendar bootstrap failed")
+	}
+
 	return nil
 }

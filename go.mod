@@ -3,7 +3,6 @@ module gitlab.com/vjsideprojects/relay
 go 1.13
 
 require (
-	cloud.google.com/go v0.74.0 // indirect
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.10.0+incompatible
 	github.com/ardanlabs/conf v1.2.0
@@ -16,6 +15,7 @@ require (
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/gobuffalo/envy v1.9.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/jmoiron/sqlx v1.2.0
@@ -29,13 +29,13 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/redislabs/redisgraph-go v2.0.2+incompatible
 	github.com/rs/cors v1.7.0
-	go.opencensus.io v0.22.5
+	go.opencensus.io v0.23.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
-	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 // indirect
-	google.golang.org/api v0.36.0
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d // indirect
+	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
+	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78
+	golang.org/x/sys v0.0.0-20210423185535-09eb48e85fd7 // indirect
+	google.golang.org/api v0.45.0
+	google.golang.org/genproto v0.0.0-20210423144448-3a41ef94ed2b // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.0
 )

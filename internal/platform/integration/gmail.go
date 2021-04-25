@@ -1,49 +1,18 @@
 package integration
 
 import (
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"net/mail"
 
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
 )
 
-func AskGmailAccessURL(ctx context.Context, oAuthFile string) (string, error) {
-	config, err := getConfig(oAuthFile)
-	if err != nil {
-		return "", err
-	}
-	return config.AuthCodeURL("state-token", oauth2.AccessTypeOffline), nil
-}
-
-func GetToken(oAuthFile, code string) (string, error) {
-	config, err := getConfig(oAuthFile)
-	if err != nil {
-		return "", err
-	}
-
-	tok, err := config.Exchange(context.TODO(), code)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to retrieve token from web")
-	}
-	tokenJson, err := json.Marshal(tok)
-	if err != nil {
-		return "", errors.Wrap(err, "unable to marshal token")
-	}
-
-	return string(tokenJson), nil
-}
-
 func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
-	config, err := getConfig(oAuthFile)
+	config, err := getGmailConfig(oAuthFile)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +48,7 @@ func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
 }
 
 func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
-	config, err := getConfig(oAuthFile)
+	config, err := getGmailConfig(oAuthFile)
 	if err != nil {
 		return err
 	}
@@ -154,7 +123,7 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 }
 
 func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
-	config, err := getConfig(oAuthFile)
+	config, err := getGmailConfig(oAuthFile)
 	if err != nil {
 		return nil, err
 	}
@@ -178,20 +147,8 @@ func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail 
 	return &rgmsg.ThreadId, nil
 }
 
-func getConfig(oAuthFile string) (*oauth2.Config, error) {
-	b, err := ioutil.ReadFile(oAuthFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "Unable to read client secret file")
-	}
-	return google.ConfigFromJSON(b, gmail.GmailReadonlyScope, gmail.GmailSendScope)
-}
-
-func client(config *oauth2.Config, tokenJson string) (*http.Client, error) {
-	var token oauth2.Token
-	if err := json.Unmarshal([]byte(tokenJson), &token); err != nil {
-		return nil, err
-	}
-	return config.Client(context.Background(), &token), nil
+func getGmailConfig(oAuthFile string) (*oauth2.Config, error) {
+	return getConfig(oAuthFile, GmailScopes...)
 }
 
 func msg(fromName, fromEmail string, toName, toEmail string, subject string, body string) gmail.Message {

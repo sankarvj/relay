@@ -72,4 +72,5 @@ const (
 	CategoryNode        = 12 // alais for actual node
 	CategoryNotes       = 13
 	CategoryMeeting     = 14
+	CategoryCalendar    = 15
 )

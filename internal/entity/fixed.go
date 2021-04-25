@@ -18,6 +18,7 @@ import (
 const (
 	FixedEntityOwner       = "owners"
 	FixedEntityEmailConfig = "email_config"
+	FixedEntityCalendar    = "calendar"
 	FixedEntityEmails      = "emails"
 )
 
@@ -179,6 +180,63 @@ func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain,
 		ID:        emailAddress,
 		AccountID: accountID,
 		EntityID:  emailConfigEntity.ID,
+		ItemID:    it.ID,
+	}
+
+	_, err = discovery.Create(ctx, db, ns, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	return it, nil
+
+}
+
+func SaveCalendarIntegration(ctx context.Context, accountID, currentUserID, domain, token, emailAddress string, db *sqlx.DB) (item.Item, error) {
+	calendarEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityCalendar)
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	entityFields, err := calendarEntity.Fields()
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	var calendarEntityItem EmailConfigEntity
+	err = ParseFixedEntity(entityFields, &calendarEntityItem)
+	if err != nil {
+		return item.Item{}, err
+	}
+	calendarEntityItem.APIKey = token
+	calendarEntityItem.Domain = domain
+	calendarEntityItem.Email = emailAddress
+	calendarEntityItem.Common = "false"
+	calendarEntityItem.Owner = []string{currentUserID}
+
+	//delete the old-integrations if present
+	err = item.DeleteAllByUser(ctx, db, accountID, calendarEntity.ID, currentUserID)
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	ni := item.NewItem{
+		ID:        uuid.New().String(),
+		AccountID: accountID,
+		EntityID:  calendarEntity.ID,
+		UserID:    &currentUserID,
+		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(calendarEntityItem)),
+	}
+
+	it, err := item.Create(ctx, db, ni, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	ns := discovery.NewDiscovery{
+		ID:        emailAddress,
+		AccountID: accountID,
+		EntityID:  calendarEntity.ID,
 		ItemID:    it.ID,
 	}
 
