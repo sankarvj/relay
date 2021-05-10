@@ -6,8 +6,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
-	"gitlab.com/vjsideprojects/relay/internal/email"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
+	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -19,17 +20,13 @@ import (
 
 func EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB) {
 	ctx := context.Background()
-
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		log.Println("error while retriving entity on job", err)
 		return
 	}
-	newValueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), newFields)
-	oldValueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), oldFields)
-
 	validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
-	addConnection(ctx, db, accountID, map[string]string{}, entityID, itemID, oldValueAddedFields, newValueAddedFields)
+	addConnection(ctx, db, accountID, map[string]string{}, entityID, itemID, e.ValueAdd(oldFields), e.ValueAdd(newFields))
 }
 
 func EventItemCreated(accountID, entityID string, ni item.NewItem, db *sqlx.DB) {
@@ -40,7 +37,7 @@ func EventItemCreated(accountID, entityID string, ni item.NewItem, db *sqlx.DB) 
 		log.Println("error while retriving entity on job", err)
 		return
 	}
-	valueAddedFields := entity.ValueAddFields(e.FieldsIgnoreError(), ni.Fields)
+	valueAddedFields := e.ValueAdd(ni.Fields)
 	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
 	addConnection(ctx, db, accountID, ni.Source, entityID, ni.ID, valueAddedFields, nil)
 
@@ -49,11 +46,12 @@ func EventItemCreated(accountID, entityID string, ni item.NewItem, db *sqlx.DB) 
 	switch e.Category {
 	case entity.CategoryEmail:
 		err = email.SendMail(ctx, accountID, e.ID, ni.ID, valueAddedFields, db)
+	case entity.CategoryMeeting:
+		err = calendar.CreateCalendarEvent(ctx, accountID, e.ID, ni.ID, valueAddedFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)
 	}
-
 }
 
 func validateWorkflows(ctx context.Context, db *sqlx.DB, entityID, itemID string, oldFields, newFields map[string]interface{}) {

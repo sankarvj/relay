@@ -65,7 +65,8 @@ func BootstrapEmailsEntity(ctx context.Context, db *sqlx.DB, accountID, teamID s
 		return err
 	}
 
-	fields := emailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "")
+	//TODO uuid-00-email needs to be changed
+	fields := emailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "uuid-00-email")
 	// add entity - email
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, fields)
 

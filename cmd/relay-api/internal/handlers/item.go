@@ -43,7 +43,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	fields, err := e.Fields()
+	fields, err := e.FilteredFields()
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	fields, err := e.Fields()
+	fields, err := e.FilteredFields()
 	if err != nil {
 		return err
 	}

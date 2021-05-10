@@ -127,7 +127,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	fmt.Println("\tDelay Entity And It's Item Created")
 
 	// add email-config & email-templates
-	emailConfigEntityID, emailItemID, err := addEmails(ctx, db, accountID, contactEntity.ID, contactEntity.Key("email"), contactEntity.Key("nps_score"))
+	err = addEmails(ctx, db, accountID, contactEntity.ID, contactEntity.Key("email"), contactEntity.Key("nps_score"))
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	}
 	fmt.Println("\tDeal Entity Created")
 
-	pID, _, err := addPipelines(ctx, db, accountID, dealEntity.ID, emailConfigEntityID, webhookEntity.ID, delayEntity.ID, emailItemID, delayItem.ID)
+	pID, _, err := addPipelines(ctx, db, accountID, dealEntity.ID, webhookEntity.ID, delayEntity.ID, delayItem.ID)
 	if err != nil {
 		return err
 	}

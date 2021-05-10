@@ -59,7 +59,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
-	fields, err := e.Fields()
+	fields, err := e.FilteredFields()
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 )
@@ -25,9 +26,12 @@ const (
 var (
 	// ErrFixedEntityNotFound is used when a fixed entity is requested but does not exist.
 	ErrFixedEntityNotFound = errors.New("Predefined entity not found")
+
+	// ErrIntegNotFound is used when a specific integrations is requested but none/more than one exist at a time.
+	ErrIntegNotFound = errors.New("Integrations not found for fixed entity")
 )
 
-type updaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error
+type UpdaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error
 
 // EmailEntity represents structural format of email entity
 type EmailEntity struct {
@@ -46,6 +50,18 @@ type EmailConfigEntity struct {
 	Email  string   `json:"email"`
 	Owner  []string `json:"owner"`
 	Common string   `json:"common"`
+}
+
+// CalendarxEntity represents structural format of calendar entity
+type CaldendarEntity struct {
+	ID        string    `json:"id"`
+	APIKey    string    `json:"api_key"`
+	Email     string    `json:"email"`
+	Owner     []string  `json:"owner"`
+	Common    string    `json:"common"`
+	SyncedAt  time.Time `json:"synced_at"`
+	SyncToken string    `json:"sync_token"`
+	Retries   int       `json:"retries"`
 }
 
 //DelayEntity represents the structural format of delay entity
@@ -114,7 +130,23 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID string, pre
 	return e, nil
 }
 
-func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB) ([]Field, updaterFunc, error) {
+func RetriveFixedItemByCategory(ctx context.Context, accountID, entityCategory string, db *sqlx.DB) ([]Field, error) {
+	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, entityCategory)
+	if err != nil {
+		return nil, err
+	}
+	items, err := item.EntityItems(ctx, fixedEntity.ID, db)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(items) != 1 {
+		return nil, ErrIntegNotFound
+	}
+	return fixedEntity.ValueAdd(items[0].Fields()), nil
+}
+
+func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB) ([]Field, UpdaterFunc, error) {
 	preDefinedEntity, err := Retrieve(ctx, accountID, preDefinedEntityID, db)
 	if err != nil {
 		return nil, nil, err
@@ -125,167 +157,60 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 		return nil, nil, err
 	}
 
-	entityFields, err := preDefinedEntity.Fields()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	entityFields = ValueAddFields(entityFields, it.Fields())
+	entityFields := preDefinedEntity.ValueAdd(it.Fields())
 
 	return entityFields, updateFields(accountID, preDefinedEntity.ID, it.ID, entityFields), err
 }
 
-func SaveEmailIntegration(ctx context.Context, accountID, currentUserID, domain, token, emailAddress string, db *sqlx.DB) (item.Item, error) {
-	emailConfigEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityEmailConfig)
+func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefinedEntity string, discoveryID string, namedValues map[string]interface{}, db *sqlx.DB) error {
+	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, preDefinedEntity)
 	if err != nil {
-		return item.Item{}, err
+		return err
+	}
+	entityFields, err := fixedEntity.Fields()
+	if err != nil {
+		return err
 	}
 
-	entityFields, err := emailConfigEntity.Fields()
+	//delete the old-integrations if present for the specific user
+	err = item.DeleteAllByUser(ctx, db, accountID, fixedEntity.ID, currentUserID)
 	if err != nil {
-		return item.Item{}, err
-	}
-
-	var emailConfigEntityItem EmailConfigEntity
-	err = ParseFixedEntity(entityFields, &emailConfigEntityItem)
-	if err != nil {
-		return item.Item{}, err
-	}
-	emailConfigEntityItem.APIKey = token
-	emailConfigEntityItem.Domain = domain
-	emailConfigEntityItem.Email = emailAddress
-	emailConfigEntityItem.Common = "false"
-	emailConfigEntityItem.Owner = []string{currentUserID}
-
-	//delete the old-integrations if present
-	err = item.DeleteAllByUser(ctx, db, accountID, emailConfigEntity.ID, currentUserID)
-	if err != nil {
-		return item.Item{}, err
+		return err
 	}
 
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		AccountID: accountID,
-		EntityID:  emailConfigEntity.ID,
+		EntityID:  fixedEntity.ID,
 		UserID:    &currentUserID,
-		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(emailConfigEntityItem)),
+		Fields:    itemValMap(entityFields, namedValues),
 	}
 
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
-		return item.Item{}, err
+		return err
 	}
 
-	ns := discovery.NewDiscovery{
-		ID:        emailAddress,
-		AccountID: accountID,
-		EntityID:  emailConfigEntity.ID,
-		ItemID:    it.ID,
+	if discoveryID != "" {
+		ns := discovery.NewDiscovery{
+			ID:        discoveryID,
+			Type:      integration.TypeGmail,
+			AccountID: accountID,
+			EntityID:  fixedEntity.ID,
+			ItemID:    it.ID,
+		}
+
+		_, err = discovery.Create(ctx, db, ns, time.Now())
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = discovery.Create(ctx, db, ns, time.Now())
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	return it, nil
-
-}
-
-func SaveCalendarIntegration(ctx context.Context, accountID, currentUserID, domain, token, emailAddress string, db *sqlx.DB) (item.Item, error) {
-	calendarEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityCalendar)
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	entityFields, err := calendarEntity.Fields()
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	var calendarEntityItem EmailConfigEntity
-	err = ParseFixedEntity(entityFields, &calendarEntityItem)
-	if err != nil {
-		return item.Item{}, err
-	}
-	calendarEntityItem.APIKey = token
-	calendarEntityItem.Domain = domain
-	calendarEntityItem.Email = emailAddress
-	calendarEntityItem.Common = "false"
-	calendarEntityItem.Owner = []string{currentUserID}
-
-	//delete the old-integrations if present
-	err = item.DeleteAllByUser(ctx, db, accountID, calendarEntity.ID, currentUserID)
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	ni := item.NewItem{
-		ID:        uuid.New().String(),
-		AccountID: accountID,
-		EntityID:  calendarEntity.ID,
-		UserID:    &currentUserID,
-		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(calendarEntityItem)),
-	}
-
-	it, err := item.Create(ctx, db, ni, time.Now())
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	ns := discovery.NewDiscovery{
-		ID:        emailAddress,
-		AccountID: accountID,
-		EntityID:  calendarEntity.ID,
-		ItemID:    it.ID,
-	}
-
-	_, err = discovery.Create(ctx, db, ns, time.Now())
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	return it, nil
-
-}
-
-func SaveEmailTemplate(ctx context.Context, accountID, emailConfigItemID string, currentUserID string, to, cc, bcc []string, subject, body string, db *sqlx.DB) (item.Item, error) {
-	emailEntity, err := RetrieveFixedEntity(ctx, db, accountID, FixedEntityEmails)
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	entityFields, err := emailEntity.Fields()
-	if err != nil {
-		return item.Item{}, err
-	}
-
-	var emailEntityItem EmailEntity
-	err = ParseFixedEntity(entityFields, &emailEntityItem)
-	if err != nil {
-		return item.Item{}, err
-	}
-	emailEntityItem.From = []string{emailConfigItemID}
-	emailEntityItem.To = to
-	emailEntityItem.Cc = cc
-	emailEntityItem.Bcc = bcc
-	emailEntityItem.Subject = subject
-	emailEntityItem.Body = body
-
-	ni := item.NewItem{
-		ID:        uuid.New().String(),
-		AccountID: accountID,
-		EntityID:  emailEntity.ID,
-		UserID:    &currentUserID,
-		Fields:    itemValMap(entityFields, util.ConvertInterfaceToMap(emailEntityItem)),
-	}
-
-	return item.Create(ctx, db, ni, time.Now())
-
+	return nil
 }
 
 //updateFields func encloses the update func
-func updateFields(accountID, entityID, itemID string, fields []Field) updaterFunc {
+func updateFields(accountID, entityID, itemID string, fields []Field) UpdaterFunc {
 	return func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error {
 		_, err := item.UpdateFields(ctx, db, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
 		return err

@@ -7,7 +7,8 @@ import (
 const (
 	smallLayout           = "Jan 2 2006, 3:04PM"
 	dateTimeGoLayout      = "2006-01-02 15:04:05 -0700"
-	dateTimeAngularLayout = "2006-01-02T15:04"
+	dateTimeAngularLayout = "2006-01-02 15:04:05 -07:00"
+	dateTimeGoogleLayout  = "2006-01-02T15:04:05-07:00"
 )
 
 func GetMilliSeconds(now time.Time) int64 {
@@ -23,10 +24,18 @@ func Round(fromTime time.Time, hr int) time.Time {
 	return t
 }
 
+func ParseTime(str string) (time.Time, error) {
+	return time.Parse(dateTimeGoLayout, str)
+}
+
+func ParseTimeAngular(str string) (time.Time, error) {
+	return time.Parse(dateTimeAngularLayout, str)
+}
+
 func FormatTimeGo(t time.Time) string {
 	return t.Format(dateTimeGoLayout)
 }
 
-func ParseTime(str string) (time.Time, error) {
-	return time.Parse(dateTimeGoLayout, str)
+func FormatTimeGoogle(t time.Time) string {
+	return t.Format(dateTimeGoogleLayout)
 }

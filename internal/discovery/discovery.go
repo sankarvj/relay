@@ -21,6 +21,7 @@ func Create(ctx context.Context, db *sqlx.DB, ns NewDiscovery, now time.Time) (D
 
 	s := Discover{
 		ID:        ns.ID,
+		Type:      ns.Type,
 		AccountID: ns.AccountID,
 		EntityID:  ns.EntityID,
 		ItemID:    ns.ItemID,
@@ -29,13 +30,13 @@ func Create(ctx context.Context, db *sqlx.DB, ns NewDiscovery, now time.Time) (D
 	}
 
 	const q = `INSERT INTO discoveries
-		(discovery_id, account_id, entity_id, item_id,
+		(discovery_id, discovery_type, account_id, entity_id, item_id,
 		created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		s.ID, s.AccountID, s.EntityID, s.ItemID,
+		s.ID, s.Type, s.AccountID, s.EntityID, s.ItemID,
 		s.CreatedAt, s.UpdatedAt,
 	)
 	if err != nil {

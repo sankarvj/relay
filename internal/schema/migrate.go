@@ -237,12 +237,13 @@ var migrations = []darwin.Migration{
 		Script: `
 		CREATE TABLE discoveries (
 			discovery_id    TEXT,
+			discovery_type  TEXT,
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id 	    UUID REFERENCES entities ON DELETE CASCADE,
 			item_id 	    UUID REFERENCES items ON DELETE CASCADE,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
-			UNIQUE (discovery_id)
+			UNIQUE (discovery_id, discovery_type)
 		);
 		`,
 	},

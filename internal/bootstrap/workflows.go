@@ -9,7 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, mailEntityID, webhookEntityID, delayEntityID, mailItemID, delayItemID string) (string, string, error) {
+func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
 	//add pipelines
 	p, err := FlowAdd(ctx, db, accountID, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
 	if err != nil {

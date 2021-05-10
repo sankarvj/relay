@@ -1,4 +1,4 @@
-package integration
+package email
 
 import (
 	"encoding/base64"
@@ -7,18 +7,24 @@ import (
 	"net/mail"
 
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
 )
 
-func WatchMessage(oAuthFile, tokenJson, topicName string) (string, error) {
-	config, err := getGmailConfig(oAuthFile)
+type Gmail struct {
+	OAuthFile string
+	TokenJson string
+}
+
+func (g *Gmail) Watch(topicName string) (string, error) {
+	config, err := getGmailConfig(g.OAuthFile)
 	if err != nil {
 		return "", err
 	}
 
 	var emailAddress string
-	client, err := client(config, tokenJson)
+	client, err := integration.Client(config, g.TokenJson)
 	if err != nil {
 		return emailAddress, err
 	}
@@ -53,7 +59,7 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 		return err
 	}
 
-	client, err := client(config, tokenJson)
+	client, err := integration.Client(config, tokenJson)
 	if err != nil {
 		return err
 	}
@@ -122,13 +128,13 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 	return nil
 }
 
-func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
-	config, err := getGmailConfig(oAuthFile)
+func (g *Gmail) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
+	config, err := getGmailConfig(g.OAuthFile)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := client(config, tokenJson)
+	client, err := integration.Client(config, g.TokenJson)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +145,7 @@ func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail 
 	}
 
 	gmsg := msg(fromName, fromEmail, toName, toEmail[0], subject, body) //TODO how to send multiple to address
-	rgmsg, err := srv.Users.Messages.Send(user, &gmsg).Do()
+	rgmsg, err := srv.Users.Messages.Send("me", &gmsg).Do()
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +154,7 @@ func sendViaGmail(oAuthFile, tokenJson string, user string, fromName, fromEmail 
 }
 
 func getGmailConfig(oAuthFile string) (*oauth2.Config, error) {
-	return getConfig(oAuthFile, GmailScopes...)
+	return integration.GetConfig(oAuthFile, integration.GmailScopes...)
 }
 
 func msg(fromName, fromEmail string, toName, toEmail string, subject string, body string) gmail.Message {

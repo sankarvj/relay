@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"gitlab.com/vjsideprojects/relay/internal/email"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 

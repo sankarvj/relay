@@ -52,38 +52,18 @@ func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n
 	return nil
 }
 
-func fields(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]entity.Field, error) {
-	//Load entity maps If valid entity exists.
+func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) ([]entity.Field, error) {
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return []entity.Field{}, err
 	}
-	return e.Fields()
-}
-
-func fillItemFieldValues(ctx context.Context, db *sqlx.DB, entityFields []entity.Field, entityID string, itemIDs ...string) ([]entity.Field, error) {
-	for _, itemID := range itemIDs {
-		if itemID != "" {
-			i, err := item.Retrieve(ctx, entityID, itemID, db)
-			if err != nil {
-				return nil, err
-			}
-			entityFields = entity.ValueAddFields(entityFields, i.Fields())
+	if itemID != "" {
+		i, err := item.Retrieve(ctx, entityID, itemID, db)
+		if err != nil {
+			return []entity.Field{}, err
 		}
+		return e.ValueAdd(i.Fields()), nil
 	}
 
-	return entityFields, nil
-}
-
-func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, accountID, actorEntityID, actorItemID string) ([]entity.Field, error) {
-	entityFields, err := fields(ctx, db, accountID, actorEntityID)
-	if err != nil {
-		return nil, err
-	}
-
-	entityFields, err = fillItemFieldValues(ctx, db, entityFields, actorEntityID, actorItemID)
-	if err != nil {
-		return nil, err
-	}
-	return entityFields, nil
+	return []entity.Field{}, nil
 }

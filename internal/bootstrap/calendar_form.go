@@ -7,10 +7,10 @@ import (
 
 func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
 	domainFieldID := uuid.New().String()
-	domainField := entity.Field{
+	idField := entity.Field{
 		Key:         domainFieldID,
-		Name:        "domain",
-		DisplayName: "Domain",
+		Name:        "id",
+		DisplayName: "Calendar ID",
 		Meta:        map[string]string{"config": "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
@@ -61,5 +61,32 @@ func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		},
 	}
 
-	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField}
+	syncTokenFieldID := uuid.New().String()
+	syncTokenField := entity.Field{
+		Key:         syncTokenFieldID,
+		Name:        "sync_token",
+		DisplayName: "Sync Token",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	syncedAtFieldID := uuid.New().String()
+	syncedAtField := entity.Field{
+		Key:         syncedAtFieldID,
+		Name:        "synced_at",
+		DisplayName: "Last Synced",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDataTime,
+	}
+
+	retriesFieldID := uuid.New().String()
+	retriesField := entity.Field{
+		Key:         retriesFieldID,
+		Name:        "retries",
+		DisplayName: "Retries",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{idField, apiKeyField, emailField, commanField, ownerField, syncTokenField, syncedAtField, retriesField}
 }

@@ -6,77 +6,42 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
+	integ "gitlab.com/vjsideprojects/relay/internal/integration"
+	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
-func (g *Integration) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+func (g *Integration) Act(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	integrationID := params["integration_id"]
 	actionID := params["action_id"]
 	accountID := params["account_id"]
-	var actionPayload integration.ActionPayload
+	var actionPayload integ.ActionPayload
 	if err := web.Decode(r, &actionPayload); err != nil {
 		return errors.Wrap(err, "cannot parse the actionPayload")
 	}
 
-	log.Println("actionID --> ", actionID)
+	log.Println("actionID --> ", actionID) ///check in the calendar/email integration
 
 	switch integrationID {
 	case integration.TypeGmail:
-
+		return web.Respond(ctx, w, "FAILURE", http.StatusNotImplemented)
 	case integration.TypeGoogleCalendar:
-		calendar.CreateEvent(ctx, accountID, actionPayload, g.db)
+		c := calendar.Calendar{}
+		c.Act(ctx, accountID, actionID, actionPayload, g.db)
 	default:
 		return web.Respond(ctx, w, "FAILURE", http.StatusNotImplemented)
 	}
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
 
-func (g *Integration) DailyWatch(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	currentUserID, err := user.RetrieveCurrentUserID(ctx)
-	if err != nil {
-		return err
-	}
-
-	emailsConfigEntity, err := entity.RetrieveFixedEntity(ctx, g.db, params["account_id"], entity.FixedEntityEmailConfig)
-	if err != nil {
-		return err
-	}
-
-	fields, err := emailsConfigEntity.Fields()
-	if err != nil {
-		return err
-	}
-
-	emailConfigs, err := item.UserEntityItems(ctx, emailsConfigEntity.ID, currentUserID, g.db)
-	if err != nil {
-		return err
-	}
-
-	for _, emailConfig := range emailConfigs {
-		valueAddedConfigFields := entity.ValueAddFields(fields, emailConfig.Fields())
-		var emailConfigEntityItem entity.EmailConfigEntity
-		err = entity.ParseFixedEntity(valueAddedConfigFields, &emailConfigEntityItem)
-		if err != nil {
-			return err
-		}
-		if strings.HasSuffix(emailConfigEntityItem.Domain, integration.DomainGMail) {
-			_, err = integration.WatchMessage(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, g.publisher.Topic)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
+func (g *Integration) Notifications(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	log.Println("Notification Received......", r.Body)
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
 
@@ -115,7 +80,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return err
 	}
-	integration.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 1709032)
+	//integration.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 1709032)
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }

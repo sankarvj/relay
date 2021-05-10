@@ -28,23 +28,6 @@ func addAssociations(ctx context.Context, db *sqlx.DB, accountID, teamID string,
 		return err
 	}
 
-	//update emails entity with contactEntityID. When we move the contactEntity Inside. Move this also
-	emailFields, err := emailsEntity.Fields()
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(emailFields); i++ {
-		field := &emailFields[i]
-		if field.Name == "to" {
-			field.RefID = conEid
-			field.SetDisplayGex(emailKey)
-		}
-	}
-	err = EntityUpdate(ctx, db, accountID, teamID, emailsEntity.ID, emailFields)
-	if err != nil {
-		return err
-	}
-
 	//deal email association
 	_, err = AssociationAdd(ctx, db, accountID, deEid, emailsEntity.ID)
 	if err != nil {

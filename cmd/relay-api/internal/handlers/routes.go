@@ -52,11 +52,11 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 		authenticator: authenticator,
 		publisher:     publisher,
 	}
-	app.Handle("POST", "/receive/gmail/message", integ.ReceiveEmail)
+	app.Handle("POST", "/notifications", integ.Notifications)        //google-calendar sync
+	app.Handle("POST", "/receive/gmail/message", integ.ReceiveEmail) //gmail sync
 	app.Handle("GET", "/v1/accounts/:account_id/integrations/:integration_id", integ.AccessIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id", integ.SaveIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/watch", integ.DailyWatch, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/actions/:action_id", integ.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/actions/:action_id", integ.Act, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	t := Team{
 		db:            db,

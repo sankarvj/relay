@@ -39,6 +39,7 @@ type FieldMeta struct {
 	Flow        string `json:"flow"`
 	Node        string `json:"node"`
 	LoadChoices string `json:"load_choices"`
+	Row         string `json:"row"`
 }
 
 type Choice struct {
@@ -109,8 +110,16 @@ const (
 	RefTypeReverse  = "REVERSE"  //only the dst entity childrean will be visible (from contacts's detail - view status/owner associated)
 )
 
-//ValueAddFields updates the values of entity fields along with the config
-func ValueAddFields(entityFields []Field, itemFields map[string]interface{}) []Field {
+func (e Entity) FieldsIgnoreError() []Field {
+	fields, err := e.Fields()
+	if err != nil {
+		log.Println(err)
+	}
+	return fields
+}
+
+func (e Entity) ValueAdd(itemFields map[string]interface{}) []Field {
+	entityFields := e.FieldsIgnoreError()
 	valueAddedFields := make([]Field, 0)
 	for _, field := range entityFields {
 		if val, ok := itemFields[field.Key]; ok {
@@ -121,14 +130,6 @@ func ValueAddFields(entityFields []Field, itemFields map[string]interface{}) []F
 	return valueAddedFields
 }
 
-func (e Entity) FieldsIgnoreError() []Field {
-	fields, err := e.Fields()
-	if err != nil {
-		log.Println(err)
-	}
-	return fields
-}
-
 // Fields parses attribures to fields
 func (e Entity) Fields() ([]Field, error) {
 	fields, err := unmarshalFields(e.Fieldsb)
@@ -136,6 +137,22 @@ func (e Entity) Fields() ([]Field, error) {
 		return make([]Field, 0), errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
 	}
 	return fields, nil
+}
+
+func (e Entity) FilteredFields() ([]Field, error) {
+	tmp := make([]Field, 0)
+	fields, err := unmarshalFields(e.Fieldsb)
+	if err != nil {
+		return make([]Field, 0), errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+	}
+
+	for _, f := range fields {
+		if !f.IsHidden() {
+			tmp = append(tmp, f)
+		}
+	}
+
+	return tmp, nil
 }
 
 func (e Entity) Key(name string) string {
@@ -224,6 +241,13 @@ func (f Field) Verb() string {
 	return ""
 }
 
+func (f Field) IsHidden() bool {
+	if val, ok := f.Meta["hidden"]; ok {
+		return val == "true"
+	}
+	return false
+}
+
 func NamedKeysMap(entityFields []Field) map[string]string {
 	params := map[string]string{}
 	for _, f := range entityFields {
@@ -250,7 +274,7 @@ func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
 	return params
 }
 
-func (f Field) DisplayValues() []string {
+func (f Field) ChoicesValues() []string {
 	s := make([]string, len(f.Choices))
 	for i, choice := range f.Choices {
 		s[i] = fmt.Sprint(choice.DisplayValue)
