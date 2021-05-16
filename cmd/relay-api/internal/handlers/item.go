@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -196,7 +197,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, ni.Fields, existingItem.Fields(), i.db)
+	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -221,6 +222,24 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.EntityID = params["entity_id"]
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
+
+	if ni.State == item.StateBluePrint {
+		e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+		if err != nil {
+			return err
+		}
+
+		fields, err := e.Fields()
+		if err != nil {
+			return err
+		}
+
+		for _, fi := range fields {
+			if _, ok := ni.Source[fi.RefID]; ok {
+				ni.Fields[fi.Key] = []interface{}{fmt.Sprintf("{{%s.id}}", fi.RefID)}
+			}
+		}
+	}
 
 	it, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {

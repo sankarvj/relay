@@ -167,7 +167,7 @@ func TestTrigger(t *testing.T) {
 			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, db)
-			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, oldItemFields, newItemFields)
+			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, item.Diff(oldItemFields, newItemFields))
 			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows)
 			for _, err := range errs {
 				if err != nil {
@@ -189,11 +189,11 @@ func TestDirectTrigger(t *testing.T) {
 	{
 		t.Log("\twhen updating the event mrr in contact1")
 		{
-			n2 := "441f84e8-f120-49dc-9d13-ee33b4ccc650" //node-stage-2
-			flowID := "243a5090-7ef9-468a-be3c-9d7ad9544658"
-			f, _ := flow.Retrieve(tests.Context(), flowID, db)
+			n2 := "7e8e8aae-e13e-401d-8aa3-7200625bc7d2" //node-stage-2
+			flowID := "ed58cf77-87e2-4d4c-a495-bfa7c808819f"
+			f, err := flow.Retrieve(tests.Context(), flowID, db)
 			contactItems, _ := item.List(tests.Context(), f.EntityID, db)
-			err := flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID)
+			err = flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID)
 			if err != nil {
 				t.Fatalf("\t%s should flow with out error : %s.", tests.Failed, err)
 			}

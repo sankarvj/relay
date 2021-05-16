@@ -209,7 +209,10 @@ func (i Item) Fields() map[string]interface{} {
 
 //Diff old and new fields
 func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interface{} {
-	diffFields := newItemFields
+	diffFields := make(map[string]interface{}, 0)
+	for k, v := range newItemFields {
+		diffFields[k] = v
+	}
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
 			if ruler.Compare(newItem, oldItem) {

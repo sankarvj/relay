@@ -102,7 +102,7 @@ type NewNode struct {
 	StageID      string            `json:"stage_id"`
 	Type         int               `json:"type" validate:"required"`
 	Expression   string            `json:"expression"`
-	Actuals      map[string]string `json:"actuals"`
+	Actuals      map[string]string `json:"actuals" validate:"required"`
 	Queries      []Query           `json:"queries"`
 }
 

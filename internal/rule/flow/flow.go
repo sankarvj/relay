@@ -151,16 +151,14 @@ func BulkRetrieve(ctx context.Context, accountID string, ids []interface{}, db *
 
 // DirtyFlows filters the flows which matches the field name in the rules with the modified fields during the update/insert
 // operation of the item on the entity.
-func DirtyFlows(ctx context.Context, flows []Flow, oldItemFields, newItemFields map[string]interface{}) []Flow {
+func DirtyFlows(ctx context.Context, flows []Flow, dirtyFields map[string]interface{}) []Flow {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.LazyFlows")
 	defer span.End()
 
 	if len(flows) == 0 {
 		return flows
 	}
-
 	dirtyFlows := make([]Flow, 0)
-	dirtyFields := item.Diff(oldItemFields, newItemFields)
 	for key := range dirtyFields {
 		for _, flow := range flows {
 			if strings.Contains(flow.Expression, key) {
@@ -211,11 +209,11 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 //DirectTrigger is when you want to execute the item on a particular node stage.
 func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string) error {
 	//retrival of primary components item,flow,node
-	n, err := node.Retrieve(ctx, accountID, flowID, nodeID, db)
+	f, err := Retrieve(ctx, flowID, db)
 	if err != nil {
 		return err
 	}
-	f, err := Retrieve(ctx, n.FlowID, db)
+	n, err := node.Retrieve(ctx, accountID, flowID, nodeID, db)
 	if err != nil {
 		return err
 	}
@@ -225,11 +223,11 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 	}
 
 	//verification of primary components item,flow,node
-	if n.Type != node.Stage {
-		return node.ErrInvalidNodeType
-	}
 	if f.Mode != FlowModePipeLine {
 		return ErrInvalidFlowMode
+	}
+	if n.Type != node.Stage {
+		return node.ErrInvalidNodeType
 	}
 	if i.EntityID != f.EntityID {
 		return ErrInvalidItemEntity
@@ -239,10 +237,11 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 	n.UpdateMeta(i.EntityID, i.ID, f.Type)
 	if engine.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)
-		if err != nil && err != ErrNotFound {
+		if err != nil && err != ErrNotFound { //usually for the first time the af will not exist there
 			return err
 		}
-		return af.entryFlowTrigger(ctx, db, rp, n)
+		log.Println("af---", af)
+		return af.entryFlowTrigger(ctx, db, rp, n) // entering the workflow with all the variables loaded in the node
 	}
 	return ErrExpressionConditionFailed
 }

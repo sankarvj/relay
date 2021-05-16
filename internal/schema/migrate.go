@@ -151,6 +151,8 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	// In nodes it seems we are not using the stage_id effectively.
+	// We are using the parent_id + type logic to vet stage nodes inside a stage node.
 	{
 		Version:     7,
 		Description: "Add nodes",
@@ -161,7 +163,7 @@ var migrations = []darwin.Migration{
 			account_id      UUID,
 			flow_id         UUID REFERENCES flows ON DELETE CASCADE,
 			actor_id 	    UUID,
-			stage_id        UUID,
+			stage_id        UUID, 
 			name            TEXT,
 			description     TEXT,
 			weight          INTEGER DEFAULT 0,

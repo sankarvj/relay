@@ -30,13 +30,24 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	switch n.Type {
 	case node.Push:
 		_, err = item.Create(ctx, db, ni, time.Now())
+		if err != nil {
+			return err
+		}
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
+		_, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
+		if err != nil {
+			return err
+		}
 		_, err = item.UpdateFields(ctx, db, n.ActorID, actualItemID, ni.Fields)
 		if err != nil {
 			return err
 		}
 		_, err = item.Retrieve(ctx, n.ActorID, actualItemID, db)
+		if err != nil {
+			return err
+		}
+		//job.EventItemUpdated(n.AccountID, n.ActorID, actualItemID, it.Fields(), existingItem.Fields(), db)
 	}
 
 	return err

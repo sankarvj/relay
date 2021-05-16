@@ -250,7 +250,7 @@ func UpdateNodeVars(existingVars map[string]interface{}, newVars map[string]inte
 	for key, exitingVal := range existingVars {
 		if _, ok := newVars[key]; !ok { //if existing key present in newVars then keep the newVars value.
 			newVars[key] = exitingVal
-		} else if key == GlobalEntity || key == GlobalEntityData {
+		} else if key == GlobalEntity || key == GlobalEntityData { // for global entity, the vars resides one level deeper
 			// for the global entity, dive in to the innerMap (inside xyz).
 			// we should update the content inside global entities and not just replace it with new values.
 			exitingGlobalMap := existingVars[key].(map[string]interface{})
@@ -284,7 +284,8 @@ func RootNode(accountID, flowID, entityID, itemID, expression string) *Node {
 	return n
 }
 
-//UpdateMeta updates the meta values of the node
+//UpdateMeta updates the meta values of the node.
+//Meta values includes the entity and its item which triggered this flow.
 func (n *Node) UpdateMeta(entityID, itemID string, flowType int) *Node {
 	n.Variables = VariablesJSON(UpdateNodeVars(n.VariablesMap(), map[string]interface{}{entityID: itemID})) //start with the item which triggered the flow
 	n.Meta = Meta{
