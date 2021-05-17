@@ -18,7 +18,7 @@ If the items count is more than 1, we will just update the value for the current
 If the items count is equal to 1, we will populate all the available choices if the referenced entity is child unit.
 **/
 
-func UpdateReferenceFields(ctx context.Context, accountID string, fields []entity.Field, items []item.ViewModelItem, srcMap map[string]interface{}, db *sqlx.DB) {
+func UpdateReferenceFields(ctx context.Context, accountID string, fields []entity.Field, items []item.ViewModelItem, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
 	referenceFields := make(map[string]*entity.Field, 0)
 	referenceIds := make(map[string][]interface{}, 0)
 
@@ -47,7 +47,7 @@ func UpdateReferenceFields(ctx context.Context, accountID string, fields []entit
 
 	for _, f := range referenceFields {
 		if f.DomType == entity.DomAutoSelect {
-			refIDs := evaluateChoices(ctx, db, accountID, f, items)
+			refIDs := evaluateChoices(ctx, db, accountID, f, items, eng)
 			referenceIds[f.Key] = append(referenceIds[f.Key], refIDs...)
 		}
 
@@ -60,14 +60,14 @@ func UpdateReferenceFields(ctx context.Context, accountID string, fields []entit
 
 }
 
-func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem) []interface{} {
+func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) []interface{} {
 	refIDs := make([]interface{}, 0)
 	for i := 0; i < len(items); i++ {
 		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't execute the choice expressions and set the value if it is already set. for more details go to README
 			continue
 		}
 		for _, choice := range f.Choices {
-			result := engine.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
+			result := eng.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
 			if result {
 				items[i].Fields[f.Key] = []interface{}{choice.ID}
 				refIDs = append(refIDs, choice.ID)

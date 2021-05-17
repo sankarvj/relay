@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
@@ -106,7 +107,7 @@ func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 	return activeFlowMap
 }
 
-func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
+func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	_, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger.entryFlowTrigger")
 	defer span.End()
 	log.Printf("triggering entryflow")
@@ -114,17 +115,17 @@ func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redi
 		return err
 	}
 
-	return startJobFlow(ctx, db, rp, n)
+	return startJobFlow(ctx, db, rp, n, eng)
 }
 
-func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
+func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	_, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger.exitFlowTrigger")
 	defer span.End()
 	log.Printf("triggering exitflow")
 	if err := af.disableAF(ctx, db); err != nil {
 		return err
 	}
-	return startJobFlow(ctx, db, rp, n)
+	return startJobFlow(ctx, db, rp, n, eng)
 }
 
 func (af ActiveFlow) stopEntryTriggerFlow(condition int) bool {

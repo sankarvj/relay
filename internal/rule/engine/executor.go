@@ -10,7 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n node.Node) error {
+func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n node.Node, eng *Engine) error {
 	log.Println("executePosCase ActorID ---> ", n.ActorID)
 	ruleResult.Executed = true
 	var err error
@@ -18,15 +18,15 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n
 
 	switch n.Type {
 	case node.Push:
-		err = executeData(ctx, db, n)
+		err = eng.executeData(ctx, db, n)
 	case node.Modify:
-		err = executeData(ctx, db, n)
+		err = eng.executeData(ctx, db, n)
 	case node.Hook:
 		var result map[string]interface{}
 		result, err = executeHook(ctx, db, n)
 		executionResponse[node.GlobalEntityData] = result
 	case node.Email:
-		err = executeEmail(ctx, db, n)
+		err = eng.executeEmail(ctx, db, n)
 	case node.Decision:
 		err = nil
 		executionResponse[node.GlobalEntityResult] = true
@@ -52,7 +52,7 @@ func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n
 	return nil
 }
 
-func mergeActualsWithActor(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) ([]entity.Field, error) {
+func valueAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) ([]entity.Field, error) {
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return []entity.Field{}, err

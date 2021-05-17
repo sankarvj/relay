@@ -111,12 +111,12 @@ func ActiveNodesForItem(ctx context.Context, accountID, flowID, itemID string, d
 	return activeNodes, nil
 }
 
-func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node) error {
+func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	//TODO call this in job Q
-	return nextRun(ctx, db, rp, *n, map[string]interface{}{})
+	return nextRun(ctx, db, rp, *n, map[string]interface{}{}, eng)
 }
 
-func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, parentResponseMap map[string]interface{}) error {
+func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, parentResponseMap map[string]interface{}, eng engine.Engine) error {
 	err := upsertActives(ctx, db, n)
 	if err != nil {
 		//TODO push this to DL queue
@@ -141,13 +141,13 @@ func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, pare
 			log.Println("encountered stage node. Skipping auto run")
 			continue
 		}
-		runJob(ctx, db, rp, childNode)
+		runJob(ctx, db, rp, childNode, eng)
 	}
 	return nil
 }
 
-func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) error {
-	ruleResult, err := engine.RunRuleEngine(ctx, db, rp, n)
+func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng engine.Engine) error {
+	ruleResult, err := eng.RunRuleEngine(ctx, db, rp, n)
 	if err != nil {
 		//TODO push this to DL queue
 		return err
@@ -155,7 +155,7 @@ func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) error
 	if !ruleResult.Executed {
 		return ErrCannotExecuteNode
 	}
-	return nextRun(ctx, db, rp, n, ruleResult.Response)
+	return nextRun(ctx, db, rp, n, ruleResult.Response, eng)
 }
 
 func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) (bool, error) {

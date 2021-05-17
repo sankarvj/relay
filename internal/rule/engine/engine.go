@@ -6,9 +6,14 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/jobber"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
+
+type Engine struct {
+	JJ jobber.Jobber
+}
 
 // RuleResult returns back the recently executed results
 type RuleResult struct {
@@ -17,7 +22,7 @@ type RuleResult struct {
 }
 
 //RunRuleEngine runs the expression and execute action if the expression conditions met
-func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) (*RuleResult, error) {
+func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) (*RuleResult, error) {
 	var err error
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(n.Expression, true, signalsChan)
@@ -38,7 +43,7 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node
 				work.Resp <- result
 			}
 		case ruler.PosExecutor:
-			err = ruleResult.executePosCase(ctx, db, n)
+			err = ruleResult.executePosCase(ctx, db, n, e)
 		case ruler.NegExecutor:
 			err = ruleResult.executeNegCase(ctx, db, n)
 		}
@@ -48,7 +53,7 @@ func RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node
 }
 
 //RunExpRenderer run the expression and returns evaluated string
-func RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) string {
+func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) string {
 	var lexedContent string
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, false, signalsChan)
@@ -69,7 +74,7 @@ func RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, var
 }
 
 //RunExpEvaluator runs the expression to see whether the condition met or not
-func RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string, variables map[string]interface{}) bool {
+func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string, variables map[string]interface{}) bool {
 	positive := false
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, true, signalsChan)

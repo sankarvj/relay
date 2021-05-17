@@ -10,8 +10,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	mailFields, err := mergeActualsWithActor(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+func (eng *Engine) executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	mailFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
@@ -34,12 +34,12 @@ func executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	choices := make([]entity.Choice, 0)
 	variables := n.VariablesMap()
 
-	subject = RunExpRenderer(ctx, db, n.AccountID, subject, variables)
-	body = RunExpRenderer(ctx, db, n.AccountID, body, variables)
+	subject = eng.RunExpRenderer(ctx, db, n.AccountID, subject, variables)
+	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, variables)
 	//Very confusing step.
 	//To satisfy the SendMail func in the job we are populating the to mails in the choices.
 	for _, t := range to {
-		choices = append(choices, entity.Choice{DisplayValue: RunExpRenderer(ctx, db, n.AccountID, t.(string), variables)})
+		choices = append(choices, entity.Choice{DisplayValue: eng.RunExpRenderer(ctx, db, n.AccountID, t.(string), variables)})
 	}
 
 	log.Printf("mailFields --> %+v", mailFields)

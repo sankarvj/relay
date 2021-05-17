@@ -10,7 +10,7 @@ import (
 )
 
 func executeDelay(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	entityFields, err := mergeActualsWithActor(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+	entityFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}

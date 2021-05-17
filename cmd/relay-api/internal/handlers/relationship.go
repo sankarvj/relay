@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -83,7 +84,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 	//When populating the fields for the child items please populate the parent id also
-	reference.UpdateReferenceFields(ctx, accountID, fields, viewModelItems, sourceMap, rs.db)
+	reference.UpdateReferenceFields(ctx, accountID, fields, viewModelItems, sourceMap, rs.db, job.NewJabEngine())
 
 	response := struct {
 		Items    []item.ViewModelItem `json:"items"`

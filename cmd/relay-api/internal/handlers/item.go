@@ -59,7 +59,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		viewModelItems[i] = createViewModelItem(item)
 	}
 
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db)
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
 
 	response := struct {
 		Items    []item.ViewModelItem   `json:"items"`
@@ -197,7 +197,8 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	job.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db)
+	j := job.Job{}
+	j.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -247,7 +248,8 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//TODO push this to stream/queue
-	job.EventItemCreated(params["account_id"], params["entity_id"], ni, i.db)
+	j := job.Job{}
+	j.EventItemCreated(params["account_id"], params["entity_id"], it, ni.Source, i.db)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
@@ -278,7 +280,8 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	viewModelItem := createViewModelItem(it)
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []item.ViewModelItem{viewModelItem}, map[string]interface{}{}, i.db)
+
+	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []item.ViewModelItem{viewModelItem}, map[string]interface{}{}, i.db, job.NewJabEngine())
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

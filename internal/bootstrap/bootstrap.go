@@ -136,15 +136,16 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, userID strin
 		Fields:    fields,
 	}
 
-	i, err := item.Create(ctx, db, ni, time.Now())
+	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
 		return item.Item{}, err
 	}
 
-	job.EventItemCreated(accountID, entityID, ni, db)
+	j := job.Job{}
+	j.EventItemCreated(accountID, entityID, it, ni.Source, db)
 
 	fmt.Printf("\t\t\tItem Added\n")
-	return i, nil
+	return it, nil
 }
 
 func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID string, name string, mode, condition int) (flow.Flow, error) {

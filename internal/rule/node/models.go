@@ -123,6 +123,15 @@ func (n Node) VariablesMap() map[string]interface{} {
 	return variables
 }
 
+func (n Node) VarStrMap() map[string]string {
+	varStrMap := make(map[string]string, 0)
+	vars := n.VariablesMap()
+	for k, v := range vars {
+		varStrMap[k] = v.(string)
+	}
+	return varStrMap
+}
+
 // ActualsMap parses actuals jsonb to map
 func (n Node) ActualsMap() map[string]string {
 	var actuals map[string]string

@@ -13,18 +13,36 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 )
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 
-func EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB) {
+type Job struct {
+}
+
+func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB) {
 	ctx := context.Background()
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		log.Println("error while retriving entity on job", err)
+		return
+	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
 		log.Println("error while retriving item on job", err)
 		return
 	}
+	if it.State == item.StateBluePrint {
+		return
+	}
+	j.validateWorkflows(ctx, db, e, itemID, oldFields, newFields)
+	j.AddConnection(ctx, db, accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields))
+}
+
+func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source map[string]string, db *sqlx.DB) {
+	ctx := context.Background()
 	if it.State == item.StateBluePrint {
 		return
 	}
@@ -34,44 +52,31 @@ func EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields m
 		log.Println("error while retriving entity on job", err)
 		return
 	}
-	validateWorkflows(ctx, db, e, itemID, oldFields, newFields)
-	addConnection(ctx, db, accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields))
-}
-
-func EventItemCreated(accountID, entityID string, ni item.NewItem, db *sqlx.DB) {
-	ctx := context.Background()
-	if ni.State == item.StateBluePrint {
-		return
-	}
-
-	e, err := entity.Retrieve(ctx, accountID, entityID, db)
-	if err != nil {
-		log.Println("error while retriving entity on job", err)
-		return
-	}
-	valueAddedFields := e.ValueAdd(ni.Fields)
+	valueAddedFields := e.ValueAdd(it.Fields())
 	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
-	addConnection(ctx, db, accountID, ni.Source, entityID, ni.ID, valueAddedFields, nil)
+	j.AddConnection(ctx, db, accountID, source, entityID, it.ID, valueAddedFields, nil)
 	reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
 
 	//integrations
 	switch e.Category {
 	case entity.CategoryEmail:
-		err = email.SendMail(ctx, accountID, e.ID, ni.ID, valueAddedFields, db)
+		err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
 	case entity.CategoryMeeting:
-		err = calendar.CreateCalendarEvent(ctx, accountID, e.ID, ni.ID, valueAddedFields, db)
+		err = calendar.CreateCalendarEvent(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
 	}
 	if err != nil {
 		log.Println("error while performing the job", err)
 	}
 }
 
-func validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}) {
+func (j *Job) validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}) {
 	// log.Println("entityID...", entityID)
 	// log.Println("itemID...", itemID)
 	// log.Println("oldFields...", oldFields)
 	// log.Println("newFields...", newFields)
-
+	eng := engine.Engine{
+		JJ: j,
+	}
 	//workflows
 	flows, err := flow.List(context.Background(), []string{e.ID}, -1, db)
 	if err != nil {
@@ -80,7 +85,8 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entity, itemID
 	dirtyFlows := flow.DirtyFlows(context.Background(), flows, item.Diff(oldFields, newFields))
 	if len(dirtyFlows) > 0 {
 		log.Print("Tick...\nTick...\nTick...\nTick...\nTick...\nTick...\n The flow trigger has been started")
-		errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows)
+
+		errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows, eng)
 		if len(errs) > 0 {
 			log.Println("There is an error while triggering flows...", errs)
 		}
@@ -91,14 +97,14 @@ func validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entity, itemID
 		if fi.IsNode() {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := newFields[fi.Key].([]interface{})[0].(string)
-			flow.DirectTrigger(context.Background(), db, nil, e.AccountID, flowID, nodeID, e.ID, itemID)
+			flow.DirectTrigger(context.Background(), db, nil, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
 		}
 	}
 
 }
 
 // It connects the implicit relationships which as inferred by the field
-func addConnection(ctx context.Context, db *sqlx.DB, accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field) {
+func (j Job) AddConnection(ctx context.Context, db *sqlx.DB, accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field) {
 	createEvent := oldFields == nil
 	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
 	oldValueAddedFieldsMap := entity.KeyedFieldsObjMap(oldFields)

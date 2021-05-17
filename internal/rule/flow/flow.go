@@ -171,7 +171,7 @@ func DirtyFlows(ctx context.Context, flows []Flow, dirtyFields map[string]interf
 }
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
-func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, flows []Flow) []error {
+func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, flows []Flow, eng engine.Engine) []error {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger")
 	defer span.End()
 	triggerErrors := make([]error, 0)
@@ -185,17 +185,17 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 		log.Printf("check expression for flow ->  %s", f.Name)
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
-		if engine.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
+		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Condition) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
 			} else {
-				err = af.entryFlowTrigger(ctx, db, rp, n)
+				err = af.entryFlowTrigger(ctx, db, rp, n, eng)
 			}
 		} else {
 			if af.stopExitTriggerFlow(f.Condition) { //skip trigger if new  or inactive or not allowed.
 				err = ErrFlowInActive
 			} else {
-				err = af.exitFlowTrigger(ctx, db, rp, n)
+				err = af.exitFlowTrigger(ctx, db, rp, n, eng)
 			}
 		}
 		//concat errors in the loop. nil if no error exists
@@ -207,7 +207,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 }
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
-func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string) error {
+func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string, eng engine.Engine) error {
 	//retrival of primary components item,flow,node
 	f, err := Retrieve(ctx, flowID, db)
 	if err != nil {
@@ -235,13 +235,12 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 
 	//update meta. very important to update meta before calling exp evaluator
 	n.UpdateMeta(i.EntityID, i.ID, f.Type)
-	if engine.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
+	if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)
 		if err != nil && err != ErrNotFound { //usually for the first time the af will not exist there
 			return err
 		}
-		log.Println("af---", af)
-		return af.entryFlowTrigger(ctx, db, rp, n) // entering the workflow with all the variables loaded in the node
+		return af.entryFlowTrigger(ctx, db, rp, n, eng) // entering the workflow with all the variables loaded in the node
 	}
 	return ErrExpressionConditionFailed
 }

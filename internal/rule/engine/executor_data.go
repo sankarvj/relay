@@ -12,8 +12,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	entityFields, err := mergeActualsWithActor(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
@@ -23,16 +23,18 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 		AccountID: n.AccountID,
 		EntityID:  n.ActorID,
 	}
-	ni.Fields = evaluateFieldValues(ctx, db, n.AccountID, entityFields, n.VariablesMap())
+	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap())
+	ni.Fields = itemFields(valueAddedFields)
 
 	log.Printf("ni %+v ", ni)
 
 	switch n.Type {
 	case node.Push:
-		_, err = item.Create(ctx, db, ni, time.Now())
+		it, err := item.Create(ctx, db, ni, time.Now())
 		if err != nil {
 			return err
 		}
+		eng.JJ.AddConnection(ctx, db, n.AccountID, n.VarStrMap(), it.EntityID, it.ID, valueAddedFields, nil)
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
 		_, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
@@ -47,27 +49,33 @@ func executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
 		if err != nil {
 			return err
 		}
-		//job.EventItemUpdated(n.AccountID, n.ActorID, actualItemID, it.Fields(), existingItem.Fields(), db)
 	}
 
 	return err
 }
 
-func evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, entityFields []entity.Field, vars map[string]interface{}) map[string]interface{} {
-	evaluatedItemFields := map[string]interface{}{}
-	for _, field := range entityFields {
-		switch field.DataType {
+func itemFields(fields []entity.Field) map[string]interface{} {
+	params := map[string]interface{}{}
+	for _, f := range fields {
+		params[f.Key] = f.Value
+	}
+	return params
+}
+
+func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, fields []entity.Field, vars map[string]interface{}) {
+	for i := 0; i < len(fields); i++ {
+		var field = &fields[i]
+		switch fields[i].DataType {
 		case entity.TypeString:
 			if field.Value != nil {
-				valuatedValue := RunExpRenderer(ctx, db, accountID, field.Value.(string), vars)
-				evaluatedItemFields[field.Key] = valuatedValue
+				field.Value = eng.RunExpRenderer(ctx, db, accountID, field.Value.(string), vars)
 			}
 		case entity.TypeReference:
-			evaluatedItemFields[field.Key] = vars[field.RefID] // what happens if the vars has more than one item
-		default:
-			evaluatedItemFields[field.Key] = field.Value
+			if _, ok := vars[field.RefID]; ok {
+				field.Value = []interface{}{vars[field.RefID]} // what happens if the vars has more than one item
+			} else {
+				field.Value = []interface{}{}
+			}
 		}
-
 	}
-	return evaluatedItemFields
 }

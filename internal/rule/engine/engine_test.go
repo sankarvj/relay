@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
@@ -42,7 +43,11 @@ func TestEmailRuleRunner(t *testing.T) {
 				Type:       node.Email,
 			}
 
-			_, err = engine.RunRuleEngine(tests.Context(), db, nil, node)
+			eng := engine.Engine{
+				JJ: job.Job{},
+			}
+
+			_, err = eng.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould send email : %s.", tests.Failed, err)
 			}
@@ -78,7 +83,10 @@ func TestCreateItemRuleRunner(t *testing.T) {
 				ActorID:   taskEntity.ID,
 				Type:      node.Push,
 			}
-			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
+			eng := engine.Engine{
+				JJ: job.Job{},
+			}
+			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
 			}
@@ -111,7 +119,11 @@ func TestUpdateRuleRunner(t *testing.T) {
 				ActorID:   contactEntity.ID,
 				Type:      node.Modify,
 			}
-			_, err := engine.RunRuleEngine(tests.Context(), db, nil, node)
+
+			eng := engine.Engine{
+				JJ: job.Job{},
+			}
+			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
 				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
 			}
@@ -168,7 +180,11 @@ func TestTrigger(t *testing.T) {
 			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, item.Diff(oldItemFields, newItemFields))
-			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows)
+
+			eng := engine.Engine{
+				JJ: job.Job{},
+			}
+			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows, eng)
 			for _, err := range errs {
 				if err != nil {
 					t.Fatalf("\t%s should flow without error : %s.", tests.Failed, err)
@@ -193,7 +209,10 @@ func TestDirectTrigger(t *testing.T) {
 			flowID := "ed58cf77-87e2-4d4c-a495-bfa7c808819f"
 			f, err := flow.Retrieve(tests.Context(), flowID, db)
 			contactItems, _ := item.List(tests.Context(), f.EntityID, db)
-			err = flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID)
+			eng := engine.Engine{
+				JJ: job.Job{},
+			}
+			err = flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID, eng)
 			if err != nil {
 				t.Fatalf("\t%s should flow with out error : %s.", tests.Failed, err)
 			}
@@ -318,7 +337,8 @@ func TestQueryRuleRunner(t *testing.T) {
 				Variables:  vars,
 				Type:       node.Unknown,
 			}
-			_, err := engine.RunRuleEngine(tests.Context(), nil, residPool, node)
+
+			_, err := job.NewJabEngine().RunRuleEngine(tests.Context(), nil, residPool, node)
 			if err != nil {
 				t.Fatalf("\t%s should pass with out fail : %s.", tests.Failed, err)
 			}
