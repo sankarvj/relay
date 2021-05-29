@@ -25,13 +25,16 @@ var (
 
 // List retrieves a list of existing item for the entity associated from the database.
 func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+	return ListFilterByState(ctx, entityID, StateDefault, db)
+}
+func ListFilterByState(ctx context.Context, entityID string, state int, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.List")
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1`
+	const q = `SELECT * FROM items where entity_id = $1 AND state = $2`
 
-	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+	if err := db.SelectContext(ctx, &items, q, entityID, state); err != nil {
 		return nil, errors.Wrap(err, "selecting items")
 	}
 

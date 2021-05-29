@@ -139,5 +139,4 @@ Notes with @mention
 
 
 # Activities
-# Templates in workflow
-# pipelines/playbooks view
+# Runtime setter of blue-prints (Date, owners)

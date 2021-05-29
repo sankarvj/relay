@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 )
 
 func ConvertSliceType(s []string) []interface{} {
@@ -34,6 +35,13 @@ func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
 		log.Println("Error occured duting the interface unmarshal", err)
 	}
 	return itemMap
+}
+
+func ConvertStrToInt(s string) int {
+	if i, err := strconv.Atoi(s); err == nil {
+		return i
+	}
+	return 0
 }
 
 func Contains(s []string, e string) bool {

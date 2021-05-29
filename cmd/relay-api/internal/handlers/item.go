@@ -20,6 +20,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"go.opencensus.io/trace"
@@ -33,11 +34,13 @@ type Item struct {
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
-// List returns all the existing entities associated with team
+// List returns all the existing items associated with entity
 //TODO: add pagination
 func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
+
+	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
 
 	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
@@ -49,7 +52,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	items, err := item.List(ctx, e.ID, i.db)
+	items, err := item.ListFilterByState(ctx, e.ID, state, i.db)
 	if err != nil {
 		return err
 	}
@@ -224,6 +227,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
+	//wouldn't we move this to the UI itself?
 	if ni.State == item.StateBluePrint {
 		e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 		if err != nil {
