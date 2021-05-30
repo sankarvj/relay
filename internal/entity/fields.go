@@ -63,7 +63,7 @@ type DType string
 const (
 	TypeString    DType = "S"
 	TypeNumber          = "N"
-	TypeDataTime        = "T"
+	TypeDateTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
 )

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -63,47 +62,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
-
-	response := struct {
-		Items    []item.ViewModelItem   `json:"items"`
-		Category int                    `json:"category"`
-		Fields   []entity.Field         `json:"fields"`
-		Entity   entity.ViewModelEntity `json:"entity"`
-	}{
-		Items:    viewModelItems,
-		Category: e.Category,
-		Fields:   fields,
-		Entity:   createViewModelEntity(e),
-	}
-
-	return web.Respond(ctx, w, response, http.StatusOK)
-}
-
-func (i *Item) Templates(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
-	defer span.End()
-
-	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
-	if err != nil {
-		return err
-	}
-
-	fields, err := e.Fields()
-	if err != nil {
-		return err
-	}
-
-	items, err := item.List(ctx, e.ID, i.db)
-	if err != nil {
-		return err
-	}
-
-	viewModelItems := make([]item.ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
-	}
-
-	reference.UpdateChoicesWrapper(ctx, i.db, params["account_id"], fields)
 
 	response := struct {
 		Items    []item.ViewModelItem   `json:"items"`
@@ -226,25 +184,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.EntityID = params["entity_id"]
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
-
-	//wouldn't we move this to the UI itself?
-	if ni.State == item.StateBluePrint {
-		e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
-		if err != nil {
-			return err
-		}
-
-		fields, err := e.Fields()
-		if err != nil {
-			return err
-		}
-
-		for _, fi := range fields {
-			if _, ok := ni.Source[fi.RefID]; ok {
-				ni.Fields[fi.Key] = []interface{}{fmt.Sprintf("{{%s.id}}", fi.RefID)}
-			}
-		}
-	}
 
 	it, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {

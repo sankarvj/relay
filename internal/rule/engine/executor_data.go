@@ -13,6 +13,7 @@ import (
 )
 
 func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
+	log.Printf("podalam.......%+v", n)
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err

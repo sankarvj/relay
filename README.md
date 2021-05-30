@@ -59,6 +59,15 @@ check README.md inside the entity
 4. The pipeline flows will always hold the node type called stage.
 100. More about this in the package internal/rule READ.ME
 
+### What is the base/source?
+When you create an item with in a parent entity then the parent entity item is called as base. Even when the workflow creates item it chooses the flow entity as its base entity.
+### Who will populate the base/source while creating the item from the parent item?
+The UI will populate the value of the ref field for the child item with the help of the makeItemProperty function. For the explicit relations the server will handle the connection
+### Who will populate the base/source while creating templates?
+The UI will populate the value of the ref field for the child item with the help of the makeItemProperty function. The only difference is the value is dynamic. {{baseEntity.id}}
+### How the server handles the explicit connection?
+The base/source of the item passed by the UI during create API will be used to connect explict coneections during the event creat job.
+
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------
 ### Current shots

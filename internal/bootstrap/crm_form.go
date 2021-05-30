@@ -70,6 +70,34 @@ func StatusVals(verb, name, color string) map[string]interface{} {
 	return statusVals
 }
 
+func DueByFields() []entity.Field {
+	verbField := entity.Field{
+		Key:         "uuid-00-verb",
+		Name:        "verb",
+		DisplayName: "Verb",
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+	}
+
+	nameField := entity.Field{
+		Key:         "uuid-00-name",
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{verbField, nameField}
+}
+
+func DueByVals(verb, name string) map[string]interface{} {
+	dueByVals := map[string]interface{}{
+		"uuid-00-verb": verb,
+		"uuid-00-name": name,
+	}
+	return dueByVals
+}
+
 func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) []entity.Field {
 	nameField := entity.Field{
 		Key:         schema.SeedFieldFNameKey,
@@ -338,13 +366,13 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		Name:        "due_by",
 		DisplayName: "Due By",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 	}
 
 	contactField := entity.Field{
 		Key:         "uuid-00-contact",
 		Name:        "contact",
-		DisplayName: "Associated To",
+		DisplayName: "Associated Contact",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
@@ -359,7 +387,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 	dealField := entity.Field{
 		Key:         "uuid-00-deal",
 		Name:        "deal",
-		DisplayName: "Associated To",
+		DisplayName: "Associated Deal",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       dealEntityID,
@@ -374,7 +402,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 	companyField := entity.Field{
 		Key:         "uuid-00-company",
 		Name:        "company",
-		DisplayName: "Associated To",
+		DisplayName: "Associated Company",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
@@ -391,7 +419,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		Name:        "reminder",
 		DisplayName: "Reminder",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 		ActionID:    contactField.Key,
 	}
 
@@ -421,7 +449,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		},
 	}
 
-	return []entity.Field{descField, contactField, statusField, dueByField, dealField, companyField, reminderField}
+	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField}
 }
 
 func TaskVals(desc, contactID string) map[string]interface{} {
@@ -473,7 +501,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		Name:        "start_time",
 		DisplayName: "Start Time",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 	}
 
 	endTimeField := entity.Field{
@@ -481,7 +509,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		Name:        "end_time",
 		DisplayName: "End Time",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 		Meta:        map[string]string{"row": "true"},
 	}
 
@@ -499,7 +527,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		Name:        "created_at",
 		DisplayName: "Created At",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 		Meta:        map[string]string{"hidden": "true"},
 	}
 
@@ -508,7 +536,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		Name:        "updated_at",
 		DisplayName: "Updated At",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 		Meta:        map[string]string{"hidden": "true"},
 	}
 
@@ -771,7 +799,7 @@ func DelayFields() []entity.Field {
 		Key:      "uuid-00-delay-by",
 		Name:     "delay_by",
 		DomType:  entity.DomText,
-		DataType: entity.TypeDataTime,
+		DataType: entity.TypeDateTime,
 	}
 
 	repeat := entity.Field{

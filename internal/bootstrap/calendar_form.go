@@ -76,7 +76,7 @@ func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		Name:        "synced_at",
 		DisplayName: "Last Synced",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDataTime,
+		DataType:    entity.TypeDateTime,
 	}
 
 	retriesFieldID := uuid.New().String()
