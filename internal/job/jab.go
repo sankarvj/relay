@@ -1,7 +1,6 @@
 package job
 
 import (
-	"context"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -9,15 +8,16 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 )
 
+// Jab is testing Job
 type Jab struct {
 }
 
-func (J Jab) AddConnection(ctx context.Context, db *sqlx.DB, accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field) {
-	log.Println("EventItemCreated Called At Jab")
+func (J Jab) AddConnection(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) {
+	log.Println("DeadAddConnection At Jab")
 }
 
 func NewJabEngine() *engine.Engine {
 	return &engine.Engine{
-		JJ: Jab{},
+		Job: Jab{},
 	}
 }

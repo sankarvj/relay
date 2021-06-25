@@ -36,7 +36,7 @@ func NodeFields() []entity.Field {
 func StatusFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         "uuid-00-verb",
-		Name:        "verb",
+		Name:        entity.Verb,
 		DisplayName: "Verb",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
@@ -73,7 +73,7 @@ func StatusVals(verb, name, color string) map[string]interface{} {
 func DueByFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         "uuid-00-verb",
-		Name:        "verb",
+		Name:        entity.Verb,
 		DisplayName: "Verb",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
@@ -124,6 +124,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
+			Key:      "element",
 			DataType: entity.TypeString,
 		},
 	}
@@ -152,6 +153,10 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 				DisplayValue: "Contact",
 			},
 		},
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
 	}
 
 	statusField := entity.Field{
@@ -162,7 +167,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb"},
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -282,6 +287,7 @@ func CompanyVals(name, website string) map[string]interface{} {
 	companyVals := map[string]interface{}{
 		"uuid-00-name":    name,
 		"uuid-00-website": website,
+		"uuid-00-owner":   []interface{}{},
 	}
 	return companyVals
 }
@@ -431,7 +437,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "verb": "uuid-00-verb", "layout": "verb", "load_choices": "true"},
+		Meta:        map[string]string{"display_gex": "uuid-00-name", "layout": "verb", "load_choices": "true"},
 		Choices: []entity.Choice{
 			{
 				ID:         stItem1,
@@ -457,6 +463,8 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 		"uuid-00-desc":     desc,
 		"uuid-00-contact":  []interface{}{contactID},
 		"uuid-00-status":   []interface{}{},
+		"uuid-00-company":  []interface{}{},
+		"uuid-00-deal":     []interface{}{},
 		"uuid-00-reminder": util.FormatTimeGo(time.Now()),
 		"uuid-00-due-by":   util.FormatTimeGo(time.Now()),
 	}
@@ -681,6 +689,7 @@ func DealVals(name string, amount int, contactID1, contactID2, flowID string) ma
 		"uuid-00-contacts":    []interface{}{contactID1, contactID2},
 		"uuid-00-pipe":        []interface{}{flowID},
 		"uuid-00-pipe-stage":  []interface{}{},
+		"uuid-00-company":     []interface{}{},
 	}
 	return dealVals
 }

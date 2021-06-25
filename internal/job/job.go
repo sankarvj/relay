@@ -4,12 +4,14 @@ import (
 	"context"
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
@@ -18,11 +20,10 @@ import (
 )
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
-
 type Job struct {
 }
 
-func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB) {
+func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
@@ -37,11 +38,14 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	if it.State == item.StateBluePrint {
 		return
 	}
-	j.validateWorkflows(ctx, db, e, itemID, oldFields, newFields)
-	j.AddConnection(ctx, db, accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields))
+	j.validateWorkflows(e, itemID, oldFields, newFields, db, rp)
+	j.AddConnection(accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields), db)
+
+	//insertion in to redis graph DB
+	insertInToRedisGraph(accountID, entityID, it.ID, e.ValueAdd(newFields), rp)
 }
 
-func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source map[string]string, db *sqlx.DB) {
+func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 	if it.State == item.StateBluePrint {
 		return
@@ -53,9 +57,9 @@ func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source 
 		return
 	}
 	valueAddedFields := e.ValueAdd(it.Fields())
-	//validateWorkflows(ctx, db, entityID, itemID, oldFields, newFields)
-	j.AddConnection(ctx, db, accountID, source, entityID, it.ID, valueAddedFields, nil)
 	reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
+	//j.validateWorkflows(db, entityID, itemID, oldFields, newFields)
+	j.AddConnection(accountID, source, entityID, it.ID, valueAddedFields, nil, db)
 
 	//integrations
 	switch e.Category {
@@ -67,15 +71,50 @@ func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source 
 	if err != nil {
 		log.Println("error while performing the job", err)
 	}
+
+	//insertion in to redis graph DB
+	insertInToRedisGraph(accountID, entityID, it.ID, valueAddedFields, rp)
 }
 
-func (j *Job) validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}) {
+func insertInToRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) {
+	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
+	err := graphdb.UpsertNode(rp, gpbNode)
+	if err != nil {
+		log.Println("error while performing the rDB insertion job", err)
+	}
+}
+
+func makeGraphFields(fields []entity.Field) []graphdb.Field {
+	gFields := make([]graphdb.Field, len(fields))
+	for i, f := range fields {
+		gFields[i] = *makeGraphField(&f)
+	}
+	return gFields
+}
+
+func makeGraphField(f *entity.Field) *graphdb.Field {
+	if f == nil {
+		return nil
+	}
+
+	log.Printf("field --> %+v", f)
+
+	return &graphdb.Field{
+		Key:      f.Key,
+		Value:    f.Value,
+		DataType: graphdb.DType(f.DataType),
+		RefID:    f.RefID,
+		Field:    makeGraphField(f.Field),
+	}
+}
+
+func (j *Job) validateWorkflows(e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
 	// log.Println("entityID...", entityID)
 	// log.Println("itemID...", itemID)
 	// log.Println("oldFields...", oldFields)
 	// log.Println("newFields...", newFields)
 	eng := engine.Engine{
-		JJ: j,
+		Job: j,
 	}
 	//workflows
 	flows, err := flow.List(context.Background(), []string{e.ID}, -1, db)
@@ -104,7 +143,8 @@ func (j *Job) validateWorkflows(ctx context.Context, db *sqlx.DB, e entity.Entit
 }
 
 // It connects the implicit relationships which as inferred by the field
-func (j Job) AddConnection(ctx context.Context, db *sqlx.DB, accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field) {
+func (j Job) AddConnection(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) {
+	ctx := context.Background()
 	createEvent := oldFields == nil
 	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
 	oldValueAddedFieldsMap := entity.KeyedFieldsObjMap(oldFields)

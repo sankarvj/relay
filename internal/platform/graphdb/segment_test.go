@@ -21,9 +21,9 @@ var (
 	dealRefFieldID  = "33333343-b257-4b06-ba99-493cf9d83ce7"
 	Name1           = "Panchavan Paari Venthan"
 	Name2           = "Kosakshi Pasapughaz"
-	colors          = []string{"blue", "yellow"}
-	ref             = []string{taskItemID1}
-	sref            = []string{taskItemID2}
+	colors          = []interface{}{"blue", "yellow"}
+	ref             = []interface{}{taskItemID1}
+	sref            = []interface{}{taskItemID2}
 
 	//gbp0
 	taskProperties1 = map[string]interface{}{
@@ -35,11 +35,11 @@ var (
 		"score": 1000,
 	}
 	taskEntityFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "name",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "score",
 			DataType: graphdb.TypeNumber,
 		},
@@ -57,19 +57,19 @@ var (
 
 	//contact entity field skeleton
 	contactEntityFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "id",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "name",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "age",
 			DataType: graphdb.TypeNumber,
 		},
-		graphdb.Field{
+		{
 			Key:      fieldID1,
 			DataType: graphdb.TypeList,
 			Field: &graphdb.Field{
@@ -77,7 +77,7 @@ var (
 				DataType: graphdb.TypeString,
 			},
 		},
-		graphdb.Field{
+		{
 			Key:      taskRefFieldID,
 			DataType: graphdb.TypeReference,
 			RefID:    taskEntityID1,
@@ -90,27 +90,27 @@ var (
 
 	// updated contact fields
 	updatedFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "name",
 			DataType: graphdb.TypeString,
 			Value:    Name2,
 		},
-		graphdb.Field{
+		{
 			Key:          fieldID1,
 			DataType:     graphdb.TypeList,
-			Value:        []string{"white", "blue"},
+			Value:        []interface{}{"white", "blue"},
 			UnlinkOffset: 2, // this will remove blue and add white. Yellow will persist
 			Field: &graphdb.Field{
 				Key:      "element",
 				DataType: graphdb.TypeString,
 			},
 		},
-		graphdb.Field{
+		{
 			Key:          taskRefFieldID,
 			DataType:     graphdb.TypeReference,
 			RefID:        taskEntityID1,
 			UnlinkOffset: 2, // this will remove old task and set a new task relation
-			Value:        []string{taskItemID2, taskItemID1},
+			Value:        []interface{}{taskItemID2, taskItemID1},
 			Field: &graphdb.Field{
 				Key:      "id",
 				DataType: graphdb.TypeNumber,
@@ -122,18 +122,18 @@ var (
 	dealProperties = map[string]interface{}{
 		"name":         "Deal1",
 		"amount":       999,
-		dealRefFieldID: []string{contactItemID},
+		dealRefFieldID: []interface{}{contactItemID},
 	}
 	dealEntityFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Key:      "name",
 			DataType: graphdb.TypeString,
 		},
-		graphdb.Field{
+		{
 			Key:      "amount",
 			DataType: graphdb.TypeNumber,
 		},
-		graphdb.Field{
+		{
 			Key:      dealRefFieldID,
 			DataType: graphdb.TypeReference,
 			RefID:    contactEntityID,
@@ -156,23 +156,23 @@ var (
 
 var (
 	conditionFields = []graphdb.Field{
-		graphdb.Field{
+		{
 			Expression: "<",
 			Key:        "age",
 			DataType:   graphdb.TypeNumber,
 			Value:      "50",
 		},
-		graphdb.Field{
+		{
 			Key:      fieldID1,
 			DataType: graphdb.TypeList,
-			Value:    []string{"yellow"},
+			Value:    []interface{}{"yellow"},
 			Field: &graphdb.Field{
 				Expression: "=",
 				Key:        "element",
 				DataType:   graphdb.TypeString,
 			},
 		},
-		graphdb.Field{
+		{
 			Key:      taskRefFieldID,
 			Value:    sref,
 			RefID:    taskEntityID1,
@@ -184,10 +184,11 @@ var (
 				Value:      1000,
 			},
 		},
-		graphdb.Field{
-			Value:    []string{""},
-			RefID:    dealEntityID,
-			DataType: graphdb.TypeReference,
+		{
+			Value:     []interface{}{""},
+			RefID:     dealEntityID,
+			IsReverse: true,
+			DataType:  graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Expression: ">",
 				Key:        "amount",
@@ -196,10 +197,11 @@ var (
 				Aggr:       "SUM",
 			},
 		},
-		graphdb.Field{
-			Value:    []string{""},
-			RefID:    dealEntityID,
-			DataType: graphdb.TypeReference,
+		{
+			Value:     []interface{}{""},
+			RefID:     dealEntityID,
+			IsReverse: true,
+			DataType:  graphdb.TypeReference,
 			Field: &graphdb.Field{
 				Expression: ">",
 				Key:        "amount",

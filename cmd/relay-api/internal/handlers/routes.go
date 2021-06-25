@@ -91,6 +91,15 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", i.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/search", i.Search, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
+	s := Segmentation{
+		db:            db,
+		rPool:         redisPool,
+		authenticator: authenticator,
+	}
+	// Register items management endpoints.
+	// TODO Add team authorization middleware
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/segments", s.Segment, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
 	f := Flow{
 		db:            db,
 		rPool:         redisPool,

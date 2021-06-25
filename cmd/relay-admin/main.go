@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf"
+	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
@@ -41,6 +42,12 @@ func run() error {
 			Name       string `conf:"default:relaydb"`
 			DisableTLS bool   `conf:"default:true"`
 		}
+		SecDB struct {
+			User     string `conf:"default:redisgraph"`
+			Password string `conf:"default:redis,noprint"`
+			Host     string `conf:"default:127.0.0.1:6379"`
+			Name     string `conf:"default:relaydb"`
+		}
 		Args conf.Args
 	}
 
@@ -65,14 +72,21 @@ func run() error {
 		DisableTLS: cfg.DB.DisableTLS,
 	}
 
+	secDbConfig := database.SecConfig{
+		User:     cfg.SecDB.User,
+		Password: cfg.SecDB.Password,
+		Host:     cfg.SecDB.Host,
+		Name:     cfg.SecDB.Name,
+	}
+
 	var err error
 	switch cfg.Args.Num(0) {
 	case "migrate":
 		err = migrate(dbConfig)
 	case "seed":
-		err = seed(dbConfig)
+		err = seed(dbConfig, secDbConfig)
 	case "crmadd":
-		err = bootstrap.BootCRM(dbConfig, schema.SeedAccountID)
+		err = bootstrap.BootCRM(dbConfig, secDbConfig, schema.SeedAccountID)
 	case "useradd":
 		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -103,12 +117,31 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(cfg database.Config) error {
+func seed(cfg database.Config, secDB database.SecConfig) error {
 	db, err := database.Open(cfg)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	redisPool := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", secDB.Host)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer redisPool.Close()
 
 	if err := schema.SeedUsers(db); err != nil {
 		return err
@@ -123,7 +156,7 @@ func seed(cfg database.Config) error {
 		ID:     schema.SeedAccountID,
 		Name:   "Wayplot",
 		Domain: "wayplot.com"}
-	err = account.Bootstrap(ctx, db, cuser, nc, time.Now())
+	err = account.Bootstrap(ctx, db, redisPool, cuser, nc, time.Now())
 	if err != nil {
 		log.Println("!!!! TODO: Should Implement Roll Back Option Here.")
 		return err

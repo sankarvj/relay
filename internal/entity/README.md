@@ -6,6 +6,15 @@
 3. For reminder field type, it must/automatically conjugated with the assigned_to field.
 4. Similarly the due date field is conjugated with the status field.
 
+### The Meta
+
+#### display_gex
+TBW
+#### load_choices
+TBW
+#### row
+TBW
+#### 
 
 
 ### The Category Fields

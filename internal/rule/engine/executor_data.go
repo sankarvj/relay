@@ -36,7 +36,7 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 			return err
 		}
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
-		eng.JJ.AddConnection(ctx, db, n.AccountID, n.VarStrMap(), it.EntityID, it.ID, valueAddedFields, nil)
+		eng.Job.AddConnection(n.AccountID, n.VarStrMap(), it.EntityID, it.ID, valueAddedFields, nil, db)
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
 		_, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)

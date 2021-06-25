@@ -249,4 +249,21 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     13,
+		Description: "Add layouts",
+		Script: `
+		CREATE TABLE layouts (
+			name            TEXT,
+			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id 	    UUID REFERENCES entities ON DELETE CASCADE,
+			user_id         UUID,
+			fieldsb         JSONB,
+			type 	   	    INTEGER DEFAULT 0,
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			UNIQUE (account_id, entity_id, user_id, name)
+		);
+		`,
+	},
 }

@@ -44,7 +44,7 @@ func TestEmailRuleRunner(t *testing.T) {
 			}
 
 			eng := engine.Engine{
-				JJ: job.Job{},
+				Job: job.Job{},
 			}
 
 			_, err = eng.RunRuleEngine(tests.Context(), db, nil, node)
@@ -84,7 +84,7 @@ func TestCreateItemRuleRunner(t *testing.T) {
 				Type:      node.Push,
 			}
 			eng := engine.Engine{
-				JJ: job.Job{},
+				Job: job.Job{},
 			}
 			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
@@ -121,7 +121,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 			}
 
 			eng := engine.Engine{
-				JJ: job.Job{},
+				Job: job.Job{},
 			}
 			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
 			if err != nil {
@@ -182,7 +182,7 @@ func TestTrigger(t *testing.T) {
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, item.Diff(oldItemFields, newItemFields))
 
 			eng := engine.Engine{
-				JJ: job.Job{},
+				Job: job.Job{},
 			}
 			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows, eng)
 			for _, err := range errs {
@@ -210,7 +210,7 @@ func TestDirectTrigger(t *testing.T) {
 			f, err := flow.Retrieve(tests.Context(), flowID, db)
 			contactItems, _ := item.List(tests.Context(), f.EntityID, db)
 			eng := engine.Engine{
-				JJ: job.Job{},
+				Job: job.Job{},
 			}
 			err = flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID, eng)
 			if err != nil {

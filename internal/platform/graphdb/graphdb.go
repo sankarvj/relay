@@ -75,8 +75,10 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	s := matchNode(srcNode)
 	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
 	s = append(s, wi...)
-	s = append(s, "WHERE")
-	s = append(s, strings.Join(wh, " AND "))
+	if len(wh) > 0 {
+		s = append(s, "WHERE")
+		s = append(s, strings.Join(wh, " AND "))
+	}
 
 	for _, rn := range gn.Relations {
 		dstNode := rn.justNode()
@@ -96,6 +98,7 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
 	result, err := graph.Query(q)
+	log.Println("GetResultQuery gn.GraphName--> ", gn.GraphName)
 	log.Println("GetResultQuery result--> ", q)
 	log.Println("GetResultQuery err--> ", err)
 	if err != nil {
@@ -305,7 +308,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	for _, f := range fields {
 		switch f.DataType {
 		case entity.TypeList:
-			for i, element := range f.Value.([]string) {
+			for i, element := range f.Value.([]interface{}) {
 				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
 					MakeBaseGNode("", []Field{*f.Field}).relateLists()
@@ -313,10 +316,13 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-			for i, rItemID := range f.Value.([]string) {
+			if f.Value == nil {
+				continue
+			}
+			for i, rItemID := range f.Value.([]interface{}) {
 				rEntityID := f.RefID
 				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
-					MakeBaseGNode(rItemID, []Field{*f.Field}).relateRefs()
+					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
 				gn.Relations = append(gn.Relations, rn)
 			}
 		default:
@@ -356,9 +362,9 @@ func (gn GraphNode) onlyProps() map[string]interface{} {
 	return properties
 }
 
-func (gn GraphNode) relateRefs() GraphNode {
+func (gn GraphNode) relateRefs(reverse bool) GraphNode {
 	gn.RelationName = "has"
-	if gn.ItemID == "" { // reverse true on segmentations ref
+	if reverse { // reverse true on segmentations when segmenting contacts which are associated to deals. (deals entity has contacts but contacts entity do not have the relationship with deals)
 		gn.IsReverse = true
 	}
 	return gn

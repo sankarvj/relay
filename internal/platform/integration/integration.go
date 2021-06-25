@@ -31,6 +31,17 @@ var (
 	GoogleCalendarScopes = []string{calendar.CalendarScope}
 )
 
+type DoMail interface {
+	SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) error
+	Watch(topic string) (string, error)
+}
+
+type DoCalendar interface {
+	EventCreate(calendarID, meeting Meeting) error
+	Sync(calendarID string, syncToken string) (string, error)
+	Watch(calendarID, channelID string) error
+}
+
 //GetGoogleAccessURL gets the access-url for the scopes mentioned. This url should be loaded in the UI
 func GetGoogleAccessURL(ctx context.Context, oAuthFile string, integId string, scope ...string) (string, error) {
 	config, err := GetConfig(oAuthFile, scope...)
@@ -76,29 +87,4 @@ func Client(config *oauth2.Config, tokenJson string) (*http.Client, error) {
 		return nil, err
 	}
 	return config.Client(context.Background(), &token), nil
-}
-
-type DoMail interface {
-	SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) error
-	Watch(topic string) (string, error)
-}
-
-type DoCalendar interface {
-	EventCreate(calendarID, meeting Meeting) error
-	Sync(calendarID string, syncToken string) (string, error)
-	Watch(calendarID, channelID string) error
-}
-
-type Meeting struct {
-	ID          string   `json:"id"`
-	CalID       string   `json:"cal_id"`
-	Summary     string   `json:"summary,omitempty"`
-	HtmlLink    string   `json:"htmlLink,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Attendees   []string `json:"attendees"`
-	StartTime   string   `json:"start_time,omitempty"`
-	EndTime     string   `json:"end_time,omitempty"`
-	TimeZone    string   `json:"timeZone,omitempty"`
-	Created     string   `json:"created,omitempty"`
-	Updated     string   `json:"updated,omitempty"`
 }

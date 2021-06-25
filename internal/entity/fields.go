@@ -9,6 +9,10 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
+const (
+	Verb = "verb"
+)
+
 // Field represents structural format of attributes in entity
 type Field struct {
 	Name        string            `json:"name" validate:"required"`
@@ -35,7 +39,6 @@ type FieldMeta struct {
 	Link        string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
 	DisplayGex  string `json:"display_gex"`
 	Layout      string `json:"layout"`
-	Verb        string `json:"verb"`
 	Flow        string `json:"flow"`
 	Node        string `json:"node"`
 	LoadChoices string `json:"load_choices"`
@@ -205,6 +208,13 @@ func (f Field) IsReference() bool {
 	return false
 }
 
+func (f Field) IsList() bool {
+	if f.DataType == TypeList {
+		return true
+	}
+	return false
+}
+
 func (f Field) IsDependent() bool {
 	if f.Dependent != nil {
 		return true
@@ -229,13 +239,6 @@ func (f Field) RefValues() []interface{} {
 
 func (f Field) DisplayGex() string {
 	if val, ok := f.Meta["display_gex"]; ok {
-		return val
-	}
-	return ""
-}
-
-func (f Field) Verb() string {
-	if val, ok := f.Meta["verb"]; ok {
 		return val
 	}
 	return ""

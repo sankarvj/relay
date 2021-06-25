@@ -158,8 +158,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	j := job.Job{}
-	j.EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db)
+	(&job.Job{}).EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -191,8 +190,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//TODO push this to stream/queue
-	j := job.Job{}
-	j.EventItemCreated(params["account_id"], params["entity_id"], it, ni.Source, i.db)
+	(&job.Job{}).EventItemCreated(params["account_id"], params["entity_id"], it, ni.Source, i.db, i.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }

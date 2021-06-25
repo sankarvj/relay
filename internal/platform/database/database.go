@@ -18,6 +18,13 @@ type Config struct {
 	DisableTLS bool
 }
 
+type SecConfig struct {
+	User     string
+	Password string
+	Host     string
+	Name     string
+}
+
 // Open knows how to open a database connection based on the configuration.
 func Open(cfg Config) (*sqlx.DB, error) {
 

@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/layout"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -31,7 +33,7 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 	return err
 }
 
-func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, currentUser *user.User, accountID, teamID string) error {
+func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, rp *redis.Pool, currentUser *user.User, accountID, teamID string) error {
 	fields, itemVals := ownerFields(currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
 	ue, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, fields)
@@ -40,7 +42,7 @@ func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, currentUser *user.Us
 	}
 	// add owner item
 	// pass the currentUserID as the itemID. Is it okay to do like that? seems like a anti pattern.
-	_, err = ItemAdd(ctx, db, accountID, ue.ID, currentUser.ID, itemVals)
+	_, err = ItemAdd(ctx, db, rp, accountID, ue.ID, currentUser.ID, itemVals)
 	if err != nil {
 		return err
 	}
@@ -82,6 +84,17 @@ func BootstrapCalendarEntity(ctx context.Context, db *sqlx.DB, accountID, teamID
 	// add entity - calendar
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, fields)
 
+	return err
+}
+
+func BootstrapLayout(ctx context.Context, db *sqlx.DB, name, accountID, entityID string, fields map[string]string) error {
+	nl := layout.NewLayout{}
+	nl.Name = name
+	nl.AccountID = accountID
+	nl.EntityID = entityID
+	nl.Fields = fields
+
+	_, err := layout.Create(ctx, db, nl, time.Now())
 	return err
 }
 
@@ -127,7 +140,7 @@ func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, na
 	return e, nil
 }
 
-func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, userID string, fields map[string]interface{}) (item.Item, error) {
+func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, userID string, fields map[string]interface{}) (item.Item, error) {
 	ni := item.NewItem{
 		ID:        userID,
 		AccountID: accountID,
@@ -142,7 +155,7 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, userID strin
 	}
 
 	j := job.Job{}
-	j.EventItemCreated(accountID, entityID, it, ni.Source, db)
+	j.EventItemCreated(accountID, entityID, it, ni.Source, db, rp)
 
 	fmt.Printf("\t\t\tItem Added\n")
 	return it, nil

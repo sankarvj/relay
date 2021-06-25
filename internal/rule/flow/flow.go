@@ -136,7 +136,7 @@ func SearchByKey(ctx context.Context, accountID, entityID, key, term string, db 
 }
 
 func BulkRetrieve(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Flow, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
+	ctx, span := trace.StartSpan(ctx, "internal.flow.BulkRetrieve")
 	defer span.End()
 
 	flows := []Flow{}

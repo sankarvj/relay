@@ -248,8 +248,8 @@ func (c *caster) deepCaster(left bool) OperandDT {
 		tL, errL := time.Parse("2006-01-02 15:04:05 -0700", c.leftString)
 		if errL == nil {
 			c.leftTime = tL
+			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700") // do we need to set it here?
 			return TimeDT
-			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700")
 		}
 	} else {
 		//version

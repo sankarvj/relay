@@ -121,6 +121,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 		}
 		choicesMakerFlow(f, flows)
 	} else if e.Category == entity.CategoryChildUnit { // select. with pre-populated drop-down choices
+		refFields := e.FieldsIgnoreError()
 		refItems, err := item.EntityItems(ctx, e.ID, db)
 		// var refItems []item.Item
 		// var err error
@@ -132,25 +133,34 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 		if err != nil {
 			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 		}
-		choicesMaker(f, refItems)
+		choicesMaker(f, refItems, refFields)
 	} else { //auto-complete
+		refFields := e.FieldsIgnoreError()
 		refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(referenceIds), db)
 		if err != nil {
 			log.Println("error on retriving reference items when updatingChoices. continuing... ", err)
 			return
 		}
-		choicesMaker(f, refItems)
+		choicesMaker(f, refItems, refFields)
 	}
 
 }
 
-func choicesMaker(f *entity.Field, items []item.Item) {
+func choicesMaker(f *entity.Field, refItems []item.Item, refFields []entity.Field) {
+
+	var verbFieldKey string
+	for _, refField := range refFields {
+		if refField.Name == entity.Verb {
+			verbFieldKey = refField.Key
+		}
+	}
+
 	f.Choices = make([]entity.Choice, 0)
-	for _, item := range items {
+	for _, refItem := range refItems {
 		f.Choices = append(f.Choices, entity.Choice{
-			ID:           item.ID,
-			Verb:         item.Fields()[f.Verb()],
-			DisplayValue: item.Fields()[f.DisplayGex()],
+			ID:           refItem.ID,
+			Verb:         refItem.Fields()[verbFieldKey],
+			DisplayValue: refItem.Fields()[f.DisplayGex()],
 		})
 	}
 }

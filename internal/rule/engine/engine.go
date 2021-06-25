@@ -12,7 +12,7 @@ import (
 )
 
 type Engine struct {
-	JJ jobber.Jobber
+	Job jobber.Jobber
 }
 
 // RuleResult returns back the recently executed results

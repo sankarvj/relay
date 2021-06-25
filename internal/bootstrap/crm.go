@@ -3,7 +3,9 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -11,7 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func BootCRM(cfg database.Config, accountID string) error {
+func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) error {
 	fmt.Printf("CRM Bootstrap request received for accountID %s\n", accountID)
 
 	// Initialize DB
@@ -20,6 +22,25 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	defer db.Close()
+	// Initialize Redis DB
+	redisPool := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", secDB.Host)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer redisPool.Close()
 	ctx := context.Background()
 	fmt.Println("\tDB successfully Initialized")
 
@@ -62,17 +83,17 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	// add status item - open
-	statusItemOpen, err := ItemAdd(ctx, db, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNone, "Open", "#fb667e"))
+	statusItemOpen, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNone, "Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	statusItemClosed, err := ItemAdd(ctx, db, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
+	statusItemClosed, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	statusItemOverDue, err := ItemAdd(ctx, db, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
+	statusItemOverDue, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
 	if err != nil {
 		return err
 	}
@@ -84,12 +105,12 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	// add contact item - vijay (straight)
-	contactItem1, err := ItemAdd(ctx, db, accountID, contactEntity.ID, uuid.New().String(), ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
+	contactItem1, err := ItemAdd(ctx, db, redisPool, accountID, contactEntity.ID, uuid.New().String(), ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := ItemAdd(ctx, db, accountID, contactEntity.ID, uuid.New().String(), ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
+	contactItem2, err := ItemAdd(ctx, db, redisPool, accountID, contactEntity.ID, uuid.New().String(), ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
 	if err != nil {
 		return err
 	}
@@ -100,7 +121,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	if err != nil {
 		return err
 	}
-	companyItem1, err := ItemAdd(ctx, db, accountID, companyEntity.ID, uuid.New().String(), CompanyVals("Zoho", "zoho.com"))
+	companyItem1, err := ItemAdd(ctx, db, redisPool, accountID, companyEntity.ID, uuid.New().String(), CompanyVals("Zoho", "zoho.com"))
 	if err != nil {
 		return err
 	}
@@ -120,7 +141,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	}
 
 	// add delay item
-	delayItem, err := ItemAdd(ctx, db, accountID, delayEntity.ID, uuid.New().String(), DelayVals())
+	delayItem, err := ItemAdd(ctx, db, redisPool, accountID, delayEntity.ID, uuid.New().String(), DelayVals())
 	if err != nil {
 		return err
 	}
@@ -147,7 +168,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 	fmt.Println("\tPipeline And Its Nodes Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := ItemAdd(ctx, db, accountID, dealEntity.ID, uuid.New().String(), DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
+	dealItem1, err := ItemAdd(ctx, db, redisPool, accountID, dealEntity.ID, uuid.New().String(), DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
 	if err != nil {
 		return err
 	}
@@ -159,12 +180,12 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, redisPool, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, redisPool, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
 	if err != nil {
 		return err
 	}
@@ -188,7 +209,7 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 
-	ticketItem1, err := ItemAdd(ctx, db, accountID, ticketEntity.ID, uuid.New().String(), TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
+	ticketItem1, err := ItemAdd(ctx, db, redisPool, accountID, ticketEntity.ID, uuid.New().String(), TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}
@@ -199,6 +220,12 @@ func BootCRM(cfg database.Config, accountID string) error {
 		return err
 	}
 	fmt.Println("\tA Web Of Associations Created Between All The Above Entities")
+
+	err = addLayouts(ctx, db, "card", accountID, companyEntity.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tA Layouts Created For All The Above Entities")
 
 	fmt.Printf("\n\tCRM Bootstrap Successfull!!!! for the account%s\n", accountID)
 	return nil

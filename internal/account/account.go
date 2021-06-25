@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
@@ -56,7 +57,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	return a, nil
 }
 
-func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, n NewAccount, now time.Time) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cu *user.User, n NewAccount, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
 	defer span.End()
 	a, err := Create(ctx, db, n, now)
@@ -77,7 +78,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, cu *user.User, n NewAccount, no
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
 
-	err = bootstrap.BootstrapOwnerEntity(ctx, db, cu, a.ID, teamID)
+	err = bootstrap.BootstrapOwnerEntity(ctx, db, rp, cu, a.ID, teamID)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but owner bootstrap failed")
 	}

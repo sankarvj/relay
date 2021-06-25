@@ -34,6 +34,7 @@ type Field struct {
 	UnlinkOffset int         `json:"unlink_offset"` // 0 if nothing to delete
 	Aggr         string      `json:"aggr"`
 	WithAlias    string      `json:"with_alias"`
+	IsReverse    bool        `json:"is_reverse"`
 }
 
 func Fields(jsonB string) ([]Field, error) {

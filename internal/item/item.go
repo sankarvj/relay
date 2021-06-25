@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
@@ -20,7 +21,7 @@ var (
 	ErrNotFound = errors.New("Item not found")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
-	ErrInvalidID = errors.New("ID is not in its proper form")
+	ErrInvalidID = errors.New("Item ID is not in its proper form")
 )
 
 // List retrieves a list of existing item for the entity associated from the database.
@@ -142,6 +143,20 @@ func Retrieve(ctx context.Context, entityID, itemID string, db *sqlx.DB) (Item, 
 	}
 
 	return i, nil
+}
+
+func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2)`
+
+	if err := db.SelectContext(ctx, &items, q, accountID, pq.Array(ids)); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for selected item ids")
+	}
+
+	return items, nil
 }
 
 func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
