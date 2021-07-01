@@ -54,7 +54,6 @@ type Choice struct {
 
 type Dependent struct {
 	ParentKey     string `json:"parent_key"`
-	ReferenceKey  string `json:"reference_key"`
 	EvalutedValue string // this will be populated in the reference.go
 }
 

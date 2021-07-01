@@ -85,7 +85,6 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
-	parentEntityID := r.URL.Query().Get("e")
 	filterID := r.URL.Query().Get("fi")
 	filterKey := r.URL.Query().Get("fk")
 	log.Println("filterKey--> ", filterKey)
@@ -97,7 +96,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	choices := make([]entity.Choice, 0)
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
-		flows, err := flow.SearchByKey(ctx, params["account_id"], parentEntityID, key, term, i.db)
+		flows, err := flow.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
 		if err != nil {
 			return err
 		}
@@ -110,14 +109,14 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
 		//here filterID is the flowID...
-		flows, err := node.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
+		nodes, err := node.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
 		if err != nil {
 			return err
 		}
-		for _, flow := range flows {
+		for _, node := range nodes {
 			choice := entity.Choice{
-				ID:           flow.ID,
-				DisplayValue: flow.Name,
+				ID:           node.ID,
+				DisplayValue: node.Name,
 			}
 			choices = append(choices, choice)
 		}
@@ -178,7 +177,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	log.Printf("ni %v", ni)
 	ni.AccountID = params["account_id"]
 	ni.EntityID = params["entity_id"]
 	ni.UserID = &currentUserID

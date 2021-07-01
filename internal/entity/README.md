@@ -8,11 +8,11 @@
 
 ### The Meta
 
-#### display_gex
+- display_gex
 TBW
-#### load_choices
+- load_choices
 TBW
-#### row
+- row
 TBW
 #### 
 

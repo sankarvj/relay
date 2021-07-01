@@ -227,7 +227,7 @@ func BranceNodeMap(nodes []Node) map[string][]Node {
 	nodesBranchMap := map[string][]Node{}
 	for _, node := range nodes {
 		if existingNodes, ok := nodesBranchMap[node.ParentNodeID]; ok {
-			existingNodes = append(existingNodes, node)
+			nodesBranchMap[node.ParentNodeID] = append(existingNodes, node)
 		} else {
 			nodesBranchMap[node.ParentNodeID] = []Node{node}
 		}
@@ -284,10 +284,23 @@ func RootNode(accountID, flowID, entityID, itemID, expression string) *Node {
 	return n
 }
 
+//UpdateVariables initialize the variables of the node
+//It puts the item which triggerred the flow into variables
+func (n *Node) UpdateVariables(entityID, itemID string) *Node {
+	n.Variables = VariablesJSON(UpdateNodeVars(n.VariablesMap(), map[string]interface{}{entityID: itemID}))
+	return n
+}
+
+//UpdateVariables initialize the variables of the node
+//It puts the item which triggerred the flow into variables
+func (n *Node) UpdateNodeStage(entityID, itemID string) *Node {
+	n.Variables = VariablesJSON(UpdateNodeVars(n.VariablesMap(), map[string]interface{}{entityID: itemID, "dd": n.StageID}))
+	return n
+}
+
 //UpdateMeta updates the meta values of the node.
 //Meta values includes the entity and its item which triggered this flow.
 func (n *Node) UpdateMeta(entityID, itemID string, flowType int) *Node {
-	n.Variables = VariablesJSON(UpdateNodeVars(n.VariablesMap(), map[string]interface{}{entityID: itemID})) //start with the item which triggered the flow
 	n.Meta = Meta{
 		EntityID: entityID,
 		ItemID:   itemID,

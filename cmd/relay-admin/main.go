@@ -13,6 +13,7 @@ import (
 
 	"github.com/ardanlabs/conf"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
@@ -79,16 +80,40 @@ func run() error {
 		Name:     cfg.SecDB.Name,
 	}
 
-	var err error
+	db, err := database.Open(dbConfig)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	rp := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", secDbConfig.Host)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer rp.Close()
+
 	switch cfg.Args.Num(0) {
 	case "migrate":
 		err = migrate(dbConfig)
 	case "seed":
-		err = seed(dbConfig, secDbConfig)
+		err = seed(db, rp)
 	case "crmadd":
-		err = bootstrap.BootCRM(dbConfig, secDbConfig, schema.SeedAccountID)
+		err = bootstrap.BootCRM(db, rp, schema.SeedAccountID)
 	case "useradd":
-		err = useradd(dbConfig, cfg.Args.Num(1), cfg.Args.Num(2))
+		err = useradd(db, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
 		err = keygen(cfg.Args.Num(1))
 	default:
@@ -117,31 +142,7 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(cfg database.Config, secDB database.SecConfig) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	redisPool := &redis.Pool{
-		MaxIdle:     50,
-		MaxActive:   50,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", secDB.Host)
-			if err != nil {
-				return nil, err
-			}
-			return c, err
-		},
-
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
-		},
-	}
-	defer redisPool.Close()
+func seed(db *sqlx.DB, rp *redis.Pool) error {
 
 	if err := schema.SeedUsers(db); err != nil {
 		return err
@@ -156,7 +157,7 @@ func seed(cfg database.Config, secDB database.SecConfig) error {
 		ID:     schema.SeedAccountID,
 		Name:   "Wayplot",
 		Domain: "wayplot.com"}
-	err = account.Bootstrap(ctx, db, redisPool, cuser, nc, time.Now())
+	err = account.Bootstrap(ctx, db, rp, cuser, nc, time.Now())
 	if err != nil {
 		log.Println("!!!! TODO: Should Implement Roll Back Option Here.")
 		return err
@@ -166,13 +167,7 @@ func seed(cfg database.Config, secDB database.SecConfig) error {
 	return nil
 }
 
-func useradd(cfg database.Config, email, password string) error {
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
+func useradd(db *sqlx.DB, email, password string) error {
 	if email == "" || password == "" {
 		return errors.New("useradd command must be called with two additional arguments for email and password")
 	}

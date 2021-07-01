@@ -94,6 +94,10 @@ func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
 //updateChoices should work differently in the detail use-case
 func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, referenceIds []interface{}, items []item.ViewModelItem) {
 
+	if f.IsNotApplicable() {
+		return
+	}
+
 	e, err := entity.Retrieve(ctx, accountID, f.RefID, db)
 	if err != nil {
 		log.Println("error on retriving entity when updatingChoices. continuing... ", err)
@@ -106,7 +110,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 		if len(items) == 1 {
 			nodes, err = node.Stages(ctx, f.Dependent.EvalutedValue, db)
 		} else {
-			nodes, err = node.BulkRetrieve(ctx, referenceIds, db)
+			nodes, err = node.BulkRetrieve(ctx, referenceIds, db) // though the name bulk retrive is misleading this fetches only the node which is selected
 		}
 		if err != nil {
 			log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
@@ -114,7 +118,13 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 		}
 		choicesMakerNode(f, nodes)
 	} else if e.Category == entity.CategoryFlow { //  flow handler
-		flows, err := flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(referenceIds), db)
+		var flows []flow.Flow
+		var err error
+		if len(items) == 1 {
+			flows, err = flow.List(ctx, []string{e.ID}, flow.FlowModeAll, db)
+		} else {
+			flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(referenceIds), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
+		}
 		if err != nil {
 			log.Println("error on retriving flows when updatingChoices. continuing... ", err)
 			return
@@ -123,13 +133,11 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 	} else if e.Category == entity.CategoryChildUnit { // select. with pre-populated drop-down choices
 		refFields := e.FieldsIgnoreError()
 		refItems, err := item.EntityItems(ctx, e.ID, db)
-		// var refItems []item.Item
-		// var err error
-		// if len(items) == 1 || f.ForceLoadChoices() { // force load happens in tasks list.
-		// 	refItems, err = item.EntityItems(ctx, e.ID, db)
-		// } else {
-		// 	refItems, err = item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(referenceIds), db)
-		// }
+		//TODO bring dependent field logic here.
+		if f.Dependent != nil {
+
+		}
+
 		if err != nil {
 			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 		}

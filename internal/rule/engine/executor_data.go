@@ -13,10 +13,17 @@ import (
 )
 
 func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	log.Printf("podalam.......%+v", n)
+	// value add the fields with the template item provided in the actuals.
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
+	}
+
+	//special handle to update the stage id to the node field.
+	for i := 0; i < len(valueAddedFields); i++ {
+		if valueAddedFields[i].IsNode() {
+			valueAddedFields[i].Value = []interface{}{n.StageID}
+		}
 	}
 
 	ni := item.NewItem{
@@ -24,10 +31,9 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 		AccountID: n.AccountID,
 		EntityID:  n.ActorID,
 	}
+
 	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap())
 	ni.Fields = itemFields(valueAddedFields)
-
-	log.Printf("ni %+v ", ni)
 
 	switch n.Type {
 	case node.Push:
@@ -75,7 +81,9 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, account
 		case entity.TypeReference:
 			if _, ok := vars[field.RefID]; ok {
 				field.Value = []interface{}{vars[field.RefID]} // what happens if the vars has more than one item
-			} else {
+			} else if field.Value == nil {
+				log.Println("field.Name-----> ", field.Name)
+				log.Println("field.Value-----> ", field.Value)
 				field.Value = []interface{}{}
 			}
 		}

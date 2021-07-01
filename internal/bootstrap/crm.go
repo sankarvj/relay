@@ -3,50 +3,24 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) error {
+func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	fmt.Printf("CRM Bootstrap request received for accountID %s\n", accountID)
 
-	// Initialize DB
-	db, err := database.Open(cfg)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	// Initialize Redis DB
-	redisPool := &redis.Pool{
-		MaxIdle:     50,
-		MaxActive:   50,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", secDB.Host)
-			if err != nil {
-				return nil, err
-			}
-			return c, err
-		},
-
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
-		},
-	}
-	defer redisPool.Close()
 	ctx := context.Background()
 	fmt.Println("\tDB successfully Initialized")
 
 	// Initialize Team
 	teamID := uuid.New().String()
-	err = BootstrapTeam(ctx, db, accountID, teamID, "CRM")
+	err := BootstrapTeam(ctx, db, accountID, teamID, "CRM")
 	if err != nil {
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
@@ -83,17 +57,17 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 		return err
 	}
 	// add status item - open
-	statusItemOpen, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNone, "Open", "#fb667e"))
+	statusItemOpen, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNone, "Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	statusItemClosed, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
+	statusItemClosed, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	statusItemOverDue, err := ItemAdd(ctx, db, redisPool, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
+	statusItemOverDue, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
 	if err != nil {
 		return err
 	}
@@ -105,12 +79,12 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 		return err
 	}
 	// add contact item - vijay (straight)
-	contactItem1, err := ItemAdd(ctx, db, redisPool, accountID, contactEntity.ID, uuid.New().String(), ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
+	contactItem1, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := ItemAdd(ctx, db, redisPool, accountID, contactEntity.ID, uuid.New().String(), ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
+	contactItem2, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
 	if err != nil {
 		return err
 	}
@@ -121,7 +95,7 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 	if err != nil {
 		return err
 	}
-	companyItem1, err := ItemAdd(ctx, db, redisPool, accountID, companyEntity.ID, uuid.New().String(), CompanyVals("Zoho", "zoho.com"))
+	companyItem1, err := ItemAdd(ctx, db, rp, accountID, companyEntity.ID, uuid.New().String(), CompanyVals("Zoho", "zoho.com"))
 	if err != nil {
 		return err
 	}
@@ -141,7 +115,7 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 	}
 
 	// add delay item
-	delayItem, err := ItemAdd(ctx, db, redisPool, accountID, delayEntity.ID, uuid.New().String(), DelayVals())
+	delayItem, err := ItemAdd(ctx, db, rp, accountID, delayEntity.ID, uuid.New().String(), DelayVals())
 	if err != nil {
 		return err
 	}
@@ -168,24 +142,24 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 	fmt.Println("\tPipeline And Its Nodes Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := ItemAdd(ctx, db, redisPool, accountID, dealEntity.ID, uuid.New().String(), DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
+	dealItem1, err := ItemAdd(ctx, db, rp, accountID, dealEntity.ID, uuid.New().String(), DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tDeal Item Created")
 
 	// add entity - task
-	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, companyEntity.ID, dealEntity.ID, statusEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID))
+	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, companyEntity.ID, dealEntity.ID, statusEntity.ID, nodeEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, redisPool, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, redisPool, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
 	if err != nil {
 		return err
 	}
@@ -209,7 +183,7 @@ func BootCRM(cfg database.Config, secDB database.SecConfig, accountID string) er
 		return err
 	}
 
-	ticketItem1, err := ItemAdd(ctx, db, redisPool, accountID, ticketEntity.ID, uuid.New().String(), TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
+	ticketItem1, err := ItemAdd(ctx, db, rp, accountID, ticketEntity.ID, uuid.New().String(), TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}

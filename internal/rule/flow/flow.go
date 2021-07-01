@@ -175,6 +175,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger")
 	defer span.End()
 	triggerErrors := make([]error, 0)
+
 	//TODO what if the matched flows has 1 million records
 	aflows, err := ActiveFlows(ctx, ids(flows), db)
 	if err != nil {
@@ -184,7 +185,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	for _, f := range flows {
 		log.Printf("check expression for flow ->  %s", f.Name)
 		af := activeFlowMap[f.ID]
-		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type)
+		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Condition) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
@@ -234,7 +235,7 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 	}
 
 	//update meta. very important to update meta before calling exp evaluator
-	n.UpdateMeta(i.EntityID, i.ID, f.Type)
+	n.UpdateMeta(i.EntityID, i.ID, f.Type).UpdateVariables(i.EntityID, i.ID)
 	if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)
 		if err != nil && err != ErrNotFound { //usually for the first time the af will not exist there

@@ -358,7 +358,7 @@ func TicketVals(name, statusID string) map[string]interface{} {
 	return ticketVals
 }
 
-func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
+func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, nodeEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
 	descField := entity.Field{
 		Key:         "uuid-00-desc",
 		Name:        "desc",
@@ -455,7 +455,21 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID s
 		},
 	}
 
-	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField}
+	stageField := entity.Field{
+		Key:      "uuid-00-pipe-stage",
+		Name:     "pipeline_stage",
+		DomType:  entity.DomNotApplicable,
+		DataType: entity.TypeReference,
+		RefID:    nodeEntityID,
+		Meta:     map[string]string{"node": "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField, stageField}
 }
 
 func TaskVals(desc, contactID string) map[string]interface{} {
@@ -668,8 +682,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		RefID:       nodeEntityID,
 		RefType:     entity.RefTypeStraight,
 		Dependent: &entity.Dependent{
-			ParentKey:    pipeField.Key,
-			ReferenceKey: "flow_id",
+			ParentKey: pipeField.Key,
 		},
 		Meta: map[string]string{"display_gex": "uuid-00-fname", "node": "true"},
 		Field: &entity.Field{

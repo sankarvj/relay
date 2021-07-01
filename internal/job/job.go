@@ -97,8 +97,6 @@ func makeGraphField(f *entity.Field) *graphdb.Field {
 		return nil
 	}
 
-	log.Printf("field --> %+v", f)
-
 	return &graphdb.Field{
 		Key:      f.Key,
 		Value:    f.Value,
@@ -121,7 +119,10 @@ func (j *Job) validateWorkflows(e entity.Entity, itemID string, oldFields, newFi
 	if err != nil {
 		log.Println("There is an error while selecting flows...", err)
 	}
-	dirtyFlows := flow.DirtyFlows(context.Background(), flows, item.Diff(oldFields, newFields))
+	dirtyFields := item.Diff(oldFields, newFields)
+	dirtyFlows := flow.DirtyFlows(context.Background(), flows, dirtyFields)
+
+	log.Println("dirtyFlows --", dirtyFlows)
 	if len(dirtyFlows) > 0 {
 		log.Print("Tick...\nTick...\nTick...\nTick...\nTick...\nTick...\n The flow trigger has been started")
 
@@ -131,12 +132,15 @@ func (j *Job) validateWorkflows(e entity.Entity, itemID string, oldFields, newFi
 		}
 	}
 
-	//pipelines
+	//pipelines -  not a generic way. the way we use dependent is muddy
 	for _, fi := range e.FieldsIgnoreError() {
-		if fi.IsNode() {
+		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
-			nodeID := newFields[fi.Key].([]interface{})[0].(string)
-			flow.DirectTrigger(context.Background(), db, nil, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
+			nodeID := dirtyField.([]interface{})[0].(string)
+			err = flow.DirectTrigger(context.Background(), db, nil, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
+			if err != nil {
+				log.Println("There is an error while triggering flows...", err)
+			}
 		}
 	}
 
