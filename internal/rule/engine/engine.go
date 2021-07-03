@@ -70,6 +70,7 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp
 			lexedContent = work.Expression
 		}
 	}
+	log.Println("lexedContent ", lexedContent)
 	return lexedContent
 }
 

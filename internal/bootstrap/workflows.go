@@ -2,16 +2,20 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
 	//add pipelines
-	p, err := FlowAdd(ctx, db, accountID, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry)
+	exp := fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", contactEntityID, schema.SeedFieldFNameKey, contactEntityID, schema.SeedFieldNPSKey)
+	p, err := FlowAdd(ctx, db, accountID, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry, exp)
 	if err != nil {
 		return "", "", err
 	}
@@ -43,4 +47,40 @@ func addPipelines(ctx context.Context, db *sqlx.DB, accountID, contactEntityID, 
 	// 	return "", "", err
 	// }
 	return p.ID, sno1.ID, nil
+}
+
+func addSegments(ctx context.Context, db *sqlx.DB, accountID, entityID string) error {
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		return err
+	}
+
+	if e.Name == schema.SeedContactsEntityName {
+		err = BootstrapSegments(ctx, db, accountID, entityID, "All Contacts", "")
+		if err != nil {
+			return err
+		}
+		fields := e.FieldsIgnoreError()
+		for _, f := range fields {
+			if f.Key == schema.SeedFieldNPSKey {
+				exp := fmt.Sprintf("{{%s.%s}} gt {98}", entityID, schema.SeedFieldNPSKey)
+				err = BootstrapSegments(ctx, db, accountID, entityID, "High NPS", exp)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else if e.Name == schema.SeedCompaniesEntityName {
+		err = BootstrapSegments(ctx, db, accountID, entityID, "All Companies", "")
+		if err != nil {
+			return err
+		}
+	} else if e.Name == schema.SeedDealsEntityName {
+		err = BootstrapSegments(ctx, db, accountID, entityID, "All Deals", "")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

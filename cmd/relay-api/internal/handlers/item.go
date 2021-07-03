@@ -40,6 +40,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	defer span.End()
 
 	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
+	viewID := r.URL.Query().Get("view_id")
 
 	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
@@ -51,9 +52,14 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	items, err := item.ListFilterByState(ctx, e.ID, state, i.db)
-	if err != nil {
-		return err
+	var items []item.Item
+	if viewID == "" {
+		items, err = item.ListFilterByState(ctx, e.ID, state, i.db)
+		if err != nil {
+			return err
+		}
+	} else {
+
 	}
 
 	viewModelItems := make([]item.ViewModelItem, len(items))

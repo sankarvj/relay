@@ -19,7 +19,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
-	} else if entityID == node.SelfEntity {
+	} else if entityID == node.SelfEntity { //self entity stops here
 		return buildResultant(node.SelfEntity, input), nil
 	}
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)

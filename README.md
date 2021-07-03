@@ -1,6 +1,14 @@
 # Relay
 Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software. 
 
+## Prerequisite
+> ~Install GO
+> ~Install PSQL
+> `psql -U postgres` //to enter psql cli
+> `\c relaydb` //go to relaydb
+> ~Install Redis
+> `docker run -p 6379:6379 -it --rm redislabs/redisgraph`
+
 ## Getting Started
 > make seed
 > make crm
@@ -95,13 +103,19 @@ Filter the contacts which have deal.amount>1000 where the deal has contacts and 
 
 
 ### Clarity Needed
-
 - Dependent field 
 [more info](internal/reference/README.md)
 - Workflow
 1. The trigger with references. like, deal > 100 for a contact
 2. Events as trigger in the workflow
 3. Adding templates
+
+### Brainstrom
+- How to attach a company to multiple playbooks at a time.
+- Playbook properties(status, date on-boarded) for the specific company.
+- Workflow - send internal notification when the user activity declined.
+- Is the reference handled in the rule engine
+
 
 ### Integrations
 1. Phone 

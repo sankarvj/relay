@@ -17,7 +17,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -98,6 +97,14 @@ func BootstrapLayout(ctx context.Context, db *sqlx.DB, name, accountID, entityID
 	return err
 }
 
+func BootstrapSegments(ctx context.Context, db *sqlx.DB, accountID, entityID, name, exp string) error {
+	_, err := FlowAdd(ctx, db, accountID, uuid.New().String(), entityID, name, flow.FlowModeSegment, flow.FlowConditionNil, exp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func currentOwner(ctx context.Context, db *sqlx.DB, accountID string) (string, string, error) {
 	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityOwner)
 	if err != nil {
@@ -161,7 +168,7 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entity
 	return it, nil
 }
 
-func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID string, name string, mode, condition int) (flow.Flow, error) {
+func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID string, name string, mode, condition int, exp string) (flow.Flow, error) {
 	nf := flow.NewFlow{
 		ID:         flowID,
 		AccountID:  accountID,
@@ -169,7 +176,7 @@ func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID strin
 		Mode:       mode,
 		Type:       flow.FlowTypeFieldUpdate,
 		Condition:  condition,
-		Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", entityID, schema.SeedFieldFNameKey, entityID, schema.SeedFieldNPSKey),
+		Expression: exp,
 		Name:       name,
 	}
 

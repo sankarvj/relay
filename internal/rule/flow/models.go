@@ -18,10 +18,12 @@ const (
 	FlowModeAll      = -1
 	FlowModeWorkFlow = 0
 	FlowModePipeLine = 1
+	FlowModeSegment  = 2
 )
 
 //FlowCondition defines exists/entry conditions
 const (
+	FlowConditionNil   = -1
 	FlowConditionBoth  = 0
 	FlowConditionEntry = 1
 	FlowConditionExit  = 2

@@ -201,6 +201,20 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	}
 	fmt.Println("\tA Layouts Created For All The Above Entities")
 
+	err = addSegments(ctx, db, accountID, contactEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = addSegments(ctx, db, accountID, companyEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = addSegments(ctx, db, accountID, dealEntity.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tA Segments Created For Contacts/Companies/Deals")
+
 	fmt.Printf("\n\tCRM Bootstrap Successfull!!!! for the account%s\n", accountID)
 	return nil
 }
