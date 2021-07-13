@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -65,6 +66,11 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 func itemFields(fields []entity.Field) map[string]interface{} {
 	params := map[string]interface{}{}
 	for _, f := range fields {
+		if f.IsDateTime() {
+			t := time.Now()
+			addedDate := t.AddDate(0, 0, f.Value.(int))
+			f.Value = util.FormatTimeGo(addedDate)
+		}
 		params[f.Key] = f.Value
 	}
 	return params

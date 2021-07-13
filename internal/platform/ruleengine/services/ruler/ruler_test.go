@@ -16,11 +16,11 @@ func TestOperators(t *testing.T) {
 			exp := `{{e1.appinfo.index}} lt {{e2.index}} && {{e1.appinfo.index}} lt {{e2.index}} <e3.status=e2.version>`
 			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
-			go Run(exp, true, signalsChan)
+			go Run(exp, EngineFeedback(Execute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInput(work.Expression)
+					work.InboundRespCh <- workerMockInput(work.Expression)
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)
@@ -37,11 +37,11 @@ func TestOperators(t *testing.T) {
 			exp := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
 			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
-			go Run(exp, true, signalsChan)
+			go Run(exp, EngineFeedback(Execute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInput(work.Expression)
+					work.InboundRespCh <- workerMockInput(work.Expression)
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting eq", tests.Success)
@@ -63,12 +63,12 @@ func TestContentParser(t *testing.T) {
 			exp := `Hello matty {{e1.appinfo.version}}. How are you?`
 			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
-			go Run(exp, false, signalsChan)
+			go Run(exp, EngineFeedback(Parse), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInput(work.Expression)
-				case Content:
+					work.InboundRespCh <- workerMockInput(work.Expression)
+				case Parser:
 					content = work.Expression
 				}
 			}
@@ -90,12 +90,12 @@ func TestExpressionWithListOperands(t *testing.T) {
 			exp := `{{e1.supports}} in {sdk2}`
 			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
-			go Run(exp, true, signalsChan)
+			go Run(exp, EngineFeedback(Execute), signalsChan)
 			triggered := false
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInputWithList(work.Expression)
+					work.InboundRespCh <- workerMockInputWithList(work.Expression)
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger", tests.Success)
@@ -111,12 +111,12 @@ func TestExpressionWithListOperands(t *testing.T) {
 			exp := `{{e1.supports}} in {sdk3}`
 			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
-			go Run(exp, true, signalsChan)
+			go Run(exp, EngineFeedback(Execute), signalsChan)
 			triggered := false
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInputWithList(work.Expression)
+					work.InboundRespCh <- workerMockInputWithList(work.Expression)
 				case PosExecutor:
 					triggered = true
 					t.Fatalf("\t%s should not revice positive trigger", tests.Failed)
@@ -140,13 +140,13 @@ func TestQuerySnippet(t *testing.T) {
 			var triggered bool
 			exp := `{{e1.appinfo.index}} lt {{e2.index}} && <<helloquery>>`
 			signalsChan := make(chan Work)
-			go Run(exp, true, signalsChan)
+			go Run(exp, EngineFeedback(Execute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.Resp <- workerMockInput(work.Expression)
+					work.InboundRespCh <- workerMockInput(work.Expression)
 				case Querier:
-					work.Resp <- map[string]interface{}{"hello": 1}
+					work.InboundRespCh <- map[string]interface{}{"hello": 1}
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)

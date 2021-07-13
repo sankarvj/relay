@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -83,7 +84,7 @@ func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
 		if parentField == nil || len(parentField.([]interface{})) == 0 || parentField.([]interface{})[0] == nil {
 			continue
 		}
-		//what happens if more than one value exists
+		//TODO what happens if more than one value exists???
 		f.Dependent.EvalutedValue = parentField.([]interface{})[0].(string)
 	}
 }
@@ -150,6 +151,11 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 			return
 		}
 		choicesMaker(f, refItems, refFields)
+
+		if len(items) > 0 && items[0].State == item.StateBluePrint {
+			choicesBluePrint(f, "<pass parent entity name here>")
+		}
+
 	}
 
 }
@@ -197,6 +203,14 @@ func choicesMakerNode(f *entity.Field, nodes []node.Node) {
 			DisplayValue: node.Name,
 		})
 	}
+}
+
+func choicesBluePrint(f *entity.Field, sourceEntityName string) {
+	f.Choices = append(f.Choices, entity.Choice{
+		ID:           "00000000-0000-0000-0000-000000000000",
+		Verb:         "",
+		DisplayValue: fmt.Sprintf("Existing %s", f.DisplayName),
+	})
 }
 
 //UpdateChoicesWrapper updates only the choices for reference fields

@@ -35,9 +35,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 		log.Println("error while retriving item on job", err)
 		return
 	}
-	if it.State == item.StateBluePrint {
-		return
-	}
+
 	j.validateWorkflows(e, itemID, oldFields, newFields, db, rp)
 	j.AddConnection(accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields), db)
 
@@ -47,9 +45,6 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 
 func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
-	if it.State == item.StateBluePrint {
-		return
-	}
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {

@@ -116,10 +116,10 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 
 			if f.Aggr != "" {
 				f.WithAlias = fmt.Sprintf("%s_%s", f.Aggr, f.Key)
-				with := fmt.Sprintf("WITH %s,%s(%s.%s) as %s", srcAlias, f.Aggr, alias, f.Key, f.WithAlias)
+				with := fmt.Sprintf("WITH %s,%s(%s.`%s`) as %s", srcAlias, f.Aggr, alias, f.Key, f.WithAlias)
 				wi = append(wi, with)
 			} else {
-				f.WithAlias = fmt.Sprintf("%s.%s", alias, f.Key)
+				f.WithAlias = fmt.Sprintf("%s.`%s`", alias, f.Key)
 			}
 
 			switch f.DataType {
@@ -433,4 +433,14 @@ func deleteEncode(e *rg.Edge, relationAlias string) string {
 	s = append(s, "(", e.Destination.Alias, ")")
 
 	return strings.Join(s, "")
+}
+
+var operatorMap = map[string]string{
+	"eq": "=",
+	"gt": ">",
+	"lt": "<",
+}
+
+func Operator(lexerOp string) string {
+	return operatorMap[lexerOp]
 }

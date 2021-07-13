@@ -1,7 +1,6 @@
 package ruler
 
 import (
-	"strconv"
 	"strings"
 )
 
@@ -39,29 +38,4 @@ func FetchItemID(expression string) string {
 		return parts[1]
 	}
 	return ""
-}
-
-//Evaluate evaluates the expression with the coresponding map
-func Evaluate(expression string, response map[string]interface{}) interface{} {
-	var realValue interface{}
-	elements := strings.Split(expression, ".")
-	lenOfElements := len(elements)
-	for index, element := range elements {
-		if index == (lenOfElements - 1) {
-			realValue = response[element]
-			break
-		}
-		if response[element] == nil {
-			break
-		}
-		response = response[element].(map[string]interface{})
-	}
-	return realValue
-}
-
-func extract(value string) interface{} {
-	if v, err := strconv.Atoi(value); err == nil {
-		return v
-	}
-	return value
 }

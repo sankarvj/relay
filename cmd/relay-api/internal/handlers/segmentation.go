@@ -8,6 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
@@ -64,26 +65,10 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 		return errors.Wrap(err, "")
 	}
 
-	itemIds := make([]interface{}, 0)
-	for result.Next() { // Next returns true until the iterator is depleted.
-		// Get the current Record.
-		r := result.Record()
-
-		// Entries in the Record can be accessed by index or key.
-		record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
-		itemIds = append(itemIds, record["id"])
-	}
-
-	items, err := item.BulkRetrieveItems(ctx, params["account_id"], itemIds, s.db)
+	viewModelItems, err := itemsResp(ctx, s.db, params["account_id"], e, result)
 	if err != nil {
 		return err
 	}
-
-	viewModelItems := make([]item.ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
-	}
-
 	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, s.db, job.NewJabEngine())
 
 	response := struct {
@@ -145,4 +130,28 @@ type Segment struct {
 type Condition struct {
 	Term       interface{} `json:"term"`
 	Expression string      `json:"expression"`
+}
+
+func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Entity, result *rg.QueryResult) ([]item.ViewModelItem, error) {
+	itemIds := make([]interface{}, 0)
+	for result.Next() { // Next returns true until the iterator is depleted.
+		// Get the current Record.
+		r := result.Record()
+
+		// Entries in the Record can be accessed by index or key.
+		record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
+		itemIds = append(itemIds, record["id"])
+	}
+
+	items, err := item.BulkRetrieveItems(ctx, accountID, itemIds, db)
+	if err != nil {
+		return []item.ViewModelItem{}, err
+	}
+
+	viewModelItems := make([]item.ViewModelItem, len(items))
+	for i, item := range items {
+		viewModelItems[i] = createViewModelItem(item)
+	}
+
+	return viewModelItems, nil
 }

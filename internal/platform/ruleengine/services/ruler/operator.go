@@ -282,3 +282,13 @@ func (c *caster) deepCaster(left bool) OperandDT {
 	return StrDT
 
 }
+
+func findDT(right Operand) OperandDT {
+	c := caster{}
+	c.setRight(right)
+	if c.err != nil {
+		log.Println("in error casting operands", c.err)
+		return UnknownDT
+	}
+	return c.rightDataType
+}

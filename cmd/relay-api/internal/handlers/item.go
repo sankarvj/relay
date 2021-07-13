@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/tests"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
 	"github.com/gomodule/redigo/redis"
@@ -19,6 +20,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -52,19 +55,31 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	var items []item.Item
+	var viewModelItems []item.ViewModelItem
 	if viewID == "" {
-		items, err = item.ListFilterByState(ctx, e.ID, state, i.db)
+		items, err := item.ListFilterByState(ctx, e.ID, state, i.db)
 		if err != nil {
 			return err
 		}
+		viewModelItems = make([]item.ViewModelItem, len(items))
+		for i, item := range items {
+			viewModelItems[i] = createViewModelItem(item)
+		}
 	} else {
-
-	}
-
-	viewModelItems := make([]item.ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
+		fl, err := flow.Retrieve(ctx, viewID, i.db)
+		if err != nil {
+			return err
+		}
+		conditions := job.NewJabEngine().RunExpQuerier(tests.Context(), i.db, i.rPool, params["account_id"], fl.Expression)
+		gSegment := graphdb.BuildGNode(params["account_id"], e.ID, false).MakeBaseGNode("", makeConField(conditions))
+		result, err := graphdb.GetResult(i.rPool, gSegment)
+		if err != nil {
+			return err
+		}
+		viewModelItems, err = itemsResp(ctx, i.db, params["account_id"], e, result)
+		if err != nil {
+			return err
+		}
 	}
 
 	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
@@ -250,4 +265,19 @@ func createViewModelItem(i item.Item) item.ViewModelItem {
 		State:  i.State,
 		Fields: i.Fields(),
 	}
+}
+
+func makeConField(conditions []ruler.Condition) []graphdb.Field {
+	conFields := make([]graphdb.Field, 0)
+	for _, c := range conditions {
+		operator := graphdb.Operator(c.Operator)
+		gf := graphdb.Field{
+			Expression: operator,
+			Key:        c.Key,
+			DataType:   graphdb.DType(c.DataType),
+			Value:      c.Value,
+		}
+		conFields = append(conFields, gf)
+	}
+	return conFields
 }

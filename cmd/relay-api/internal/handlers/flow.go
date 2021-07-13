@@ -175,7 +175,7 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.EntityID = params["entity_id"]
 	nf.Expression = makeExpression(nf.Queries)
 
-	log.Println("nf --> ", nf)
+	log.Printf("nf --> %+v", nf)
 
 	//TODO: do it in single transaction <|>
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())

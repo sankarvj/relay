@@ -3,6 +3,7 @@ package ruler
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer"
@@ -18,35 +19,69 @@ const (
 	Querier
 	NegExecutor
 	PosExecutor
-	Content
+	Parser
 )
 
 //Work used to evaluate the expression
 type Work struct {
-	Type       ExpressionType
-	Expression string
-	Resp       chan map[string]interface{}
+	Type          ExpressionType
+	Expression    string
+	OutboundResp  interface{}
+	InboundRespCh chan interface{}
 }
 
 //Ruler has the full set of rule items
 type Ruler struct {
-	RuleItem *RuleItem
-	positive *bool
-	trigger  string
-	content  string
+	RuleItem   *RuleItem
+	positive   *bool
+	trigger    string
+	content    string
+	conditions []Condition
 	//channels to send the results back and forth
 	workChan chan Work
 }
 
 //RuleItem specifies the single section of the rules
 type RuleItem struct {
-	left  Operand
-	right Operand
+	left     Operand
+	right    Operand
+	dataType DType
 
 	//operation and the snippet
 	isANDOp   bool
 	operation applyFn
+	operator  string
 }
+
+//DType defines the data type of field
+type DType string
+
+//Mode for the entity spcifies certain entity specific characteristics
+//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
+const (
+	TypeUnKnown   DType = "U"
+	TypeString          = "S"
+	TypeNumber          = "N"
+	TypeDataTime        = "T"
+	TypeList            = "L"
+	TypeReference       = "R"
+)
+
+type Condition struct {
+	Operator string
+	Key      string
+	DataType DType
+	Value    interface{}
+}
+
+//EngineFeedback defines the type of response execution
+type EngineFeedback int
+
+const (
+	Execute EngineFeedback = iota
+	Parse
+	Query
+)
 
 //applyFn takes two operands and then apply the logic to get the final result
 type applyFn func(Operand, Operand) bool
@@ -56,34 +91,39 @@ type Operand interface{}
 
 //Run starts the lexer by passing the rule and a res chan,
 //res chan will trigger when the rule engine needs a response in the form of map
-func Run(rule string, isExecutor bool, workChan chan Work) {
+func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 	defer close(workChan)
 
 	if strings.TrimSpace(rule) == "" {
 		log.Printf("run rule: empty expression, send positive response")
 		// By default, the empty rule is considered as the positive expression.
 		// stand taken since the default nodes don't possess expressions
-		workChan <- Work{PosExecutor, "", nil}
+		workChan <- Work{PosExecutor, "", nil, nil}
 		return
 	}
 	r := Ruler{
 		workChan: workChan,
 		positive: nil, //always start on a nil note! :)
 	}
-	if isExecutor {
+
+	switch eFeedback {
+	case Execute:
 		log.Printf("run rule: %s", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
-			workChan <- Work{PosExecutor, r.trigger, nil}
+			workChan <- Work{PosExecutor, r.trigger, nil, nil}
 		} else {
-			workChan <- Work{NegExecutor, r.trigger, nil}
+			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
-	} else {
+	case Parse:
 		log.Printf("run parser for expression: %s", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
-		r.content = strings.TrimSpace(r.content)
-		workChan <- Work{Content, r.content, nil}
+		workChan <- Work{Parser, "", strings.TrimSpace(r.content), nil}
+	case Query:
+		log.Printf("run parser for expression: %s", rule)
+		r = r.startQueringLexer(rule)
+		workChan <- Work{Querier, "", r.conditions, nil}
 	}
 
 }
@@ -146,6 +186,42 @@ func (r Ruler) startParsingLexer(rule string) Ruler {
 	}
 }
 
+func (r Ruler) startQueringLexer(rule string) Ruler {
+	l := lexer.BeginLexing("rule", rule)
+	var token lexertoken.Token
+	for {
+		token = l.NextToken()
+		switch token.Type {
+		case lexertoken.TokenValuate:
+			r.addEvalOperand(strings.TrimSpace(token.Value))
+		case lexertoken.TokenEqualSign:
+			r.addCompareOperation()
+		case lexertoken.TokenGTSign:
+			r.addGTCompareOperation()
+		case lexertoken.TokenLTSign:
+			r.addLTCompareOperation()
+		case lexertoken.TokenAFSign:
+			r.addAFCompareOperation()
+		case lexertoken.TokenBFSign:
+			r.addBFCompareOperation()
+		case lexertoken.TokenINSign:
+			r.addINOperation()
+		case lexertoken.TokenANDOperation:
+			r.addANDCondition()
+		case lexertoken.TokenOROperation:
+			r.addORCondition()
+		case lexertoken.TokenValue:
+			r.addOperand(extract(token.Value))
+		case lexertoken.TokenGibberish:
+			r.addGibbrish(token.Value)
+		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
+			r.addCondition()
+		case lexertoken.TokenEOF:
+			return r
+		}
+	}
+}
+
 func (r *Ruler) addEvalOperand(value interface{}) error {
 	return r.addOperand(r.eval(value.(string)))
 }
@@ -173,36 +249,42 @@ func (r *Ruler) addOperand(value interface{}) error {
 func (r *Ruler) addCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = compare
+	r.RuleItem.operator = lexertoken.EqualSign
 	return nil
 }
 
 func (r *Ruler) addGTCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = greaterThan
+	r.RuleItem.operator = lexertoken.GTSign
 	return nil
 }
 
 func (r *Ruler) addLTCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = lesserThan
+	r.RuleItem.operator = lexertoken.LTSign
 	return nil
 }
 
 func (r *Ruler) addAFCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = after
+	r.RuleItem.operator = lexertoken.AFSign
 	return nil
 }
 
 func (r *Ruler) addBFCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = before
+	r.RuleItem.operator = lexertoken.BFSign
 	return nil
 }
 
 func (r *Ruler) addINOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = in
+	r.RuleItem.operator = lexertoken.INSign
 	return nil
 }
 
@@ -247,13 +329,13 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 }
 
 func (r *Ruler) query(q string) {
-	respChan := make(chan map[string]interface{})
-	r.workChan <- Work{Querier, q, respChan}
+	respChan := make(chan interface{})
+	r.workChan <- Work{Querier, q, nil, respChan}
 	resp := <-respChan
 
 	//set opResult true, if the resp any contains elements
 	opResult := false
-	if len(resp) > 0 {
+	if resp != nil {
 		opResult = true
 	}
 	r.constructRuleItem()
@@ -262,7 +344,7 @@ func (r *Ruler) query(q string) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Printf("execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("EXECUTE:: execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {
@@ -278,16 +360,39 @@ func (r *Ruler) execute() error {
 	return nil
 }
 
+func (r *Ruler) addCondition() error {
+	r.constructRuleItem()
+	log.Printf("QUERY:: execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+
+	if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
+		condition := Condition{
+			Operator: r.RuleItem.operator,
+			Key:      r.RuleItem.left.(string),
+			DataType: dtype(findDT(r.RuleItem.right)),
+			Value:    r.RuleItem.right,
+		}
+		log.Printf("CONDITION::  %+v ", condition)
+		r.conditions = append(r.conditions, condition)
+	} else {
+		//Its in the middle. Don't execute
+		return nil
+	}
+
+	//save the result of the unit and reset the ruleItem
+	r.saveAndResetRuleItem(true)
+	return nil
+}
+
 func (r *Ruler) exit() error {
 	log.Println("exit exit exit exit exit exit exit exit")
 	return nil
 }
 
 func (r *Ruler) eval(expression string) interface{} {
-	respChan := make(chan map[string]interface{})
-	r.workChan <- Work{Worker, expression, respChan}
+	respChan := make(chan interface{})
+	r.workChan <- Work{Worker, expression, nil, respChan}
 	resp := <-respChan
-	return Evaluate(expression, resp)
+	return resp
 }
 
 func (r *Ruler) setContent(value interface{}) {
@@ -311,4 +416,30 @@ func join(strs ...string) string {
 		sb.WriteString(str)
 	}
 	return sb.String()
+}
+
+func extract(value string) interface{} {
+	if v, err := strconv.Atoi(value); err == nil {
+		return v
+	}
+	return value
+}
+
+func dtype(opDT OperandDT) DType {
+	switch opDT {
+	case NumberDT:
+		return TypeNumber
+	case StrDT:
+		return TypeString
+	case VersionDT:
+		return TypeString
+	case ListDT:
+		return TypeList
+	case TimeDT:
+		return TypeDataTime
+	case UnknownDT:
+		return TypeUnKnown
+	default:
+		return TypeUnKnown
+	}
 }

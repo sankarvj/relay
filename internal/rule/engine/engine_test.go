@@ -256,7 +256,7 @@ var (
 	dealProperties = map[string]interface{}{
 		"name":         "Deal1",
 		"amount":       999,
-		dealRefFieldID: []string{contactItemID},
+		dealRefFieldID: []interface{}{contactItemID},
 	}
 	dealEntityFields = []graphdb.Field{
 		{
@@ -297,8 +297,13 @@ var (
 )
 
 func TestQueryRuleRunner(t *testing.T) {
-	residPool, teardown := tests.NewRedisUnit(t)
-	defer teardown()
+	db, teardown1 := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	tests.SeedPipelines(t, db)
+	defer teardown1()
+	residPool, teardown2 := tests.NewRedisUnit(t)
+	defer teardown2()
 	t.Log("Given the need to run the engine to evaluate a query")
 	{
 		t.Log("\twhen adding the contact item to the graph with straight reference of task")
@@ -330,18 +335,9 @@ func TestQueryRuleRunner(t *testing.T) {
 
 		t.Log("\twhen evaluating the query")
 		{
-			vars, _ := node.MapToJSONB(map[string]string{contactEntityID: contactItemID})
-			node := node.Node{
-				Expression: expression,
-				AccountID:  accountID,
-				Variables:  vars,
-				Type:       node.Unknown,
-			}
-
-			_, err := job.NewJabEngine().RunRuleEngine(tests.Context(), nil, residPool, node)
-			if err != nil {
-				t.Fatalf("\t%s should pass with out fail : %s.", tests.Failed, err)
-			}
+			expression = fmt.Sprintf("{{%s.%s}} gt {50} && {{%s.%s}} eq {Bruce Wayne}", "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldNPSKey, "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldFNameKey)
+			result := job.NewJabEngine().RunExpQuerier(tests.Context(), db, residPool, "3cf17266-3473-4006-984f-9325122678b7", expression)
+			log.Println("result ------------------> ---> --> -> ", result)
 			t.Logf("\t%s should pass with out fail", tests.Success)
 		}
 	}

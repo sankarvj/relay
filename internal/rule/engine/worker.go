@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -14,7 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (map[string]interface{}, error) {
+func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
 	log.Printf("running worker for expression %s : %v", expression, input)
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
@@ -22,6 +23,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	} else if entityID == node.SelfEntity { //self entity stops here
 		return buildResultant(node.SelfEntity, input), nil
 	}
+	//TODO cache entity
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return map[string]interface{}{}, err
@@ -45,7 +47,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	if err != nil {
 		result = map[string]interface{}{"error": err}
 	}
-	return buildResultant(e.ID, result), nil
+	return Evaluate(expression, buildResultant(e.ID, result)), nil
 }
 
 func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, error) {
@@ -91,4 +93,22 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 	return map[string]interface{}{
 		entityID: result,
 	}
+}
+
+//Evaluate evaluates the expression with the coresponding map
+func Evaluate(expression string, response map[string]interface{}) interface{} {
+	var realValue interface{}
+	elements := strings.Split(expression, ".")
+	lenOfElements := len(elements)
+	for index, element := range elements {
+		if index == (lenOfElements - 1) {
+			realValue = response[element]
+			break
+		}
+		if response[element] == nil {
+			break
+		}
+		response = response[element].(map[string]interface{})
+	}
+	return realValue
 }

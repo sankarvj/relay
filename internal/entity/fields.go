@@ -207,6 +207,13 @@ func (f Field) IsReference() bool {
 	return false
 }
 
+func (f Field) IsDateTime() bool {
+	if f.DataType == TypeDateTime {
+		return true
+	}
+	return false
+}
+
 func (f Field) IsList() bool {
 	if f.DataType == TypeList {
 		return true
@@ -241,6 +248,13 @@ func (f Field) DisplayGex() string {
 		return val
 	}
 	return ""
+}
+
+func (f Field) IsTitleLayout() bool {
+	if val, ok := f.Meta["layout"]; ok {
+		return val == "title"
+	}
+	return false
 }
 
 func (f Field) IsHidden() bool {
