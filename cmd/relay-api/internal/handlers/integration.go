@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -80,8 +79,15 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 	case integration.TypeGmail:
 		tokenJson, err = integration.GetGoogleToken(i.authenticator.GoogleClientSecret, code.Code, integration.GmailScopes...)
 		if err != nil {
+			return errors.Wrapf(err, "Unable to get token from google")
+		}
+
+		g := email.Gmail{OAuthFile: i.authenticator.GoogleClientSecret, TokenJson: tokenJson}
+		emailAddress, err = g.Watch(i.publisher.Topic)
+		if err != nil {
 			return err
 		}
+
 		discoveryID := emailAddress
 		emailConfigEntityItem := entity.EmailConfigEntity{
 			APIKey: tokenJson,
@@ -90,22 +96,17 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			Common: "false",
 			Owner:  []string{currentUserID},
 		}
-		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityEmailConfig, discoveryID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
-		if err != nil {
-			return err
-		}
 
-		g := email.Gmail{OAuthFile: i.authenticator.GoogleClientSecret, TokenJson: tokenJson}
-		emailAddress, err = g.Watch(i.publisher.Topic)
+		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityEmailConfig, "Gmail Config", discoveryID, integrationID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "Unable to create integration")
 		}
 	case integration.TypeGoogleCalendar:
 		tokenJson, err = integration.GetGoogleToken(i.authenticator.GoogleClientSecret, code.Code, integration.GoogleCalendarScopes...)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "Unable to get token from google")
 		}
-		discoveryID := emailAddress
+
 		calendarEntityItem := entity.CaldendarEntity{
 			APIKey: tokenJson,
 			ID:     "primary",
@@ -113,19 +114,21 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			Common: "false",
 			Owner:  []string{currentUserID},
 		}
-		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityCalendar, discoveryID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
-		if err != nil {
-			return err
-		}
+
+		discoveryID := calendarEntityItem.ID
 		c := calendar.Gcalendar{OAuthFile: i.authenticator.GoogleClientSecret, TokenJson: tokenJson}
 		err = c.Watch(calendarEntityItem.ID, discoveryID)
 		if err != nil {
 			err = errors.Wrapf(err, "Unable to watch event")
 		}
+
+		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
+		if err != nil {
+			return errors.Wrapf(err, "Unable to create integration")
+		}
 	default:
 		return web.Respond(ctx, w, "FAILURE", http.StatusNotImplemented)
 	}
-	log.Println("err -->", err)
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
 

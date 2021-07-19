@@ -54,8 +54,12 @@ func (n *Node) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	//currently it supports only the name update
-	err := node.Update(ctx, n.db, params["account_id"], params["flow_id"], params["node_id"], vn.Name, time.Now())
+	vn = makeNode(params["account_id"], params["flow_id"], vn)
+
+	log.Printf("nn %+v--> ", vn)
+
+	//update currently supports only the name & expression
+	err := node.Update(ctx, n.db, params["account_id"], params["flow_id"], params["node_id"], vn.Name, vn.Expression, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Node Name Update: %+v", &vn)
 	}

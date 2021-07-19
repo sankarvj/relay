@@ -15,6 +15,7 @@ const (
 	SeedFlowEntityName      = "flows"
 	SeedNodeEntityName      = "nodes"
 	SeedStatusEntityName    = "status"
+	SeedTypeEntityName      = "type"
 	SeedContactsEntityName  = "contacts"
 	SeedCompaniesEntityName = "companies"
 	SeedTasksEntityName     = "tasks"

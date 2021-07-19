@@ -189,6 +189,19 @@ func UserEntityItems(ctx context.Context, entityID, genieID string, db *sqlx.DB)
 	return items, nil
 }
 
+func Delete(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM items WHERE account_id = $1 and entity_id = $2 and item_id = $3`
+
+	if _, err := db.ExecContext(ctx, q, accountID, entityID, itemID); err != nil {
+		return errors.Wrapf(err, "deleting item %s", itemID)
+	}
+
+	return nil
+}
+
 func DeleteAllByGenie(ctx context.Context, db *sqlx.DB, accountID, entityID, genieID string) error {
 	ctx, span := trace.StartSpan(ctx, "internal.item.DeleteAllByGenie")
 	defer span.End()

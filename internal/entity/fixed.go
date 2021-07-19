@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 )
@@ -29,6 +28,8 @@ var (
 
 	// ErrIntegNotFound is used when a specific integrations is requested but none/more than one exist at a time.
 	ErrIntegNotFound = errors.New("Integrations not found for fixed entity")
+
+	ErrIntegAlreadyExists = errors.New("Cannot add this integration. Integrations already exists for that user.")
 )
 
 type UpdaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error
@@ -162,7 +163,7 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 	return entityFields, updateFields(accountID, preDefinedEntity.ID, it.ID, entityFields), err
 }
 
-func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefinedEntity string, discoveryID string, namedValues map[string]interface{}, db *sqlx.DB) error {
+func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) error {
 	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, preDefinedEntity)
 	if err != nil {
 		return err
@@ -172,18 +173,31 @@ func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefin
 		return err
 	}
 
-	//delete the old-integrations if present for the specific user
-	err = item.DeleteAllByUser(ctx, db, accountID, fixedEntity.ID, currentUserID)
-	if err != nil {
-		return err
-	}
-
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
+		Name:      &name,
 		AccountID: accountID,
 		EntityID:  fixedEntity.ID,
 		UserID:    &currentUserID,
 		Fields:    itemValMap(entityFields, namedValues),
+	}
+
+	//check for existence
+	dis, err := discovery.Retrieve(ctx, discoveryID, db)
+	if err != nil && err != discovery.ErrDiscoveryEmpty {
+		return err
+	}
+
+	if dis != nil {
+		if dis.Type == discoveryType {
+			it, err := item.Retrieve(ctx, dis.EntityID, dis.ItemID, db)
+			if err != nil {
+				return err
+			}
+			if *it.UserID == currentUserID { //in some cases we might have to check account level.
+				return ErrIntegAlreadyExists
+			}
+		}
 	}
 
 	it, err := item.Create(ctx, db, ni, time.Now())
@@ -194,7 +208,7 @@ func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefin
 	if discoveryID != "" {
 		ns := discovery.NewDiscovery{
 			ID:        discoveryID,
-			Type:      integration.TypeGmail,
+			Type:      discoveryType,
 			AccountID: accountID,
 			EntityID:  fixedEntity.ID,
 			ItemID:    it.ID,

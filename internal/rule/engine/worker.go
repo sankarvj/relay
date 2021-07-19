@@ -47,7 +47,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	if err != nil {
 		result = map[string]interface{}{"error": err}
 	}
-	return Evaluate(expression, buildResultant(e.ID, result)), nil
+	return evaluate(expression, buildResultant(e.ID, result)), nil
 }
 
 func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, error) {
@@ -96,7 +96,10 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 }
 
 //Evaluate evaluates the expression with the coresponding map
-func Evaluate(expression string, response map[string]interface{}) interface{} {
+func evaluate(expression string, response map[string]interface{}) interface{} {
+
+	log.Printf("expression -- %+v", expression)
+	log.Printf("response -- %+v", response)
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
 	lenOfElements := len(elements)

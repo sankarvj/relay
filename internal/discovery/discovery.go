@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	// ErrDiscoveryFailed is used when a specific discovery is requested but does not exist.
-	ErrDiscoveryFailed = errors.New("No Discovery")
+	// ErrDiscoveryEmpty is used when a specific discovery is requested but does not exist.
+	ErrDiscoveryEmpty = errors.New("No Discoveries found")
 )
 
 func Create(ctx context.Context, db *sqlx.DB, ns NewDiscovery, now time.Time) (Discover, error) {
@@ -56,7 +56,7 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Discover, error) {
 	const q = `SELECT * FROM discoveries WHERE discovery_id = $1`
 	if err := db.GetContext(ctx, &s, q, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrDiscoveryFailed
+			return nil, ErrDiscoveryEmpty
 		}
 
 		return nil, errors.Wrapf(err, "discovering id %q", id)

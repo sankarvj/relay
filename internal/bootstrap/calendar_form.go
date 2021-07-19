@@ -11,9 +11,9 @@ func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		Key:         domainFieldID,
 		Name:        "id",
 		DisplayName: "Calendar ID",
-		Meta:        map[string]string{"config": "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "sub-title"},
 	}
 
 	apiKeyFieldID := uuid.New().String()
@@ -33,6 +33,7 @@ func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		DisplayName: "E-Mail",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "super-title"}, //super-title overwrites title if exists
 	}
 
 	commanFieldID := uuid.New().String()
@@ -53,7 +54,7 @@ func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		Meta:        map[string]string{"display_gex": ownerEmailFieldKey},
+		Meta:        map[string]string{"display_gex": ownerEmailFieldKey, "layout": "title"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

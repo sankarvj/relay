@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -19,7 +20,14 @@ If the items count is more than 1, we will just update the value for the current
 If the items count is equal to 1, we will populate all the available choices if the referenced entity is child unit.
 **/
 
-func UpdateReferenceFields(ctx context.Context, accountID string, fields []entity.Field, items []item.ViewModelItem, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
+//Check dependent struct in the fields.go to understand it fully
+const (
+	ActionShow       = "show"
+	ActionHide       = "hide"
+	ActionLoadStages = "stages"
+)
+
+func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.ViewModelItem, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
 	referenceFields := make(map[string]*entity.Field, 0)
 	referenceIds := make(map[string][]interface{}, 0)
 
@@ -53,14 +61,15 @@ func UpdateReferenceFields(ctx context.Context, accountID string, fields []entit
 		}
 
 		if f.Dependent != nil {
-			evaluateDependentValue(f, items)
+			evaluateDependentValue(ctx, db, accountID, f, items, eng)
 		}
 
-		updateChoices(ctx, db, accountID, f, referenceIds[f.Key], items)
+		updateChoices(ctx, db, accountID, entityID, f, referenceIds[f.Key])
 	}
 
 }
 
+// TODO not understandable. please update the readme
 func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) []interface{} {
 	refIDs := make([]interface{}, 0)
 	for i := 0; i < len(items); i++ {
@@ -78,7 +87,7 @@ func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *enti
 	return refIDs
 }
 
-func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
+func evaluateDependentValue(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) {
 	for i := 0; i < len(items); i++ {
 		parentField := items[i].Fields[f.Dependent.ParentKey]
 		if parentField == nil || len(parentField.([]interface{})) == 0 || parentField.([]interface{})[0] == nil {
@@ -86,6 +95,8 @@ func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
 		}
 		//TODO what happens if more than one value exists???
 		f.Dependent.EvalutedValue = parentField.([]interface{})[0].(string)
+		//f.Dependent.EvalutedExpression = eng.RunExpEvaluator(ctx, db, nil, accountID, f.Dependent.Expression, items[i].Fields)
+
 	}
 }
 
@@ -93,7 +104,7 @@ func evaluateDependentValue(f *entity.Field, items []item.ViewModelItem) {
 //updateChoices won't pull all the choices available to that reference entity in the list view.
 //updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
 //updateChoices should work differently in the detail use-case
-func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, referenceIds []interface{}, items []item.ViewModelItem) {
+func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string, f *entity.Field, choiceIds []interface{}) {
 
 	if f.IsNotApplicable() {
 		return
@@ -108,10 +119,11 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 	if e.Category == entity.CategoryNode { //  node handler
 		var nodes []node.Node
 		var err error
-		if len(items) == 1 {
+		if len(choiceIds) == 0 && f.Dependent.EvalutedValue != "" { // only for edit case.
 			nodes, err = node.Stages(ctx, f.Dependent.EvalutedValue, db)
-		} else {
-			nodes, err = node.BulkRetrieve(ctx, referenceIds, db) // though the name bulk retrive is misleading this fetches only the node which is selected
+		} else { // view case
+			nodes, err = node.Stages(ctx, f.Dependent.EvalutedValue, db)
+			//nodes, err = node.BulkRetrieve(ctx, choiceIds, db)
 		}
 		if err != nil {
 			log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
@@ -121,10 +133,10 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 	} else if e.Category == entity.CategoryFlow { //  flow handler
 		var flows []flow.Flow
 		var err error
-		if len(items) == 1 {
-			flows, err = flow.List(ctx, []string{e.ID}, flow.FlowModeAll, db)
-		} else {
-			flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(referenceIds), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
+		if len(choiceIds) == 0 { // create or edit case.
+			flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, db)
+		} else { // view case
+			flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(choiceIds), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
 		}
 		if err != nil {
 			log.Println("error on retriving flows when updatingChoices. continuing... ", err)
@@ -143,21 +155,20 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity
 			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 		}
 		choicesMaker(f, refItems, refFields)
-	} else { //auto-complete
-		refFields := e.FieldsIgnoreError()
-		refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(referenceIds), db)
-		if err != nil {
-			log.Println("error on retriving reference items when updatingChoices. continuing... ", err)
-			return
+	} else { //auto-complete or multi-select. The UI must provide the search for these fields
+		if len(choiceIds) == 0 { // fetch with some limit
+			// I hope we can get some items for multi-select with limit here.
+			f.Choices = make([]entity.Choice, 0)
+		} else {
+			refFields := e.FieldsIgnoreError()
+			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(choiceIds), db)
+			if err != nil {
+				log.Println("error on retriving reference items when updatingChoices. continuing... ", err)
+				return
+			}
+			choicesMaker(f, refItems, refFields)
 		}
-		choicesMaker(f, refItems, refFields)
-
-		if len(items) > 0 && items[0].State == item.StateBluePrint {
-			choicesBluePrint(f, "<pass parent entity name here>")
-		}
-
 	}
-
 }
 
 func choicesMaker(f *entity.Field, refItems []item.Item, refFields []entity.Field) {
@@ -205,16 +216,46 @@ func choicesMakerNode(f *entity.Field, nodes []node.Node) {
 	}
 }
 
-func choicesBluePrint(f *entity.Field, sourceEntityName string) {
-	f.Choices = append(f.Choices, entity.Choice{
-		ID:           "00000000-0000-0000-0000-000000000000",
-		Verb:         "",
-		DisplayValue: fmt.Sprintf("Existing %s", f.DisplayName),
-	})
+//ChoicesBluePrint populate the choices of the template fields and also sets the one by evaluting the parent which is creating it
+func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
+	sourceFields := sourceEntity.FieldsIgnoreError()
+
+	//Adding parents existing items to the child choices
+	for _, sf := range sourceFields {
+		if sf.RefID == f.RefID {
+
+			f.Choices = append(f.Choices, entity.Choice{
+				ID:           fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, sf.Key),
+				Verb:         "",
+				DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("%s's existing %s", sourceEntity.DisplayName, f.DisplayName))),
+				BaseChoice:   true,
+			})
+
+			if f.IsNode() {
+				f.Value = []interface{}{fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, sf.Key)}
+				f.SetMeta("config")
+			}
+
+			break
+		}
+	}
+
+	//Set the parent ID if the child has implicit dependency
+	if sourceEntity.ID == f.RefID {
+		f.Value = []interface{}{fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, "id")}
+		f.SetMeta("config")
+		f.Choices = append(f.Choices, entity.Choice{
+			ID:           fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, "id"),
+			Verb:         "",
+			DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("existing %s ", sourceEntity.DisplayName))),
+			Default:      true,
+		})
+	}
+
 }
 
 //UpdateChoicesWrapper updates only the choices for reference fields
-func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID string, valueAddedFields []entity.Field) {
+func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID string, valueAddedFields []entity.Field) {
 	for i := 0; i < len(valueAddedFields); i++ {
 		if valueAddedFields[i].IsReference() {
 			var refIds []interface{}
@@ -222,7 +263,7 @@ func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID string, va
 				refIds = valueAddedFields[i].Value.([]interface{})
 			}
 
-			updateChoices(ctx, db, accountID, &valueAddedFields[i], refIds, []item.ViewModelItem{})
+			updateChoices(ctx, db, accountID, entityID, &valueAddedFields[i], refIds)
 		}
 	}
 }

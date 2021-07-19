@@ -69,7 +69,7 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 	if err != nil {
 		return err
 	}
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, s.db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{}, s.db, job.NewJabEngine())
 
 	response := struct {
 		Items    []item.ViewModelItem   `json:"items"`

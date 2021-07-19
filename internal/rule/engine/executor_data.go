@@ -3,13 +3,13 @@ package engine
 import (
 	"context"
 	"log"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -20,24 +20,19 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 		return err
 	}
 
-	//special handle to update the stage id to the node field.
-	for i := 0; i < len(valueAddedFields); i++ {
-		if valueAddedFields[i].IsNode() {
-			valueAddedFields[i].Value = []interface{}{n.StageID}
-		}
-	}
-
+	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		AccountID: n.AccountID,
 		EntityID:  n.ActorID,
+		Fields:    itemFields(valueAddedFields),
 	}
 
-	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap())
-	ni.Fields = itemFields(valueAddedFields)
+	log.Printf("ni Fields -- %+v", ni.Fields)
 
 	switch n.Type {
 	case node.Push:
+		log.Printf("Going to create %+v", ni)
 		it, err := item.Create(ctx, db, ni, time.Now())
 		if err != nil {
 			return err
@@ -66,32 +61,50 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 func itemFields(fields []entity.Field) map[string]interface{} {
 	params := map[string]interface{}{}
 	for _, f := range fields {
-		if f.IsDateTime() {
-			t := time.Now()
-			addedDate := t.AddDate(0, 0, f.Value.(int))
-			f.Value = util.FormatTimeGo(addedDate)
-		}
 		params[f.Key] = f.Value
 	}
 	return params
 }
 
-func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, fields []entity.Field, vars map[string]interface{}) {
+func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, fields []entity.Field, vars map[string]interface{}, stageID string) {
 	for i := 0; i < len(fields); i++ {
 		var field = &fields[i]
-		switch fields[i].DataType {
-		case entity.TypeString:
+
+		//associates the item with the stage if executed via the
+		if field.IsNode() {
+			field.Value = []interface{}{stageID}
+			continue
+		}
+
+		switch field.DataType {
+		case entity.TypeReference, entity.TypeList:
 			if field.Value != nil {
-				field.Value = eng.RunExpRenderer(ctx, db, accountID, field.Value.(string), vars)
+				evalatedVals := make([]interface{}, 0)
+				for _, v := range field.Value.([]interface{}) {
+					output := eng.RunFieldExpRenderer(ctx, db, accountID, v.(string), vars)
+					if output != nil {
+						rt := reflect.TypeOf(output)
+						switch rt.Kind() {
+						case reflect.Slice, reflect.Array:
+							evalatedVals = append(evalatedVals, output.([]interface{})...)
+						default:
+							evalatedVals = append(evalatedVals, output)
+						}
+					}
+				}
+				field.Value = evalatedVals
 			}
-		case entity.TypeReference:
-			if _, ok := vars[field.RefID]; ok {
-				field.Value = []interface{}{vars[field.RefID]} // what happens if the vars has more than one item
-			} else if field.Value == nil {
-				log.Println("field.Name-----> ", field.Name)
-				log.Println("field.Value-----> ", field.Value)
-				field.Value = []interface{}{}
+			//old logic. might be useful
+			// if _, ok := vars[field.RefID]; ok {
+			// 	field.Value = []interface{}{vars[field.RefID]} // TODO: what happens if the vars has more than one item
+			// } else if field.Value == nil {
+			// 	field.Value = []interface{}{}
+			// }
+		default:
+			if field.Value != nil {
+				field.Value = eng.RunFieldExpRenderer(ctx, db, accountID, field.Value.(string), vars)
 			}
 		}
+
 	}
 }

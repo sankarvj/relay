@@ -6,6 +6,7 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
@@ -70,7 +71,7 @@ func StatusVals(verb, name, color string) map[string]interface{} {
 	return statusVals
 }
 
-func DueByFields() []entity.Field {
+func TypeFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         "uuid-00-verb",
 		Name:        entity.Verb,
@@ -90,12 +91,12 @@ func DueByFields() []entity.Field {
 	return []entity.Field{verbField, nameField}
 }
 
-func DueByVals(verb, name string) map[string]interface{} {
-	dueByVals := map[string]interface{}{
+func TypeVals(verb, name string) map[string]interface{} {
+	typeVals := map[string]interface{}{
 		"uuid-00-verb": verb,
 		"uuid-00-name": name,
 	}
-	return dueByVals
+	return typeVals
 }
 
 func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) []entity.Field {
@@ -358,7 +359,7 @@ func TicketVals(name, statusID string) map[string]interface{} {
 	return ticketVals
 }
 
-func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, nodeEntityID string, stItem1, stItem2, stItem3 string) []entity.Field {
+func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, nodeEntityID string, stItem1, stItem2, stItem3 string, typeEntityID, typeItemEmailID, typeItemTodoID string, emailEntityID string) []entity.Field {
 	descField := entity.Field{
 		Key:         "uuid-00-desc",
 		Name:        "desc",
@@ -470,18 +471,58 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		},
 	}
 
-	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField, stageField}
+	typeField := entity.Field{
+		Key:         "uuid-00-type",
+		Name:        "type",
+		DisplayName: "Type",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       typeEntityID,
+		RefType:     entity.RefTypeStraight,
+		Meta:        map[string]string{"display_gex": "uuid-00-name", "load_choices": "true"},
+		Value:       []string{typeItemTodoID},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	emailTemplateField := entity.Field{
+		Key:         "uuid-00-mail-template",
+		Name:        "template",
+		DisplayName: "Template",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       emailEntityID,
+		Meta:        map[string]string{"display_gex": "name"},
+		Dependent: &entity.Dependent{
+			ParentKey:        typeField.Key,
+			Expression:       fmt.Sprintf("{{%s.%s}} eq {%s}", "self", typeField.Key, typeItemEmailID),
+			SimpleExpression: typeItemEmailID,
+			Action:           reference.ActionShow,
+		},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField, stageField, typeField, emailTemplateField}
 }
 
 func TaskVals(desc, contactID string) map[string]interface{} {
 	taskVals := map[string]interface{}{
-		"uuid-00-desc":     desc,
-		"uuid-00-contact":  []interface{}{contactID},
-		"uuid-00-status":   []interface{}{},
-		"uuid-00-company":  []interface{}{},
-		"uuid-00-deal":     []interface{}{},
-		"uuid-00-reminder": util.FormatTimeGo(time.Now()),
-		"uuid-00-due-by":   util.FormatTimeGo(time.Now()),
+		"uuid-00-desc":          desc,
+		"uuid-00-contact":       []interface{}{contactID},
+		"uuid-00-status":        []interface{}{},
+		"uuid-00-company":       []interface{}{},
+		"uuid-00-deal":          []interface{}{},
+		"uuid-00-reminder":      util.FormatTimeGo(time.Now()),
+		"uuid-00-due-by":        util.FormatTimeGo(time.Now()),
+		"uuid-00-type":          []interface{}{},
+		"uuid-00-mail-template": []interface{}{},
 	}
 	return taskVals
 }
@@ -683,7 +724,9 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		RefID:       nodeEntityID,
 		RefType:     entity.RefTypeStraight,
 		Dependent: &entity.Dependent{
-			ParentKey: pipeField.Key,
+			ParentKey:  pipeField.Key,
+			Expression: "", //if empty expression is set then this will give positive
+			Action:     reference.ActionLoadStages,
 		},
 		Meta: map[string]string{"display_gex": "uuid-00-fname", "node": "true"},
 		Field: &entity.Field{

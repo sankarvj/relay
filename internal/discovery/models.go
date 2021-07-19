@@ -2,6 +2,8 @@ package discovery
 
 import "time"
 
+//The types in the discovery should be in the sync with the integration types
+
 type Discover struct {
 	ID        string    `db:"discovery_id" json:"id"`
 	Type      string    `db:"discovery_type" json:"type"`

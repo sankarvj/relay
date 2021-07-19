@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
@@ -70,7 +71,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return err
 		}
-		conditions := job.NewJabEngine().RunExpQuerier(tests.Context(), i.db, i.rPool, params["account_id"], fl.Expression)
+		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, params["account_id"], fl.Expression)
 		gSegment := graphdb.BuildGNode(params["account_id"], e.ID, false).MakeBaseGNode("", makeConField(conditions))
 		result, err := graphdb.GetResult(i.rPool, gSegment)
 		if err != nil {
@@ -82,7 +83,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
 
 	response := struct {
 		Items    []item.ViewModelItem   `json:"items"`
@@ -142,18 +143,26 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			choices = append(choices, choice)
 		}
 	} else {
+
 		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
 		if err != nil {
 			return err
 		}
 		for _, item := range items {
+			displayV := item.Fields()[key]
+			if displayV == nil {
+				displayV = item.Name
+			}
 			choice := entity.Choice{
 				ID:           item.ID,
-				DisplayValue: item.Fields()[key],
+				DisplayValue: displayV,
 			}
 			choices = append(choices, choice)
+
 		}
 	}
+
+	log.Println("choices ", choices)
 
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
@@ -219,6 +228,10 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Retrieve")
 	defer span.End()
 
+	baseEntityID := r.URL.Query().Get("be")
+	baseItemID := r.URL.Query().Get("bi")
+	populateBR, _ := strconv.ParseBool(r.URL.Query().Get("bp")) // blue print
+
 	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
 	if err != nil {
 		return err
@@ -229,19 +242,40 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	it, err := item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
+	viewModelItems := make([]item.ViewModelItem, 0)
+	if params["item_id"] != "undefined" {
+		it, err := item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
+		if err != nil {
+			return err
+		}
+		viewModelItem := createViewModelItem(it)
+		viewModelItems = append(viewModelItems, viewModelItem)
+	}
+
+	bonds, err := relationship.List(ctx, i.db, params["account_id"], params["entity_id"])
 	if err != nil {
 		return err
 	}
 
-	bonds, err := relationship.List(ctx, i.db, it.AccountID, it.EntityID)
-	if err != nil {
-		return err
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
+
+	if populateBR {
+		be, err := entity.Retrieve(ctx, params["account_id"], baseEntityID, i.db)
+		if err != nil {
+			return err
+		}
+		for i := 0; i < len(fields); i++ {
+			if fields[i].IsReference() {
+				reference.ChoicesBluePrint(&fields[i], be)
+			} else if fields[i].IsNode() {
+				reference.ChoicesBluePrint(&fields[i], be)
+			}
+		}
 	}
 
-	viewModelItem := createViewModelItem(it)
-
-	reference.UpdateReferenceFields(ctx, params["account_id"], fields, []item.ViewModelItem{viewModelItem}, map[string]interface{}{}, i.db, job.NewJabEngine())
+	if len(viewModelItems) == 0 {
+		viewModelItems = append(viewModelItems, item.ViewModelItem{})
+	}
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`
@@ -250,11 +284,19 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		Fields []entity.Field         `json:"fields"`
 	}{
 		createViewModelEntity(e),
-		viewModelItem,
+		viewModelItems[0],
 		bonds,
 		fields,
 	}
 	return web.Respond(ctx, w, itemDetail, http.StatusOK)
+}
+
+func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	err := item.Delete(ctx, i.db, params["account_id"], params["entity_id"], params["item_id"])
+	if err != nil {
+		return err
+	}
+	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 
 func createViewModelItem(i item.Item) item.ViewModelItem {

@@ -1,6 +1,8 @@
 package ruler
 
 import (
+	"log"
+	"strings"
 	"testing"
 
 	"gitlab.com/vjsideprojects/relay/internal/tests"
@@ -20,7 +22,7 @@ func TestOperators(t *testing.T) {
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInput(work.Expression)
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)
@@ -41,7 +43,7 @@ func TestOperators(t *testing.T) {
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInput(work.Expression)
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting eq", tests.Success)
@@ -61,15 +63,14 @@ func TestContentParser(t *testing.T) {
 		{
 			var content string
 			exp := `Hello matty {{e1.appinfo.version}}. How are you?`
-			t.Log("expression --> ", exp)
 			signalsChan := make(chan Work)
 			go Run(exp, EngineFeedback(Parse), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInput(work.Expression)
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
 				case Parser:
-					content = work.Expression
+					content = work.OutboundResp.(string)
 				}
 			}
 			if content == "Hello matty 2 . How are you?" {
@@ -95,7 +96,7 @@ func TestExpressionWithListOperands(t *testing.T) {
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInputWithList(work.Expression)
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInputWithList(work.Expression))
 				case PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger", tests.Success)
@@ -116,7 +117,7 @@ func TestExpressionWithListOperands(t *testing.T) {
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInputWithList(work.Expression)
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInputWithList(work.Expression))
 				case PosExecutor:
 					triggered = true
 					t.Fatalf("\t%s should not revice positive trigger", tests.Failed)
@@ -138,18 +139,19 @@ func TestQuerySnippet(t *testing.T) {
 		t.Log("\twhen evaluating query")
 		{
 			var triggered bool
-			exp := `{{e1.appinfo.index}} lt {{e2.index}} && <<helloquery>>`
+			exp := `Hello matty {{e1.appinfo.version}}. How are you? <<d>>` //can't validate this from here. Go to engine test
 			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Execute), signalsChan)
+			go Run(exp, EngineFeedback(Parse), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case Worker:
-					work.InboundRespCh <- workerMockInput(work.Expression)
-				case Querier:
-					work.InboundRespCh <- map[string]interface{}{"hello": 1}
-				case PosExecutor:
+					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
+				case Grapher:
+					work.InboundRespCh <- testevaluate(work.Expression, map[string]interface{}{"hello": 1})
+				case Parser:
+					log.Println("work.OutboundResp --> ", work.OutboundResp)
 					triggered = true
-					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)
+					t.Logf("\t%s should receive parser trigger after evaluting lt", tests.Success)
 				}
 			}
 			if !triggered {
@@ -203,4 +205,22 @@ func workerMockInputWithList(exp string) map[string]interface{} {
 			},
 		}
 	}
+}
+
+//this func is copied from the worker
+func testevaluate(expression string, response map[string]interface{}) interface{} {
+	var realValue interface{}
+	elements := strings.Split(expression, ".")
+	lenOfElements := len(elements)
+	for index, element := range elements {
+		if index == (lenOfElements - 1) {
+			realValue = response[element]
+			break
+		}
+		if response[element] == nil {
+			break
+		}
+		response = response[element].(map[string]interface{})
+	}
+	return realValue
 }

@@ -162,17 +162,18 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 }
 
 // Update replaces just the name all other fields are not updatable currenlty.
-func Update(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, name string, now time.Time) error {
+func Update(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, name, expression string, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.node.Update")
 	defer span.End()
 	updatedAt := now.Unix()
 
 	const q = `UPDATE nodes SET
 		"name" = $4,
-		"updated_at" = $5
+		"expression" = $5,
+		"updated_at" = $6
 		WHERE account_id = $1 AND flow_id = $2 AND node_id = $3`
 	_, err := db.ExecContext(ctx, q, accountID, flowID, nodeID,
-		name, updatedAt,
+		name, expression, updatedAt,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating node")

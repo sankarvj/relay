@@ -13,9 +13,10 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-//Integration Types
+//Integration types also used in the discoveries type
 const (
 	TypeGmail          = "gmail"
+	TypeMailGun        = "mailgun"
 	TypeGoogleCalendar = "google_calendar"
 )
 

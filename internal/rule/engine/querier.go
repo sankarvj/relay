@@ -3,36 +3,21 @@ package engine
 import (
 	"context"
 	"log"
-	"strings"
+	"time"
 
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
-func querier(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, expression string) (interface{}, error) {
-	log.Println("query ---> ", expression)
-	elements := strings.Split(expression, ".")
-	return elements[1], nil
-}
+//querier is used to render the actual values from the template field values
+//ex: 1 days from creation to actual date
+//in future we can use querier for further evaluation
+func querier(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
+	log.Printf("running querier for expression %s : %v", expression, input)
 
-//Not used for now. Could be useful in the future. If we decided to execute rules of inside worker
-func gSegmentJson(rp *redis.Pool, expression string, input map[string]interface{}) (interface{}, error) {
-	gSegment, err := graphdb.GraphNodeSt(expression)
-	if err != nil {
-		return nil, err
-	}
-	if itemID, ok := input[gSegment.Label]; ok {
-		gSegment = gSegment.AddIDCondition(itemID)
-		qr, err := graphdb.GetResult(rp, gSegment)
-
-		if err != nil {
-			return nil, err
-		}
-		if !qr.Empty() {
-			return true, nil
-		}
-	}
-	return nil, nil
+	x := util.ConvertStrToInt(expression)
+	t := time.Now()
+	addedDate := t.AddDate(0, 0, x)
+	//return time here
+	return util.FormatTimeGo(addedDate), nil
 }

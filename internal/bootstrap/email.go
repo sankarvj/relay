@@ -19,7 +19,7 @@ func addEmails(ctx context.Context, db *sqlx.DB, accountID string, contactEntity
 		Common: "false",
 		Owner:  []string{schema.SeedUserID1},
 	}
-	err := entity.SaveFixedEntityItem(ctx, accountID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "vijayasankar.jothi@wayplot.com", util.ConvertInterfaceToMap(emailConfigEntityItem), db)
+	err := entity.SaveFixedEntityItem(ctx, accountID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), db)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func addEmails(ctx context.Context, db *sqlx.DB, accountID string, contactEntity
 		Body:    fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
 	}
 
-	err = entity.SaveFixedEntityItem(ctx, accountID, schema.SeedUserID1, entity.FixedEntityEmails, "", util.ConvertInterfaceToMap(emailEntityItem), db)
+	err = entity.SaveFixedEntityItem(ctx, accountID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), db)
 	if err != nil {
 		return err
 	}

@@ -256,16 +256,18 @@ func nameOfType(typeOfNode int) string {
 }
 
 func makeExpression(queries []node.Query) string {
+	log.Printf("queries %+v--> ", queries)
 	var expression string
 	for i, q := range queries {
 		if q.Key == "" {
 			continue
 		}
-		expression = fmt.Sprintf("{{%s.%s}} %s {%s}", q.EntityID, q.Key, q.Operator, q.Value)
+		expression = fmt.Sprintf("%s {{%s.%s}} %s {%s}", expression, q.EntityID, q.Key, q.Operator, q.Value)
 		if i < len(queries)-1 {
-			expression = fmt.Sprintf("%s %s", expression, "AND")
+			expression = fmt.Sprintf("%s %s", expression, "&&")
 		}
 	}
+	log.Printf("expression %+v--> ", expression)
 	return expression
 }
 

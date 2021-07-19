@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,21 +39,17 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 	ni.EntityID = params["entity_id"]
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
-
+	ni.State = item.StateBluePrint
 	valueAddedFields := ce.ValueAdd(ni.Fields)
 
 	for _, f := range valueAddedFields {
-		if f.IsReference() { // reference will not always has the base
-			values := f.Value.([]interface{})
-			if values[0] == "base" {
-				values = values[1:]
-			}
-			ni.Fields[f.Key] = values
-		}
-
 		if f.IsTitleLayout() {
 			s := f.Value.(string)
 			ni.Name = &s
+		}
+
+		if f.IsDateTime() {
+			ni.Fields[f.Key] = fmt.Sprintf("<<%v>>", f.Value)
 		}
 	}
 

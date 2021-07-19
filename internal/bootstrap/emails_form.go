@@ -11,7 +11,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		Key:         domainFieldID,
 		Name:        "domain",
 		DisplayName: "Domain",
-		Meta:        map[string]string{"config": "true"},
+		Meta:        map[string]string{"layout": "sub-title"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -33,6 +33,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		DisplayName: "E-Mail",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "super-title"}, //super-title overwrites title if exists
 	}
 
 	commanFieldID := uuid.New().String()
@@ -53,7 +54,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		Meta:        map[string]string{"display_gex": ownerEmailFieldKey},
+		Meta:        map[string]string{"display_gex": ownerEmailFieldKey, "layout": "title"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

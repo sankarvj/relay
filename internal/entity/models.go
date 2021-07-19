@@ -71,6 +71,6 @@ const (
 	CategoryFlow        = 11 // alais for actual flow
 	CategoryNode        = 12 // alais for actual node
 	CategoryNotes       = 13
-	CategoryMeeting     = 14
-	CategoryCalendar    = 15
+	CategoryMeeting     = 14 // this is a type like task, email, notes
+	CategoryCalendar    = 15 // this is integration
 )

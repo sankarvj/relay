@@ -56,6 +56,34 @@ func TestEmailRuleRunner(t *testing.T) {
 	}
 }
 
+func TestRuleRenderer(t *testing.T) {
+	db, teardown := tests.NewUnit(t)
+	tests.SeedData(t, db)
+	tests.SeedEntity(t, db)
+	defer teardown()
+	t.Log("Given the need to run the engine to render the template values.")
+	{
+		t.Log("\twhen running a engine for the given contact - default case")
+		{
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
+
+			vars := map[string]interface{}{contactEntity.ID: contactItems[0].ID} // this will get populated only during the trigger
+			exp := fmt.Sprintf("{{%s.%s}}", contactEntity.ID, schema.SeedFieldFNameKey)
+
+			eng := engine.Engine{
+				Job: job.Job{},
+			}
+
+			content := eng.RunExpRenderer(tests.Context(), db, schema.SeedAccountID, exp, vars)
+			if content != "" {
+				t.Logf("\t%s\tshould evaluate the expression with content %s", tests.Success, content)
+			}
+
+		}
+	}
+}
+
 func TestCreateItemRuleRunner(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	tests.SeedData(t, db)
@@ -296,7 +324,7 @@ var (
 	expression = fmt.Sprintf("<<%s>>", jsonB)
 )
 
-func TestQueryRuleRunner(t *testing.T) {
+func TestGraphRuleRunner(t *testing.T) {
 	db, teardown1 := tests.NewUnit(t)
 	tests.SeedData(t, db)
 	tests.SeedEntity(t, db)
@@ -336,7 +364,7 @@ func TestQueryRuleRunner(t *testing.T) {
 		t.Log("\twhen evaluating the query")
 		{
 			expression = fmt.Sprintf("{{%s.%s}} gt {50} && {{%s.%s}} eq {Bruce Wayne}", "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldNPSKey, "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldFNameKey)
-			result := job.NewJabEngine().RunExpQuerier(tests.Context(), db, residPool, "3cf17266-3473-4006-984f-9325122678b7", expression)
+			result := job.NewJabEngine().RunExpGrapher(tests.Context(), db, residPool, "3cf17266-3473-4006-984f-9325122678b7", expression)
 			log.Println("result ------------------> ---> --> -> ", result)
 			t.Logf("\t%s should pass with out fail", tests.Success)
 		}

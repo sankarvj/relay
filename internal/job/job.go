@@ -52,7 +52,7 @@ func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source 
 		return
 	}
 	valueAddedFields := e.ValueAdd(it.Fields())
-	reference.UpdateChoicesWrapper(ctx, db, accountID, valueAddedFields)
+	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields)
 	//j.validateWorkflows(db, entityID, itemID, oldFields, newFields)
 	j.AddConnection(accountID, source, entityID, it.ID, valueAddedFields, nil, db)
 

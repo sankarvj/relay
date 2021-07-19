@@ -16,10 +16,12 @@ type ExpressionType int
 // ExpressionType defines different types of expression to work with
 const (
 	Worker ExpressionType = iota
+	Grapher
 	Querier
+	Parser
+	Computer
 	NegExecutor
 	PosExecutor
-	Parser
 )
 
 //Work used to evaluate the expression
@@ -35,7 +37,7 @@ type Ruler struct {
 	RuleItem   *RuleItem
 	positive   *bool
 	trigger    string
-	content    string
+	content    interface{}
 	conditions []Condition
 	//channels to send the results back and forth
 	workChan chan Work
@@ -80,7 +82,8 @@ type EngineFeedback int
 const (
 	Execute EngineFeedback = iota
 	Parse
-	Query
+	Graph
+	Compute
 )
 
 //applyFn takes two operands and then apply the logic to get the final result
@@ -108,7 +111,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 
 	switch eFeedback {
 	case Execute:
-		log.Printf("run rule: %s", rule)
+		log.Printf("run execution for expression: %s", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
 			workChan <- Work{PosExecutor, r.trigger, nil, nil}
@@ -119,11 +122,15 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 		log.Printf("run parser for expression: %s", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
-		workChan <- Work{Parser, "", strings.TrimSpace(r.content), nil}
-	case Query:
-		log.Printf("run parser for expression: %s", rule)
-		r = r.startQueringLexer(rule)
-		workChan <- Work{Querier, "", r.conditions, nil}
+		workChan <- Work{Parser, "", r.content, nil}
+	case Compute:
+		log.Printf("run computer for expression: %s", rule)
+		r = r.startComputingLexer(rule)
+		workChan <- Work{Computer, "", r.content, nil}
+	case Graph:
+		log.Printf("run evalution for graph expression: %s", rule)
+		r = r.startGraphingLexer(rule)
+		workChan <- Work{Grapher, "", r.conditions, nil}
 	}
 
 }
@@ -158,8 +165,6 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 			r.addTrigger(token.Value)
 		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
 			r.execute()
-		case lexertoken.TokenQuery:
-			r.query(strings.TrimSpace(token.Value))
 		case lexertoken.TokenGibberish:
 			r.addGibbrish(token.Value)
 		case lexertoken.TokenEOF:
@@ -186,7 +191,31 @@ func (r Ruler) startParsingLexer(rule string) Ruler {
 	}
 }
 
-func (r Ruler) startQueringLexer(rule string) Ruler {
+func (r Ruler) startComputingLexer(rule string) Ruler {
+	l := lexer.BeginLexing("rule", rule)
+	var token lexertoken.Token
+	for {
+		token = l.NextToken()
+		switch token.Type {
+		case lexertoken.TokenValuate:
+			fmt.Println("1 setContent TokenValuate", token.Value)
+			r.addEvalOperand(strings.TrimSpace(token.Value))
+		case lexertoken.TokenValue:
+			fmt.Println("2 setContent TokenValue", token.Value)
+			r.addOperand(extract(token.Value))
+		case lexertoken.TokenGibberish:
+			fmt.Println("3 setContent TokenGibberish", token.Value)
+			r.addGibbrish(token.Value)
+		case lexertoken.TokenQuery: //special type to render the template info
+			fmt.Println("4 setContent TokenQuery", token.Value)
+			r.addQuery(strings.TrimSpace(token.Value))
+		case lexertoken.TokenEOF:
+			return r
+		}
+	}
+}
+
+func (r Ruler) startGraphingLexer(rule string) Ruler {
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
@@ -215,7 +244,7 @@ func (r Ruler) startQueringLexer(rule string) Ruler {
 		case lexertoken.TokenGibberish:
 			r.addGibbrish(token.Value)
 		case lexertoken.TokenRightBrace, lexertoken.TokenRightDoubleBrace:
-			r.addCondition()
+			r.makeGraph()
 		case lexertoken.TokenEOF:
 			return r
 		}
@@ -328,18 +357,13 @@ func (r *Ruler) saveAndResetRuleItem(singleUnitResult bool) {
 	r.RuleItem = nil
 }
 
-func (r *Ruler) query(q string) {
+func (r *Ruler) addQuery(q string) {
 	respChan := make(chan interface{})
 	r.workChan <- Work{Querier, q, nil, respChan}
 	resp := <-respChan
-
-	//set opResult true, if the resp any contains elements
-	opResult := false
-	if resp != nil {
-		opResult = true
-	}
+	r.setContent(resp)
 	r.constructRuleItem()
-	r.saveAndResetRuleItem(opResult)
+	r.saveAndResetRuleItem(true)
 }
 
 func (r *Ruler) execute() error {
@@ -360,7 +384,7 @@ func (r *Ruler) execute() error {
 	return nil
 }
 
-func (r *Ruler) addCondition() error {
+func (r *Ruler) makeGraph() error {
 	r.constructRuleItem()
 	log.Printf("QUERY:: execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
@@ -396,8 +420,16 @@ func (r *Ruler) eval(expression string) interface{} {
 }
 
 func (r *Ruler) setContent(value interface{}) {
-	//In go strings are immutable. Hence, this line is inefficient.
-	r.content = fmt.Sprintf("%s %v", r.content, value)
+	if value == nil || value == "" {
+		return
+	}
+	if r.content != nil { //parser will go here....
+		//In go strings are immutable. Hence, this line is inefficient.
+		r.content = fmt.Sprintf("%s %v", r.content, value)
+	} else { // computer will go here. thus keeping the value as interface for the computer parser.
+		r.content = value
+	}
+
 }
 
 func newTrue() *bool {

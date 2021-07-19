@@ -86,11 +86,12 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	// Register items management endpoints.
 	// TODO Add team authorization middleware
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items", i.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
-	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", i.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items", i.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", i.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", i.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("DELETE", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", i.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/search", i.Search, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
-	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/templates", i.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/templates", i.CreateTemplate, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	s := Segmentation{
 		db:            db,

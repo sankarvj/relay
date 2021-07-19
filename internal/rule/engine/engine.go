@@ -36,8 +36,8 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 			} else {
 				work.InboundRespCh <- result
 			}
-		case ruler.Querier:
-			if result, err := querier(ctx, db, rp, n.AccountID, work.Expression); err != nil {
+		case ruler.Grapher:
+			if result, err := grapher(ctx, db, rp, n.AccountID, work.Expression); err != nil {
 				return nil, err
 			} else {
 				work.InboundRespCh <- result
@@ -60,35 +60,63 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp
 	//signalsChan wait to receive evaluation work and final evaluated string
 	for work := range signalsChan {
 		switch work.Type {
-		case ruler.Worker:
+		case ruler.Worker: //input:executes this when it finds the {{}}
 			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
 				return err.Error()
 			} else {
 				work.InboundRespCh <- result
 			}
-		case ruler.Parser:
+		case ruler.Parser: //output:executes this when it finds EOF/Response
 			lexedContent = work.OutboundResp.(string)
 		}
 	}
 	return lexedContent
 }
 
-//RunExpQuerier run the expression and returns conditions in a readable format
-func (e *Engine) RunExpQuerier(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string) []ruler.Condition {
-	var conditions []ruler.Condition
+//RunFieldExpRenderer is same as RunExpRenderer but it evaluate the single value and return
+//Added this new func to handle to evalution of expressions for the reference field which returns array of string. Instead of string
+func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) interface{} {
+	var lexedContent interface{}
 	signalsChan := make(chan ruler.Work)
-	go ruler.Run(exp, ruler.Query, signalsChan)
+	go ruler.Run(exp, ruler.Compute, signalsChan)
 	//signalsChan wait to receive evaluation work and final evaluated string
 	for work := range signalsChan {
 		switch work.Type {
-		case ruler.Worker: //why worker calling querier? because the logic is same as worker
-			if result, err := querier(ctx, db, rp, accountID, work.Expression); err != nil {
+		case ruler.Worker: //input:executes this when it finds the {{}}
+			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
+				return err.Error()
+			} else {
+				work.InboundRespCh <- result
+			}
+		case ruler.Querier: //input:executes this when it finds the <<>>
+			if result, err := querier(ctx, db, accountID, work.Expression, variables); err != nil {
+				return err.Error()
+			} else {
+				work.InboundRespCh <- result
+			}
+		case ruler.Computer: //output:executes this when it finds EOF/Response
+			lexedContent = work.OutboundResp
+		}
+	}
+	return lexedContent
+}
+
+//RunExpGrapher run the expression and returns graph query in a readable format
+func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string) []ruler.Condition {
+	var conditions []ruler.Condition
+	signalsChan := make(chan ruler.Work)
+	go ruler.Run(exp, ruler.Graph, signalsChan)
+	//signalsChan wait to receive evaluation work and final evaluated string
+	for work := range signalsChan {
+		switch work.Type {
+		case ruler.Worker: //why worker calling grapher? because the logic is same as worker
+			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
 				log.Println("err occurred. Sending empty conditions - ", err)
 				return []ruler.Condition{}
 			} else {
 				work.InboundRespCh <- result
 			}
-		case ruler.Querier:
+		case ruler.Grapher: //output:executes this when it finds EOF/Response
 			conditions = work.OutboundResp.([]ruler.Condition)
 		}
 	}
@@ -103,21 +131,21 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Poo
 	//signalsChan wait to receive evaluation work and final execution
 	for work := range signalsChan {
 		switch work.Type {
-		case ruler.Worker:
+		case ruler.Worker: //input:executes this when it finds the {{}}
 			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
 				log.Println("error in expression evaluator ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result
 			}
-		case ruler.Querier:
-			if result, err := querier(ctx, db, rp, accountID, work.Expression); err != nil {
+		case ruler.Grapher: //input:executes this when it finds the what??? - actually here the grapher should come into picture when the conditions refers the reference value. Need to implement
+			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
 				log.Println("error in expression evaluator ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result
 			}
-		case ruler.PosExecutor:
+		case ruler.PosExecutor: //output:executes this when it finds EOF/Response
 			positive = true
 		}
 	}

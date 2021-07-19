@@ -73,6 +73,23 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	}
 	fmt.Println("\tStatus Entity With It's Three Statuses Items Created")
 
+	// add type entity
+	typeEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTypeEntityName, "Type", entity.CategoryChildUnit, TypeFields())
+	if err != nil {
+		return err
+	}
+	// add type item - email
+	typeItemEmail, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), TypeVals(entity.FuExpNone, "Email"))
+	if err != nil {
+		return err
+	}
+	// add type item - todo
+	typeItemTodo, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), TypeVals(entity.FuExpNone, "Todo"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tType Entity With It's Three types Items Created")
+
 	// add entity - contacts
 	contactEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedContactsEntityName, "Contacts", entity.CategoryData, ContactFields(statusEntity.ID, ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
@@ -149,7 +166,7 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	fmt.Println("\tDeal Item Created")
 
 	// add entity - task
-	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, companyEntity.ID, dealEntity.ID, statusEntity.ID, nodeEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID))
+	taskEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, TaskFields(contactEntity.ID, companyEntity.ID, dealEntity.ID, statusEntity.ID, nodeEntity.ID, statusItemOpen.ID, statusItemClosed.ID, statusItemOverDue.ID, typeEntity.ID, typeItemEmail.ID, typeItemTodo.ID, emailsEntity.ID))
 	if err != nil {
 		return err
 	}

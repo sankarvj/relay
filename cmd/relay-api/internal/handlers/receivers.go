@@ -62,7 +62,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 	sub, err := discovery.Retrieve(ctx, data.EmailAddress, g.db)
 	if err != nil {
-		if err == discovery.ErrDiscoveryFailed { //means we don't want to listen to that mailbox
+		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
 			//TODO call stop here.
 			log.Println("Silently Killing The Unwanted Messages...")
 			return web.Respond(ctx, w, "SUCCESS", http.StatusOK)

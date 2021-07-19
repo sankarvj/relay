@@ -16,7 +16,7 @@ const (
 // Field represents structural format of attributes in entity
 type Field struct {
 	Name        string            `json:"name" validate:"required"`
-	DisplayName string            `json:"display_name" validate:"required"` //do we need this? why not use name for display
+	DisplayName string            `json:"display_name" validate:"required"`
 	Key         string            `json:"key" validate:"required"`
 	Value       interface{}       `json:"value" validate:"required"`
 	DataType    DType             `json:"data_type" validate:"required"`
@@ -50,11 +50,17 @@ type Choice struct {
 	Verb         interface{} `json:"verb"`
 	DisplayValue interface{} `json:"display_value"`
 	Expression   string      `json:"expression"`
+	BaseChoice   bool        `json:"base_choice"`
+	Default      bool        `json:"default"`
 }
 
 type Dependent struct {
-	ParentKey     string `json:"parent_key"`
-	EvalutedValue string // this will be populated in the reference.go
+	ParentKey          string `json:"parent_key"`
+	EvalutedValue      string // this will be populated in the reference.go using the value of the parent key
+	Expression         string // if expression exist, execute it to know postive/negative
+	EvalutedExpression bool   // this will be populated in the reference.go using the expression evalutor
+	SimpleExpression   string // if simple-expression exist, skip regular expression and evaluate it in the UI itself
+	Action             string // on positive expression, do what said on the action. Otherwise do the opposite
 }
 
 //DType defines the data type of field
@@ -233,6 +239,10 @@ func (f Field) IsNotApplicable() bool {
 		return true
 	}
 	return false
+}
+
+func (f Field) SetMeta(key string) {
+	f.Meta[key] = "true"
 }
 
 func (f Field) ValidRefField() bool {
