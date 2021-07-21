@@ -19,9 +19,11 @@ const (
 	TokenSnippet
 
 	TokenEqualSign
+	TokenNotEqualSign
 	TokenGTSign
 	TokenLTSign
 	TokenINSign
+	TokenNotINSign
 	TokenBFSign
 	TokenAFSign
 

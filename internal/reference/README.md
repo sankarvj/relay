@@ -23,5 +23,18 @@ To handle flows. Create a new type called TypeFlow & TypeNodes
 
 ## What is dependent Field?
 
+There are three types of dependent fields:
+    - country - state - city (Deals - pipeline/stage)
+    - hide a field based on the only from another field (Tasks - type/template)
+    - set a field value based on the value of another field (Tasks - status/dueby)
+- Type 1
 Lets say you have a company entity. In that you can have the field called deals. The Company also has the field called contacts. If I set the deals as dependent to contact field. The deals populated in the company view will be filtered by the selected contact ID. But one catch,  for this to work the deal entity should have the contact entity referenced in one of its field.
+
+Each choice in choices will get populated by the field called parent_ids - the choices will be shown in the UI only if the selected parent_id in the form exists in the choice.parent_ids. In the UI this logic is handled in the getChoices(). In the core it gets populated in the reference
+
+- Type 2
+Evalute the expression and set the value. Always in the UI
+
+- Type 3 
+Evalute the expression and set the value. Always in the UI
 

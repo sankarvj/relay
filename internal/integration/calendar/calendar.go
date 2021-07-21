@@ -61,11 +61,11 @@ func CreateCalendarEvent(ctx context.Context, accountID, entityID, itemID string
 		Attendees:   namedFieldsObj["attendess"].ChoicesValues(),
 	}
 
-	st, err := util.ParseTimeAngular(meeting.StartTime)
+	st, err := util.ParseTime(meeting.StartTime)
 	if err != nil {
 		return err
 	}
-	end, err := util.ParseTimeAngular(meeting.EndTime)
+	end, err := util.ParseTime(meeting.EndTime)
 	if err != nil {
 		return err
 	}

@@ -10,11 +10,13 @@ const (
 	LeftBrace         string = "{"
 	RightBrace        string = "}"
 	EqualSign         string = "eq"
+	NotEqualSign      string = "!eq"
 	GTSign            string = "gt"
 	LTSign            string = "lt"
 	BFSign            string = "bf"
 	AFSign            string = "af"
 	INSign            string = "in"
+	NotINSign         string = "!in"
 
 	LeftSnippet        string = "<"
 	RightSnippet       string = ">"

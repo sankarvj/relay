@@ -354,6 +354,8 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 func TicketVals(name, statusID string) map[string]interface{} {
 	ticketVals := map[string]interface{}{
 		"uuid-00-subject": name,
+		"uuid-00-contact": []interface{}{},
+		"uuid-00-company": []interface{}{},
 		"uuid-00-status":  []interface{}{statusID},
 	}
 	return ticketVals
@@ -428,27 +430,22 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DisplayName: "Reminder",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
-		ActionID:    contactField.Key,
 	}
 
+	statusFieldKey := "uuid-00-status"
 	statusField := entity.Field{
-		Key:         "uuid-00-status",
+		Key:         statusFieldKey,
 		Name:        "status",
 		DisplayName: "Status",
 		DomType:     entity.DomAutoSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "layout": "verb", "load_choices": "true"},
-		Choices: []entity.Choice{
-			{
-				ID:         stItem1,
-				Expression: fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key),
-			},
-			{
-				ID:         stItem3,
-				Expression: fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key),
-			},
+		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Dependent: &entity.Dependent{
+			ParentKey:   dueByField.Key,
+			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", statusFieldKey, stItem2), fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key), fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key)},
+			Actions: []string{fmt.Sprintf("{{{%s.%s	}}}", reference.ActionSet, reference.ByDoNothing), fmt.Sprintf("{{{%s.%s}}}", reference.ActionSet, stItem1), fmt.Sprintf("{{{%s.%s}}}", reference.ActionSet, stItem3)},
 		},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -480,7 +477,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		RefID:       typeEntityID,
 		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{"display_gex": "uuid-00-name", "load_choices": "true"},
-		Value:       []string{typeItemTodoID},
+		Value:       []interface{}{typeItemTodoID},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -497,10 +494,9 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		RefID:       emailEntityID,
 		Meta:        map[string]string{"display_gex": "name"},
 		Dependent: &entity.Dependent{
-			ParentKey:        typeField.Key,
-			Expression:       fmt.Sprintf("{{%s.%s}} eq {%s}", "self", typeField.Key, typeItemEmailID),
-			SimpleExpression: typeItemEmailID,
-			Action:           reference.ActionShow,
+			ParentKey:   typeField.Key,
+			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", typeField.Key, typeItemEmailID), fmt.Sprintf("{{%s.%s}} !in {%s}", "self", typeField.Key, typeItemEmailID)},
+			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionView, reference.ByShow), fmt.Sprintf("{{{%s.%s}}}", reference.ActionView, reference.ByHide)},
 		},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -512,7 +508,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField, stageField, typeField, emailTemplateField}
 }
 
-func TaskVals(desc, contactID string) map[string]interface{} {
+func TaskVals(desc, contactID string, typeID string) map[string]interface{} {
 	taskVals := map[string]interface{}{
 		"uuid-00-desc":          desc,
 		"uuid-00-contact":       []interface{}{contactID},
@@ -521,8 +517,9 @@ func TaskVals(desc, contactID string) map[string]interface{} {
 		"uuid-00-deal":          []interface{}{},
 		"uuid-00-reminder":      util.FormatTimeGo(time.Now()),
 		"uuid-00-due-by":        util.FormatTimeGo(time.Now()),
-		"uuid-00-type":          []interface{}{},
+		"uuid-00-type":          []interface{}{typeID},
 		"uuid-00-mail-template": []interface{}{},
+		"uuid-00-pipe-stage":    []interface{}{},
 	}
 	return taskVals
 }
@@ -724,9 +721,9 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		RefID:       nodeEntityID,
 		RefType:     entity.RefTypeStraight,
 		Dependent: &entity.Dependent{
-			ParentKey:  pipeField.Key,
-			Expression: "", //if empty expression is set then this will give positive
-			Action:     reference.ActionLoadStages,
+			ParentKey:   pipeField.Key,
+			Expressions: []string{""}, // empty means positive
+			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
 		},
 		Meta: map[string]string{"display_gex": "uuid-00-fname", "node": "true"},
 		Field: &entity.Field{

@@ -42,7 +42,6 @@ func Compare(left, right interface{}) bool {
 }
 
 func compare(left, right Operand) bool {
-
 	c := cast(left, right, true)
 	if c.err != nil {
 		log.Println("eq error comparing operands", c.err)
@@ -60,6 +59,28 @@ func compare(left, right Operand) bool {
 		}
 	case ListDT:
 		return same(c.leftInterfaceList, c.rightInterfaceList)
+	}
+	return false
+}
+
+func differ(left, right Operand) bool {
+	c := cast(left, right, true)
+	if c.err != nil {
+		log.Println("!eq error comparing operands", c.err)
+		return false
+	}
+
+	switch c.leftDataType {
+	case StrDT:
+		return c.leftString != c.rightString
+	case NumberDT:
+		return c.leftNumber != c.rightNumber
+	case VersionDT:
+		if version.CompareSimple(c.leftString, c.rightString) != 0 {
+			return true
+		}
+	case ListDT:
+		return notsame(c.leftInterfaceList, c.rightInterfaceList)
 	}
 	return false
 }
@@ -135,6 +156,23 @@ func in(left, right Operand) bool { // assumption: left is a interface list & ri
 	return false
 }
 
+func notin(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
+	c := cast(left, right, false)
+	if c.err != nil {
+		log.Println("in error comparing operands", c.err)
+		return false
+	}
+	switch c.leftDataType {
+	case ListDT:
+		for _, v := range c.leftInterfaceList {
+			if compare(v, right) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func same(leftList, rightList []interface{}) bool {
 	matched := false
 	if len(leftList) != len(rightList) {
@@ -154,6 +192,23 @@ func same(leftList, rightList []interface{}) bool {
 		}
 	}
 	return matched
+}
+
+func notsame(leftList, rightList []interface{}) bool {
+	notmatched := true
+	if len(leftList) != len(rightList) {
+		return notmatched
+	}
+
+	for _, lv := range leftList {
+		notmatched = false
+		for _, rv := range rightList {
+			if !compare(lv, rv) {
+				return true
+			}
+		}
+	}
+	return notmatched
 }
 
 func cast(left, right Operand, checkEquality bool) caster {
@@ -244,11 +299,12 @@ func (c *caster) deepCaster(left bool) OperandDT {
 			c.leftNumber = float64(i64L)
 			return NumberDT
 		}
-		//time
-		tL, errL := time.Parse("2006-01-02 15:04:05 -0700", c.leftString)
+
+		//other format time
+		tL, errL := time.Parse("2006-01-02 15:04:05 -07:00", c.leftString)
 		if errL == nil {
 			c.leftTime = tL
-			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700") // do we need to set it here?
+			c.rightString = time.Now().Format("2006-01-02 15:04:05 -07:00") // do we need to set it here?
 			return TimeDT
 		}
 	} else {
@@ -270,17 +326,15 @@ func (c *caster) deepCaster(left bool) OperandDT {
 		}
 		//time
 		if c.rightString == "now" {
-			c.rightString = time.Now().Format("2006-01-02 15:04:05 -0700")
+			c.rightString = time.Now().Format("2006-01-02 15:04:05 -07:00")
 		}
-		tR, errR := time.Parse("2006-01-02 15:04:05 -0700", c.rightString)
+		tR, errR := time.Parse("2006-01-02 15:04:05 -07:00", c.rightString)
 		if errR == nil {
 			c.rightTime = tR
 			return TimeDT
 		}
 	}
-
 	return StrDT
-
 }
 
 func findDT(right Operand) OperandDT {

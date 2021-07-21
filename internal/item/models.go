@@ -26,16 +26,6 @@ type TimeSeriesItem struct {
 	Value int64     `db:"value" json:"value"`
 }
 
-// ViewModelItem represents the view model of item
-// (i.e) it has fields instead of attributes
-type ViewModelItem struct {
-	ID     string                 `json:"id"`
-	Name   *string                `json:"name"`
-	Type   int                    `json:"type"`
-	State  int                    `json:"state"`
-	Fields map[string]interface{} `json:"fields"`
-}
-
 // NewItem has information needed to creat new item
 type NewItem struct {
 	ID        string                 `json:"id"`

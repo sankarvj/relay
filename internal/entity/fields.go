@@ -27,7 +27,6 @@ type Field struct {
 	RefID       string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
 	RefType     string            `json:"ref_type"`
 	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
-	ActionID    string            `json:"action_id"` // another field_id for datetime with reminder/dueby
 }
 
 type FieldMeta struct {
@@ -47,20 +46,16 @@ type FieldMeta struct {
 
 type Choice struct {
 	ID           string      `json:"id"`
-	Verb         interface{} `json:"verb"`
+	ParentIDs    []string    `json:"parent_ids"`
 	DisplayValue interface{} `json:"display_value"`
-	Expression   string      `json:"expression"`
 	BaseChoice   bool        `json:"base_choice"`
 	Default      bool        `json:"default"`
 }
 
 type Dependent struct {
-	ParentKey          string `json:"parent_key"`
-	EvalutedValue      string // this will be populated in the reference.go using the value of the parent key
-	Expression         string // if expression exist, execute it to know postive/negative
-	EvalutedExpression bool   // this will be populated in the reference.go using the expression evalutor
-	SimpleExpression   string // if simple-expression exist, skip regular expression and evaluate it in the UI itself
-	Action             string // on positive expression, do what said on the action. Otherwise do the opposite
+	ParentKey   string   `json:"parent_key"`
+	Expressions []string `json:"expressions"` // if expression exist, execute it to know postive/negative
+	Actions     []string `json:"actions"`     // execute the action based on the expression result
 }
 
 //DType defines the data type of field

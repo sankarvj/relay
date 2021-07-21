@@ -144,7 +144,9 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))
 		case lexertoken.TokenEqualSign:
-			r.addCompareOperation()
+			r.addCompareOperation(false)
+		case lexertoken.TokenNotEqualSign:
+			r.addCompareOperation(true)
 		case lexertoken.TokenGTSign:
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
@@ -154,7 +156,9 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 		case lexertoken.TokenBFSign:
 			r.addBFCompareOperation()
 		case lexertoken.TokenINSign:
-			r.addINOperation()
+			r.addINOperation(false)
+		case lexertoken.TokenNotINSign:
+			r.addINOperation(true)
 		case lexertoken.TokenANDOperation:
 			r.addANDCondition()
 		case lexertoken.TokenOROperation:
@@ -224,7 +228,9 @@ func (r Ruler) startGraphingLexer(rule string) Ruler {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))
 		case lexertoken.TokenEqualSign:
-			r.addCompareOperation()
+			r.addCompareOperation(false)
+		case lexertoken.TokenNotEqualSign:
+			r.addCompareOperation(true)
 		case lexertoken.TokenGTSign:
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
@@ -234,7 +240,9 @@ func (r Ruler) startGraphingLexer(rule string) Ruler {
 		case lexertoken.TokenBFSign:
 			r.addBFCompareOperation()
 		case lexertoken.TokenINSign:
-			r.addINOperation()
+			r.addINOperation(false)
+		case lexertoken.TokenNotINSign:
+			r.addINOperation(true)
 		case lexertoken.TokenANDOperation:
 			r.addANDCondition()
 		case lexertoken.TokenOROperation:
@@ -275,10 +283,16 @@ func (r *Ruler) addOperand(value interface{}) error {
 	return nil
 }
 
-func (r *Ruler) addCompareOperation() error {
+func (r *Ruler) addCompareOperation(not bool) error {
 	r.constructRuleItem()
-	r.RuleItem.operation = compare
-	r.RuleItem.operator = lexertoken.EqualSign
+	if not {
+		r.RuleItem.operation = differ
+		r.RuleItem.operator = lexertoken.NotEqualSign
+	} else {
+		r.RuleItem.operation = compare
+		r.RuleItem.operator = lexertoken.EqualSign
+	}
+
 	return nil
 }
 
@@ -310,10 +324,15 @@ func (r *Ruler) addBFCompareOperation() error {
 	return nil
 }
 
-func (r *Ruler) addINOperation() error {
+func (r *Ruler) addINOperation(not bool) error {
 	r.constructRuleItem()
-	r.RuleItem.operation = in
-	r.RuleItem.operator = lexertoken.INSign
+	if not {
+		r.RuleItem.operation = notin
+		r.RuleItem.operator = lexertoken.NotINSign
+	} else {
+		r.RuleItem.operation = in
+		r.RuleItem.operator = lexertoken.INSign
+	}
 	return nil
 }
 

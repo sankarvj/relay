@@ -51,21 +51,14 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return err
-	}
-
-	var viewModelItems []item.ViewModelItem
+	var items []item.Item
 	if viewID == "" {
-		items, err := item.ListFilterByState(ctx, e.ID, state, i.db)
+		var err error
+		items, err = item.ListFilterByState(ctx, e.ID, state, i.db)
 		if err != nil {
 			return err
 		}
-		viewModelItems = make([]item.ViewModelItem, len(items))
-		for i, item := range items {
-			viewModelItems[i] = createViewModelItem(item)
-		}
+
 	} else {
 		fl, err := flow.Retrieve(ctx, viewID, i.db)
 		if err != nil {
@@ -77,16 +70,17 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return err
 		}
-		viewModelItems, err = itemsResp(ctx, i.db, params["account_id"], e, result)
+		items, err = itemsResp(ctx, i.db, params["account_id"], e, result)
 		if err != nil {
 			return err
 		}
 	}
 
-	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{}, i.db, job.NewJabEngine())
+	fields, viewModelItems := itemResponse(e, items)
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, items, map[string]interface{}{}, i.db, job.NewJabEngine())
 
 	response := struct {
-		Items    []item.ViewModelItem   `json:"items"`
+		Items    []ViewModelItem        `json:"items"`
 		Category int                    `json:"category"`
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
@@ -242,22 +236,19 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	viewModelItems := make([]item.ViewModelItem, 0)
+	it := item.Item{}
 	if params["item_id"] != "undefined" {
-		it, err := item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
+		it, err = item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
 		if err != nil {
 			return err
 		}
-		viewModelItem := createViewModelItem(it)
-		viewModelItems = append(viewModelItems, viewModelItem)
+
 	}
 
 	bonds, err := relationship.List(ctx, i.db, params["account_id"], params["entity_id"])
 	if err != nil {
 		return err
 	}
-
-	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
 
 	if populateBR {
 		be, err := entity.Retrieve(ctx, params["account_id"], baseEntityID, i.db)
@@ -273,13 +264,15 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	fields, viewModelItems := itemResponse(e, []item.Item{it})
 	if len(viewModelItems) == 0 {
-		viewModelItems = append(viewModelItems, item.ViewModelItem{})
+		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`
-		Item   item.ViewModelItem     `json:"item"`
+		Item   ViewModelItem          `json:"item"`
 		Bonds  []relationship.Bond    `json:"bonds"`
 		Fields []entity.Field         `json:"fields"`
 	}{
@@ -299,8 +292,8 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 
-func createViewModelItem(i item.Item) item.ViewModelItem {
-	return item.ViewModelItem{
+func createViewModelItem(i item.Item) ViewModelItem {
+	return ViewModelItem{
 		ID:     i.ID,
 		Name:   i.Name,
 		Type:   i.Type,
@@ -322,4 +315,23 @@ func makeConField(conditions []ruler.Condition) []graphdb.Field {
 		conFields = append(conFields, gf)
 	}
 	return conFields
+}
+
+func itemResponse(e entity.Entity, items []item.Item) ([]entity.Field, []ViewModelItem) {
+	viewModelItems := make([]ViewModelItem, len(items))
+	for i, item := range items {
+		viewModelItems[i] = createViewModelItem(item)
+	}
+
+	return e.FieldsIgnoreError(), viewModelItems
+}
+
+// ViewModelItem represents the view model of item
+// (i.e) it has fields instead of attributes
+type ViewModelItem struct {
+	ID     string                 `json:"id"`
+	Name   *string                `json:"name"`
+	Type   int                    `json:"type"`
+	State  int                    `json:"state"`
+	Fields map[string]interface{} `json:"fields"`
 }

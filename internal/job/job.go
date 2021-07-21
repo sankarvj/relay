@@ -52,7 +52,8 @@ func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source 
 		return
 	}
 	valueAddedFields := e.ValueAdd(it.Fields())
-	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields)
+	log.Printf("valueAddedFields %+v", valueAddedFields)
+	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields, NewJabEngine())
 	//j.validateWorkflows(db, entityID, itemID, oldFields, newFields)
 	j.AddConnection(accountID, source, entityID, it.ID, valueAddedFields, nil, db)
 
@@ -129,6 +130,7 @@ func (j *Job) validateWorkflows(e entity.Entity, itemID string, oldFields, newFi
 
 	//pipelines -  not a generic way. the way we use dependent is muddy
 	for _, fi := range e.FieldsIgnoreError() {
+		log.Println("fi.Key ---> ", fi.Key)
 		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := dirtyField.([]interface{})[0].(string)

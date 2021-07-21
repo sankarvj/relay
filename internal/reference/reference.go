@@ -14,205 +14,209 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
+const (
+	ActionFilter = "filter"
+	ActionView   = "view"
+	ActionSet    = "set"
+)
+
+const (
+	ByFlow      = "flow_id"
+	ByDoNothing = "donothing"
+	ByShow      = "show"
+	ByHide      = "hide"
+)
+
 /***
 In this file we map the fields with the reference field value for the specific item
 If the items count is more than 1, we will just update the value for the current selected item only.
 If the items count is equal to 1, we will populate all the available choices if the referenced entity is child unit.
 **/
 
-//Check dependent struct in the fields.go to understand it fully
-const (
-	ActionShow       = "show"
-	ActionHide       = "hide"
-	ActionLoadStages = "stages"
-)
+func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.Item, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
 
-func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.ViewModelItem, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
-	referenceFields := make(map[string]*entity.Field, 0)
-	referenceIds := make(map[string][]interface{}, 0)
-
+	refIds := populateExistingItemIds(items, fields)
+	// 1.populate referenceIDS in the map format <fieldKey: []ExistingItemIds{} + []BaseItemIds{}>
+	// 2.based on the value populated update the choices
 	for i := 0; i < len(fields); i++ {
-		if fields[i].IsReference() && fields[i].RefID != "" {
-			if srcItemID, ok := srcMap[fields[i].RefID]; ok { // if the parent item exists please add it to the item
-				referenceIds[fields[i].Key] = []interface{}{srcItemID}
-			} else {
-				referenceIds[fields[i].Key] = []interface{}{}
+		f := &fields[i]
+		ids := refIds[f.Key]
+		if srcItemID, ok := srcMap[f.RefID]; ok { // if the parent item exists please add it to the item
+			if ids == nil {
+				ids = []interface{}{}
 			}
-			referenceFields[fields[i].Key] = &fields[i]
+			ids = append(ids, srcItemID)
 		}
+		updateChoices(ctx, db, accountID, entityID, f, ids, eng)
+		log.Printf("f NAME --> %+v", f.Name)
+		log.Printf("f CHOICES --> %+v", f.Choices)
 	}
 
-	// Fetch the selected item values only
+	//dependent logic during list/retrive/edit. this logic will not get executed in create
+	//the values evaluted using this logic should be attached to each item
 	for _, item := range items {
-		for key, vals := range item.Fields {
-			if refIds, ok := referenceIds[key]; ok {
-				if vals == nil {
-					vals = []interface{}{}
+		for i := 0; i < len(fields); i++ {
+			f := &fields[i]
+			if f.IsDependent() {
+				_, pv := parentField(fields, f.Dependent.ParentKey, item.Fields())
+
+				log.Println("Evaluted Parent. Evaluted Parent.. Evaluted Parent... ", pv)
+
+				for k, exp := range f.Dependent.Expressions {
+					result := eng.RunExpEvaluator(ctx, db, nil, accountID, exp, item.Fields())
+
+					if result {
+						action := f.Dependent.Actions[k] // take the corresponding action
+						log.Println("Execute Me. Execute Me.. Execute Me... ", action)
+
+						if pv != "" {
+							switch action {
+							case fmt.Sprintf("{{{%s.%s}}}", ActionSet, ByDoNothing):
+							case fmt.Sprintf("{{{%s.%s}}}", ActionView, ByShow):
+							case fmt.Sprintf("{{{%s.%s}}}", ActionView, ByHide):
+							case fmt.Sprintf("{{{%s.%s}}}", ActionFilter, ByFlow):
+								nodes, err := node.Stages(ctx, pv, db)
+								if err != nil {
+									log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
+									return
+								}
+								choicesMaker(f, pv, nodeChoices(nodes))
+							case fmt.Sprintf("{{{%s.%s}}}", ActionSet, ByFlow):
+							}
+
+						}
+						//if one result is evaluated stop ther for that field in the item
+						break
+					}
 				}
-				referenceIds[key] = append(refIds, vals.([]interface{})...)
+
 			}
 		}
 	}
-
-	for _, f := range referenceFields {
-		if f.DomType == entity.DomAutoSelect {
-			refIDs := evaluateChoices(ctx, db, accountID, f, items, eng)
-			referenceIds[f.Key] = append(referenceIds[f.Key], refIDs...)
-		}
-
-		if f.Dependent != nil {
-			evaluateDependentValue(ctx, db, accountID, f, items, eng)
-		}
-
-		updateChoices(ctx, db, accountID, entityID, f, referenceIds[f.Key])
-	}
-
 }
 
-// TODO not understandable. please update the readme
-func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) []interface{} {
-	refIDs := make([]interface{}, 0)
-	for i := 0; i < len(items); i++ {
-		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't execute the choice expressions and set the value if it is already set. for more details go to README
+//TODO not efficient. Put it in a map???
+func populateExistingItemIds(items []item.Item, fields []entity.Field) map[string][]interface{} {
+	referenceIds := make(map[string][]interface{}, 0)
+	for _, i := range items {
+		if (i == item.Item{}) {
 			continue
 		}
-		for _, choice := range f.Choices {
-			result := eng.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
-			if result {
-				items[i].Fields[f.Key] = []interface{}{choice.ID}
-				refIDs = append(refIDs, choice.ID)
+		for _, f := range fields {
+			if f.IsReference() && f.RefID != "" {
+				if _, ok := referenceIds[f.Key]; ok { // if the parent item exists please add it to the item
+					referenceIds[f.Key] = append(referenceIds[f.Key], i.Fields()[f.Key].([]interface{})...)
+				} else {
+					referenceIds[f.Key] = i.Fields()[f.Key].([]interface{})
+				}
 			}
 		}
 	}
-	return refIDs
+	return referenceIds
 }
 
-func evaluateDependentValue(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) {
-	for i := 0; i < len(items); i++ {
-		parentField := items[i].Fields[f.Dependent.ParentKey]
-		if parentField == nil || len(parentField.([]interface{})) == 0 || parentField.([]interface{})[0] == nil {
-			continue
-		}
-		//TODO what happens if more than one value exists???
-		f.Dependent.EvalutedValue = parentField.([]interface{})[0].(string)
-		//f.Dependent.EvalutedExpression = eng.RunExpEvaluator(ctx, db, nil, accountID, f.Dependent.Expression, items[i].Fields)
-
-	}
-}
+// // TODO not understandable. please update the readme
+// func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) []interface{} {
+// 	refIDs := make([]interface{}, 0)
+// 	for i := 0; i < len(items); i++ {
+// 		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't execute the choice expressions and set the value if it is already set. for more details go to README
+// 			continue
+// 		}
+// 		for _, choice := range f.Choices {
+// 			//items[i].Fields[f.Key] = []interface{}{choice.ID}
+// 			refIDs = append(refIDs, choice.ID)
+// 			//result := eng.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
+// 		}
+// 	}
+// 	return refIDs
+// }
 
 //updateChoices simply update single value to the choice if that itemID is populated already.
 //updateChoices won't pull all the choices available to that reference entity in the list view.
 //updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
 //updateChoices should work differently in the detail use-case
-func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string, f *entity.Field, choiceIds []interface{}) {
+func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string, f *entity.Field, refIDs []interface{}, eng *engine.Engine) {
 
-	if f.IsNotApplicable() {
-		return
-	}
-
-	e, err := entity.Retrieve(ctx, accountID, f.RefID, db)
-	if err != nil {
-		log.Println("error on retriving entity when updatingChoices. continuing... ", err)
-		return
-	}
-
-	if e.Category == entity.CategoryNode { //  node handler
-		var nodes []node.Node
-		var err error
-		if len(choiceIds) == 0 && f.Dependent.EvalutedValue != "" { // only for edit case.
-			nodes, err = node.Stages(ctx, f.Dependent.EvalutedValue, db)
-		} else { // view case
-			nodes, err = node.Stages(ctx, f.Dependent.EvalutedValue, db)
-			//nodes, err = node.BulkRetrieve(ctx, choiceIds, db)
-		}
+	if f.IsReference() && f.RefID != "" && !f.IsNotApplicable() {
+		e, err := entity.Retrieve(ctx, accountID, f.RefID, db)
 		if err != nil {
-			log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
+			log.Println("error on retriving entity when updatingChoices. why??? but continuing for now... ", err)
 			return
 		}
-		choicesMakerNode(f, nodes)
-	} else if e.Category == entity.CategoryFlow { //  flow handler
-		var flows []flow.Flow
-		var err error
-		if len(choiceIds) == 0 { // create or edit case.
-			flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, db)
-		} else { // view case
-			flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(choiceIds), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
-		}
-		if err != nil {
-			log.Println("error on retriving flows when updatingChoices. continuing... ", err)
-			return
-		}
-		choicesMakerFlow(f, flows)
-	} else if e.Category == entity.CategoryChildUnit { // select. with pre-populated drop-down choices
-		refFields := e.FieldsIgnoreError()
-		refItems, err := item.EntityItems(ctx, e.ID, db)
-		//TODO bring dependent field logic here.
-		if f.Dependent != nil {
-
-		}
-
-		if err != nil {
-			log.Println("error on retriving reference items for field unit entity. continuing... ", err)
-		}
-		choicesMaker(f, refItems, refFields)
-	} else { //auto-complete or multi-select. The UI must provide the search for these fields
-		if len(choiceIds) == 0 { // fetch with some limit
-			// I hope we can get some items for multi-select with limit here.
-			f.Choices = make([]entity.Choice, 0)
-		} else {
-			refFields := e.FieldsIgnoreError()
-			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(choiceIds), db)
+		if e.Category == entity.CategoryChildUnit {
+			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
+				log.Println("error on retriving reference items for field unit entity. continuing... ", err)
+			}
+			choicesMaker(f, "", itemChoices(*f, refItems))
+		} else { // useful for auto-complete while viewing
+			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
+			if err != nil && err != item.ErrItemsEmpty {
 				log.Println("error on retriving reference items when updatingChoices. continuing... ", err)
 				return
 			}
-			choicesMaker(f, refItems, refFields)
+			choicesMaker(f, "", itemChoices(*f, refItems))
+		}
+
+		//RETHINK
+		if e.Category == entity.CategoryFlow { //  flow handler
+			var flows []flow.Flow
+			var err error
+			if len(refIDs) == 0 { // create or edit case.
+				flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, db)
+			} else { // view case
+				flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(refIDs), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
+			}
+			if err != nil {
+				log.Println("error on retriving flows when updatingChoices. continuing... ", err)
+				return
+			}
+			choicesMaker(f, "", flowChoices(flows))
 		}
 	}
+
 }
 
-func choicesMaker(f *entity.Field, refItems []item.Item, refFields []entity.Field) {
-
-	var verbFieldKey string
-	for _, refField := range refFields {
-		if refField.Name == entity.Verb {
-			verbFieldKey = refField.Key
+func parentField(fields []entity.Field, key string, vals map[string]interface{}) (*entity.Field, string) {
+	for _, f := range fields {
+		if f.Key == key {
+			return &f, evaluatedParentVal(&f, vals[key])
 		}
 	}
-
-	f.Choices = make([]entity.Choice, 0)
-	for _, refItem := range refItems {
-		f.Choices = append(f.Choices, entity.Choice{
-			ID:           refItem.ID,
-			Verb:         refItem.Fields()[verbFieldKey],
-			DisplayValue: refItem.Fields()[f.DisplayGex()],
-		})
-	}
+	return nil, ""
 }
 
-func choicesMakerFlow(f *entity.Field, flows []flow.Flow) {
+func evaluatedParentVal(pf *entity.Field, pv interface{}) string {
+	var evaluatedDependentValue string
+	if pf.IsList() || pf.IsReference() {
+		if pv != nil && len(pv.([]interface{})) > 0 && pv.([]interface{})[0] != nil {
+			evaluatedDependentValue = pv.([]interface{})[0].(string)
+		}
+	} else {
+		evaluatedDependentValue = pv.(string)
+	}
+	return evaluatedDependentValue
+}
+
+func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 	if f.Choices == nil {
 		f.Choices = make([]entity.Choice, 0)
 	}
 
-	for _, flow := range flows {
-		f.Choices = append(f.Choices, entity.Choice{
-			ID:           flow.ID,
-			DisplayValue: flow.Name,
-		})
-	}
-}
+	mapOfChoices := choicesMap(f)
 
-func choicesMakerNode(f *entity.Field, nodes []node.Node) {
-	if f.Choices == nil {
-		f.Choices = make([]entity.Choice, 0)
-	}
-
-	for _, node := range nodes {
-		f.Choices = append(f.Choices, entity.Choice{
-			ID:           node.ID,
-			DisplayValue: node.Name,
-		})
+	for _, choicer := range choicers {
+		if choice, ok := mapOfChoices[f.RefID]; ok {
+			if isIdNotExistAlready(choice.ParentIDs, parentID) {
+				choice.ParentIDs = append(choice.ParentIDs, parentID)
+			}
+		} else {
+			f.Choices = append(f.Choices, entity.Choice{
+				ID:           choicer.ID,
+				ParentIDs:    []string{parentID},
+				DisplayValue: choicer.Name,
+			})
+		}
 	}
 }
 
@@ -223,10 +227,8 @@ func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
 	//Adding parents existing items to the child choices
 	for _, sf := range sourceFields {
 		if sf.RefID == f.RefID {
-
 			f.Choices = append(f.Choices, entity.Choice{
 				ID:           fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, sf.Key),
-				Verb:         "",
 				DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("%s's existing %s", sourceEntity.DisplayName, f.DisplayName))),
 				BaseChoice:   true,
 			})
@@ -246,7 +248,6 @@ func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
 		f.SetMeta("config")
 		f.Choices = append(f.Choices, entity.Choice{
 			ID:           fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, "id"),
-			Verb:         "",
 			DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("existing %s ", sourceEntity.DisplayName))),
 			Default:      true,
 		})
@@ -255,7 +256,7 @@ func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
 }
 
 //UpdateChoicesWrapper updates only the choices for reference fields
-func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID string, valueAddedFields []entity.Field) {
+func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID string, valueAddedFields []entity.Field, eng *engine.Engine) {
 	for i := 0; i < len(valueAddedFields); i++ {
 		if valueAddedFields[i].IsReference() {
 			var refIds []interface{}
@@ -263,7 +264,7 @@ func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID 
 				refIds = valueAddedFields[i].Value.([]interface{})
 			}
 
-			updateChoices(ctx, db, accountID, entityID, &valueAddedFields[i], refIds)
+			updateChoices(ctx, db, accountID, entityID, &valueAddedFields[i], refIds, eng)
 		}
 	}
 }
@@ -278,4 +279,12 @@ func removeDuplicateValues(intSlice []interface{}) []interface{} {
 		}
 	}
 	return list
+}
+
+func choicesMap(f *entity.Field) map[string]entity.Choice {
+	choicesMap := make(map[string]entity.Choice, 0)
+	for _, choice := range f.Choices {
+		choicesMap[choice.ID] = choice
+	}
+	return choicesMap
 }

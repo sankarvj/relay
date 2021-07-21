@@ -171,12 +171,12 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make cake", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("An Todo Task", contactItem1.ID, typeItemTodo.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("make call", contactItem1.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("An Email Task", contactItem1.ID, typeItemEmail.ID))
 	if err != nil {
 		return err
 	}

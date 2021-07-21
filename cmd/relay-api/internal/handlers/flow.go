@@ -122,13 +122,13 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
-	viewModelItems := make([]item.ViewModelItem, len(items))
+	viewModelItems := make([]ViewModelItem, len(items))
 	for i, item := range items {
 		viewModelItems[i] = createViewModelItem(item)
 	}
 
 	response := struct {
-		Items      []item.ViewModelItem `json:"items"`
+		Items      []ViewModelItem      `json:"items"`
 		Flow       flow.ViewModelFlow   `json:"flow"`
 		EntityName string               `json:"entity_name"`
 		Fields     []entity.Field       `json:"fields"`

@@ -76,20 +76,16 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "fetching items from selected ids")
 	}
 
-	viewModelItems := make([]item.ViewModelItem, len(childItems))
-	for i, item := range childItems {
-		viewModelItems[i] = createViewModelItem(item)
-	}
-
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 	//When populating the fields for the child items please populate the parent id also
-	reference.UpdateReferenceFields(ctx, accountID, relatedEntityID, fields, viewModelItems, sourceMap, rs.db, job.NewJabEngine())
+	fields, viewModelItems := itemResponse(e, childItems)
+	reference.UpdateReferenceFields(ctx, accountID, relatedEntityID, fields, childItems, sourceMap, rs.db, job.NewJabEngine())
 
 	response := struct {
-		Items    []item.ViewModelItem `json:"items"`
-		Category int                  `json:"category"`
-		Fields   []entity.Field       `json:"fields"`
+		Items    []ViewModelItem `json:"items"`
+		Category int             `json:"category"`
+		Fields   []entity.Field  `json:"fields"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,

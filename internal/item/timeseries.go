@@ -2,12 +2,18 @@ package item
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+)
+
+var (
+	// ErrItemsEmpty is used when a specific items is requested but does not exist.
+	ErrItemsEmpty = errors.New("No Items found")
 )
 
 // TimeSeriesList retrieves a list of existing item for the entity associated from the database.
@@ -48,6 +54,9 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2) LIMIT 100`
 
 	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
+		if err == sql.ErrNoRows {
+			return items, ErrItemsEmpty
+		}
 		return items, errors.Wrap(err, "selecting bulk items for entity id and selected item ids")
 	}
 

@@ -16,12 +16,12 @@ import (
 )
 
 func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
-	log.Printf("running worker for expression %s : %v", expression, input)
+	log.Printf("running worker for expression: %s -:::::- input: %v", expression, input)
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
 	} else if entityID == node.SelfEntity { //self entity stops here
-		return buildResultant(node.SelfEntity, input), nil
+		return evaluate(expression, buildResultant(node.SelfEntity, input)), nil
 	}
 	//TODO cache entity
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)

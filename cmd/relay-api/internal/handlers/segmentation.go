@@ -65,14 +65,16 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 		return errors.Wrap(err, "")
 	}
 
-	viewModelItems, err := itemsResp(ctx, s.db, params["account_id"], e, result)
+	items, err := itemsResp(ctx, s.db, params["account_id"], e, result)
 	if err != nil {
 		return err
 	}
-	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, viewModelItems, map[string]interface{}{}, s.db, job.NewJabEngine())
+
+	fields, viewModelItems := itemResponse(e, items)
+	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, items, map[string]interface{}{}, s.db, job.NewJabEngine())
 
 	response := struct {
-		Items    []item.ViewModelItem   `json:"items"`
+		Items    []ViewModelItem        `json:"items"`
 		Category int                    `json:"category"`
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
@@ -132,7 +134,7 @@ type Condition struct {
 	Expression string      `json:"expression"`
 }
 
-func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Entity, result *rg.QueryResult) ([]item.ViewModelItem, error) {
+func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Entity, result *rg.QueryResult) ([]item.Item, error) {
 	itemIds := make([]interface{}, 0)
 	for result.Next() { // Next returns true until the iterator is depleted.
 		// Get the current Record.
@@ -145,13 +147,8 @@ func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Enti
 
 	items, err := item.BulkRetrieveItems(ctx, accountID, itemIds, db)
 	if err != nil {
-		return []item.ViewModelItem{}, err
+		return []item.Item{}, err
 	}
 
-	viewModelItems := make([]item.ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
-	}
-
-	return viewModelItems, nil
+	return items, nil
 }
