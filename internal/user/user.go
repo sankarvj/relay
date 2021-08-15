@@ -277,7 +277,7 @@ func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, passwo
 	if res != 0 { //not equal
 		return u, auth.Claims{}, ErrAuthenticationFailure
 	}
-	return u, auth.NewClaims(u.ID, u.Roles, now, 24*time.Hour), nil
+	return u, auth.NewClaims(u.ID, u.Roles, now, 96*time.Hour), nil //4 days expiry
 
 }
 

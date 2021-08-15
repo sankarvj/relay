@@ -4,29 +4,29 @@ import (
 	"context"
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n node.Node, eng *Engine) error {
+func (ruleResult *RuleResult) executePosCase(ctx context.Context, eng *Engine, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
 	log.Println("executePosCase ActorID ---> ", n.ActorID)
+	log.Println("n.Type ---> ", n.Type)
 	ruleResult.Executed = true
 	var err error
 	executionResponse := map[string]interface{}{}
 
 	switch n.Type {
-	case node.Push:
-		err = eng.executeData(ctx, db, n)
+	case node.Push, node.Task, node.Meeting, node.Email:
+		err = eng.executeData(ctx, n, db, rp)
 	case node.Modify:
-		err = eng.executeData(ctx, db, n)
+		err = eng.executeData(ctx, n, db, rp)
 	case node.Hook:
 		var result map[string]interface{}
 		result, err = executeHook(ctx, db, n)
 		executionResponse[node.GlobalEntityData] = result
-	case node.Email:
-		err = eng.executeEmail(ctx, db, n)
 	case node.Decision:
 		err = nil
 		executionResponse[node.GlobalEntityResult] = true
@@ -40,7 +40,7 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, db *sqlx.DB, n
 	return err
 }
 
-func (ruleResult *RuleResult) executeNegCase(ctx context.Context, db *sqlx.DB, n node.Node) error {
+func (ruleResult *RuleResult) executeNegCase(ctx context.Context, eng *Engine, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
 	ruleResult.Executed = false
 	executionResponse := map[string]interface{}{}
 	switch n.Type {

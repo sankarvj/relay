@@ -43,9 +43,9 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 				work.InboundRespCh <- result
 			}
 		case ruler.PosExecutor:
-			err = ruleResult.executePosCase(ctx, db, n, e)
+			err = ruleResult.executePosCase(ctx, e, n, db, rp)
 		case ruler.NegExecutor:
-			err = ruleResult.executeNegCase(ctx, db, n)
+			err = ruleResult.executeNegCase(ctx, e, n, db, rp)
 		}
 	}
 

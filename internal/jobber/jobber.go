@@ -1,10 +1,11 @@
 package jobber
 
 import (
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 type Jobber interface {
-	AddConnection(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB)
+	EventItemCreated(accountID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool)
+	EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool)
 }

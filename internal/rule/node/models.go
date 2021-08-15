@@ -15,11 +15,14 @@ const (
 	Decision     = 1
 	Push         = 2
 	Modify       = 3
-	Email        = 4
 	Hook         = 5
 	Schedule     = 6
 	Delay        = 7
 	Stage        = 8
+	//specific types equivalent to push
+	Task    = 101
+	Meeting = 102
+	Email   = 103
 )
 
 //Node struct defines the structure of each node in the workflow
@@ -127,7 +130,12 @@ func (n Node) VarStrMap() map[string]string {
 	varStrMap := make(map[string]string, 0)
 	vars := n.VariablesMap()
 	for k, v := range vars {
-		varStrMap[k] = v.(string)
+		if k == GlobalEntity {
+			log.Println("What can be done here? shall we convert map to string?")
+		} else {
+			varStrMap[k] = v.(string)
+		}
+
 	}
 	return varStrMap
 }

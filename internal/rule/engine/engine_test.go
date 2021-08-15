@@ -44,7 +44,7 @@ func TestEmailRuleRunner(t *testing.T) {
 			}
 
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
 
 			_, err = eng.RunRuleEngine(tests.Context(), db, nil, node)
@@ -72,7 +72,7 @@ func TestRuleRenderer(t *testing.T) {
 			exp := fmt.Sprintf("{{%s.%s}}", contactEntity.ID, schema.SeedFieldFNameKey)
 
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
 
 			content := eng.RunExpRenderer(tests.Context(), db, schema.SeedAccountID, exp, vars)
@@ -90,6 +90,8 @@ func TestCreateItemRuleRunner(t *testing.T) {
 	tests.SeedEntity(t, db)
 	tests.SeedWorkFlows(t, db)
 	defer teardown()
+	residPool, teardown2 := tests.NewRedisUnit(t)
+	defer teardown2()
 	t.Log("Given the need to run the engine to create new item")
 	{
 		t.Log("\twhen running a create item engine - default case")
@@ -112,9 +114,9 @@ func TestCreateItemRuleRunner(t *testing.T) {
 				Type:      node.Push,
 			}
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
-			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
+			_, err := eng.RunRuleEngine(tests.Context(), db, residPool, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
 			}
@@ -129,6 +131,8 @@ func TestUpdateRuleRunner(t *testing.T) {
 	tests.SeedEntity(t, db)
 	tests.SeedWorkFlows(t, db)
 	defer teardown()
+	residPool, teardown2 := tests.NewRedisUnit(t)
+	defer teardown2()
 	t.Log("Given the need to run the engine to update existing item")
 	{
 		t.Log("\twhen running update item engine - default case")
@@ -149,9 +153,9 @@ func TestUpdateRuleRunner(t *testing.T) {
 			}
 
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
-			_, err := eng.RunRuleEngine(tests.Context(), db, nil, node)
+			_, err := eng.RunRuleEngine(tests.Context(), db, residPool, node)
 			if err != nil {
 				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
 			}
@@ -206,11 +210,11 @@ func TestTrigger(t *testing.T) {
 			newItemFields[schema.SeedFieldNPSKey] = 99
 			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
-			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, db)
+			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, flow.FlowTypeEventUpdate, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, item.Diff(oldItemFields, newItemFields))
 
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
 			errs := flow.Trigger(tests.Context(), db, nil, i.ID, dirtyFlows, eng)
 			for _, err := range errs {
@@ -238,7 +242,7 @@ func TestDirectTrigger(t *testing.T) {
 			f, err := flow.Retrieve(tests.Context(), flowID, db)
 			contactItems, _ := item.List(tests.Context(), f.EntityID, db)
 			eng := engine.Engine{
-				Job: job.Job{},
+				Job: &job.Job{},
 			}
 			err = flow.DirectTrigger(tests.Context(), db, nil, schema.SeedAccountID, flowID, n2, f.EntityID, contactItems[0].ID, eng)
 			if err != nil {

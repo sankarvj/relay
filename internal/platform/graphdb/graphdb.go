@@ -315,6 +315,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case entity.TypeReference:
+			log.Println("f -->", f.Key)
 			//TODO: handle cyclic looping
 			if f.Value == nil {
 				continue

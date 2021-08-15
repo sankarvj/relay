@@ -48,8 +48,6 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 			ids = append(ids, srcItemID)
 		}
 		updateChoices(ctx, db, accountID, entityID, f, ids, eng)
-		log.Printf("f NAME --> %+v", f.Name)
-		log.Printf("f CHOICES --> %+v", f.Choices)
 	}
 
 	//dependent logic during list/retrive/edit. this logic will not get executed in create
@@ -149,6 +147,12 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 				log.Println("error on retriving reference items for field unit entity. continuing... ", err)
 			}
 			choicesMaker(f, "", itemChoices(*f, refItems))
+		} else if e.Category == entity.CategoryEmail {
+			refItems, err := item.EntityItems(ctx, e.ID, db)
+			if err != nil {
+				log.Println("error on retriving reference items for email entity. continuing... ", err)
+			}
+			choicesMaker(f, "", itemChoices(*f, refItems))
 		} else { // useful for auto-complete while viewing
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
@@ -163,7 +167,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			var flows []flow.Flow
 			var err error
 			if len(refIDs) == 0 { // create or edit case.
-				flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, db)
+				flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, flow.FlowTypeUnknown, db)
 			} else { // view case
 				flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(refIDs), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
 			}
@@ -193,7 +197,9 @@ func evaluatedParentVal(pf *entity.Field, pv interface{}) string {
 			evaluatedDependentValue = pv.([]interface{})[0].(string)
 		}
 	} else {
-		evaluatedDependentValue = pv.(string)
+		if pv != nil {
+			evaluatedDependentValue = pv.(string)
+		}
 	}
 	return evaluatedDependentValue
 }

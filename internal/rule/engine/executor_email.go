@@ -10,7 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func (eng *Engine) executeEmail(ctx context.Context, db *sqlx.DB, n node.Node) error {
+func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	mailFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err

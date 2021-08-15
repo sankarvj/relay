@@ -45,7 +45,7 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		entityIDs = entity.FetchIDs(entities)
 	}
 
-	flows, err := flow.List(ctx, entityIDs, fm, f.db)
+	flows, err := flow.List(ctx, entityIDs, fm, flow.FlowTypeAll, f.db)
 	if err != nil {
 		return err
 	}
@@ -183,16 +183,48 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Flow: %+v", &flow)
 	}
 
-	for _, nn := range nf.Nodes {
-		nn = makeNode(flow.AccountID, flow.ID, nn)
-		n, err := node.Create(ctx, f.db, nn, time.Now())
-		if err != nil {
-			return errors.Wrapf(err, "Node: %+v", n)
-		}
-	}
+	// for _, nn := range nf.Nodes {
+	// 	nn = makeNode(flow.AccountID, flow.ID, nn)
+	// 	n, err := node.Create(ctx, f.db, nn, time.Now())
+	// 	if err != nil {
+	// 		return errors.Wrapf(err, "Node: %+v", n)
+	// 	}
+	// }
 	//TODO: do it in single transaction >|<
 
-	return web.Respond(ctx, w, flow, http.StatusCreated)
+	return web.Respond(ctx, w, createViewModelFlow(flow, []node.ViewModelNode{}), http.StatusCreated)
+}
+
+func (f *Flow) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Flow.Update")
+	defer span.End()
+
+	var uf flow.NewFlow
+	if err := web.Decode(r, &uf); err != nil {
+		return errors.Wrap(err, "")
+	}
+	uf.Expression = makeExpression(uf.Queries)
+	uf.AccountID = params["account_id"]
+	uf.EntityID = params["entity_id"]
+
+	log.Printf("uf --> %+v", uf)
+
+	uuf, err := flow.Update(ctx, f.db, uf, time.Now())
+	if err != nil {
+		return errors.Wrapf(err, "Error updating flow")
+	}
+
+	nodes, err := node.NodeActorsList(ctx, uuf.ID, f.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelNodes := make([]node.ViewModelNode, len(nodes))
+	for i, node := range nodes {
+		viewModelNodes[i] = createViewModelNodeActor(node)
+	}
+
+	return web.Respond(ctx, w, createViewModelFlow(uuf, viewModelNodes), http.StatusOK)
 }
 
 func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModelFlow {

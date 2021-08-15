@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	Verb = "verb"
+	Verb    = "verb"
+	VerbKey = "uuid-00-verb"
 )
 
 // Field represents structural format of attributes in entity
@@ -50,6 +51,7 @@ type Choice struct {
 	DisplayValue interface{} `json:"display_value"`
 	BaseChoice   bool        `json:"base_choice"`
 	Default      bool        `json:"default"`
+	Verb         string      `json:"default"`
 }
 
 type Dependent struct {
@@ -100,11 +102,10 @@ const (
 
 //field_unit expression
 const (
-	FuExpNone   = "none"
-	FuExpDone   = "done"
-	FuExpPos    = "pos"    //set this on positive expression of due_by
-	FuExpNeg    = "neg"    //set this on negative expression of the due_by
-	FuExpManual = "manual" //keep as it is unless manually changes
+	FuExpNone = "none"
+	FuExpDone = "done"
+	FuExpPos  = "pos" //set this on positive expression of due_by
+	FuExpNeg  = "neg" //set this on negative expression of the due_by
 )
 
 const (

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -13,7 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) error {
+func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
 	// value add the fields with the template item provided in the actuals.
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
@@ -31,17 +32,17 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 	log.Printf("ni Fields -- %+v", ni.Fields)
 
 	switch n.Type {
-	case node.Push:
+	case node.Push, node.Task, node.Meeting, node.Email:
 		log.Printf("Going to create %+v", ni)
 		it, err := item.Create(ctx, db, ni, time.Now())
 		if err != nil {
 			return err
 		}
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
-		eng.Job.AddConnection(n.AccountID, n.VarStrMap(), it.EntityID, it.ID, valueAddedFields, nil, db)
+		eng.Job.EventItemCreated(n.AccountID, it.EntityID, it.ID, n.VarStrMap(), db, rp)
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
-		_, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
+		it, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
 		if err != nil {
 			return err
 		}
@@ -49,10 +50,11 @@ func (eng *Engine) executeData(ctx context.Context, db *sqlx.DB, n node.Node) er
 		if err != nil {
 			return err
 		}
-		_, err = item.Retrieve(ctx, n.ActorID, actualItemID, db)
+		uit, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
 		if err != nil {
 			return err
 		}
+		eng.Job.EventItemUpdated(n.AccountID, it.EntityID, it.ID, uit.Fields(), it.Fields(), db, rp)
 	}
 
 	return err
@@ -70,8 +72,8 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, account
 	for i := 0; i < len(fields); i++ {
 		var field = &fields[i]
 
-		//associates the item with the stage if executed via the
-		if field.IsNode() {
+		//associates the item with the stage if executed via the pipeline stage changes from the job
+		if field.IsNode() && stageID != node.NoActor {
 			field.Value = []interface{}{stageID}
 			continue
 		}
@@ -102,7 +104,11 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, account
 			// }
 		default:
 			if field.Value != nil {
-				field.Value = eng.RunFieldExpRenderer(ctx, db, accountID, field.Value.(string), vars)
+				switch v := field.Value.(type) {
+				case string:
+					field.Value = eng.RunFieldExpRenderer(ctx, db, accountID, v, vars)
+				}
+
 			}
 		}
 

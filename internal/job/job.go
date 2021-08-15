@@ -2,10 +2,12 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
@@ -30,20 +32,26 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 		log.Println("error while retriving entity on job", err)
 		return
 	}
-	it, err := item.Retrieve(ctx, entityID, itemID, db)
+
+	err = j.actOnWorkflows(ctx, e, itemID, oldFields, newFields, db, rp)
 	if err != nil {
-		log.Println("error while retriving item on job", err)
+		log.Println(err)
 		return
 	}
-
-	j.validateWorkflows(e, itemID, oldFields, newFields, db, rp)
-	j.AddConnection(accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields), db)
-
+	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields), db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	//insertion in to redis graph DB
-	insertInToRedisGraph(accountID, entityID, it.ID, e.ValueAdd(newFields), rp)
+	err = j.actOnRedisGraph(accountID, entityID, itemID, e.ValueAdd(newFields), rp)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
 
-func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -51,33 +59,61 @@ func (j *Job) EventItemCreated(accountID, entityID string, it item.Item, source 
 		log.Println("error while retriving entity on job", err)
 		return
 	}
+	it, err := item.Retrieve(ctx, entityID, itemID, db)
+	if err != nil {
+		log.Println("error while retriving item on job", err)
+		return
+	}
+
 	valueAddedFields := e.ValueAdd(it.Fields())
-	log.Printf("valueAddedFields %+v", valueAddedFields)
 	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields, NewJabEngine())
-	//j.validateWorkflows(db, entityID, itemID, oldFields, newFields)
-	j.AddConnection(accountID, source, entityID, it.ID, valueAddedFields, nil, db)
+
+	err = j.actOnWorkflows(ctx, e, itemID, nil, it.Fields(), db, rp)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
 	//integrations
+	err = actOnIntegrations(ctx, accountID, e, it, db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	//insertion in to redis graph DB
+	err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, rp)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
+	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
+	err := graphdb.UpsertNode(rp, gpbNode)
+	if err != nil {
+		return errors.Wrap(err, "error: redisGrpah insertion job")
+	}
+	return nil
+}
+
+func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
+	valueAddedFields := e.ValueAdd(it.Fields())
+	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
 		err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
 	}
-	if err != nil {
-		log.Println("error while performing the job", err)
-	}
-
-	//insertion in to redis graph DB
-	insertInToRedisGraph(accountID, entityID, it.ID, valueAddedFields, rp)
-}
-
-func insertInToRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) {
-	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
-	err := graphdb.UpsertNode(rp, gpbNode)
-	if err != nil {
-		log.Println("error while performing the rDB insertion job", err)
-	}
+	return err
 }
 
 func makeGraphFields(fields []entity.Field) []graphdb.Field {
@@ -102,57 +138,75 @@ func makeGraphField(f *entity.Field) *graphdb.Field {
 	}
 }
 
-func (j *Job) validateWorkflows(e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
-	// log.Println("entityID...", entityID)
-	// log.Println("itemID...", itemID)
-	// log.Println("oldFields...", oldFields)
-	// log.Println("newFields...", newFields)
+func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
 	eng := engine.Engine{
 		Job: j,
 	}
-	//workflows
-	flows, err := flow.List(context.Background(), []string{e.ID}, -1, db)
-	if err != nil {
-		log.Println("There is an error while selecting flows...", err)
+	flowType := flow.FlowTypeEventUpdate //eventUpdate
+	if oldFields == nil {                //eventCreate
+		flowType = flow.FlowTypeEventCreate
 	}
+
+	//workflows - eventCreate/eventUpdate
+	flows, err := flow.List(ctx, []string{e.ID}, flow.FlowModeWorkFlow, flowType, db)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
 	dirtyFields := item.Diff(oldFields, newFields)
-	dirtyFlows := flow.DirtyFlows(context.Background(), flows, dirtyFields)
-
-	log.Println("dirtyFlows --", dirtyFlows)
-	if len(dirtyFlows) > 0 {
-		log.Print("Tick...\nTick...\nTick...\nTick...\nTick...\nTick...\n The flow trigger has been started")
-
-		errs := flow.Trigger(context.Background(), db, nil, itemID, dirtyFlows, eng)
-		if len(errs) > 0 {
-			log.Println("There is an error while triggering flows...", errs)
+	if len(flows) > 0 {
+		switch flowType {
+		case flow.FlowTypeEventUpdate:
+			dirtyFlows := flow.DirtyFlows(ctx, flows, dirtyFields)
+			if len(dirtyFlows) > 0 {
+				errs = flow.Trigger(ctx, db, rp, itemID, dirtyFlows, eng)
+			}
+		case flow.FlowTypeEventCreate:
+			errs = flow.Trigger(ctx, db, rp, itemID, flows, eng)
 		}
 	}
 
-	//pipelines -  not a generic way. the way we use dependent is muddy
+	err = actOnPipelines(ctx, eng, e, itemID, dirtyFields, newFields, db, rp)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		for i, err := range errs {
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("actOnWorkflows error index: %d error msg: %+v", i, err))
+			}
+		}
+
+	}
+	return nil
+}
+
+//actOnPipelines -  not a generic way. the way we use dependent is muddy
+func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
 	for _, fi := range e.FieldsIgnoreError() {
-		log.Println("fi.Key ---> ", fi.Key)
-		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() {
+		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := dirtyField.([]interface{})[0].(string)
-			err = flow.DirectTrigger(context.Background(), db, nil, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
+			err := flow.DirectTrigger(ctx, db, rp, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
 			if err != nil {
-				log.Println("There is an error while triggering flows...", err)
+				return errors.Wrap(err, "error: acting on pipelines")
 			}
 		}
 	}
-
+	return nil
 }
 
 // It connects the implicit relationships which as inferred by the field
-func (j Job) AddConnection(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) {
+func (j Job) actOnConnections(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) error {
 	ctx := context.Background()
 	createEvent := oldFields == nil
 	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
 	oldValueAddedFieldsMap := entity.KeyedFieldsObjMap(oldFields)
 	relationships, err := relationship.Relationships(ctx, db, accountID, entityID)
 	if err != nil {
-		log.Println("There is an error while querying relationships...", err)
-		return
+		return errors.Wrap(err, "error: querying relationships")
 	}
 
 	for _, r := range relationships {
@@ -163,7 +217,7 @@ func (j Job) AddConnection(accountID string, base map[string]string, entityID, i
 			if baseItemID, ok := base[r.DstEntityID]; ok {
 				err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 				if err != nil {
-					log.Println("Explicit association failed ", err)
+					return errors.Wrap(err, "error: querying association")
 				}
 			}
 		} else {
@@ -178,8 +232,7 @@ func (j Job) AddConnection(accountID string, base map[string]string, entityID, i
 					for _, dstItemID := range f.RefValues() {
 						err := connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, dstItemID.(string))
 						if err != nil {
-							log.Println("Implicit connection with straight reference failed", err)
-							return
+							return errors.Wrap(err, "error: implicit connection with straight reference failed")
 						}
 					}
 				}
@@ -189,7 +242,7 @@ func (j Job) AddConnection(accountID string, base map[string]string, entityID, i
 					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
 					if err != nil {
-						log.Println("Implicit connection with reverse reference failed ", err)
+						return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 					}
 					itemFieldsMap := baseItem.Fields()
 					log.Println("BF itemFieldsMap ", itemFieldsMap)
@@ -200,13 +253,14 @@ func (j Job) AddConnection(accountID string, base map[string]string, entityID, i
 						log.Println("AF itemFieldsMap ", itemFieldsMap)
 						_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
 						if err != nil {
-							log.Println("Implicit connection with reverse reference failed ", err)
+							return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 						}
 					}
 				}
 			}
 		}
 	}
+	return nil
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {

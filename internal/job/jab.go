@@ -3,8 +3,8 @@ package job
 import (
 	"log"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 )
 
@@ -12,8 +12,11 @@ import (
 type Jab struct {
 }
 
-func (J Jab) AddConnection(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) {
-	log.Println("DeadAddConnection At Jab")
+func (J Jab) EventItemCreated(accountID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
+	log.Println("Dead EventItemCreated At Jab")
+}
+func (J Jab) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
+	log.Println("Dead EventItemUpdated At Jab")
 }
 
 func NewJabEngine() *engine.Engine {

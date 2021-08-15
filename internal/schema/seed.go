@@ -12,23 +12,31 @@ const (
 	SeedUserID3   = "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 	SeedUserID4   = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 
+	//not only used in testing also used inside the projects
 	SeedFlowEntityName      = "flows"
 	SeedNodeEntityName      = "nodes"
 	SeedStatusEntityName    = "status"
-	SeedTypeEntityName      = "type"
+	SeedTypeEntityName      = "types"
 	SeedContactsEntityName  = "contacts"
 	SeedCompaniesEntityName = "companies"
 	SeedTasksEntityName     = "tasks"
+	SeedEmailEntityName     = "emails"
 	SeedNotesEntityName     = "notes"
-	SeedMeetingsEntityName  = "Meetings"
+	SeedMeetingsEntityName  = "meetings"
 	SeedTicketsEntityName   = "tickets"
 	SeedDealsEntityName     = "deals"
-	SeedWebHookEntityName   = "hook"
+	SeedWebHookEntityName   = "hooks"
 	SeedDelayEntityName     = "delay"
 
 	SeedFieldFNameKey = "uuid-00-fname"
 	SeedFieldNPSKey   = "uuid-00-nps-score"
+	SeedFieldVerbKey  = "uuid-00-verb"
 )
+
+func IsEntitySeeded(entityName string) bool {
+	seededEntities := map[string]bool{SeedFlowEntityName: true, SeedNodeEntityName: true, SeedContactsEntityName: true, SeedCompaniesEntityName: true, SeedTasksEntityName: true, SeedEmailEntityName: true, SeedNotesEntityName: true, SeedMeetingsEntityName: true, SeedTicketsEntityName: true, SeedDealsEntityName: true, SeedStatusEntityName: true, SeedTypeEntityName: true}
+	return seededEntities[entityName]
+}
 
 // Seed runs the set of seed-data queries against db. The queries are ran in a
 // transaction and rolled back if any fail.

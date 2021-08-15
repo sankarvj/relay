@@ -202,16 +202,12 @@ func (r Ruler) startComputingLexer(rule string) Ruler {
 		token = l.NextToken()
 		switch token.Type {
 		case lexertoken.TokenValuate:
-			fmt.Println("1 setContent TokenValuate", token.Value)
 			r.addEvalOperand(strings.TrimSpace(token.Value))
 		case lexertoken.TokenValue:
-			fmt.Println("2 setContent TokenValue", token.Value)
 			r.addOperand(extract(token.Value))
 		case lexertoken.TokenGibberish:
-			fmt.Println("3 setContent TokenGibberish", token.Value)
 			r.addGibbrish(token.Value)
 		case lexertoken.TokenQuery: //special type to render the template info
-			fmt.Println("4 setContent TokenQuery", token.Value)
 			r.addQuery(strings.TrimSpace(token.Value))
 		case lexertoken.TokenEOF:
 			return r

@@ -22,7 +22,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/cmd/relay-api/internal/handlers"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
-	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
+	"gitlab.com/vjsideprojects/relay/internal/platform/event"
 )
 
 // build is the git version of this program. It is set using build flags in the makefile.
@@ -192,7 +192,7 @@ func run() error {
 		AllowCredentials: true,
 	})
 
-	publisher := &pubsub.Publisher{
+	publisher := &event.Publisher{
 		Topic: cfg.PubSub.GmailPublisherTopic,
 	}
 

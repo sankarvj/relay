@@ -39,7 +39,7 @@ var (
 )
 
 // List retrieves a list of existing flows for the entity change.
-func List(ctx context.Context, entityIDs []string, fm int, db *sqlx.DB) ([]Flow, error) {
+func List(ctx context.Context, entityIDs []string, fm int, ft int, db *sqlx.DB) ([]Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.List")
 	defer span.End()
 
@@ -51,7 +51,13 @@ func List(ctx context.Context, entityIDs []string, fm int, db *sqlx.DB) ([]Flow,
 	if fm == FlowModeAll {
 		modes = []int{FlowModeWorkFlow, FlowModePipeLine}
 	}
-	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?);`, entityIDs, modes)
+
+	types := []int{ft}
+	if ft == FlowTypeAll {
+		types = []int{FlowTypeUnknown, FlowTypeEntersSegment, FlowTypeLeavesSegment, FlowTypeEventCreate, FlowTypeEventUpdate}
+	}
+
+	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?) AND type IN (?);`, entityIDs, modes, types)
 	if err != nil {
 		return nil, errors.Wrap(err, "selecting in query")
 	}
@@ -97,6 +103,30 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 	}
 
 	return f, nil
+}
+
+func Update(ctx context.Context, db *sqlx.DB, uf NewFlow, now time.Time) (Flow, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Update")
+	defer span.End()
+
+	const q = `UPDATE flows SET
+		"entity_id" = $2,
+		"name" = $3,
+		"description" = $4,
+		"type" = $5,
+		"mode" = $6,
+		"expression" = $7,
+		"updated_at" = $8 
+		 WHERE flow_id = $1`
+
+	_, err := db.ExecContext(ctx, q, uf.ID,
+		uf.EntityID, uf.Name, uf.Description, uf.Type, uf.Mode, uf.Expression, now.Unix(),
+	)
+	if err != nil {
+		return Flow{}, errors.Wrap(err, "updating flow")
+	}
+
+	return Retrieve(ctx, uf.ID, db)
 }
 
 // Retrieve gets the specified flow from the database.
@@ -187,13 +217,13 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
-			if af.stopEntryTriggerFlow(f.Condition) { //skip trigger if already active or of exit condition
+			if af.stopEntryTriggerFlow(f.Type) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
 			} else {
 				err = af.entryFlowTrigger(ctx, db, rp, n, eng)
 			}
 		} else {
-			if af.stopExitTriggerFlow(f.Condition) { //skip trigger if new  or inactive or not allowed.
+			if af.stopExitTriggerFlow(f.Type) { //skip trigger if new  or inactive or not allowed.
 				err = ErrFlowInActive
 			} else {
 				err = af.exitFlowTrigger(ctx, db, rp, n, eng)
@@ -209,6 +239,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
 func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string, eng engine.Engine) error {
+	log.Printf("Direct Trigger flowID:%s, nodeID:%s, entityID:%s, itemID:%s", flowID, nodeID, entityID, itemID)
 	//retrival of primary components item,flow,node
 	f, err := Retrieve(ctx, flowID, db)
 	if err != nil {

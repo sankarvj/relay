@@ -27,6 +27,7 @@ const (
 //GlobalEntity is the generic entity-id for certain expressions. See worker for its usecases
 const (
 	SelfEntity         = "self"
+	SegmentEntity      = "segment"
 	GlobalEntity       = "xyz"
 	GlobalEntityData   = "data"
 	GlobalEntityResult = "result"

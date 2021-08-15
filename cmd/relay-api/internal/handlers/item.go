@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
@@ -43,10 +43,11 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
 
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
 	viewID := r.URL.Query().Get("view_id")
 
-	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
@@ -64,20 +65,20 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return err
 		}
-		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, params["account_id"], fl.Expression)
-		gSegment := graphdb.BuildGNode(params["account_id"], e.ID, false).MakeBaseGNode("", makeConField(conditions))
+		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, accountID, fl.Expression)
+		gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", makeConField(conditions))
 		result, err := graphdb.GetResult(i.rPool, gSegment)
 		if err != nil {
 			return err
 		}
-		items, err = itemsResp(ctx, i.db, params["account_id"], e, result)
+		items, err = itemsResp(ctx, i.db, accountID, e, result)
 		if err != nil {
 			return err
 		}
 	}
 
 	fields, viewModelItems := itemResponse(e, items)
-	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, items, map[string]interface{}{}, i.db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, i.db, job.NewJabEngine())
 
 	response := struct {
 		Items    []ViewModelItem        `json:"items"`
@@ -99,20 +100,20 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Search")
 	defer span.End()
 
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
 	filterID := r.URL.Query().Get("fi")
-	filterKey := r.URL.Query().Get("fk")
-	log.Println("filterKey--> ", filterKey)
+	// filterKey := r.URL.Query().Get("fk")
 
-	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
 	choices := make([]entity.Choice, 0)
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
-		flows, err := flow.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
+		flows, err := flow.SearchByKey(ctx, accountID, filterID, key, term, i.db)
 		if err != nil {
 			return err
 		}
@@ -125,7 +126,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
 		//here filterID is the flowID...
-		nodes, err := node.SearchByKey(ctx, params["account_id"], filterID, key, term, i.db)
+		nodes, err := node.SearchByKey(ctx, accountID, filterID, key, term, i.db)
 		if err != nil {
 			return err
 		}
@@ -156,8 +157,6 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	log.Println("choices ", choices)
-
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
@@ -166,22 +165,22 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Update")
 	defer span.End()
 
+	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
 	var ni item.NewItem
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
-	entityID := params["entity_id"]
 	existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "Item Get During Update")
 	}
 
-	it, err := item.UpdateFields(ctx, i.db, entityID, params["item_id"], ni.Fields)
+	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
 	if err != nil {
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemUpdated(params["account_id"], params["entity_id"], ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
+	(&job.Job{}).EventItemUpdated(accountID, entityID, ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -191,6 +190,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Create")
 	defer span.End()
 
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
 		return err
@@ -201,8 +201,8 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	ni.AccountID = params["account_id"]
-	ni.EntityID = params["entity_id"]
+	ni.AccountID = accountID
+	ni.EntityID = entityID
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
@@ -212,7 +212,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(params["account_id"], params["entity_id"], it, ni.Source, i.db, i.rPool)
+	(&job.Job{}).EventItemCreated(accountID, entityID, it.ID, ni.Source, i.db, i.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
@@ -222,11 +222,12 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Retrieve")
 	defer span.End()
 
+	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
 	baseEntityID := r.URL.Query().Get("be")
 	baseItemID := r.URL.Query().Get("bi")
 	populateBR, _ := strconv.ParseBool(r.URL.Query().Get("bp")) // blue print
 
-	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
@@ -237,21 +238,27 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	it := item.Item{}
-	if params["item_id"] != "undefined" {
-		it, err = item.Retrieve(ctx, params["entity_id"], params["item_id"], i.db)
+	if itemID != "undefined" {
+		it, err = item.Retrieve(ctx, entityID, itemID, i.db)
 		if err != nil {
 			return err
 		}
 
 	}
 
-	bonds, err := relationship.List(ctx, i.db, params["account_id"], params["entity_id"])
+	bonds, err := relationship.List(ctx, i.db, accountID, entityID)
 	if err != nil {
 		return err
 	}
 
+	fields, viewModelItems := itemResponse(e, []item.Item{it})
+	if len(viewModelItems) == 0 {
+		viewModelItems = append(viewModelItems, ViewModelItem{})
+	}
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
+
 	if populateBR {
-		be, err := entity.Retrieve(ctx, params["account_id"], baseEntityID, i.db)
+		be, err := entity.Retrieve(ctx, accountID, baseEntityID, i.db)
 		if err != nil {
 			return err
 		}
@@ -263,12 +270,6 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
-
-	fields, viewModelItems := itemResponse(e, []item.Item{it})
-	if len(viewModelItems) == 0 {
-		viewModelItems = append(viewModelItems, ViewModelItem{})
-	}
-	reference.UpdateReferenceFields(ctx, params["account_id"], params["entity_id"], fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`
@@ -285,7 +286,8 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 }
 
 func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	err := item.Delete(ctx, i.db, params["account_id"], params["entity_id"], params["item_id"])
+	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
+	err := item.Delete(ctx, i.db, accountID, entityID, itemID)
 	if err != nil {
 		return err
 	}
@@ -334,4 +336,18 @@ type ViewModelItem struct {
 	Type   int                    `json:"type"`
 	State  int                    `json:"state"`
 	Fields map[string]interface{} `json:"fields"`
+}
+
+//AEI accountID, entityID, itemID
+// entityID alone has a twist
+// Need to bring the same logic in the middleware too.
+func takeAEI(ctx context.Context, params map[string]string, db *sqlx.DB) (string, string, string) {
+	entityID := params["entity_id"]
+	if schema.IsEntitySeeded(entityID) {
+		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, params["account_id"], entityID)
+		if err == nil {
+			entityID = fixedEntity.ID
+		}
+	}
+	return params["account_id"], entityID, params["item_id"]
 }

@@ -128,12 +128,12 @@ func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis
 	return startJobFlow(ctx, db, rp, n, eng)
 }
 
-func (af ActiveFlow) stopEntryTriggerFlow(condition int) bool {
-	return (condition != FlowConditionBoth && condition != FlowConditionEntry) || af.IsActive
+func (af ActiveFlow) stopEntryTriggerFlow(ftype int) bool {
+	return (ftype == FlowTypeEntersSegment) && af.IsActive
 }
 
-func (af ActiveFlow) stopExitTriggerFlow(condition int) bool {
-	return (condition != FlowConditionExit && condition != FlowConditionBoth) || af.Life == 0 || !af.IsActive
+func (af ActiveFlow) stopExitTriggerFlow(ftype int) bool {
+	return (ftype == FlowTypeLeavesSegment) && (af.Life == 0 && !af.IsActive)
 }
 
 func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {

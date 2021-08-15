@@ -19,6 +19,7 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 	ctx, span := trace.StartSpan(ctx, "handlers.Template.Create")
 	defer span.End()
 
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
 		return err
@@ -30,13 +31,13 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	//current entity
-	ce, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], i.db)
+	ce, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
 
-	ni.AccountID = params["account_id"]
-	ni.EntityID = params["entity_id"]
+	ni.AccountID = accountID
+	ni.EntityID = entityID
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 	ni.State = item.StateBluePrint

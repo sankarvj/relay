@@ -52,7 +52,8 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Retrieve")
 	defer span.End()
 
-	enty, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], e.db)
+	accountID, entityID, _ := takeAEI(ctx, params, e.db)
+	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db)
 	if err != nil {
 		return err
 	}
@@ -65,12 +66,13 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Create")
 	defer span.End()
 
+	accountID, _, _ := takeAEI(ctx, params, e.db)
 	var ne entity.NewEntity
 	if err := web.Decode(r, &ne); err != nil {
 		return errors.Wrap(err, "")
 	}
 	ne.ID = uuid.New().String()
-	ne.AccountID = params["account_id"]
+	ne.AccountID = accountID
 	ne.TeamID = params["team_id"]
 	//add key with a UUID
 	fieldKeyBinder(ne.ID, ne.Fields)
@@ -88,6 +90,7 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Update")
 	defer span.End()
 
+	accountID, entityID, _ := takeAEI(ctx, params, e.db)
 	var ve entity.ViewModelEntity
 	if err := web.Decode(r, &ve); err != nil {
 		return errors.Wrap(err, "")
@@ -98,7 +101,7 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "encode fields to input")
 	}
 
-	err = entity.Update(ctx, e.db, params["account_id"], params["entity_id"], string(input), time.Now())
+	err = entity.Update(ctx, e.db, accountID, entityID, string(input), time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &ve)
 	}

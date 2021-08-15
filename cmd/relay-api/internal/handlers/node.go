@@ -10,9 +10,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"go.opencensus.io/trace"
 )
 
@@ -32,6 +34,8 @@ func (n *Node) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 	nn.ID = uuid.New().String()
+	nn.ActorID = takeE(ctx, params["account_id"], nn.ActorID, n.db) // seems illogical. Exactly very confusing.
+
 	nn = makeNode(params["account_id"], params["flow_id"], nn)
 
 	log.Printf("nn %+v--> ", nn)
@@ -108,4 +112,14 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	}
 	nn.Expression = makeExpression(nn.Queries)
 	return nn
+}
+
+func takeE(ctx context.Context, accountID, entityID string, db *sqlx.DB) string {
+	if schema.IsEntitySeeded(entityID) {
+		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entityID)
+		if err == nil {
+			entityID = fixedEntity.ID
+		}
+	}
+	return entityID
 }

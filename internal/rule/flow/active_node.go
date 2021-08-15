@@ -188,7 +188,7 @@ func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
 		return err
 	}
 
-	if !n.IsRootNode() && n.Meta.FlowType != FlowTypePipeline || (n.Meta.FlowType == FlowTypePipeline && n.IsStageNode()) {
+	if !n.IsRootNode() {
 		if _, err := upsertAN(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
 			return err
 		}

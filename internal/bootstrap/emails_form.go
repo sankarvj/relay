@@ -138,6 +138,7 @@ func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		DisplayName: "Subject",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	bodyFieldID := uuid.New().String()

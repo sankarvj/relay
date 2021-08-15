@@ -36,7 +36,7 @@ func NodeFields() []entity.Field {
 
 func StatusFields() []entity.Field {
 	verbField := entity.Field{
-		Key:         "uuid-00-verb",
+		Key:         entity.VerbKey, // we use this value inside the code. don't change it
 		Name:        entity.Verb,
 		DisplayName: "Verb",
 		DomType:     entity.DomNotApplicable,
@@ -64,7 +64,7 @@ func StatusFields() []entity.Field {
 
 func StatusVals(verb, name, color string) map[string]interface{} {
 	statusVals := map[string]interface{}{
-		"uuid-00-verb":  verb,
+		entity.VerbKey:  verb,
 		"uuid-00-name":  name,
 		"uuid-00-color": color,
 	}
@@ -73,7 +73,7 @@ func StatusVals(verb, name, color string) map[string]interface{} {
 
 func TypeFields() []entity.Field {
 	verbField := entity.Field{
-		Key:         "uuid-00-verb",
+		Key:         entity.VerbKey, // we use this value inside the code. don't change it
 		Name:        entity.Verb,
 		DisplayName: "Verb",
 		DomType:     entity.DomNotApplicable,
@@ -93,7 +93,7 @@ func TypeFields() []entity.Field {
 
 func TypeVals(verb, name string) map[string]interface{} {
 	typeVals := map[string]interface{}{
-		"uuid-00-verb": verb,
+		entity.VerbKey: verb,
 		"uuid-00-name": name,
 	}
 	return typeVals
@@ -215,6 +215,7 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	websiteField := entity.Field{
@@ -300,6 +301,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	statusField := entity.Field{
@@ -489,7 +491,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		Key:         "uuid-00-mail-template",
 		Name:        "template",
 		DisplayName: "Template",
-		DomType:     entity.DomAutoComplete,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       emailEntityID,
 		Meta:        map[string]string{"display_gex": "name"},
@@ -532,6 +534,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "Title",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	summaryField := entity.Field{
@@ -656,6 +659,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DisplayName: "Deal Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
 	}
 
 	dealAmount := entity.Field{

@@ -9,12 +9,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/mid"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/pubsub"
+	"gitlab.com/vjsideprojects/relay/internal/platform/event"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, authenticator *auth.Authenticator, publisher *pubsub.Publisher) http.Handler {
+func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, authenticator *auth.Authenticator, publisher *event.Publisher) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
@@ -110,6 +110,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	// Register items management endpoints.
 	// TODO Add team authorization middleware
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/flows", f.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/flows/:flow_id", f.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/flows", f.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/flows/:flow_id", f.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/flows/:flow_id/items", f.RetrieveActivedItems, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
@@ -139,6 +140,17 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	// Register sns subscription from aws for the product key.
 	app.Handle("POST", "/aws/sns/:accountkey/:productkey", ass.Create)
+
+	//TODO move this as a new service
+
+	ev := Event{
+		db:    db,
+		rPool: redisPool,
+		hub:   event.NewInstanceHub(),
+	}
+	ev.Listen()
+	//wss
+	app.Handle("GET", "/v1/ws/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id", ev.Create)
 
 	return app
 }

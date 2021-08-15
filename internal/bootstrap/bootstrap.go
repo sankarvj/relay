@@ -162,7 +162,7 @@ func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entity
 	}
 
 	j := job.Job{}
-	j.EventItemCreated(accountID, entityID, it, ni.Source, db, rp)
+	j.EventItemCreated(accountID, entityID, it.ID, ni.Source, db, rp)
 
 	fmt.Printf("\t\t\tItem Added\n")
 	return it, nil
@@ -174,7 +174,7 @@ func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID strin
 		AccountID:  accountID,
 		EntityID:   entityID,
 		Mode:       mode,
-		Type:       flow.FlowTypeFieldUpdate,
+		Type:       flow.FlowTypeUnknown,
 		Condition:  condition,
 		Expression: exp,
 		Name:       name,

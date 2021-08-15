@@ -8,10 +8,12 @@ import (
 
 //FlowType is the type of flow
 const (
-	FlowTypeFieldUpdate = 0
-	FlowTypeSegment     = 1
-	FlowTypeEvent       = 2
-	FlowTypePipeline    = 3
+	FlowTypeAll           = -1
+	FlowTypeUnknown       = 0
+	FlowTypeEntersSegment = 1
+	FlowTypeLeavesSegment = 2
+	FlowTypeEventCreate   = 3
+	FlowTypeEventUpdate   = 4
 )
 
 const (
@@ -21,7 +23,8 @@ const (
 	FlowModeSegment  = 2
 )
 
-//FlowCondition defines exists/entry conditions
+// FlowCondition defines exists/entry conditions
+//it will be used to identify whether to hold or continue the execution
 const (
 	FlowConditionNil   = -1
 	FlowConditionBoth  = 0

@@ -16,10 +16,10 @@ import (
 
 var (
 	// ErrNotFound is used when a specific entity is requested but does not exist.
-	ErrNotFound = errors.New("Entity not found")
+	ErrEntityNotFound = errors.New("Entity not found")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
-	ErrInvalidID = errors.New("ID is not in its proper form")
+	ErrInvalidEntityID = errors.New("ID is not in its proper form")
 )
 
 // List retrieves a list of existing entities for the team associated from the database.
@@ -122,14 +122,14 @@ func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Ent
 	defer span.End()
 
 	if _, err := uuid.Parse(entityID); err != nil {
-		return Entity{}, ErrInvalidID
+		return Entity{}, ErrInvalidEntityID
 	}
 
 	var e Entity
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND entity_id = $2`
 	if err := db.GetContext(ctx, &e, q, accountID, entityID); err != nil {
 		if err == sql.ErrNoRows {
-			return Entity{}, ErrNotFound
+			return Entity{}, ErrEntityNotFound
 		}
 
 		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityID)

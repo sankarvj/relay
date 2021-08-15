@@ -240,6 +240,10 @@ func (i Item) Fields() map[string]interface{} {
 
 //Diff old and new fields
 func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interface{} {
+	if oldItemFields == nil {
+		return newItemFields
+	}
+
 	diffFields := make(map[string]interface{}, 0)
 	for k, v := range newItemFields {
 		diffFields[k] = v

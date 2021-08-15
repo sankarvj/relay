@@ -22,6 +22,8 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 		return input, nil
 	} else if entityID == node.SelfEntity { //self entity stops here
 		return evaluate(expression, buildResultant(node.SelfEntity, input)), nil
+	} else if entityID == node.SegmentEntity { // flow expression with enters/leaves segment
+		return ruler.FetchItemID(expression), nil
 	}
 	//TODO cache entity
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -97,9 +99,8 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 
 //Evaluate evaluates the expression with the coresponding map
 func evaluate(expression string, response map[string]interface{}) interface{} {
-
-	log.Printf("expression -- %+v", expression)
-	log.Printf("response -- %+v", response)
+	// log.Printf("expression -- %+v", expression)
+	// log.Printf("response -- %+v", response)
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
 	lenOfElements := len(elements)
