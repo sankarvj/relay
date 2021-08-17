@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -38,8 +37,6 @@ func (n *Node) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	nn = makeNode(params["account_id"], params["flow_id"], nn)
 
-	log.Printf("nn %+v--> ", nn)
-
 	//TODO: do it in single transaction <|>
 	no, err := node.Create(ctx, n.db, nn, time.Now())
 	if err != nil {
@@ -59,8 +56,6 @@ func (n *Node) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	vn = makeNode(params["account_id"], params["flow_id"], vn)
-
-	log.Printf("nn %+v--> ", vn)
 
 	//update currently supports only the name & expression
 	err := node.Update(ctx, n.db, params["account_id"], params["flow_id"], params["node_id"], vn.Name, vn.Expression, time.Now())

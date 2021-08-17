@@ -44,7 +44,7 @@ func Compare(left, right interface{}) bool {
 func compare(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("eq error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: eq and error:", c.err)
 		return false
 	}
 
@@ -66,7 +66,7 @@ func compare(left, right Operand) bool {
 func differ(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("!eq error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: !eq and error:", c.err)
 		return false
 	}
 
@@ -88,7 +88,7 @@ func differ(left, right Operand) bool {
 func greaterThan(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("gt error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: gt and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -101,7 +101,7 @@ func greaterThan(left, right Operand) bool {
 func lesserThan(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("lt error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: lt and error:", c.err)
 		return false
 	}
 
@@ -115,7 +115,7 @@ func lesserThan(left, right Operand) bool {
 func after(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("af error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: af and error:", c.err)
 		return false
 	}
 
@@ -129,7 +129,7 @@ func after(left, right Operand) bool {
 func before(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("bf error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: bf and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -142,7 +142,7 @@ func before(left, right Operand) bool {
 func in(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {
-		log.Println("in error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: in and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -159,7 +159,7 @@ func in(left, right Operand) bool { // assumption: left is a interface list & ri
 func notin(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {
-		log.Println("in error comparing operands", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: not in and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -212,7 +212,7 @@ func notsame(leftList, rightList []interface{}) bool {
 }
 
 func cast(left, right Operand, checkEquality bool) caster {
-	log.Printf("compare left: %v (%T) vs right: %v (%T)", left, left, right, right)
+	log.Printf("internal.platform.ruleengine.services.ruler.operator : compare left: %v (%T) vs right: %v (%T)\n", left, left, right, right)
 	c := caster{}
 	if left == nil || right == nil {
 		c.err = errors.New("Any one or both the operands are null")
@@ -222,7 +222,7 @@ func cast(left, right Operand, checkEquality bool) caster {
 	c.setRight(right)
 
 	if checkEquality && (c.rightDataType != c.leftDataType) {
-		c.err = fmt.Errorf("Can't do operation in two different operand types %v & %v", c.leftDataType, c.rightDataType)
+		c.err = fmt.Errorf("unexpected error occurred. can't do operation in two different operand types %v & %v\n", c.leftDataType, c.rightDataType)
 	}
 	return c
 }
@@ -341,7 +341,7 @@ func findDT(right Operand) OperandDT {
 	c := caster{}
 	c.setRight(right)
 	if c.err != nil {
-		log.Println("in error casting operands", c.err)
+		log.Println("unexpected error occurred when comparing operands. error:", c.err)
 		return UnknownDT
 	}
 	return c.rightDataType

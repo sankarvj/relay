@@ -19,6 +19,7 @@ type ctxKey int
 
 // Key is used to store/retrieve a Claims value from a context.Context.
 const Key ctxKey = 1
+const SocketKey ctxKey = 100
 
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {

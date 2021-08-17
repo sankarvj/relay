@@ -98,7 +98,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 	defer close(workChan)
 
 	if strings.TrimSpace(rule) == "" {
-		log.Printf("run rule: empty expression, send positive response")
+		log.Println("internal.platform.ruleengine.services.ruler : encountered empty expression, sending positive response")
 		// By default, the empty rule is considered as the positive expression.
 		// stand taken since the default nodes don't possess expressions
 		workChan <- Work{PosExecutor, "", nil, nil}
@@ -111,7 +111,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 
 	switch eFeedback {
 	case Execute:
-		log.Printf("run execution for expression: %s", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `execute`  expression: %s\n", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
 			workChan <- Work{PosExecutor, r.trigger, nil, nil}
@@ -119,16 +119,16 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
 	case Parse:
-		log.Printf("run parser for expression: %s", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `parse`  expression: %s\n", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		workChan <- Work{Parser, "", r.content, nil}
 	case Compute:
-		log.Printf("run computer for expression: %s", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `compute`  expression: %s\n", rule)
 		r = r.startComputingLexer(rule)
 		workChan <- Work{Computer, "", r.content, nil}
 	case Graph:
-		log.Printf("run evalution for graph expression: %s", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `graph`  expression: %s\n", rule)
 		r = r.startGraphingLexer(rule)
 		workChan <- Work{Grapher, "", r.conditions, nil}
 	}
@@ -383,7 +383,7 @@ func (r *Ruler) addQuery(q string) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Printf("EXECUTE:: execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("internal.platform.ruleengine.services.ruler : `execute:` left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {
@@ -401,7 +401,7 @@ func (r *Ruler) execute() error {
 
 func (r *Ruler) makeGraph() error {
 	r.constructRuleItem()
-	log.Printf("QUERY:: execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("internal.platform.ruleengine.services.ruler : `query:` execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
 		condition := Condition{
@@ -410,7 +410,6 @@ func (r *Ruler) makeGraph() error {
 			DataType: dtype(findDT(r.RuleItem.right)),
 			Value:    r.RuleItem.right,
 		}
-		log.Printf("CONDITION::  %+v ", condition)
 		r.conditions = append(r.conditions, condition)
 	} else {
 		//Its in the middle. Don't execute
@@ -423,7 +422,7 @@ func (r *Ruler) makeGraph() error {
 }
 
 func (r *Ruler) exit() error {
-	log.Println("exit exit exit exit exit exit exit exit")
+	log.Println("internal.platforms.ruleengine.services.ruler exit exit exit exit exit exit exit exit")
 	return nil
 }
 

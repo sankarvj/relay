@@ -98,9 +98,7 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
 	result, err := graph.Query(q)
-	log.Println("GetResultQuery gn.GraphName--> ", gn.GraphName)
-	log.Println("GetResultQuery result--> ", q)
-	log.Println("GetResultQuery err--> ", err)
+	log.Printf("internal.platform.graphdb : graphdb - result: %s - err:%v\n", q, err)
 	if err != nil {
 		return result, err
 	}
@@ -155,7 +153,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, mps...)
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
-		log.Println("UpsertNodeQuery --> ", sq)
+		log.Println("internal.platform.graphdb upsert node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -169,7 +167,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ruQ)
 		sq := strings.Join(s, " ")
-		log.Println("UnlinkNodeQuery --> ", sq)
+		log.Println("internal.platform.graphdb unlink node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -208,7 +206,7 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ulink)
 		ruq := strings.Join(s, " ")
-		log.Println("UnlinkEdgeQuery --> ", ruq)
+		log.Println("internal.platform.graphdb unlink edge query:", ruq)
 		_, err := graph.Query(ruq)
 		if err != nil {
 			return err
@@ -220,7 +218,7 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, rs...)
 		rsq := strings.Join(s, " ")
-		log.Println("UpsertEdgeQuery --> ", rsq)
+		log.Println("internal.platform.graphdb upsert edge query:", rsq)
 		_, err := graph.Query(rsq)
 		if err != nil {
 			return err
@@ -315,7 +313,6 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case entity.TypeReference:
-			log.Println("f -->", f.Key)
 			//TODO: handle cyclic looping
 			if f.Value == nil {
 				continue

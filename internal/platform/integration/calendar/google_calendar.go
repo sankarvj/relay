@@ -62,7 +62,6 @@ func (g *Gcalendar) EventCreate(calendarID string, meeting *integration.Meeting)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to create event")
 	}
-	log.Printf("event --- %+v", event)
 	meeting.ID = event.Id
 	meeting.CalID = event.ICalUID
 	meeting.Created = event.Created
@@ -131,8 +130,6 @@ func (g *Gcalendar) Sync(calendarID string, syncToken string) (string, error) {
 		}
 		pageToken = events.NextPageToken
 	}
-
-	log.Println("syncToken --> ", syncToken)
 
 	return syncToken, nil
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func grapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, expression string) (interface{}, error) {
-	log.Println("query ---> ", expression)
+	log.Println("rule.engine.grapher:  query: ", expression)
 	elements := strings.Split(expression, ".")
 	return elements[1], nil
 }

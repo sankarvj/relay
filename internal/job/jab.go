@@ -13,10 +13,10 @@ type Jab struct {
 }
 
 func (J Jab) EventItemCreated(accountID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
-	log.Println("Dead EventItemCreated At Jab")
+	log.Println("expected error occurred. dead eventItemCreated at jab")
 }
 func (J Jab) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
-	log.Println("Dead EventItemUpdated At Jab")
+	log.Println("expected error occurred. dead eventItemUpdated at jab")
 }
 
 func NewJabEngine() *engine.Engine {

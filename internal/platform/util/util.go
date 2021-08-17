@@ -27,12 +27,12 @@ func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
 	var itemMap map[string]interface{}
 	jsonbody, err := json.Marshal(intf)
 	if err != nil {
-		log.Println("Error occured when marshalling on `ConvertInterfaceToMap`", err)
+		log.Println("expected error occured when marshalling on `ConvertInterfaceToMap` sending empty map. error:", err)
 		return itemMap
 	}
 	err = json.Unmarshal(jsonbody, &itemMap)
 	if err != nil {
-		log.Println("Error occured when unmarshalling on `ConvertInterfaceToMap`", err)
+		log.Println("expected error occured when unmarshalling on `ConvertInterfaceToMap` sending empty map. error:", err)
 	}
 	return itemMap
 }
@@ -41,7 +41,7 @@ func ConvertStrToInt(s string) int {
 	if i, err := strconv.Atoi(s); err == nil {
 		return i
 	}
-	log.Printf("Error occured when converting string %s to int on `ConvertStrToInt`.", s)
+	log.Printf("expected error occured when converting string %s to int on `ConvertStrToInt` sending zero\n", s)
 	return 0
 }
 

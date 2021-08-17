@@ -33,15 +33,17 @@ type Client struct {
 	// The actual websocket connection.
 	conn *websocket.Conn
 	hub  *Hub
+	id   string
 	room string
 	user string
 	send chan []byte
 }
 
-func NewClient(conn *websocket.Conn, hub *Hub, room, user string) *Client {
+func NewClient(conn *websocket.Conn, hub *Hub, id, room, user string) *Client {
 	return &Client{
 		conn: conn,
 		hub:  hub,
+		id:   id,
 		room: room,
 		user: user,
 		send: make(chan []byte, 256),
@@ -68,22 +70,19 @@ func (client *Client) ReadPump(rp *redis.Pool) {
 		_, jsonMessage, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("unexpected close error: %v", err)
+				log.Println("unexpected error occurred when closing the read connection. error:", err)
 			}
 			break
 		}
 
 		var vmMessage ViewModelMessage
 		if err := json.Unmarshal(jsonMessage, &vmMessage); err != nil {
-			log.Printf("unexpected unmarshal error: %v", err)
+			log.Println("unexpected error occurred when unmarshal message. error:", err)
 		}
 
-		if vmMessage.Payload == "some message" {
-			client.hub.publishReceivedMessage(client.user, client.room, vmMessage, rp)
-		}
-
-		if vmMessage.Payload == "other message" {
-			client.hub.publishReceivedMessage(client.user, client.room, vmMessage, rp)
+		err = client.hub.publishReceivedMessage(client.id, client.user, client.room, vmMessage, rp)
+		if err != nil {
+			log.Println("unexpected error occurred when publishing the message to redis. error:", err)
 		}
 	}
 }
@@ -97,11 +96,6 @@ func (client *Client) WritePump(rp *redis.Pool) {
 	for {
 		select {
 		case messageBytes, ok := <-client.send:
-			log.Println("Received the message broadcast")
-			// err := client.conn.WriteMessage(websocket.TextMessage, messageBytes)
-			// if err != nil {
-			// 	log.Println("write err ", err)
-			// }
 			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The WsServer closed the channel.

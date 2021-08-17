@@ -175,22 +175,10 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.EntityID = params["entity_id"]
 	nf.Expression = makeExpression(nf.Queries)
 
-	log.Printf("nf --> %+v", nf)
-
-	//TODO: do it in single transaction <|>
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())
 	if err != nil {
-		return errors.Wrapf(err, "Flow: %+v", &flow)
+		return errors.Wrapf(err, "error creating flow: %+v", &flow)
 	}
-
-	// for _, nn := range nf.Nodes {
-	// 	nn = makeNode(flow.AccountID, flow.ID, nn)
-	// 	n, err := node.Create(ctx, f.db, nn, time.Now())
-	// 	if err != nil {
-	// 		return errors.Wrapf(err, "Node: %+v", n)
-	// 	}
-	// }
-	//TODO: do it in single transaction >|<
 
 	return web.Respond(ctx, w, createViewModelFlow(flow, []node.ViewModelNode{}), http.StatusCreated)
 }
@@ -206,8 +194,6 @@ func (f *Flow) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	uf.Expression = makeExpression(uf.Queries)
 	uf.AccountID = params["account_id"]
 	uf.EntityID = params["entity_id"]
-
-	log.Printf("uf --> %+v", uf)
 
 	uuf, err := flow.Update(ctx, f.db, uf, time.Now())
 	if err != nil {
@@ -288,7 +274,6 @@ func nameOfType(typeOfNode int) string {
 }
 
 func makeExpression(queries []node.Query) string {
-	log.Printf("queries %+v--> ", queries)
 	var expression string
 	for i, q := range queries {
 		if q.Key == "" {
@@ -299,14 +284,13 @@ func makeExpression(queries []node.Query) string {
 			expression = fmt.Sprintf("%s %s", expression, "&&")
 		}
 	}
-	log.Printf("expression %+v--> ", expression)
 	return expression
 }
 
 func flowMode(fm string) int {
 	i, err := strconv.Atoi(fm)
 	if err != nil {
-		log.Printf("cannot parse fm from the request %s", err)
+		log.Printf("unexpected error occurred cannot parse fm from the request %s", err)
 		return flow.FlowModeWorkFlow
 	}
 	return i

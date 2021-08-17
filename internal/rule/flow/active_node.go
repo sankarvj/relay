@@ -134,11 +134,11 @@ func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, pare
 	childNodes := node.ChildNodes(n.ID, node.BranceNodeMap(nodes))
 	updatedVars := updateVarJSON(n.VariablesMap(), parentResponseMap)
 	for _, childNode := range childNodes {
-		log.Printf("nextnodeID: %s", childNode.ID)
+		log.Printf("rule.flow.active_node: nextnodeID: %s\n", childNode.ID)
 		childNode.Meta = n.Meta //passing root node meta
 		childNode.Variables = updatedVars
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
-			log.Println("encountered stage node. Skipping auto run")
+			log.Printf("rule.flow.active_node: encountered stage node. Skipping auto run\n")
 			continue
 		}
 		runJob(ctx, db, rp, childNode, eng)
@@ -198,6 +198,6 @@ func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
 }
 
 func logNodeEvent(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	log.Printf("the job entered the node %s", n.ID)
+	log.Printf("rule.flow.active_node: job entered the node %s\n", n.ID)
 	return nil
 }

@@ -110,7 +110,7 @@ func activeFlowMap(activeFlows []ActiveFlow) map[string]ActiveFlow {
 func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	_, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger.entryFlowTrigger")
 	defer span.End()
-	log.Printf("triggering entryflow")
+	log.Printf("internal.rule.flow.active_flow triggering entryflow\n")
 	if err := af.enableAF(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redi
 func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	_, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger.exitFlowTrigger")
 	defer span.End()
-	log.Printf("triggering exitflow")
+	log.Printf("internal.rule.flow.active_flow  triggering exitflow\n")
 	if err := af.disableAF(ctx, db); err != nil {
 		return err
 	}
@@ -173,5 +173,5 @@ func upsertAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemI
 }
 
 func logFlowEvent(ctx context.Context, db *sqlx.DB, n node.Node) {
-	log.Printf("the job started for flow %s", n.FlowID)
+	log.Printf("internal.rule.flow.active_flow  the job started for flow %s\n", n.FlowID)
 }

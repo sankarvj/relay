@@ -111,7 +111,7 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 		switch work.Type {
 		case ruler.Worker: //why worker calling grapher? because the logic is same as worker
 			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
-				log.Println("err occurred. Sending empty conditions - ", err)
+				log.Printf("unexpected error occurred. sending empty conditions - error: %v ", err)
 				return []ruler.Condition{}
 			} else {
 				work.InboundRespCh <- result
@@ -133,14 +133,14 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Poo
 		switch work.Type {
 		case ruler.Worker: //input:executes this when it finds the {{}}
 			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
-				log.Println("error in expression evaluator ", err)
+				log.Println("unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result
 			}
 		case ruler.Grapher: //input:executes this when it finds the what??? - actually here the grapher should come into picture when the conditions refers the reference value. Need to implement
 			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
-				log.Println("error in expression evaluator ", err)
+				log.Println("unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result
@@ -149,6 +149,6 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Poo
 			positive = true
 		}
 	}
-	log.Printf("result of the evaluator: %t", positive)
+	log.Printf("internal.rule.engine: result of the evaluator: %t\n", positive)
 	return positive
 }

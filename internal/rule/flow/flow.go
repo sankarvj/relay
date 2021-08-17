@@ -213,7 +213,6 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	}
 	activeFlowMap := activeFlowMap(aflows)
 	for _, f := range flows {
-		log.Printf("check expression for flow ->  %s", f.Name)
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
@@ -239,7 +238,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
 func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string, eng engine.Engine) error {
-	log.Printf("Direct Trigger flowID:%s, nodeID:%s, entityID:%s, itemID:%s", flowID, nodeID, entityID, itemID)
+	log.Printf("internal.rule.flow Direct Trigger : flowID:%s, nodeID:%s, entityID:%s, itemID:%s\n", flowID, nodeID, entityID, itemID)
 	//retrival of primary components item,flow,node
 	f, err := Retrieve(ctx, flowID, db)
 	if err != nil {

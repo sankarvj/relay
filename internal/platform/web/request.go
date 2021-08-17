@@ -75,7 +75,7 @@ func Decode(r *http.Request, val interface{}) error {
 			fields = append(fields, field)
 		}
 
-		log.Println("reason for err ", fields)
+		log.Println("internal.platform.web fields responsible for err ", fields)
 
 		return &Error{
 			Err:    errors.New("field validation error"),

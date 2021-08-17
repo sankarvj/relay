@@ -20,39 +20,26 @@ type Publisher struct {
 	Topic string
 }
 
-func (hub *Hub) publishClientJoined(rp *redis.Pool) error {
+func (hub *Hub) publishClientJoined(clientID, user, room string, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-
-	message := &Message{
-		action: UserJoinedAction,
-	}
-
+	message := NewMessage(UserJoinedAction, "", room, user, clientID)
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }
 
-func (hub *Hub) publishClientLeft(rp *redis.Pool) error {
+func (hub *Hub) publishClientLeft(clientID, user, room string, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-	message := &Message{
-		action: UserLeftAction,
-	}
-
+	message := NewMessage(UserLeftAction, "", room, user, clientID)
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }
 
-func (hub *Hub) publishReceivedMessage(user, room string, vmMessage ViewModelMessage, rp *redis.Pool) error {
+func (hub *Hub) publishReceivedMessage(clientID, user, room string, vmMessage ViewModelMessage, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-
-	message := &Message{
-		action:  SendMessageAction,
-		Payload: vmMessage.Payload,
-		Room:    room,
-		Sender:  user,
-	}
+	message := NewMessage(SendMessageAction, vmMessage.Payload, room, user, clientID)
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }
@@ -71,7 +58,7 @@ func (hub *Hub) listenPubSubChannel(rp *redis.Pool) error {
 			if err := json.Unmarshal([]byte(v.Data), &message); err != nil {
 				return errors.Wrap(err, "Error on unmarshal JSON message")
 			}
-			switch message.action {
+			switch message.Action {
 			case SendMessageAction:
 				hub.handleIncomingMessage(message)
 			case UserJoinedAction:

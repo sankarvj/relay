@@ -76,10 +76,7 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 		return err
 	}
 
-	log.Printf("from --> %+v", emailConfigEntityItem.Email)
-	log.Printf("subject --> %+v", subject)
-	log.Printf("body --> %+v", body)
-	log.Printf("toField --> %+v", to)
+	log.Printf("integration.email send email params : from: %+v subject: %+v body: %+v to: %+v ", emailConfigEntityItem.Email, subject, body, to)
 
 	g := email.Gmail{OAuthFile: emailConfigEntityItem.Domain, TokenJson: emailConfigEntityItem.APIKey}
 

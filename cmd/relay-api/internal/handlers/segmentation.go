@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -54,11 +53,7 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 		}
 	}
 
-	log.Printf("conditionFields %+v", conditionFields)
-
 	gSegment := graphdb.BuildGNode(params["account_id"], params["entity_id"], false).MakeBaseGNode("", conditionFields)
-
-	log.Printf("gSegment %+v", gSegment)
 
 	result, err := graphdb.GetResult(s.rPool, gSegment)
 	if err != nil {

@@ -144,10 +144,9 @@ func categories(categoryID string) []int {
 	ids := []int{}
 	i, err := strconv.Atoi(categoryID)
 	if err != nil {
-		log.Printf("cannot parse category_id from the request %s", err)
+		log.Println("cannot parse category_id from the request. error:", err)
 		return ids
-	} else if i == -1 {
-		log.Printf("fetch all categories")
+	} else if i == -1 { // fetch all categories
 		return ids
 	}
 

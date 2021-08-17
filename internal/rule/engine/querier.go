@@ -13,7 +13,7 @@ import (
 //ex: 1 days from creation to actual date
 //in future we can use querier for further evaluation
 func querier(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
-	log.Printf("running querier for expression %s : %v", expression, input)
+	log.Printf("internal.rule.engine.querier running expression: %s\n", expression)
 
 	x := util.ConvertStrToInt(expression)
 	t := time.Now()

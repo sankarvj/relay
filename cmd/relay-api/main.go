@@ -30,7 +30,7 @@ var build = "develop"
 
 func main() {
 	if err := run(); err != nil {
-		log.Println("error :", err)
+		log.Println("main api error :", err)
 		os.Exit(1)
 	}
 }

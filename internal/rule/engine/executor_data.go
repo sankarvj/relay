@@ -29,11 +29,9 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		Fields:    itemFields(valueAddedFields),
 	}
 
-	log.Printf("ni Fields -- %+v", ni.Fields)
-
 	switch n.Type {
 	case node.Push, node.Task, node.Meeting, node.Email:
-		log.Printf("Going to create %+v", ni)
+		log.Printf("internal.rule.engine.executor_data create new node %+v\n", ni)
 		it, err := item.Create(ctx, db, ni, time.Now())
 		if err != nil {
 			return err

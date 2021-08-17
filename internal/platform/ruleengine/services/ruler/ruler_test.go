@@ -1,7 +1,6 @@
 package ruler
 
 import (
-	"log"
 	"strings"
 	"testing"
 
@@ -149,7 +148,6 @@ func TestQuerySnippet(t *testing.T) {
 				case Grapher:
 					work.InboundRespCh <- testevaluate(work.Expression, map[string]interface{}{"hello": 1})
 				case Parser:
-					log.Println("work.OutboundResp --> ", work.OutboundResp)
 					triggered = true
 					t.Logf("\t%s should receive parser trigger after evaluting lt", tests.Success)
 				}

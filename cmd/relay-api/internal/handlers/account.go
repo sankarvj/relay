@@ -37,7 +37,7 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
-		return web.NewShutdownError("claims missing from context")
+		return web.NewShutdownError("auth claims missing from context")
 	}
 
 	accounts, err := account.List(ctx, currentUserID, a.db)

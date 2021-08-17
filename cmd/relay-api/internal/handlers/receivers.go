@@ -26,8 +26,6 @@ func (g *Integration) Act(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return errors.Wrap(err, "cannot parse the actionPayload")
 	}
 
-	log.Println("actionID --> ", actionID) ///check in the calendar/email integration
-
 	switch integrationID {
 	case integration.TypeGmail:
 		return web.Respond(ctx, w, "FAILURE", http.StatusNotImplemented)
@@ -41,7 +39,7 @@ func (g *Integration) Act(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 func (g *Integration) Notifications(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	log.Println("Notification Received......", r.Body)
+	log.Printf("handlers.receivers: notifications received with body %s\n", r.Body)
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
 
@@ -64,7 +62,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
 			//TODO call stop here.
-			log.Println("Silently Killing The Unwanted Messages...")
+			log.Println("internal.handlers.receivers silently killing the unwanted messages.")
 			return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 		}
 		return err

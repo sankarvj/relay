@@ -58,14 +58,11 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 			if f.IsDependent() {
 				_, pv := parentField(fields, f.Dependent.ParentKey, item.Fields())
 
-				log.Println("Evaluted Parent. Evaluted Parent.. Evaluted Parent... ", pv)
-
 				for k, exp := range f.Dependent.Expressions {
 					result := eng.RunExpEvaluator(ctx, db, nil, accountID, exp, item.Fields())
 
 					if result {
 						action := f.Dependent.Actions[k] // take the corresponding action
-						log.Println("Execute Me. Execute Me.. Execute Me... ", action)
 
 						if pv != "" {
 							switch action {
@@ -75,7 +72,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 							case fmt.Sprintf("{{{%s.%s}}}", ActionFilter, ByFlow):
 								nodes, err := node.Stages(ctx, pv, db)
 								if err != nil {
-									log.Println("error on retriving reference nodes for field unit entity. continuing... ", err)
+									log.Printf("unexpected error occurred. when retriving reference nodes for field unit entity. continuing... error: %v\n", err)
 									return
 								}
 								choicesMaker(f, pv, nodeChoices(nodes))
@@ -138,25 +135,25 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 	if f.IsReference() && f.RefID != "" && !f.IsNotApplicable() {
 		e, err := entity.Retrieve(ctx, accountID, f.RefID, db)
 		if err != nil {
-			log.Println("error on retriving entity when updatingChoices. why??? but continuing for now... ", err)
+			log.Printf("unexpected error occurred when retriving entity inside updating choices error: %v.\n continuing...", err)
 			return
 		}
 		if e.Category == entity.CategoryChildUnit {
 			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
-				log.Println("error on retriving reference items for field unit entity. continuing... ", err)
+				log.Printf("unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
 			choicesMaker(f, "", itemChoices(*f, refItems))
 		} else if e.Category == entity.CategoryEmail {
 			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
-				log.Println("error on retriving reference items for email entity. continuing... ", err)
+				log.Printf("unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}
 			choicesMaker(f, "", itemChoices(*f, refItems))
 		} else { // useful for auto-complete while viewing
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
-				log.Println("error on retriving reference items when updatingChoices. continuing... ", err)
+				log.Printf("unexpected error occurred when retriving reference items inside updating choices error: %v.\n continuing...", err)
 				return
 			}
 			choicesMaker(f, "", itemChoices(*f, refItems))
@@ -172,7 +169,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 				flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(refIDs), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
 			}
 			if err != nil {
-				log.Println("error on retriving flows when updatingChoices. continuing... ", err)
+				log.Printf("unexpected error occurred when retriving flows inside updating choices error: %v.\n continuing...", err)
 				return
 			}
 			choicesMaker(f, "", flowChoices(flows))

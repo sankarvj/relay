@@ -2,7 +2,6 @@ package event
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -44,8 +43,7 @@ func (hub *Hub) registerClient(client *Client, rp *redis.Pool) error {
 		roomClients[client] = true
 		hub.Clients[client.room] = roomClients
 	}
-	log.Printf("HUBCLIENTS-------> %+v", hub.Clients)
-	err := hub.publishClientJoined(rp)
+	err := hub.publishClientJoined(client.id, client.user, client.room, rp)
 	return err
 }
 
@@ -53,7 +51,7 @@ func (hub *Hub) unregisterClient(client *Client, rp *redis.Pool) {
 	if roomClients, ok := hub.Clients[client.room]; ok {
 		delete(roomClients, client)
 		hub.Clients[client.room] = roomClients
-		hub.publishClientLeft(rp)
+		hub.publishClientLeft(client.id, client.user, client.room, rp)
 	}
 }
 
@@ -71,12 +69,10 @@ func (hub *Hub) handleIncomingMessage(msg Message) {
 		Payload: msg.Payload,
 	}
 	if roomClients, ok := hub.Clients[msg.Room]; ok {
-		log.Printf("------->roomClients %+v", roomClients)
 		for client := range roomClients {
-			if client.user != msg.Sender {
+			if client.id != msg.ClientID {
 				client.send <- vmMessage.encode()
 			}
-
 		}
 	}
 

@@ -10,10 +10,21 @@ type ViewModelMessage struct {
 }
 
 type Message struct {
-	action  string `json:"action"`
-	Payload string `json:"payload"`
-	Room    string `json:"room"`
-	Sender  string `json:"sender"`
+	Action   string `json:"action"`
+	Payload  string `json:"payload"`
+	Room     string `json:"room"`
+	User     string `json:"user"`
+	ClientID string `json:"client_id"`
+}
+
+func NewMessage(action, payload, room, user, clientID string) *Message {
+	return &Message{
+		Action:   action,
+		Payload:  payload,
+		Room:     room,
+		User:     user,
+		ClientID: clientID,
+	}
 }
 
 func (message *Message) encode() []byte {

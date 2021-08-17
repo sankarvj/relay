@@ -59,6 +59,17 @@ func RetrieveCurrentUserID(ctx context.Context) (string, error) {
 	return claims.Subject, nil
 }
 
+func RetrieveWSCurrentUserID(ctx context.Context) (string, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveWSCurrentUserID")
+	defer span.End()
+
+	userID, ok := ctx.Value(auth.SocketKey).(string)
+	if !ok {
+		return "", ErrNotFound
+	}
+	return userID, nil
+}
+
 // RetrieveCurrentAccountID gets the current users account id.
 func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) ([]string, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentAccountID")

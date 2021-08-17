@@ -32,7 +32,7 @@ func Errors(log *log.Logger) web.Middleware {
 			if err := before(ctx, w, r, params); err != nil {
 
 				// Log the error.
-				log.Printf("%s : ERROR Caught In The Relay Middleware : %+v", v.TraceID, err)
+				log.Printf("%s : unexpected error occurred in the relay app : %+v", v.TraceID, err)
 
 				// Respond to the error.
 				if err := web.RespondError(ctx, w, err); err != nil {

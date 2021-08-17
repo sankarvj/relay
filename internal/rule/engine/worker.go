@@ -16,7 +16,7 @@ import (
 )
 
 func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
-	log.Printf("running worker for expression: %s -:::::- input: %v", expression, input)
+	log.Printf("internal.rule.engine.worker running expression: %s\n", expression)
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
@@ -99,8 +99,6 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 
 //Evaluate evaluates the expression with the coresponding map
 func evaluate(expression string, response map[string]interface{}) interface{} {
-	// log.Printf("expression -- %+v", expression)
-	// log.Printf("response -- %+v", response)
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
 	lenOfElements := len(elements)

@@ -232,8 +232,7 @@ func DeleteAllByUser(ctx context.Context, db *sqlx.DB, accountID, entityID, user
 func (i Item) Fields() map[string]interface{} {
 	var fields map[string]interface{}
 	if err := json.Unmarshal([]byte(i.Fieldsb), &fields); err != nil {
-		log.Printf("error while unmarshalling item fieldsb %v", i.ID)
-		log.Println(err)
+		log.Printf("unexpected error occurred when unmarshalling fields for item: %v error: %v\n", i.ID, err)
 	}
 	return fields
 }
@@ -251,10 +250,10 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
 			if ruler.Compare(newItem, oldItem) {
-				log.Printf("-> no change for key %s", key)
+				log.Printf("internal.item diff : no change detected for key %s\n", key)
 				delete(diffFields, key)
 			} else {
-				log.Printf("->> change captured for key %s !", key)
+				log.Printf("internal.item diff :  change captured for key %s\n", key)
 			}
 		}
 	}

@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -44,6 +46,32 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 			}
 			// Add claims to the context so they can be retrieved later.
 			ctx = context.WithValue(ctx, auth.Key, claims)
+
+			return after(ctx, w, r, params)
+		}
+
+		return h
+	}
+
+	return f
+}
+
+func HasSocketAccess(rp *redis.Pool) web.Middleware {
+
+	// This is the actual middleware function to be executed.
+	f := func(after web.Handler) web.Handler {
+
+		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+			ctx, span := trace.StartSpan(ctx, "internal.mid.HasSocketAccess")
+			defer span.End()
+
+			token := params["token"]
+			userID, err := redisdb.RedisGet(rp, token)
+			if err != nil {
+				return web.NewRequestError(err, http.StatusUnauthorized)
+			}
+			// Add claims to the context so they can be retrieved later.
+			ctx = context.WithValue(ctx, auth.SocketKey, userID)
 
 			return after(ctx, w, r, params)
 		}

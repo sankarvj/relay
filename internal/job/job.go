@@ -29,7 +29,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("error while retriving entity on job", err)
+		log.Println("unexpected error occurred when retriving entity inside job. error:", err)
 		return
 	}
 
@@ -56,12 +56,12 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("error while retriving entity on job", err)
+		log.Println("unexpected error occurred when retriving entity on job. error:", err)
 		return
 	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("error while retriving item on job", err)
+		log.Println("unexpected error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -224,7 +224,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 			//Implicit connection with straight reference. When create a deal with contact as its reference field
 			if f, ok := newValueAddedFieldsMap[r.FieldID]; ok {
 				if f.IsFlow() || f.IsNode() {
-					log.Println("Handle Flow/Node here")
+					log.Println("internal.job handle flow/node here")
 				} else if f.ValidRefField() && r.DstEntityID == f.RefID {
 					if of, ok := oldValueAddedFieldsMap[r.FieldID]; ok { //handle update case
 						f.Value = compare(ctx, db, accountID, r.RelationshipID, f, of) //update the f.Value with only the updated value
@@ -237,7 +237,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 					}
 				}
 			} else { //Implicit connection with reverse reference. When creating the contact inside a deal base
-				log.Println("Implicit connection with reverse reference")
+				log.Println("internal.job implicit connection with reverse reference handled")
 				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
 					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
@@ -245,12 +245,12 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 						return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 					}
 					itemFieldsMap := baseItem.Fields()
-					log.Println("BF itemFieldsMap ", itemFieldsMap)
+					log.Println("internal.job BF itemFieldsMap ", itemFieldsMap)
 					if vals, ok := itemFieldsMap[r.FieldID]; ok { // little complex
 						exisitingVals := vals.([]interface{})
 						exisitingVals = append(exisitingVals, itemID)
 						itemFieldsMap[r.FieldID] = exisitingVals
-						log.Println("AF itemFieldsMap ", itemFieldsMap)
+						log.Println("internal.job AF itemFieldsMap ", itemFieldsMap)
 						_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
 						if err != nil {
 							return errors.Wrap(err, "error: implicit connection with reverse reference failed")
@@ -269,7 +269,7 @@ func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string,
 		for _, deletedItem := range deletedItems {
 			err := connection.Delete(ctx, db, relationshipID, deletedItem.(string))
 			if err != nil {
-				log.Println("error while deleting connection", err)
+				log.Println("unexpected error occurred when deleting connection. error:", err)
 			}
 		}
 		return newItems

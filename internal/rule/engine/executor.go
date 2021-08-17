@@ -12,8 +12,7 @@ import (
 )
 
 func (ruleResult *RuleResult) executePosCase(ctx context.Context, eng *Engine, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
-	log.Println("executePosCase ActorID ---> ", n.ActorID)
-	log.Println("n.Type ---> ", n.Type)
+	log.Printf("rule.engine.executor: positive case execution for actor_id: %s and type: %d\n", n.ActorID, n.Type)
 	ruleResult.Executed = true
 	var err error
 	executionResponse := map[string]interface{}{}

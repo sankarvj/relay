@@ -3,7 +3,6 @@ package net
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -38,7 +37,6 @@ func (ap APIParams) MakeHTTPRequest(response *map[string]interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("STATUS ----->", resp.Status)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err

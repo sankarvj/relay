@@ -25,7 +25,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Printf("error: %s", err)
+		log.Printf("main : error: %s", err)
 		os.Exit(1)
 	}
 }
@@ -159,11 +159,11 @@ func seed(db *sqlx.DB, rp *redis.Pool) error {
 		Domain: "wayplot.com"}
 	err = account.Bootstrap(ctx, db, rp, cuser, nc, time.Now())
 	if err != nil {
-		log.Println("!!!! TODO: Should Implement Roll Back Option Here.")
+		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err
 	}
 
-	fmt.Println("Data Seeded Successfully!!!")
+	fmt.Println("main: sata seeded successfully!!!")
 	return nil
 }
 

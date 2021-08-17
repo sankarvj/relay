@@ -20,9 +20,7 @@ func (m MailGun) SendMail(fromName, fromEmail string, toName string, toEmail []s
 		toEmail...,
 	)
 	resMsg, id, err := mg.Send(msg)
-	log.Println("resMsg ", resMsg)
-	log.Println("resMsg id ", id)
-	log.Println("resMsg err ", err)
+	log.Printf("internal.platform.integration.email.mailgun response - resMsg:%s  id: %s err:%v\n", resMsg, id, err)
 	return &id, err
 }
 

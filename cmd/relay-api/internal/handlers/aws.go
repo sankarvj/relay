@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -32,15 +31,13 @@ func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter
 		return errors.Wrap(err, "unable to decode subscription while the message is passed")
 	}
 
-	log.Println("accountkey ", accountkey)
-	log.Println("productkey ", productkey)
-	log.Println("subscription type :: ", subscription.Type)
+	log.Printf("internal.handlers.aws : accountkey: %s : productkey: %s : subscription type : %s\n", accountkey, productkey, subscription.Type)
 
 	if subscription.Type == subConfrmType {
 		go confirmSubscription(subscription.SubscribeURL)
 	} else if subscription.Type == notificationType {
 		message := getMessage(subscription.Message)
-		log.Println("recieved this message : ", message)
+		log.Println("internal.handlers.aws recieved this message : ", message)
 	}
 	return nil
 }
@@ -48,23 +45,21 @@ func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter
 func confirmSubscription(subcribeURL string) {
 	response, err := http.Get(subcribeURL)
 	if err != nil {
-		fmt.Printf("Unbale to confirm subscriptions")
+		log.Println("unexpected error occurred. Unbale to confirm subscriptions")
 	} else {
-		fmt.Printf("Subscription Confirmed sucessfully. %d", response.StatusCode)
+		log.Printf("internal.handlers.aws subscription confirmed sucessfully. %d\n", response.StatusCode)
 	}
 }
 
 func getSusbscription(reqBody io.Reader) (*aws.Subscription, error) {
 	var subscription aws.Subscription
 	body, err := ioutil.ReadAll(reqBody)
-	log.Println("body :: ", string(body))
+	log.Println("internal.handlers.aws body:", string(body))
 	if err != nil {
-		fmt.Printf("Unable to Parse Body")
 		return nil, err
 	}
 	err = json.Unmarshal(body, &subscription)
 	if err != nil {
-		fmt.Printf("Unable to Unmarshal request")
 		return nil, err
 	}
 	return &subscription, nil
@@ -74,7 +69,7 @@ func getMessage(messageBody string) aws.Message {
 	var message aws.Message
 	err := json.Unmarshal([]byte(messageBody), &message)
 	if err != nil {
-		fmt.Printf("Unable to Unmarshal Message Body")
+		log.Println("unexpected error occurred. unable to unmarshal message body. error:", err)
 		return message
 	}
 	return message
