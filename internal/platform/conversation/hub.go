@@ -1,4 +1,4 @@
-package event
+package conversation
 
 import (
 	"fmt"
@@ -43,7 +43,8 @@ func (hub *Hub) registerClient(client *Client, rp *redis.Pool) error {
 		roomClients[client] = true
 		hub.Clients[client.room] = roomClients
 	}
-	err := hub.publishClientJoined(client.id, client.user, client.room, rp)
+	message := NewMessage(UserJoinedAction, ViewModelConversation{}, client.room, client.user, client.id)
+	err := hub.publishClientJoined(message, rp)
 	return err
 }
 
@@ -51,7 +52,8 @@ func (hub *Hub) unregisterClient(client *Client, rp *redis.Pool) {
 	if roomClients, ok := hub.Clients[client.room]; ok {
 		delete(roomClients, client)
 		hub.Clients[client.room] = roomClients
-		hub.publishClientLeft(client.id, client.user, client.room, rp)
+		message := NewMessage(UserLeftAction, ViewModelConversation{}, client.room, client.user, client.id)
+		hub.publishClientLeft(message, rp)
 	}
 }
 
@@ -65,14 +67,11 @@ func (hub *Hub) handleUserLeft(msg Message) {
 
 func (hub *Hub) handleIncomingMessage(msg Message) {
 	fmt.Printf("message handleIncomingMessage ---------------------------------------> %+v", msg)
-	vmMessage := ViewModelMessage{
-		Payload: msg.Payload,
-	}
 	if roomClients, ok := hub.Clients[msg.Room]; ok {
 		for client := range roomClients {
-			if client.id != msg.ClientID {
-				client.send <- vmMessage.encode()
-			}
+			//if client.id != msg.ClientID {
+			client.send <- msg.Payload.encode()
+			//}
 		}
 	}
 

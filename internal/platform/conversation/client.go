@@ -1,4 +1,4 @@
-package event
+package conversation
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -31,22 +32,31 @@ var (
 // Client represents the websocket client at the server
 type Client struct {
 	// The actual websocket connection.
-	conn *websocket.Conn
-	hub  *Hub
-	id   string
-	room string
-	user string
-	send chan []byte
+	conn   *websocket.Conn
+	hub    *Hub
+	id     string
+	room   string
+	user   string
+	name   string
+	avatar string
+	send   chan []byte
 }
 
-func NewClient(conn *websocket.Conn, hub *Hub, id, room, user string) *Client {
+func NewClient(conn *websocket.Conn, hub *Hub, id, room, user, name, avatar string) *Client {
+
+	if avatar == "" || avatar == "http://gravatar/vj" {
+		avatar = "https://randomuser.me/api/portraits/thumb/lego/1.jpg"
+	}
+
 	return &Client{
-		conn: conn,
-		hub:  hub,
-		id:   id,
-		room: room,
-		user: user,
-		send: make(chan []byte, 256),
+		conn:   conn,
+		hub:    hub,
+		id:     id,
+		room:   room,
+		user:   user,
+		name:   name,
+		avatar: avatar,
+		send:   make(chan []byte, 256),
 	}
 }
 
@@ -56,7 +66,7 @@ func (client *Client) disconnect() {
 	client.conn.Close()
 }
 
-func (client *Client) ReadPump(rp *redis.Pool) {
+func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 	defer func() {
 		client.disconnect()
 	}()
@@ -75,12 +85,23 @@ func (client *Client) ReadPump(rp *redis.Pool) {
 			break
 		}
 
-		var vmMessage ViewModelMessage
-		if err := json.Unmarshal(jsonMessage, &vmMessage); err != nil {
+		var viewModelConv ViewModelConversation
+		if err := json.Unmarshal(jsonMessage, &viewModelConv); err != nil {
 			log.Println("unexpected error occurred when unmarshal message. error:", err)
 		}
 
-		err = client.hub.publishReceivedMessage(client.id, client.user, client.room, vmMessage, rp)
+		log.Printf("viewModelConv %+v", viewModelConv)
+		viewModelConv.ID = uuid.New().String()
+		viewModelConv.UserID = client.user
+		viewModelConv.UserAvatar = client.avatar
+		viewModelConv.UserName = client.name
+
+		//sending the message to the handler for storing it in the DB
+		message := NewMessage(SendMessageAction, viewModelConv, client.room, client.user, client.id)
+		messageChan <- *message
+
+		//sending the message to the pub/sub
+		err = client.hub.publishReceivedMessage(message, rp)
 		if err != nil {
 			log.Println("unexpected error occurred when publishing the message to redis. error:", err)
 		}

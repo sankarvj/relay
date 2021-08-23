@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/event"
+	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
@@ -27,7 +27,7 @@ var (
 type Integration struct {
 	db            *sqlx.DB
 	authenticator *auth.Authenticator
-	publisher     *event.Publisher
+	publisher     *conversation.Publisher
 }
 
 func (g *Integration) AccessIntegration(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

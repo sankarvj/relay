@@ -18,6 +18,7 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	ctx := context.Background()
 	fmt.Println("\tDB successfully Initialized")
 
+	sampleUserID := UUIDHolder
 	// Initialize Team
 	teamID := uuid.New().String()
 	err := BootstrapTeam(ctx, db, accountID, teamID, "CRM")
@@ -36,7 +37,17 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tOwner & Emails Entities Retrived")
+	// Retrive Event Entity, Which is created for the account
+	eventEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityEvent)
+	if err != nil {
+		return err
+	}
+
+	streamEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityStream)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tOwner, Emails & Events Entities Retrived")
 
 	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
 	flowEntity, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, FlowFields())
@@ -57,17 +68,17 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 	// add status item - open
-	statusItemOpen, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNone, "Open", "#fb667e"))
+	statusItemOpen, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), sampleUserID, StatusVals(entity.FuExpNone, "Open", "#fb667e"))
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	statusItemClosed, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
+	statusItemClosed, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), sampleUserID, StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	statusItemOverDue, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
+	statusItemOverDue, err := ItemAdd(ctx, db, rp, accountID, statusEntity.ID, uuid.New().String(), sampleUserID, StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
 	if err != nil {
 		return err
 	}
@@ -79,12 +90,12 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 	// add type item - email
-	typeItemEmail, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), TypeVals(entity.FuExpNone, "Email"))
+	typeItemEmail, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), sampleUserID, TypeVals(entity.FuExpNone, "Email"))
 	if err != nil {
 		return err
 	}
 	// add type item - todo
-	typeItemTodo, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), TypeVals(entity.FuExpNone, "Todo"))
+	typeItemTodo, err := ItemAdd(ctx, db, rp, accountID, typeEntity.ID, uuid.New().String(), sampleUserID, TypeVals(entity.FuExpNone, "Todo"))
 	if err != nil {
 		return err
 	}
@@ -96,12 +107,12 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 	// add contact item - vijay (straight)
-	contactItem1, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
+	contactItem1, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), sampleUserID, ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
+	contactItem2, err := ItemAdd(ctx, db, rp, accountID, contactEntity.ID, uuid.New().String(), sampleUserID, ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItemClosed.ID))
 	if err != nil {
 		return err
 	}
@@ -112,7 +123,7 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	if err != nil {
 		return err
 	}
-	companyItem1, err := ItemAdd(ctx, db, rp, accountID, companyEntity.ID, uuid.New().String(), CompanyVals("Zoho", "zoho.com"))
+	companyItem1, err := ItemAdd(ctx, db, rp, accountID, companyEntity.ID, uuid.New().String(), sampleUserID, CompanyVals("Zoho", "zoho.com"))
 	if err != nil {
 		return err
 	}
@@ -132,7 +143,7 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	}
 
 	// add delay item
-	delayItem, err := ItemAdd(ctx, db, rp, accountID, delayEntity.ID, uuid.New().String(), DelayVals())
+	delayItem, err := ItemAdd(ctx, db, rp, accountID, delayEntity.ID, uuid.New().String(), sampleUserID, DelayVals())
 	if err != nil {
 		return err
 	}
@@ -159,7 +170,7 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 	fmt.Println("\tPipeline And Its Nodes Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := ItemAdd(ctx, db, rp, accountID, dealEntity.ID, uuid.New().String(), DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
+	dealItem1, err := ItemAdd(ctx, db, rp, accountID, dealEntity.ID, uuid.New().String(), sampleUserID, DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
 	if err != nil {
 		return err
 	}
@@ -171,12 +182,12 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("An Todo Task", contactItem1.ID, typeItemTodo.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), sampleUserID, TaskVals("An Todo Task", contactItem1.ID, typeItemTodo.ID))
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), TaskVals("An Email Task", contactItem1.ID, typeItemEmail.ID))
+	_, err = ItemAdd(ctx, db, rp, accountID, taskEntity.ID, uuid.New().String(), sampleUserID, TaskVals("An Email Task", contactItem1.ID, typeItemEmail.ID))
 	if err != nil {
 		return err
 	}
@@ -200,11 +211,33 @@ func BootCRM(db *sqlx.DB, rp *redis.Pool, accountID string) error {
 		return err
 	}
 
-	ticketItem1, err := ItemAdd(ctx, db, rp, accountID, ticketEntity.ID, uuid.New().String(), TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
+	ticketItem1, err := ItemAdd(ctx, db, rp, accountID, ticketEntity.ID, uuid.New().String(), sampleUserID, TicketVals("My Laptop Is Not Working", statusItemOpen.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tTicket Entity And It's Item Created")
+
+	//Event entity add sample item
+	_, err = ItemAddGenie(ctx, db, rp, accountID, eventEntity.ID, uuid.New().String(), sampleUserID, dealItem1.ID, EventVals("My first activity recorded", 2))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEvent Item Created")
+
+	//Stream entity add sample item
+	_, err = ItemAddGenie(ctx, db, rp, accountID, streamEntity.ID, uuid.New().String(), sampleUserID, dealItem1.ID, StreamVals("Deal Closed", "Yahooo", ""))
+	if err != nil {
+		return err
+	}
+	_, err = ItemAddGenie(ctx, db, rp, accountID, streamEntity.ID, uuid.New().String(), sampleUserID, dealItem1.ID, StreamVals("Deal Weekly Update", "Closing near the deal", ""))
+	if err != nil {
+		return err
+	}
+	_, err = ItemAddGenie(ctx, db, rp, accountID, streamEntity.ID, uuid.New().String(), sampleUserID, dealItem1.ID, StreamVals("New task", "This task needs to be added", ""))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tStream Items Created")
 
 	err = addAssociations(ctx, db, accountID, teamID, contactEntity.ID, companyEntity.ID, dealEntity.ID, ticketEntity.ID, contactItem1.ID, companyItem1.ID, dealItem1.ID, ticketItem1.ID, contactEntity.Key("email"), emailsEntity)
 	if err != nil {

@@ -363,6 +363,73 @@ func TicketVals(name, statusID string) map[string]interface{} {
 	return ticketVals
 }
 
+func EventFields() []entity.Field {
+	payloadField := entity.Field{
+		Key:         "uuid-00-payload",
+		Name:        "payload",
+		DisplayName: "Payload",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
+	}
+
+	frequencyField := entity.Field{
+		Key:         "uuid-00-frequency",
+		Name:        "frequency",
+		DisplayName: "Frequency",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+	}
+
+	return []entity.Field{payloadField, frequencyField}
+}
+
+func EventVals(payload string, frequency int) map[string]interface{} {
+	eventVals := map[string]interface{}{
+		"uuid-00-payload":   payload,
+		"uuid-00-frequency": frequency,
+	}
+	return eventVals
+}
+
+func StreamFields() []entity.Field {
+	titleField := entity.Field{
+		Key:         "uuid-00-title",
+		Name:        "title",
+		DisplayName: "Title",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
+	}
+
+	messageField := entity.Field{
+		Key:         "uuid-00-message",
+		Name:        "message",
+		DisplayName: "Message",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	fileField := entity.Field{
+		Key:         "uuid-00-file",
+		Name:        "file",
+		DisplayName: "File",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{titleField, messageField, fileField}
+}
+
+func StreamVals(title, message, file string) map[string]interface{} {
+	streamVals := map[string]interface{}{
+		"uuid-00-title":   title,
+		"uuid-00-message": message,
+		"uuid-00-file":    file,
+	}
+	return streamVals
+}
+
 func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, nodeEntityID string, stItem1, stItem2, stItem3 string, typeEntityID, typeItemEmailID, typeItemTodoID string, emailEntityID string) []entity.Field {
 	descField := entity.Field{
 		Key:         "uuid-00-desc",

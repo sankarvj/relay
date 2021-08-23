@@ -20,6 +20,10 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
+const (
+	UUIDHolder = "00000000-0000-0000-0000-000000000000"
+)
+
 func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
 	const q = `INSERT INTO teams
 		(team_id, account_id, name, description, created_at, updated_at)
@@ -41,7 +45,7 @@ func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, rp *redis.Pool, curr
 	}
 	// add owner item
 	// pass the currentUserID as the itemID. Is it okay to do like that? seems like a anti pattern.
-	_, err = ItemAdd(ctx, db, rp, accountID, ue.ID, currentUser.ID, itemVals)
+	_, err = ItemAdd(ctx, db, rp, accountID, ue.ID, currentUser.ID, currentUser.ID, itemVals)
 	if err != nil {
 		return err
 	}
@@ -83,6 +87,20 @@ func BootstrapCalendarEntity(ctx context.Context, db *sqlx.DB, accountID, teamID
 	// add entity - calendar
 	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, fields)
 
+	return err
+}
+
+func BootstrapMessageEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
+	fields := EventFields()
+	// add entity - event
+	_, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEvent, "Events", entity.CategoryEvent, fields)
+	if err != nil {
+		return err
+	}
+
+	fields = StreamFields()
+	// add entity - streams
+	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, fields)
 	return err
 }
 
@@ -147,12 +165,17 @@ func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, na
 	return e, nil
 }
 
-func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, userID string, fields map[string]interface{}) (item.Item, error) {
+func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, itemID, userID string, fields map[string]interface{}) (item.Item, error) {
+	return ItemAddGenie(ctx, db, rp, accountID, entityID, itemID, userID, UUIDHolder, fields)
+}
+
+func ItemAddGenie(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, itemID, userID, genieID string, fields map[string]interface{}) (item.Item, error) {
 	ni := item.NewItem{
-		ID:        userID,
+		ID:        itemID,
 		AccountID: accountID,
 		EntityID:  entityID,
 		UserID:    &userID,
+		GenieID:   &genieID,
 		Fields:    fields,
 	}
 

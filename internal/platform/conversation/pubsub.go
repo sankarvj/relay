@@ -1,4 +1,4 @@
-package event
+package conversation
 
 import (
 	"encoding/json"
@@ -20,26 +20,25 @@ type Publisher struct {
 	Topic string
 }
 
-func (hub *Hub) publishClientJoined(clientID, user, room string, rp *redis.Pool) error {
+func (hub *Hub) publishClientJoined(message *Message, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-	message := NewMessage(UserJoinedAction, "", room, user, clientID)
+
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }
 
-func (hub *Hub) publishClientLeft(clientID, user, room string, rp *redis.Pool) error {
+func (hub *Hub) publishClientLeft(message *Message, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-	message := NewMessage(UserLeftAction, "", room, user, clientID)
+
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }
 
-func (hub *Hub) publishReceivedMessage(clientID, user, room string, vmMessage ViewModelMessage, rp *redis.Pool) error {
+func (hub *Hub) publishReceivedMessage(message *Message, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
-	message := NewMessage(SendMessageAction, vmMessage.Payload, room, user, clientID)
 	_, err := conn.Do("PUBLISH", PubSubGeneralChannel, message.encode())
 	return err
 }

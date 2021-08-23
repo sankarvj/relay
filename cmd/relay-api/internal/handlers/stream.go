@@ -12,24 +12,23 @@ import (
 	"go.opencensus.io/trace"
 )
 
-// Check provides support for orchestration health checks.
-type Event struct {
+type Stream struct {
 	db    *sqlx.DB
 	rPool *redis.Pool
 }
 
-func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Event.List")
+func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Stream.List")
 	defer span.End()
 
-	accountID, _, itemID := takeAEI(ctx, params, ev.db)
+	accountID, _, itemID := takeAEI(ctx, params, st.db)
 
-	e, err := entity.RetrieveFixedEntity(ctx, ev.db, accountID, entity.FixedEntityEvent)
+	e, err := entity.RetrieveFixedEntity(ctx, st.db, accountID, entity.FixedEntityStream)
 	if err != nil {
 		return err
 	}
 
-	items, err := item.GenieEntityItems(ctx, e.ID, itemID, ev.db)
+	items, err := item.GenieEntityItems(ctx, e.ID, itemID, st.db)
 	if err != nil {
 		return err
 	}

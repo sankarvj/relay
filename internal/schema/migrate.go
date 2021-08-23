@@ -118,7 +118,7 @@ var migrations = []darwin.Migration{
 			item_id          UUID,
 			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
-			genie_id         TEXT,
+			genie_id         UUID,
 			user_id          UUID,
 			state            INTEGER DEFAULT 0,
 			type             INTEGER DEFAULT 0,
@@ -263,6 +263,25 @@ var migrations = []darwin.Migration{
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
 			UNIQUE (account_id, entity_id, user_id, name)
+		);
+		`,
+	},
+	{
+		Version:     14,
+		Description: "Add conversations",
+		Script: `
+		CREATE TABLE conversations (
+			conversation_id  UUID,
+			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
+			item_id          UUID,
+			user_id          UUID,
+			type             INTEGER DEFAULT 0,
+			message          TEXT,
+			payload          JSONB,
+			created_at       TIMESTAMP,
+			updated_at       BIGINT,
+			PRIMARY KEY (conversation_id)
 		);
 		`,
 	},

@@ -20,6 +20,8 @@ const (
 	FixedEntityEmailConfig = "email_config"
 	FixedEntityCalendar    = "calendar"
 	FixedEntityEmails      = "emails"
+	FixedEntityEvent       = "event"
+	FixedEntityStream      = "stream"
 )
 
 var (

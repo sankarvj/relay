@@ -73,4 +73,6 @@ const (
 	CategoryNotes       = 13
 	CategoryMeeting     = 14 // this is a type like task, email, notes
 	CategoryCalendar    = 15 // this is integration
+	CategoryEvent       = 16
+	CategoryStream      = 17
 )
