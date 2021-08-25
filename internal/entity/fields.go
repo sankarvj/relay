@@ -51,7 +51,7 @@ type Choice struct {
 	DisplayValue interface{} `json:"display_value"`
 	BaseChoice   bool        `json:"base_choice"`
 	Default      bool        `json:"default"`
-	Verb         string      `json:"default"`
+	Verb         string      `json:"verb"` // are we still using this??
 }
 
 type Dependent struct {

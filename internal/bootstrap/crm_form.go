@@ -364,13 +364,29 @@ func TicketVals(name, statusID string) map[string]interface{} {
 }
 
 func EventFields() []entity.Field {
+	nameField := entity.Field{
+		Key:         "uuid-00-name",
+		Name:        "name",
+		DisplayName: "Event Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{"layout": "title"},
+	}
+
+	typeField := entity.Field{
+		Key:         "uuid-00-type",
+		Name:        "type",
+		DisplayName: "Event Type",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+	}
+
 	payloadField := entity.Field{
 		Key:         "uuid-00-payload",
 		Name:        "payload",
 		DisplayName: "Payload",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
 	}
 
 	frequencyField := entity.Field{
@@ -381,7 +397,7 @@ func EventFields() []entity.Field {
 		DataType:    entity.TypeNumber,
 	}
 
-	return []entity.Field{payloadField, frequencyField}
+	return []entity.Field{nameField, typeField, payloadField, frequencyField}
 }
 
 func EventVals(payload string, frequency int) map[string]interface{} {
