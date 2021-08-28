@@ -96,11 +96,6 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 		}
 	}
 
-	// err = j.actOnActivityEvents(ctx, accountID, e, it, source, db, rp)
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
 }
 
 func (j *Job) eventCreated(ctx context.Context, baseEntityID, baseItemID string, evItem item.Item, db *sqlx.DB, rp *redis.Pool) error {
@@ -115,35 +110,6 @@ func (j *Job) eventCreated(ctx context.Context, baseEntityID, baseItemID string,
 	if err != nil {
 		return errors.Wrap(err, "error: redisGrpah insertion job")
 	}
-	return nil
-}
-
-func (j *Job) actOnActivityEvents(ctx context.Context, accountID string, childEntity entity.Entity, childItem item.Item, source map[string]string, db *sqlx.DB, rp *redis.Pool) error {
-
-	//skip for event
-	if childEntity.Category == entity.CategoryEvent {
-		return nil
-	}
-
-	for baseEntityID, baseItemID := range source {
-		activityEventEntityID := activityEventEntity(ctx, accountID, baseEntityID, db)
-		if activityEventEntityID != nil {
-			evEntity, err := entity.Retrieve(ctx, accountID, *activityEventEntityID, db)
-			if err != nil {
-				return err
-			}
-			evItem, err := createActivityEvent(ctx, baseItemID, evEntity, childEntity, childItem, db)
-			if err != nil {
-				return err
-			}
-			gpbNode := graphdb.BuildGNode(evEntity.AccountID, evEntity.ID, false).MakeBaseGNode(evItem.ID, makeGraphFields(evEntity.ValueAdd(evItem.Fields()))).ParentEdge(baseEntityID, baseItemID)
-			err = graphdb.UpsertNode(rp, gpbNode)
-			if err != nil {
-				return errors.Wrap(err, "error: redisGrpah insertion job")
-			}
-		}
-	}
-
 	return nil
 }
 

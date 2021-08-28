@@ -52,78 +52,6 @@ func (ev *Event) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func (ev *Event) List1(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Event.List")
-	defer span.End()
-
-	accountID, entityID, itemID := takeAEI(ctx, params, ev.db)
-
-	enty, err := entity.Retrieve(ctx, accountID, entityID, ev.db)
-	if err != nil {
-		return err
-	}
-	props := enty.Props()
-	eventEntityIds := make([]string, 0)
-	for _, prop := range props {
-		// here add the filter from the UI
-		eventEntityIds = append(eventEntityIds, prop.RefID)
-	}
-
-	eventEntities, err := entity.BulkRetrieve(ctx, eventEntityIds, ev.db)
-	if err != nil {
-		return err
-	}
-	eventEntitieMap := make(map[string]entity.Entity, 0)
-	for _, e := range eventEntities {
-		eventEntitieMap[e.ID] = e
-	}
-
-	items, err := item.GenieEntityItems(ctx, eventEntityIds, itemID, ev.db)
-	if err != nil {
-		return err
-	}
-
-	viewModelEvents := createViewModelEvents(eventEntitieMap, items)
-
-	response := struct {
-		Events []ViewModelEvent `json:"events"`
-	}{
-		Events: viewModelEvents,
-	}
-
-	return web.Respond(ctx, w, response, http.StatusOK)
-}
-
-func createViewModelEvents(entityMap map[string]entity.Entity, items []item.Item) []ViewModelEvent {
-	viewModelEvents := make([]ViewModelEvent, 0)
-	for _, it := range items {
-		enty := entityMap[it.EntityID]
-		fields := enty.FieldsIgnoreError()
-		itemFieldsMap := it.Fields()
-
-		dynamicPlaceHolder := make(map[string]interface{}, 0)
-		// value add properties
-		for i := 0; i < len(fields); i++ {
-			if val, ok := itemFieldsMap[fields[i].Key]; ok {
-				fields[i].Value = val
-				dynamicPlaceHolder[fields[i].Meta["layout"]] = val
-			}
-		}
-
-		viewModelEvent := ViewModelEvent{
-			EventID:         it.ID,
-			EventEntity:     it.EntityID,
-			EventEntityName: enty.DisplayName,
-			UserName:        *it.UserID,
-			Action:          dynamicPlaceHolder["action"],
-			Title:           dynamicPlaceHolder["title"],
-			Footer:          dynamicPlaceHolder["footer"],
-		}
-		viewModelEvents = append(viewModelEvents, viewModelEvent)
-	}
-	return viewModelEvents
-}
-
 func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	sourceItemID := params["item_id"]
 	accountID := params["account_id"]
@@ -184,6 +112,36 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
+func createViewModelEvents(entityMap map[string]entity.Entity, items []item.Item) []ViewModelEvent {
+	viewModelEvents := make([]ViewModelEvent, 0)
+	for _, it := range items {
+		enty := entityMap[it.EntityID]
+		fields := enty.FieldsIgnoreError()
+		itemFieldsMap := it.Fields()
+
+		dynamicPlaceHolder := make(map[string]interface{}, 0)
+		// value add properties
+		for i := 0; i < len(fields); i++ {
+			if val, ok := itemFieldsMap[fields[i].Key]; ok {
+				fields[i].Value = val
+				dynamicPlaceHolder[fields[i].Meta["layout"]] = val
+			}
+		}
+
+		viewModelEvent := ViewModelEvent{
+			EventID:         it.ID,
+			EventEntity:     it.EntityID,
+			EventEntityName: enty.DisplayName,
+			UserName:        *it.UserID,
+			Action:          dynamicPlaceHolder["action"],
+			Title:           dynamicPlaceHolder["title"],
+			Footer:          dynamicPlaceHolder["footer"],
+		}
+		viewModelEvents = append(viewModelEvents, viewModelEvent)
+	}
+	return viewModelEvents
 }
 
 type ViewModelEvent struct {

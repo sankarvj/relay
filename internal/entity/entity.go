@@ -61,7 +61,6 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 		Category:    n.Category,
 		State:       n.State,
 		Fieldsb:     string(fieldsBytes),
-		Propsb:      nil,
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
 	}

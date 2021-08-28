@@ -98,36 +98,3 @@ func propertyChangeEventEntityFields() []entity.Field {
 
 	return []entity.Field{propertyNameField, propertyValueField, linkField}
 }
-
-func contactProps(pageViewEventEntityID, activityEventEntityID string) []entity.Field {
-
-	pageViewEventField := entity.Field{
-		Key:         "uuid-00-page-view",
-		Name:        "page-view",
-		DisplayName: "Page View",
-		DomType:     entity.DomAutoSelect,
-		DataType:    entity.TypeReference,
-		RefID:       pageViewEventEntityID,
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	activityEventField := entity.Field{
-		Key:         "uuid-00-default-activity",
-		Name:        "default-activity",
-		DisplayName: "Activity",
-		DomType:     entity.DomAutoSelect,
-		DataType:    entity.TypeReference,
-		RefID:       activityEventEntityID,
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	return []entity.Field{pageViewEventField, activityEventField}
-}

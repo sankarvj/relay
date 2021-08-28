@@ -315,25 +315,14 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 }
 
 func AddProps(ctx context.Context, b *base.Base) error {
-	contactEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedContactsEntityName)
+	_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, pageViewEventEntityFields())
 	if err != nil {
 		return err
 	}
 
-	pageViewEventEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, pageViewEventEntityFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedActivityEventEntityName, "Activity View", entity.CategoryEvent, entity.StateTeamLevel, activityEventEntityFields())
 	if err != nil {
 		return err
 	}
-
-	activityEventEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedActivityEventEntityName, "Activity View", entity.CategoryEvent, entity.StateTeamLevel, activityEventEntityFields())
-	if err != nil {
-		return err
-	}
-
-	err = b.EntityPropsUpdate(ctx, contactEntity.ID, contactProps(pageViewEventEntity.ID, activityEventEntity.ID))
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

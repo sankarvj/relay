@@ -143,15 +143,6 @@ func (e Entity) Fields() ([]Field, error) {
 	return fields, nil
 }
 
-func (e Entity) Props() []Field {
-	fields, err := unmarshalFields(*e.Propsb)
-	if err != nil {
-		log.Println(errors.Wrapf(err, "error while unmarshalling entity properties to fields type %q", e.ID))
-		return fields
-	}
-	return fields
-}
-
 func (e Entity) FilteredFields() ([]Field, error) {
 	tmp := make([]Field, 0)
 	fields, err := unmarshalFields(e.Fieldsb)

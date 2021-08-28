@@ -40,17 +40,3 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 
 	return evItem, nil
 }
-
-func activityEventEntity(ctx context.Context, accountID, baseEntityID string, db *sqlx.DB) *string {
-	be, err := entity.Retrieve(ctx, accountID, baseEntityID, db)
-	if err != nil {
-		return nil
-	}
-	props := be.Props()
-	for _, prop := range props {
-		if prop.Name == "default-activity" {
-			return &prop.RefID
-		}
-	}
-	return nil
-}
