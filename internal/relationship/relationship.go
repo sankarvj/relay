@@ -33,7 +33,7 @@ var (
 // This type of associations are always 1:N
 func Bonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, rFields map[string]Relatable) error {
 	relationships := populateBonds(accountID, srcEntityID, rFields)
-	return BulkCreate(ctx, db, accountID, relationships)
+	return bulkCreate(ctx, db, accountID, relationships)
 }
 
 // ReBonding updates the implicit relationships between two entities based on the reference fields on the event of entity update
@@ -51,15 +51,15 @@ func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, 
 	}
 	newlyAddedRShips, updatedRShips, deletedRIds := updateBonds(accountID, srcEntityID, existingRelationshipMap, rFields)
 
-	err = BulkCreate(ctx, db, accountID, newlyAddedRShips)
+	err = bulkCreate(ctx, db, accountID, newlyAddedRShips)
 	if err != nil {
 		return err
 	}
-	err = BulkUpdate(ctx, db, accountID, updatedRShips)
+	err = bulkUpdate(ctx, db, accountID, updatedRShips)
 	if err != nil {
 		return err
 	}
-	err = BulkDelete(ctx, db, accountID, deletedRIds)
+	err = bulkDelete(ctx, db, accountID, deletedRIds)
 	if err != nil {
 		return err
 	}
@@ -70,11 +70,11 @@ func ReBonding(ctx context.Context, db *sqlx.DB, accountID, srcEntityID string, 
 // This type of associations are always N:N
 func Associate(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
 	relationshipID, relationships := populateAssociation(accountID, srcEntityID, dstEntityID)
-	return relationshipID, BulkCreate(ctx, db, accountID, relationships)
+	return relationshipID, bulkCreate(ctx, db, accountID, relationships)
 }
 
 //TODO: implement bulk create
-func BulkCreate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
+func bulkCreate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
 	for _, r := range relationships {
 		_, err := Create(ctx, db, r)
 		if err != nil {
@@ -86,7 +86,7 @@ func BulkCreate(ctx context.Context, db *sqlx.DB, accountID string, relationship
 }
 
 //TODO: implement bulk update
-func BulkUpdate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
+func bulkUpdate(ctx context.Context, db *sqlx.DB, accountID string, relationships []Relationship) error {
 	for _, r := range relationships {
 		err := Update(ctx, db, r)
 		if err != nil {
@@ -96,7 +96,7 @@ func BulkUpdate(ctx context.Context, db *sqlx.DB, accountID string, relationship
 	return nil
 }
 
-func BulkDelete(ctx context.Context, db *sqlx.DB, accountID string, relationshipIDs []string) error {
+func bulkDelete(ctx context.Context, db *sqlx.DB, accountID string, relationshipIDs []string) error {
 	for _, rID := range relationshipIDs {
 		err := Delete(ctx, db, accountID, rID)
 		if err != nil {

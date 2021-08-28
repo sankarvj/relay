@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -51,7 +52,7 @@ func (ev *Event) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+func (ev *Event) List1(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Event.List")
 	defer span.End()
 
@@ -123,6 +124,68 @@ func createViewModelEvents(entityMap map[string]entity.Entity, items []item.Item
 	return viewModelEvents
 }
 
+func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	sourceItemID := params["item_id"]
+	accountID := params["account_id"]
+	//TODO: add pagination
+	itemIDs, err := connection.JustChildItemIDs(ctx, ev.db, accountID, sourceItemID)
+	if err != nil {
+		return errors.Wrap(err, "selecting related item ids")
+	}
+
+	childItems, err := item.JustBulkRetrieve(ctx, itemIDs, ev.db)
+	if err != nil {
+		return errors.Wrap(err, "fetching items from selected ids")
+	}
+
+	entityMap := make(map[string][]item.Item, 0)
+	for _, it := range childItems {
+		if _, ok := entityMap[it.EntityID]; ok {
+			entityMap[it.EntityID] = append(entityMap[it.EntityID], it)
+		} else {
+			entityMap[it.EntityID] = []item.Item{}
+		}
+	}
+
+	entities, err := entity.BulkRetrieve(ctx, keys(entityMap), ev.db)
+	if err != nil {
+		return errors.Wrap(err, "fetching entites from selected ids")
+	}
+
+	viewModelEvents := make([]ViewModelEvent, 0)
+	for _, en := range entities {
+		items := entityMap[en.ID]
+		for _, it := range items {
+			valueAddedFields := en.ValueAdd(it.Fields())
+			dynamicPlaceHolder := make(map[string]interface{}, 0)
+			// value add properties
+			for _, vaf := range valueAddedFields {
+				dynamicPlaceHolder[vaf.Meta["layout"]] = vaf.Value
+			}
+
+			viewModelEvent := ViewModelEvent{
+				EventID:         it.ID,
+				EventEntity:     it.EntityID,
+				EventEntityName: en.DisplayName,
+				UserName:        *it.UserID,
+				Action:          dynamicPlaceHolder["action"],
+				Title:           dynamicPlaceHolder["title"],
+				Footer:          dynamicPlaceHolder["footer"],
+			}
+			viewModelEvents = append(viewModelEvents, viewModelEvent)
+		}
+
+	}
+
+	response := struct {
+		Events []ViewModelEvent `json:"events"`
+	}{
+		Events: viewModelEvents,
+	}
+
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
 type ViewModelEvent struct {
 	EventID         string      `json:"event_id"`
 	EventEntity     string      `json:"event_entity"`
@@ -132,4 +195,12 @@ type ViewModelEvent struct {
 	Title           interface{} `json:"title"`  //lable:title  - task, deal, amazon.com
 	Footer          interface{} `json:"footer"` //lable:footer - 8 times
 	Time            string      `json:"time"`
+}
+
+func keys(oneMap map[string][]item.Item) []string {
+	keys := make([]string, 0, len(oneMap))
+	for k := range oneMap {
+		keys = append(keys, k)
+	}
+	return keys
 }

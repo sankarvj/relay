@@ -63,6 +63,26 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 	return items, nil
 }
 
+//JustBulkRetrieve is just BulkRetrieve but entityID.
+//JustBulkRetrieve is called from the events API to get all the items from different entities in one shot.
+func JustBulkRetrieve(ctx context.Context, ids []interface{}, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.JustBulkRetrieve")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where item_id = any($1) LIMIT 100`
+
+	if err := db.SelectContext(ctx, &items, q, pq.Array(ids)); err != nil {
+		if err == sql.ErrNoRows {
+			return items, ErrItemsEmpty
+		}
+		return items, errors.Wrap(err, "selecting just bulk items for the selected item ids")
+	}
+
+	return items, nil
+
+}
+
 //TimeSeriesSameDayViewModel presents the item inside a time ticker map
 func TimeSeriesSameDayViewModel(items []TimeSeriesItem, start time.Time, loop int) map[time.Time]TimeSeriesItem {
 	timeSeriesMap := make(map[time.Time]TimeSeriesItem, 0)

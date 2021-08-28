@@ -1,6 +1,6 @@
 package relationship
 
-// Relationship represents relationship of the reference fields
+// Relationship represents relationship of the reference fields or the explicit relationships with `0` for field id
 type Relationship struct {
 	RelationshipID string `db:"relationship_id" json:"relationship_id"`
 	AccountID      string `db:"account_id" json:"account_id"`

@@ -95,6 +95,22 @@ func ChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, relationshipID, i
 	return pickOpposites(itemID, childItemids), nil
 }
 
+//JustChildItemIDs is just ChildItemIDs but relationshipID.
+//JustChildItemIDs is called from the events API to get all the associated items in one shot.
+func JustChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, itemID string) ([]interface{}, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.connection.JustChildItemIDs")
+	defer span.End()
+
+	var childItemids []ConnectionID
+	const q = `SELECT src_item_id,dst_item_id FROM connections where account_id = $1 AND ( dst_item_id = $2 OR src_item_id = $2)`
+
+	if err := db.SelectContext(ctx, &childItemids, q, accountID, itemID); err != nil {
+		return nil, errors.Wrap(err, "selecting src items for connected dst item")
+	}
+
+	return pickOpposites(itemID, childItemids), nil
+}
+
 func Delete(ctx context.Context, db *sqlx.DB, relationshipID, dstItemID string) error {
 	ctx, span := trace.StartSpan(ctx, "internal.connection.Delete")
 	defer span.End()

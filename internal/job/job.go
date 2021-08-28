@@ -44,7 +44,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 		return
 	}
 	//insertion in to redis graph DB
-	err = j.actOnRedisGraph(accountID, entityID, itemID, e.ValueAdd(newFields), rp)
+	err = j.actOnRedisGraph(accountID, entityID, itemID, e.ValueAdd(newFields), "", "", rp)
 	if err != nil {
 		log.Println(err)
 		return
@@ -88,17 +88,19 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	}
 
 	//insertion in to redis graph DB
-	err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, rp)
-	if err != nil {
-		log.Println(err)
-		return
+	for baseEntityID, baseItemID := range source {
+		err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, baseEntityID, baseItemID, rp)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
-	err = j.actOnActivityEvents(ctx, accountID, e, it, source, db, rp)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	// err = j.actOnActivityEvents(ctx, accountID, e, it, source, db, rp)
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
 }
 
 func (j *Job) eventCreated(ctx context.Context, baseEntityID, baseItemID string, evItem item.Item, db *sqlx.DB, rp *redis.Pool) error {
@@ -145,8 +147,11 @@ func (j *Job) actOnActivityEvents(ctx context.Context, accountID string, childEn
 	return nil
 }
 
-func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
+func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, baseEntityID, baseItemID string, rp *redis.Pool) error {
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
+	if baseEntityID != "" && baseItemID != "" {
+		gpbNode = gpbNode.ParentEdge(baseEntityID, baseItemID)
+	}
 	err := graphdb.UpsertNode(rp, gpbNode)
 	if err != nil {
 		return errors.Wrap(err, "error: redisGrpah insertion job")
@@ -226,9 +231,9 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 	}
 
 	for _, r := range relationships {
-		//Explicit connection. Happens when adding the item from inside the base element
-		//The user can only delete that association and he couldn't update it
-		//Hence no reference exists between the two entities implicitly.
+		//Explicit connection happens when adding the item from inside the base element
+		//The user can only delete that association and he couldn't update it becasue there is no
+		//reference exists between the two entities implicitly.
 		if r.FieldID == relationship.FieldAssociationKey && createEvent {
 			if baseItemID, ok := base[r.DstEntityID]; ok {
 				err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)

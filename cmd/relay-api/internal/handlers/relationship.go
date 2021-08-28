@@ -65,6 +65,11 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
+	//There are three ways to fetch the child ids
+	// 1. Fetch child item ids by querying the connections table.
+	// 2. Fetch child item ids by querying the graph db.
+	// 3. Fetch child item ids by querying the parent_item_id (formerly genie_id)
+
 	//TODO: add pagination
 	itemIDs, err := connection.ChildItemIDs(ctx, rs.db, accountID, relationshipID, sourceItemID)
 	if err != nil {
