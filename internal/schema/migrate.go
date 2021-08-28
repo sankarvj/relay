@@ -102,6 +102,7 @@ var migrations = []darwin.Migration{
 			state         INTEGER DEFAULT 0,
 			status        INTEGER DEFAULT 0,
 			fieldsb       JSONB,
+			propsb        JSONB,
 			tags          TEXT[],
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,

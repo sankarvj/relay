@@ -19,13 +19,13 @@ func Act(actionID string) {
 
 }
 
-func DailyWatch(ctx context.Context, accountID, oAuthFile, topic string, db *sqlx.DB) error {
+func DailyWatch(ctx context.Context, accountID, teamID, oAuthFile, topic string, db *sqlx.DB) error {
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
 		return err
 	}
 
-	emailsConfigEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityEmailConfig)
+	emailsConfigEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityEmailConfig)
 	if err != nil {
 		return err
 	}

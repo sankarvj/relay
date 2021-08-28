@@ -193,14 +193,16 @@ func RetriveAssociation(ctx context.Context, accountID, srcEntityID, dstEntityID
 }
 
 // List gets the relationships for the destination entity
-func List(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Bond, error) {
+func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) ([]Bond, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE r.account_id = $1 AND r.dst_entity_id = $2 AND r.type = $3`
+	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3)  AND r.dst_entity_id = $4 AND r.type = $5`
 
-	if err := db.SelectContext(ctx, &bonds, q, accountID, entityID, RTypeAbsolute); err != nil {
+	// can't import entity.StateAccountLevel -- 1
+	stateAccountLevel := 1
+	if err := db.SelectContext(ctx, &bonds, q, accountID, teamID, stateAccountLevel, entityID, RTypeAbsolute); err != nil {
 		return nil, errors.Wrap(err, "selecting bonds/relationships for dst entity")
 	}
 

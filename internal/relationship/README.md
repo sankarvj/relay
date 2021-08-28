@@ -26,8 +26,6 @@ Apart from STRAIGHT, REVERSE & ABSOLUTE
 5. Refer below section to understand more about the REVERSE use cases.
 
 
-
-
 NOTE: Right now, we are going with the psql way for finding the sub-items using the connections table.
 But in future, please use redis graph to directly fetch the child items
 

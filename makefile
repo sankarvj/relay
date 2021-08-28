@@ -21,6 +21,10 @@ seed: migrate
 
 crm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 crmadd
+csm:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 csmadd
+ctm:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 ctmadd
 hr:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 hradd
 

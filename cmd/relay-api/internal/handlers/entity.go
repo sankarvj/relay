@@ -34,7 +34,7 @@ func (e *Entity) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.List")
 	defer span.End()
 
-	entities, err := entity.List(ctx, params["team_id"], categories(r.URL.Query().Get("category_id")), e.db)
+	entities, err := entity.List(ctx, params["account_id"], params["team_id"], categories(r.URL.Query().Get("category_id")), e.db)
 	if err != nil {
 		return err
 	}

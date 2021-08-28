@@ -1,11 +1,11 @@
-package bootstrap
+package forms
 
 import (
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func ownerFields(userID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
+func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
 	userIDFieldID := uuid.New().String()
 	userIDField := entity.Field{
 		Key:         userIDFieldID,

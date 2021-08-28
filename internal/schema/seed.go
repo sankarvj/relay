@@ -27,7 +27,10 @@ const (
 	SeedDealsEntityName     = "deals"
 	SeedWebHookEntityName   = "hooks"
 	SeedDelayEntityName     = "delay"
-	SeedEventsEntityName    = "events"
+	SeedProjectsEntityName  = "projects"
+
+	SeedPageViewEventEntityName = "page-view-event"
+	SeedActivityEventEntityName = "activity-event"
 
 	SeedFieldFNameKey = "uuid-00-fname"
 	SeedFieldNPSKey   = "uuid-00-nps-score"

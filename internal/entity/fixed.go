@@ -16,11 +16,14 @@ import (
 )
 
 const (
+	DefaultTeamID = "00000000-0000-0000-0000-000000000000"
+)
+
+const (
 	FixedEntityOwner       = "owners"
 	FixedEntityEmailConfig = "email_config"
 	FixedEntityCalendar    = "calendar"
 	FixedEntityEmails      = "emails"
-	FixedEntityEvent       = "event"
 	FixedEntityStream      = "stream"
 )
 
@@ -116,25 +119,28 @@ func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 	return err
 }
 
-func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID string, preDefinedEntity string) (Entity, error) {
+func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntity string) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.predefined.RetrieveUserEntity")
 	defer span.End()
 
+	if teamID == "" {
+		teamID = DefaultTeamID
+	}
+
 	var e Entity
-	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 LIMIT 1`
-	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntity); err != nil {
+	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
+	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntity, teamID, StateAccountLevel); err != nil {
 		if err == sql.ErrNoRows {
 			return Entity{}, ErrFixedEntityNotFound
 		}
-
 		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntity)
 	}
 
 	return e, nil
 }
 
-func RetriveFixedItemByCategory(ctx context.Context, accountID, entityCategory string, db *sqlx.DB) ([]Field, error) {
-	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, entityCategory)
+func RetriveFixedItemByCategory(ctx context.Context, accountID, teamID, entityCategory string, db *sqlx.DB) ([]Field, error) {
+	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, teamID, entityCategory)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +172,7 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 }
 
 func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) error {
-	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, preDefinedEntity)
+	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, "", preDefinedEntity)
 	if err != nil {
 		return err
 	}

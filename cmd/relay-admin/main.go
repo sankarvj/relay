@@ -111,7 +111,11 @@ func run() error {
 	case "seed":
 		err = seed(db, rp)
 	case "crmadd":
-		err = bootstrap.BootCRM(db, rp, schema.SeedAccountID)
+		err = bootstrap.BootCRM(schema.SeedAccountID, db, rp)
+	case "csmadd":
+		err = bootstrap.BootCSM(schema.SeedAccountID, db, rp)
+	case "ctmadd":
+		err = bootstrap.BootCSM(schema.SeedAccountID, db, rp)
 	case "useradd":
 		err = useradd(db, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -163,7 +167,7 @@ func seed(db *sqlx.DB, rp *redis.Pool) error {
 		return err
 	}
 
-	fmt.Println("main: sata seeded successfully!!!")
+	fmt.Println("main: sample data seeded successfully!!!")
 	return nil
 }
 

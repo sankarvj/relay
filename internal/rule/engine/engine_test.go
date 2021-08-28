@@ -26,8 +26,8 @@ func TestEmailRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a send email engine for the given contact - default case")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
-			emailsEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, entity.FixedEntityEmails)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedContactsEntityName)
+			emailsEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, entity.FixedEntityEmails)
 			contactItems, err := item.List(tests.Context(), contactEntity.ID, db)
 			emailTemplateItems, _ := item.List(tests.Context(), emailsEntity.ID, db)
 
@@ -65,7 +65,7 @@ func TestRuleRenderer(t *testing.T) {
 	{
 		t.Log("\twhen running a engine for the given contact - default case")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedContactsEntityName)
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 
 			vars := map[string]interface{}{contactEntity.ID: contactItems[0].ID} // this will get populated only during the trigger
@@ -96,8 +96,8 @@ func TestCreateItemRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running a create item engine - default case")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
-			taskEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTasksEntityName)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedContactsEntityName)
+			taskEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedTasksEntityName)
 
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 			taskItems, _ := item.List(tests.Context(), taskEntity.ID, db)
@@ -137,7 +137,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 	{
 		t.Log("\twhen running update item engine - default case")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedContactsEntityName)
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 
 			vars, _ := node.MapToJSONB(map[string]string{contactEntity.ID: contactItems[0].ID})
@@ -202,7 +202,7 @@ func TestTrigger(t *testing.T) {
 	{
 		t.Log("\tWhen updating the event NPS score in contact")
 		{
-			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedContactsEntityName)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, schema.SeedContactsEntityName)
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 			i, _ := item.Retrieve(tests.Context(), contactEntity.ID, contactItems[0].ID, db)
 			oldItemFields := i.Fields()

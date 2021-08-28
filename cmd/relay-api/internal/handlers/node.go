@@ -33,7 +33,7 @@ func (n *Node) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 	nn.ID = uuid.New().String()
-	nn.ActorID = takeE(ctx, params["account_id"], nn.ActorID, n.db) // seems illogical. Exactly very confusing.
+	nn.ActorID = takeE(ctx, params["account_id"], params["team_id"], nn.ActorID, n.db) // seems illogical. Exactly very confusing.
 
 	nn = makeNode(params["account_id"], params["flow_id"], nn)
 
@@ -109,9 +109,9 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	return nn
 }
 
-func takeE(ctx context.Context, accountID, entityID string, db *sqlx.DB) string {
+func takeE(ctx context.Context, accountID, teamID, entityID string, db *sqlx.DB) string {
 	if schema.IsEntitySeeded(entityID) {
-		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entityID)
+		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entityID)
 		if err == nil {
 			entityID = fixedEntity.ID
 		}

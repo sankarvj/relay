@@ -49,7 +49,7 @@ func (c Calendar) Act(ctx context.Context, accountID string, actionID string, ac
 	return nil
 }
 
-func CreateCalendarEvent(ctx context.Context, accountID, entityID, itemID string, valueAddedCalendarFields []entity.Field, db *sqlx.DB) error {
+func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemID string, valueAddedCalendarFields []entity.Field, db *sqlx.DB) error {
 	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedCalendarFields)
 	meetingID := uuid.New().String()
 	meeting := &integration.Meeting{
@@ -73,7 +73,7 @@ func CreateCalendarEvent(ctx context.Context, accountID, entityID, itemID string
 	meeting.StartTime = util.FormatTimeGoogle(st)
 	meeting.EndTime = util.FormatTimeGoogle(end)
 
-	calConfigItem, err := calendarEntityItem(ctx, accountID, db)
+	calConfigItem, err := calendarEntityItem(ctx, accountID, teamID, db)
 	if err != nil {
 		return err
 	}
@@ -112,9 +112,9 @@ func calendarConfigItem(ctx context.Context, discovery discovery.Discover, db *s
 	return calendarEntity, updateFunc, nil
 }
 
-func calendarEntityItem(ctx context.Context, accountID string, db *sqlx.DB) (entity.CaldendarEntity, error) {
+func calendarEntityItem(ctx context.Context, accountID, teamID string, db *sqlx.DB) (entity.CaldendarEntity, error) {
 	var calendarEntityItem entity.CaldendarEntity
-	valueAddedFields, err := entity.RetriveFixedItemByCategory(ctx, accountID, entity.FixedEntityCalendar, db)
+	valueAddedFields, err := entity.RetriveFixedItemByCategory(ctx, accountID, teamID, entity.FixedEntityCalendar, db)
 	if err != nil {
 		return calendarEntityItem, err
 	}

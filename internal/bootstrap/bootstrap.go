@@ -2,26 +2,19 @@ package bootstrap
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"gitlab.com/vjsideprojects/relay/internal/connection"
+	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/csm"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/job"
-	"gitlab.com/vjsideprojects/relay/internal/layout"
-	"gitlab.com/vjsideprojects/relay/internal/relationship"
-	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
-)
-
-const (
-	UUIDHolder = "00000000-0000-0000-0000-000000000000"
 )
 
 func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
@@ -36,95 +29,68 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 	return err
 }
 
-func BootstrapOwnerEntity(ctx context.Context, db *sqlx.DB, rp *redis.Pool, currentUser *user.User, accountID, teamID string) error {
-	fields, itemVals := ownerFields(currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
+func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.Base) error {
+	fields, itemVals := forms.OwnerFields(currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
-	ue, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, fields)
+	ue, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, entity.StateAccountLevel, fields)
 	if err != nil {
 		return err
 	}
 	// add owner item
 	// pass the currentUserID as the itemID. Is it okay to do like that? seems like a anti pattern.
-	_, err = ItemAdd(ctx, db, rp, accountID, ue.ID, currentUser.ID, currentUser.ID, itemVals)
+	_, err = b.ItemAdd(ctx, ue.ID, currentUser.ID, currentUser.ID, itemVals)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func BootstrapEmailConfigEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
-	coEntityID, coEmail, err := currentOwner(ctx, db, accountID)
+func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
+	coEntityID, coEmail, err := currentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 	if err != nil {
 		return err
 	}
-	fields := emailConfigFields(coEntityID, coEmail)
+	fields := forms.EmailConfigFields(coEntityID, coEmail)
 	// add entity - email- configs
-	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, fields)
 
 	return err
 }
 
-func BootstrapEmailsEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
-	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityEmailConfig)
+func BootstrapEmailsEntity(ctx context.Context, b *base.Base) error {
+	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
 	if err != nil {
 		return err
 	}
 
 	//TODO uuid-00-email needs to be changed
-	fields := emailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "uuid-00-email")
+	fields := forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "uuid-00-email")
 	// add entity - email
-	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateAccountLevel, fields)
 
 	return err
 }
 
-func BootstrapCalendarEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
-	coEntityID, coEmail, err := currentOwner(ctx, db, accountID)
+func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
+	coEntityID, coEmail, err := currentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 	if err != nil {
 		return err
 	}
-	fields := calendarFields(coEntityID, coEmail)
+	fields := forms.CalendarFields(coEntityID, coEmail)
 	// add entity - calendar
-	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, fields)
 
 	return err
 }
 
-func BootstrapMessageEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string) error {
-	fields := EventFields()
-	// add entity - event
-	_, err := EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityEvent, "Events", entity.CategoryEvent, fields)
-	if err != nil {
-		return err
-	}
-
-	fields = StreamFields()
+func BootstrapStreams(ctx context.Context, b *base.Base) error {
 	// add entity - streams
-	_, err = EntityAdd(ctx, db, accountID, teamID, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, fields)
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
 	return err
 }
 
-func BootstrapLayout(ctx context.Context, db *sqlx.DB, name, accountID, entityID string, fields map[string]string) error {
-	nl := layout.NewLayout{}
-	nl.Name = name
-	nl.AccountID = accountID
-	nl.EntityID = entityID
-	nl.Fields = fields
-
-	_, err := layout.Create(ctx, db, nl, time.Now())
-	return err
-}
-
-func BootstrapSegments(ctx context.Context, db *sqlx.DB, accountID, entityID, name, exp string) error {
-	_, err := FlowAdd(ctx, db, accountID, uuid.New().String(), entityID, name, flow.FlowModeSegment, flow.FlowConditionNil, exp)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func currentOwner(ctx context.Context, db *sqlx.DB, accountID string) (string, string, error) {
-	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, entity.FixedEntityOwner)
+func currentOwner(ctx context.Context, db *sqlx.DB, accountID, teamID string) (string, string, error) {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityOwner)
 	if err != nil {
 		return "", "", err
 	}
@@ -135,122 +101,86 @@ func currentOwner(ctx context.Context, db *sqlx.DB, accountID string) (string, s
 	return ownerEntity.ID, entity.NamedKeysMap(ownerFields)["email"], nil
 }
 
-func EntityUpdate(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, fields []entity.Field) error {
-	input, err := json.Marshal(fields)
+// THE TEAM SPECIFIC BOOTS
+
+func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
+	fmt.Printf("\n\t\tBootstrap:CRM STARTED for the accountID %s\n", accountID)
+
+	ctx := context.Background()
+	teamID := uuid.New().String()
+	err := BootstrapTeam(ctx, db, accountID, teamID, "CRM")
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:CRM `team` insertion failed")
+	}
+	fmt.Println("\t\t\tBootstrap:CRM `team` added")
+
+	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
+
+	//streams
+	err = BootstrapStreams(ctx, b)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("\t\tEntity '%s' Updated\n", entityID)
-	return entity.Update(ctx, db, accountID, entityID, string(input), time.Now())
-}
-
-func EntityAdd(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID, name, displayName string, category int, fields []entity.Field) (entity.Entity, error) {
-	ne := entity.NewEntity{
-		ID:          entityID,
-		AccountID:   accountID,
-		TeamID:      teamID,
-		Category:    category,
-		Name:        name,
-		DisplayName: displayName,
-		Fields:      fields,
-	}
-
-	e, err := entity.Create(ctx, db, ne, time.Now())
+	//boot
+	fmt.Println("\t\t\tBootstrap:CRM `boot` functions started")
+	err = crm.Boot(ctx, b)
 	if err != nil {
-		return entity.Entity{}, err
+		return errors.Wrap(err, "\t\t\tBootstrap:CRM `boot` functions failed")
 	}
+	fmt.Println("\t\t\tBootstrap:CRM `boot` functions completed successfully")
 
-	fmt.Printf("\t\tEntity '%s' Bootstraped\n", e.DisplayName)
-	return e, nil
-}
-
-func ItemAdd(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, itemID, userID string, fields map[string]interface{}) (item.Item, error) {
-	return ItemAddGenie(ctx, db, rp, accountID, entityID, itemID, userID, UUIDHolder, fields)
-}
-
-func ItemAddGenie(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, entityID, itemID, userID, genieID string, fields map[string]interface{}) (item.Item, error) {
-	ni := item.NewItem{
-		ID:        itemID,
-		AccountID: accountID,
-		EntityID:  entityID,
-		UserID:    &userID,
-		GenieID:   &genieID,
-		Fields:    fields,
-	}
-
-	it, err := item.Create(ctx, db, ni, time.Now())
+	//samples
+	fmt.Println("\t\t\tBootstrap:CRM `samples` functions started")
+	err = crm.AddSamples(ctx, b)
 	if err != nil {
-		return item.Item{}, err
+		return errors.Wrap(err, "\t\t\tBootstrap:CRM `samples` functions failed")
 	}
+	fmt.Println("\t\t\tBootstrap:CRM `samples` functions completed successfully")
 
-	j := job.Job{}
-	j.EventItemCreated(accountID, entityID, it.ID, ni.Source, db, rp)
-
-	fmt.Printf("\t\t\tItem Added\n")
-	return it, nil
-}
-
-func FlowAdd(ctx context.Context, db *sqlx.DB, accountID, flowID, entityID string, name string, mode, condition int, exp string) (flow.Flow, error) {
-	nf := flow.NewFlow{
-		ID:         flowID,
-		AccountID:  accountID,
-		EntityID:   entityID,
-		Mode:       mode,
-		Type:       flow.FlowTypeUnknown,
-		Condition:  condition,
-		Expression: exp,
-		Name:       name,
-	}
-
-	f, err := flow.Create(ctx, db, nf, time.Now())
+	//event props
+	fmt.Println("\t\t\tBootstrap:CRM `event props` functions started")
+	err = crm.AddProps(ctx, b)
 	if err != nil {
-		return flow.Flow{}, err
+		return errors.Wrap(err, "\t\t\tBootstrap:CRM `event props` functions failed")
 	}
+	fmt.Println("\t\t\tBootstrap:CRM `event props` functions completed successfully")
 
-	fmt.Printf("\t\tFlow '%s' Bootstraped\n", name)
-	return f, nil
+	//all done
+	fmt.Printf("\n\t\tBootstrap:CRM ENDED successfully for the accountID: %s\n", accountID)
+
+	return nil
 }
 
-func NodeAdd(ctx context.Context, db *sqlx.DB, accountID, nodeID, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string, stageID, description string) (node.Node, error) {
-	nn := node.NewNode{
-		ID:           nodeID,
-		AccountID:    accountID,
-		FlowID:       flowID,
-		ActorID:      actorID,
-		ParentNodeID: pnodeID,
-		StageID:      stageID,
-		Name:         name,
-		Description:  description,
-		Type:         typ,
-		Expression:   exp,
-		Actuals:      actuals,
-	}
+func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
+	fmt.Printf("\n\t\tBootstrap:CSM STARTED for the accountID %s\n", accountID)
 
-	n, err := node.Create(ctx, db, nn, time.Now())
+	ctx := context.Background()
+	teamID := uuid.New().String()
+	err := BootstrapTeam(ctx, db, accountID, teamID, "CSM")
 	if err != nil {
-		return node.Node{}, err
+		return errors.Wrap(err, "\t\t\tBootstrap:CSM `team` insertion failed")
 	}
+	fmt.Println("\t\t\tBootstrap:CSM `team` added")
 
-	fmt.Printf("\t\t\tNode '%s' Added For Flow %s\n", name, flowID)
-	return n, nil
-}
+	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
 
-func AssociationAdd(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, dstEntityID string) (string, error) {
-	relationshipID, err := relationship.Associate(ctx, db, accountID, srcEntityID, dstEntityID)
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Printf("\t\tAssociation added between entities '%s' and '%s'\n", srcEntityID, dstEntityID)
-	return relationshipID, nil
-}
-
-func ConnectionAdd(ctx context.Context, db *sqlx.DB, accountID, relationshipID, srcItemID, dstItemID string) error {
-	err := connection.Associate(ctx, db, accountID, relationshipID, srcItemID, dstItemID)
+	//streams
+	err = BootstrapStreams(ctx, b)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\t\t\tConnection added between items '%s' and '%s' for the relationship '%s'\n", srcItemID, dstItemID, relationshipID)
+
+	//boot
+	fmt.Println("\t\t\tBootstrap:CSM `boot` functions started")
+	err = csm.Boot(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:CSM `boot` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:CSM `boot` functions completed successfully")
+
+	//all done
+	fmt.Printf("\n\t\tBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
+
 	return nil
 }

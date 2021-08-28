@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
@@ -57,7 +58,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	return a, nil
 }
 
-func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cu *user.User, n NewAccount, now time.Time) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cuser *user.User, n NewAccount, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
 	defer span.End()
 	a, err := Create(ctx, db, n, now)
@@ -68,7 +69,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cu *user.User, 
 	teamID := a.ID
 
 	//TODO: all bootsrapping should happen in a single transaction
-	err = user.UpdateAccounts(ctx, db, cu, a.ID, time.Now())
+	err = user.UpdateAccounts(ctx, db, cuser, a.ID, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "account inserted but user update failed")
 	}
@@ -78,29 +79,26 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cu *user.User, 
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
 
-	err = bootstrap.BootstrapOwnerEntity(ctx, db, rp, cu, a.ID, teamID)
+	b := base.NewBase(a.ID, teamID, base.UUIDHolder, db, rp)
+
+	err = bootstrap.BootstrapOwnerEntity(ctx, cuser, b)
 	if err != nil {
-		return errors.Wrap(err, "account inserted but owner bootstrap failed")
+		return err
 	}
 
-	err = bootstrap.BootstrapEmailConfigEntity(ctx, db, a.ID, teamID)
+	err = bootstrap.BootstrapEmailConfigEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but email config bootstrap failed")
 	}
 
-	err = bootstrap.BootstrapEmailsEntity(ctx, db, a.ID, teamID)
+	err = bootstrap.BootstrapEmailsEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but emails bootstrap failed")
 	}
 
-	err = bootstrap.BootstrapCalendarEntity(ctx, db, a.ID, teamID)
+	err = bootstrap.BootstrapCalendarEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but calendar bootstrap failed")
-	}
-
-	err = bootstrap.BootstrapMessageEntity(ctx, db, a.ID, teamID)
-	if err != nil {
-		return errors.Wrap(err, "account inserted but message bootstrap failed")
 	}
 
 	return nil

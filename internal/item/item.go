@@ -189,14 +189,15 @@ func UserEntityItems(ctx context.Context, entityID, userID string, db *sqlx.DB) 
 	return items, nil
 }
 
-func GenieEntityItems(ctx context.Context, entityID, genieID string, db *sqlx.DB) ([]Item, error) {
+//TODO add pagination
+func GenieEntityItems(ctx context.Context, entityIDs []string, genieID string, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.GenieEntityItems")
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND genie_id = $2 LIMIT 20`
+	const q = `SELECT * FROM items where entity_id = any($1) AND genie_id = $2 LIMIT 20`
 
-	if err := db.SelectContext(ctx, &items, q, entityID, genieID); err != nil {
+	if err := db.SelectContext(ctx, &items, q, pq.Array(entityIDs), genieID); err != nil {
 		return items, errors.Wrap(err, "selecting bulk items for entity id with genie")
 	}
 

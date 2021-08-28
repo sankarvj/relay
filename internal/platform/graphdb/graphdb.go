@@ -153,7 +153,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, mps...)
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb upsert node query:", sq)
+		//DEBUGGING LOG log.Println("internal.platform.graphdb upsert node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -167,7 +167,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ruQ)
 		sq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb unlink node query:", sq)
+		//DEBUGGING LOG log.Println("internal.platform.graphdb unlink node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -206,7 +206,7 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ulink)
 		ruq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb unlink edge query:", ruq)
+		//DEBUGGING LOG log.Println("internal.platform.graphdb unlink edge query:", ruq)
 		_, err := graph.Query(ruq)
 		if err != nil {
 			return err
@@ -234,7 +234,12 @@ func updateRelation(gn GraphNode, srcNode *rg.Node) ([]string, []string) {
 		if rn.Unlink {
 			u = append(u, strings.Join(unlinkRelation(rn.RelationName, srcNode, dstNode), " "))
 		} else {
-			s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
+			if rn.IsReverse {
+				s = append(s, mergeRevRelation(rn.RelationName, srcNode, dstNode)...)
+			} else {
+				s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
+			}
+
 		}
 	}
 	return s, u
@@ -243,6 +248,14 @@ func updateRelation(gn GraphNode, srcNode *rg.Node) ([]string, []string) {
 //"MERGE (charlie { name: 'Charlie Sheen' }) MERGE (wallStreet:Movie { name: 'Wall Street' }) MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
 func mergeRelation(relation string, srcNode, destNode *rg.Node) []string {
 	edge := rg.EdgeNew(relation, srcNode, destNode, nil)
+	md := mergeNode(destNode)
+	me := mergeEdge(edge)
+	return append(md, me...)
+}
+
+//Usefull when we update the event props with parent edge
+func mergeRevRelation(relation string, srcNode, destNode *rg.Node) []string {
+	edge := rg.EdgeNew(relation, destNode, srcNode, nil)
 	md := mergeNode(destNode)
 	me := mergeEdge(edge)
 	return append(md, me...)
@@ -327,6 +340,13 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			gn.Fields = append(gn.Fields, f)
 		}
 	}
+	return gn
+}
+
+func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string) GraphNode {
+	rn := BuildGNode(gn.GraphName, parentEntityID, false).
+		MakeBaseGNode(parentItemID, []Field{}).relateRefs(true)
+	gn.Relations = append(gn.Relations, rn)
 	return gn
 }
 

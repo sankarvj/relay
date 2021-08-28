@@ -23,12 +23,12 @@ func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	accountID, _, itemID := takeAEI(ctx, params, st.db)
 
-	e, err := entity.RetrieveFixedEntity(ctx, st.db, accountID, entity.FixedEntityStream)
+	e, err := entity.RetrieveFixedEntity(ctx, st.db, accountID, params["team_id"], entity.FixedEntityStream)
 	if err != nil {
 		return err
 	}
 
-	items, err := item.GenieEntityItems(ctx, e.ID, itemID, st.db)
+	items, err := item.GenieEntityItems(ctx, []string{e.ID}, itemID, st.db)
 	if err != nil {
 		return err
 	}

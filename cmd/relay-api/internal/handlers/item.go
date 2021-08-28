@@ -246,7 +246,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	}
 
-	bonds, err := relationship.List(ctx, i.db, accountID, entityID)
+	bonds, err := relationship.List(ctx, i.db, accountID, params["team_id"], entityID)
 	if err != nil {
 		return err
 	}
@@ -344,7 +344,7 @@ type ViewModelItem struct {
 func takeAEI(ctx context.Context, params map[string]string, db *sqlx.DB) (string, string, string) {
 	entityID := params["entity_id"]
 	if schema.IsEntitySeeded(entityID) {
-		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, params["account_id"], entityID)
+		fixedEntity, err := entity.RetrieveFixedEntity(ctx, db, params["account_id"], params["team_id"], entityID)
 		if err == nil {
 			entityID = fixedEntity.ID
 		}

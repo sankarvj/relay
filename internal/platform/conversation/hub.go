@@ -1,8 +1,6 @@
 package conversation
 
 import (
-	"fmt"
-
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -58,15 +56,15 @@ func (hub *Hub) unregisterClient(client *Client, rp *redis.Pool) {
 }
 
 func (hub *Hub) handleUserJoined(msg Message) {
-	fmt.Printf("message handleUserJoined ---------------------------------------> %+v", msg)
+	//DEBUGGING LOG fmt.Printf("message handleUserJoined ---------------------------------------> %+v", msg)
 }
 
 func (hub *Hub) handleUserLeft(msg Message) {
-	fmt.Printf("message handleUserLeft ---------------------------------------> %+v", msg)
+	//DEBUGGING LOG fmt.Printf("message handleUserLeft ---------------------------------------> %+v", msg)
 }
 
 func (hub *Hub) handleIncomingMessage(msg Message) {
-	fmt.Printf("message handleIncomingMessage ---------------------------------------> %+v", msg)
+	//DEBUGGING LOG fmt.Printf("message handleIncomingMessage ---------------------------------------> %+v", msg)
 	if roomClients, ok := hub.Clients[msg.Room]; ok {
 		for client := range roomClients {
 			//if client.id != msg.ClientID {

@@ -29,7 +29,7 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 	ctx, span := trace.StartSpan(ctx, "handlers.Relationship.List")
 	defer span.End()
 
-	relationships, err := relationship.List(ctx, rs.db, params["account_id"], params["entity_id"])
+	relationships, err := relationship.List(ctx, rs.db, params["account_id"], params["team_id"], params["entity_id"])
 	if err != nil {
 		return errors.Wrap(err, "selecting relationships for the entity id")
 	}

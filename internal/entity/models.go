@@ -18,6 +18,7 @@ type Entity struct {
 	Status      int            `db:"status" json:"status"`
 	Retry       int            `db:"retry" json:"retry"`
 	Fieldsb     string         `db:"fieldsb" json:"fieldsb"`
+	Propsb      *string        `db:"propsb" json:"propsb"`
 	Tags        pq.StringArray `db:"tags" json:"tags"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   int64          `db:"updated_at" json:"updated_at"`
@@ -52,7 +53,8 @@ type NewEntity struct {
 
 //State for the entity specifies the current state of the entity
 const (
-	StateUnknown = 0
+	StateTeamLevel    = 0
+	StateAccountLevel = 1
 )
 
 //Category specifies the different type of entities

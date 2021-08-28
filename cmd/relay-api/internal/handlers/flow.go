@@ -38,7 +38,7 @@ func (f *Flow) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	var flows []flow.Flow
 	entityIDs := []string{params["entity_id"]}
 	if params["entity_id"] == "0" { //fetch all flows for all entities of the product if entity is zero
-		entities, err := entity.List(ctx, params["team_id"], []int{}, f.db)
+		entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{}, f.db)
 		if err != nil {
 			return err
 		}

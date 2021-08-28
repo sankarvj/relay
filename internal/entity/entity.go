@@ -23,18 +23,18 @@ var (
 )
 
 // List retrieves a list of existing entities for the team associated from the database.
-func List(ctx context.Context, teamID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
+func List(ctx context.Context, accountID, teamID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
 	defer span.End()
 	entities := []Entity{}
 	if len(categoryIds) == 0 {
-		const q = `SELECT * FROM entities where team_id = $1`
-		if err := db.SelectContext(ctx, &entities, q, teamID); err != nil {
+		const q = `SELECT * FROM entities where account_id = $1 AND (team_id = $2 OR state = $3)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, StateAccountLevel); err != nil {
 			return nil, errors.Wrap(err, "selecting entities for all category")
 		}
 	} else {
-		const q = `SELECT * FROM entities where team_id = $1 AND category = any($2)`
-		if err := db.SelectContext(ctx, &entities, q, teamID, pq.Array(categoryIds)); err != nil {
+		const q = `SELECT * FROM entities where account_id = $1 AND (team_id = $2 OR state = $3) AND category = any($4)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, StateAccountLevel, pq.Array(categoryIds)); err != nil {
 			return nil, errors.Wrap(err, "selecting entities for category")
 		}
 	}
@@ -61,6 +61,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 		Category:    n.Category,
 		State:       n.State,
 		Fieldsb:     string(fieldsBytes),
+		Propsb:      nil,
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
 	}
@@ -91,16 +92,11 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Update")
 	defer span.End()
 
-	e, err := Retrieve(ctx, accountID, entityID, db)
-	if err != nil {
-		return err
-	}
-
 	const q = `UPDATE entities SET
 		"fieldsb" = $2,
 		"updated_at" = $3
 		WHERE entity_id = $1`
-	_, err = db.ExecContext(ctx, q, e.ID,
+	_, err := db.ExecContext(ctx, q, entityID,
 		fieldsB, now.Unix(),
 	)
 	if err != nil {
@@ -113,7 +109,25 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 	}
 
 	//TODO: do it in the same transaction.
-	return relationship.ReBonding(ctx, db, e.AccountID, e.ID, refFields(updatedFields))
+	return relationship.ReBonding(ctx, db, accountID, entityID, refFields(updatedFields))
+}
+
+func UpdateProps(ctx context.Context, db *sqlx.DB, accountID, entityID string, propsB string, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateProps")
+	defer span.End()
+
+	const q = `UPDATE entities SET
+		"propsb" = $2,
+		"updated_at" = $3
+		WHERE entity_id = $1`
+	_, err := db.ExecContext(ctx, q, entityID,
+		propsB, now.Unix(),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Retrieve gets the specified entity from the database.

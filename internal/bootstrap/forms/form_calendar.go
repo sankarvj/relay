@@ -1,11 +1,11 @@
-package bootstrap
+package forms
 
 import (
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func calendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
+func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
 	domainFieldID := uuid.New().String()
 	idField := entity.Field{
 		Key:         domainFieldID,

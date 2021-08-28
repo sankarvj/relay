@@ -93,6 +93,56 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 		log.Println(err)
 		return
 	}
+
+	err = j.actOnActivityEvents(ctx, accountID, e, it, source, db, rp)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (j *Job) eventCreated(ctx context.Context, baseEntityID, baseItemID string, evItem item.Item, db *sqlx.DB, rp *redis.Pool) error {
+	ae, err := entity.Retrieve(ctx, evItem.AccountID, evItem.EntityID, db)
+	if err != nil {
+		return err
+	}
+	avalueAddedFields := ae.ValueAdd(evItem.Fields())
+	avalueAddedFields = append(avalueAddedFields)
+	gpbNode := graphdb.BuildGNode(ae.AccountID, ae.ID, false).MakeBaseGNode(evItem.ID, makeGraphFields(avalueAddedFields)).ParentEdge(baseEntityID, baseItemID)
+	err = graphdb.UpsertNode(rp, gpbNode)
+	if err != nil {
+		return errors.Wrap(err, "error: redisGrpah insertion job")
+	}
+	return nil
+}
+
+func (j *Job) actOnActivityEvents(ctx context.Context, accountID string, childEntity entity.Entity, childItem item.Item, source map[string]string, db *sqlx.DB, rp *redis.Pool) error {
+
+	//skip for event
+	if childEntity.Category == entity.CategoryEvent {
+		return nil
+	}
+
+	for baseEntityID, baseItemID := range source {
+		activityEventEntityID := activityEventEntity(ctx, accountID, baseEntityID, db)
+		if activityEventEntityID != nil {
+			evEntity, err := entity.Retrieve(ctx, accountID, *activityEventEntityID, db)
+			if err != nil {
+				return err
+			}
+			evItem, err := createActivityEvent(ctx, baseItemID, evEntity, childEntity, childItem, db)
+			if err != nil {
+				return err
+			}
+			gpbNode := graphdb.BuildGNode(evEntity.AccountID, evEntity.ID, false).MakeBaseGNode(evItem.ID, makeGraphFields(evEntity.ValueAdd(evItem.Fields()))).ParentEdge(baseEntityID, baseItemID)
+			err = graphdb.UpsertNode(rp, gpbNode)
+			if err != nil {
+				return errors.Wrap(err, "error: redisGrpah insertion job")
+			}
+		}
+	}
+
+	return nil
 }
 
 func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
@@ -102,40 +152,6 @@ func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFiel
 		return errors.Wrap(err, "error: redisGrpah insertion job")
 	}
 	return nil
-}
-
-func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
-	valueAddedFields := e.ValueAdd(it.Fields())
-	var err error
-	switch e.Category {
-	case entity.CategoryEmail:
-		err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
-	case entity.CategoryMeeting:
-		err = calendar.CreateCalendarEvent(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
-	}
-	return err
-}
-
-func makeGraphFields(fields []entity.Field) []graphdb.Field {
-	gFields := make([]graphdb.Field, len(fields))
-	for i, f := range fields {
-		gFields[i] = *makeGraphField(&f)
-	}
-	return gFields
-}
-
-func makeGraphField(f *entity.Field) *graphdb.Field {
-	if f == nil {
-		return nil
-	}
-
-	return &graphdb.Field{
-		Key:      f.Key,
-		Value:    f.Value,
-		DataType: graphdb.DType(f.DataType),
-		RefID:    f.RefID,
-		Field:    makeGraphField(f.Field),
-	}
 }
 
 func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
@@ -237,7 +253,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 					}
 				}
 			} else { //Implicit connection with reverse reference. When creating the contact inside a deal base
-				log.Println("internal.job implicit connection with reverse reference handled")
+				//log.Println("internal.job implicit connection with reverse reference handled")
 				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
 					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
@@ -275,4 +291,38 @@ func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string,
 		return newItems
 	}
 	return []interface{}{}
+}
+
+func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
+	valueAddedFields := e.ValueAdd(it.Fields())
+	var err error
+	switch e.Category {
+	case entity.CategoryEmail:
+		err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
+	case entity.CategoryMeeting:
+		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
+	}
+	return err
+}
+
+func makeGraphFields(fields []entity.Field) []graphdb.Field {
+	gFields := make([]graphdb.Field, len(fields))
+	for i, f := range fields {
+		gFields[i] = *makeGraphField(&f)
+	}
+	return gFields
+}
+
+func makeGraphField(f *entity.Field) *graphdb.Field {
+	if f == nil {
+		return nil
+	}
+
+	return &graphdb.Field{
+		Key:      f.Key,
+		Value:    f.Value,
+		DataType: graphdb.DType(f.DataType),
+		RefID:    f.RefID,
+		Field:    makeGraphField(f.Field),
+	}
 }

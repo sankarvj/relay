@@ -1,11 +1,11 @@
-package bootstrap
+package forms
 
 import (
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
+func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
 	domainFieldID := uuid.New().String()
 	domainField := entity.Field{
 		Key:         domainFieldID,
@@ -65,7 +65,7 @@ func emailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField}
 }
 
-func emailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, contactFieldKey string) []entity.Field {
+func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, contactFieldKey string) []entity.Field {
 
 	fromFieldID := uuid.New().String()
 	fromField := entity.Field{
