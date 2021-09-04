@@ -206,7 +206,17 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) 
 		return nil, errors.Wrap(err, "selecting bonds/relationships for dst entity")
 	}
 
-	return bonds, nil
+	//trim bonds by reducing the same entity IDS
+	relatedEntitesMap := make(map[string]Bond, 0)
+	for _, b := range bonds {
+		relatedEntitesMap[b.EntityID] = b
+	}
+	trimmerBonds := []Bond{}
+	for _, value := range relatedEntitesMap {
+		trimmerBonds = append(trimmerBonds, value)
+	}
+
+	return trimmerBonds, nil
 }
 
 func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Relationship, error) {

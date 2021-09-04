@@ -13,7 +13,7 @@ func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		DisplayName: "Calendar ID",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "sub-title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "sub-title"},
 	}
 
 	apiKeyFieldID := uuid.New().String()
@@ -21,7 +21,7 @@ func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		Key:         apiKeyFieldID,
 		Name:        "api_key",
 		DisplayName: "API Key",
-		Meta:        map[string]string{"config": "true"},
+		Meta:        map[string]string{entity.MetaKeyConfig: "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -33,7 +33,7 @@ func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		DisplayName: "E-Mail",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "super-title"}, //super-title overwrites title if exists
+		Meta:        map[string]string{entity.MetaKeyLayout: "super-title"}, //super-title overwrites title if exists
 	}
 
 	commanFieldID := uuid.New().String()
@@ -41,7 +41,7 @@ func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		Key:         commanFieldID,
 		Name:        "common",
 		DisplayName: "",
-		Meta:        map[string]string{"config": "true"},
+		Meta:        map[string]string{entity.MetaKeyConfig: "true"},
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -54,7 +54,7 @@ func CalendarFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Fi
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
-		Meta:        map[string]string{"display_gex": ownerEmailFieldKey, "layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEmailFieldKey, entity.MetaKeyLayout: "title"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

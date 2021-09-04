@@ -14,7 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
@@ -25,6 +25,8 @@ import (
 type Job struct {
 }
 
+// events
+
 func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -33,20 +35,33 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 		return
 	}
 
+	valueAddedFields := e.ValueAdd(newFields)
+
+	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, oldFields, newFields, db, rp)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnWorkflows. error: ", err)
 		return
 	}
-	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, e.ValueAdd(newFields), e.ValueAdd(oldFields), db)
+
+	//connections
+	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, valueAddedFields, e.ValueAdd(oldFields), db)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnConnections. error: ", err)
 		return
 	}
-	//insertion in to redis graph DB
-	err = j.actOnRedisGraph(accountID, entityID, itemID, e.ValueAdd(newFields), "", "", rp)
+
+	//who
+	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnWho. error: ", err)
+		return
+	}
+
+	//graph
+	err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
+	if err != nil {
+		log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
 		return
 	}
 }
@@ -68,50 +83,71 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields, NewJabEngine())
 
+	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, nil, it.Fields(), db, rp)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnWorkflows. error: ", err)
 		return
 	}
 
-	j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
+	//connect
+	err = j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//integrations
-	err = actOnIntegrations(ctx, accountID, e, it, db)
+	err = actOnIntegrations(ctx, accountID, e, it, valueAddedFields, db)
 	if err != nil {
-		log.Println(err)
+		log.Println("unexpected error occurred on actOnIntegrations. error: ", err)
+		return
+	}
+
+	//who
+	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
+	if err != nil {
+		log.Println("unexpected error occurred on actOnWho. error: ", err)
 		return
 	}
 
 	//insertion in to redis graph DB
-	for baseEntityID, baseItemID := range source {
-		err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, baseEntityID, baseItemID, rp)
+	if len(source) == 0 {
+		err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
 		if err != nil {
-			log.Println(err)
+			log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
 			return
 		}
+	} else {
+		for baseEntityID, baseItemID := range source {
+			err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, baseEntityID, baseItemID, rp)
+			if err != nil {
+				log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
+				return
+			}
+		}
 	}
-
 }
 
-func (j *Job) eventCreated(ctx context.Context, baseEntityID, baseItemID string, evItem item.Item, db *sqlx.DB, rp *redis.Pool) error {
-	ae, err := entity.Retrieve(ctx, evItem.AccountID, evItem.EntityID, db)
+func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
+	ctx := context.Background()
+
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		return err
+		log.Println("unexpected error occurred when retriving entity on job. error:", err)
+		return
 	}
-	avalueAddedFields := ae.ValueAdd(evItem.Fields())
-	avalueAddedFields = append(avalueAddedFields)
-	gpbNode := graphdb.BuildGNode(ae.AccountID, ae.ID, false).MakeBaseGNode(evItem.ID, makeGraphFields(avalueAddedFields)).ParentEdge(baseEntityID, baseItemID)
-	err = graphdb.UpsertNode(rp, gpbNode)
+	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		return errors.Wrap(err, "error: redisGrpah insertion job")
+		log.Println("unexpected error occurred while retriving item on job. error:", err)
+		return
 	}
-	return nil
+
+	valueAddedFields := e.ValueAdd(it.Fields())
+	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields, NewJabEngine())
 }
+
+//act ons
 
 func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, baseEntityID, baseItemID string, rp *redis.Pool) error {
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
@@ -250,22 +286,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 	return nil
 }
 
-func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {
-	if ruler.Compare(f.Value, of.Value) { // handle delete alone here
-		deletedItems, newItems := item.CompareItems(f.Value.([]interface{}), of.Value.([]interface{}))
-		for _, deletedItem := range deletedItems {
-			err := connection.Delete(ctx, db, relationshipID, deletedItem.(string))
-			if err != nil {
-				log.Println("unexpected error occurred when deleting connection. error:", err)
-			}
-		}
-		return newItems
-	}
-	return []interface{}{}
-}
-
-func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
-	valueAddedFields := e.ValueAdd(it.Fields())
+func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB) error {
 	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
@@ -276,24 +297,21 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 	return err
 }
 
-func makeGraphFields(fields []entity.Field) []graphdb.Field {
-	gFields := make([]graphdb.Field, len(fields))
-	for i, f := range fields {
-		gFields[i] = *makeGraphField(&f)
+func (j Job) actOnWho(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
+	for _, f := range valueAddedFields {
+		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil {
+			when, err := util.ParseTime(f.Value.(string))
+			if err != nil {
+				return err
+			}
+			return (Listener{}).AddReminder(accountID, entityID, itemID, when, rp)
+		}
 	}
-	return gFields
+	return nil
 }
 
-func makeGraphField(f *entity.Field) *graphdb.Field {
-	if f == nil {
-		return nil
-	}
-
-	return &graphdb.Field{
-		Key:      f.Key,
-		Value:    f.Value,
-		DataType: graphdb.DType(f.DataType),
-		RefID:    f.RefID,
-		Field:    makeGraphField(f.Field),
-	}
+func (j Job) actOnNotifications(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB) {
+	// send email using aws SES
+	// from: no-reply@baserelay.com
+	// to: <individual user who got assigned> , <updates to the user if already assigned>, <@mention on the notes/conversations>
 }

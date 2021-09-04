@@ -39,7 +39,7 @@ func run() error {
 	// =========================================================================
 	// Logging
 
-	log := log.New(os.Stdout, "RELAY : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	log := log.New(os.Stdout, "RELAY API : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
 	// =========================================================================
 	// Configuration
@@ -132,7 +132,6 @@ func run() error {
 
 	// =========================================================================
 	// Start Primary Database
-
 	log.Println("main : Started : Initializing database support")
 	db, err := database.Open(database.Config{
 		User:       cfg.DB.User,

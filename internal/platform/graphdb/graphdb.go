@@ -99,6 +99,7 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 
 	result, err := graph.Query(q)
 	log.Printf("internal.platform.graphdb : graphdb - result: %s - err:%v\n", q, err)
+	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
 	}
@@ -218,7 +219,7 @@ func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, rs...)
 		rsq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb upsert edge query:", rsq)
+		//DEBUGGING LOG log.Println("internal.platform.graphdb upsert edge query:", rsq)
 		_, err := graph.Query(rsq)
 		if err != nil {
 			return err

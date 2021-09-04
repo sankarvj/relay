@@ -14,52 +14,6 @@ const (
 	VerbKey = "uuid-00-verb"
 )
 
-// Field represents structural format of attributes in entity
-type Field struct {
-	Name        string            `json:"name" validate:"required"`
-	DisplayName string            `json:"display_name" validate:"required"`
-	Key         string            `json:"key" validate:"required"`
-	Value       interface{}       `json:"value" validate:"required"`
-	DataType    DType             `json:"data_type" validate:"required"`
-	DomType     Dom               `json:"dom_type" validate:"required"`
-	Field       *Field            `json:"field"`
-	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
-	Choices     []Choice          `json:"choices"`
-	RefID       string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
-	RefType     string            `json:"ref_type"`
-	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
-}
-
-type FieldMeta struct {
-	Unique      string `json:"unique"`
-	Mandatory   string `json:"mandatory"`
-	Hidden      string `json:"hidden"`
-	Config      string `json:"config"`     //UI property useful only during display
-	Expression  string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
-	Link        string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
-	DisplayGex  string `json:"display_gex"`
-	Layout      string `json:"layout"`
-	Flow        string `json:"flow"`
-	Node        string `json:"node"`
-	LoadChoices string `json:"load_choices"`
-	Row         string `json:"row"`
-}
-
-type Choice struct {
-	ID           string      `json:"id"`
-	ParentIDs    []string    `json:"parent_ids"`
-	DisplayValue interface{} `json:"display_value"`
-	BaseChoice   bool        `json:"base_choice"`
-	Default      bool        `json:"default"`
-	Verb         string      `json:"verb"` // are we still using this??
-}
-
-type Dependent struct {
-	ParentKey   string   `json:"parent_key"`
-	Expressions []string `json:"expressions"` // if expression exist, execute it to know postive/negative
-	Actions     []string `json:"actions"`     // execute the action based on the expression result
-}
-
 //DType defines the data type of field
 type DType string
 
@@ -113,6 +67,74 @@ const (
 	RefTypeStraight = "STRAIGHT" //only the src entity childrean will be visible (from deal's detail - view contacts associated)
 	RefTypeReverse  = "REVERSE"  //only the dst entity childrean will be visible (from contacts's detail - view status/owner associated)
 )
+
+const (
+	MetaKeyDisplayGex  = "display_gex"
+	MetaKeyEmailGex    = "email_gex"
+	MetaKeyHidden      = "hidden"
+	MetaKeyLayout      = "layout"
+	MetaKeyFlow        = "flow"
+	MetaKeyNode        = "node"
+	MetaKeyConfig      = "config"
+	MetaKeyLoadChoices = "load_choices"
+	MetaKeyRow         = "row"
+)
+
+const (
+	WhoReminder = "reminder"
+	WhoAssignee = "assignee"
+	WhoOwner    = "owner"
+	WhoFollower = "follower"
+)
+
+// Field represents structural format of attributes in entity
+type Field struct {
+	Name        string            `json:"name" validate:"required"`
+	DisplayName string            `json:"display_name" validate:"required"`
+	Key         string            `json:"key" validate:"required"`
+	Value       interface{}       `json:"value" validate:"required"`
+	DataType    DType             `json:"data_type" validate:"required"`
+	DomType     Dom               `json:"dom_type" validate:"required"`
+	Field       *Field            `json:"field"`
+	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
+	Choices     []Choice          `json:"choices"`
+	RefID       string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	RefType     string            `json:"ref_type"`
+	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
+	Who         string            `json:"who"`       // who specifies the exact field function. such as:
+}
+
+type FieldMeta struct {
+	Unique      string `json:"unique"`
+	Mandatory   string `json:"mandatory"`
+	Hidden      string `json:"hidden"`
+	Config      string `json:"config"`     //UI property useful only during display
+	Expression  string `json:"expression"` //expression is a double purpose property - executes the checks like, field.value > 100 < 200 or field.value == 'vijay' during "save", checks the operator during segmenting
+	Link        string `json:"link"`       //useful for autocomplete. If number of choices greater than 100
+	DisplayGex  string `json:"display_gex"`
+	EmailGex    string `json:"email_gex"`
+	Layout      string `json:"layout"`
+	Flow        string `json:"flow"`
+	Node        string `json:"node"`
+	LoadChoices string `json:"load_choices"`
+	Row         string `json:"row"`
+}
+
+type Choice struct {
+	ID           string      `json:"id"`
+	ParentIDs    []string    `json:"parent_ids"`
+	Value        interface{} `json:"value"`
+	DisplayValue interface{} `json:"display_value"`
+	BaseChoice   bool        `json:"base_choice"`
+	Default      bool        `json:"default"`
+	Verb         string      `json:"verb"` // are we still using this??
+}
+
+type Dependent struct {
+	ParentKey   string   `json:"parent_key"`
+	Expressions []string `json:"expressions"` // if expression exist, execute it to know postive/negative
+	Actions     []string `json:"actions"`     // execute the action based on the expression result
+}
 
 func (e Entity) FieldsIgnoreError() []Field {
 	fields, err := e.Fields()
@@ -171,32 +193,39 @@ func (f *Field) SetDisplayGex(key string) {
 	if f.Meta == nil {
 		f.Meta = make(map[string]string, 0)
 	}
-	f.Meta["display_gex"] = key
+	f.Meta[MetaKeyDisplayGex] = key
+}
+
+func (f *Field) SetEmailGex(key string) {
+	if f.Meta == nil {
+		f.Meta = make(map[string]string, 0)
+	}
+	f.Meta[MetaKeyEmailGex] = key
 }
 
 func (f Field) isConfig() bool {
-	if val, ok := f.Meta["config"]; ok && val == "true" {
+	if val, ok := f.Meta[MetaKeyConfig]; ok && val == "true" {
 		return true
 	}
 	return false
 }
 
 func (f Field) IsFlow() bool {
-	if val, ok := f.Meta["flow"]; ok && val == "true" {
+	if val, ok := f.Meta[MetaKeyFlow]; ok && val == "true" {
 		return true
 	}
 	return false
 }
 
 func (f Field) IsNode() bool {
-	if val, ok := f.Meta["node"]; ok && val == "true" {
+	if val, ok := f.Meta[MetaKeyNode]; ok && val == "true" {
 		return true
 	}
 	return false
 }
 
 func (f Field) ForceLoadChoices() bool {
-	if val, ok := f.Meta["load_choices"]; ok && val == "true" {
+	if val, ok := f.Meta[MetaKeyLoadChoices]; ok && val == "true" {
 		return true
 	}
 	return false
@@ -250,21 +279,28 @@ func (f Field) RefValues() []interface{} {
 }
 
 func (f Field) DisplayGex() string {
-	if val, ok := f.Meta["display_gex"]; ok {
+	if val, ok := f.Meta[MetaKeyDisplayGex]; ok {
+		return val
+	}
+	return ""
+}
+
+func (f Field) EmailGex() string {
+	if val, ok := f.Meta[MetaKeyEmailGex]; ok {
 		return val
 	}
 	return ""
 }
 
 func (f Field) IsTitleLayout() bool {
-	if val, ok := f.Meta["layout"]; ok {
+	if val, ok := f.Meta[MetaKeyLayout]; ok {
 		return val == "title"
 	}
 	return false
 }
 
 func (f Field) IsHidden() bool {
-	if val, ok := f.Meta["hidden"]; ok {
+	if val, ok := f.Meta[MetaKeyHidden]; ok {
 		return val == "true"
 	}
 	return false
@@ -289,7 +325,7 @@ func NamedFieldsObjMap(entityFields []Field) map[string]Field {
 func MetaFieldsObjMap(entityFields []Field) map[string]Field {
 	params := map[string]Field{}
 	for _, f := range entityFields {
-		params[f.Meta["layout"]] = f
+		params[f.Meta[MetaKeyLayout]] = f
 	}
 	return params
 }
@@ -307,7 +343,7 @@ func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
 func (f Field) ChoicesValues() []string {
 	s := make([]string, len(f.Choices))
 	for i, choice := range f.Choices {
-		s[i] = fmt.Sprint(choice.DisplayValue)
+		s[i] = fmt.Sprint(choice.Value)
 	}
 	return s
 }

@@ -121,6 +121,12 @@ func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickE
 		return err
 	}
 
+	//ticket email association
+	_, err = b.AssociationAdd(ctx, tickEid, emailEid)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -132,7 +138,7 @@ func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEnt
 		Common: "false",
 		Owner:  []string{schema.SeedUserID1},
 	}
-	err := entity.SaveFixedEntityItem(ctx, b.AccountID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), b.DB)
+	err := entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), b.DB)
 	if err != nil {
 		return err
 	}
@@ -146,7 +152,7 @@ func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEnt
 		Body:    fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
 	}
 
-	err = entity.SaveFixedEntityItem(ctx, b.AccountID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), b.DB)
+	err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), b.DB)
 	if err != nil {
 		return err
 	}

@@ -59,7 +59,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return err
 		}
-
 	} else {
 		fl, err := flow.Retrieve(ctx, viewID, i.db)
 		if err != nil {

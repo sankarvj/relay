@@ -28,3 +28,7 @@ TBW
 2. Has Assinged To
 3. Has Due Date
 4. Has Status
+
+#### Who
+- The who field specifies the exact use case of the field. For example, if you want to notification for the assignee which field you would query? the who helps there.
+- When you find the contact/user how will you get the email/phone? the who pitches there

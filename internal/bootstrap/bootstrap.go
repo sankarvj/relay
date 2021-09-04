@@ -57,20 +57,6 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 	return err
 }
 
-func BootstrapEmailsEntity(ctx context.Context, b *base.Base) error {
-	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
-	if err != nil {
-		return err
-	}
-
-	//TODO uuid-00-email needs to be changed
-	fields := forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), "", "uuid-00-email")
-	// add entity - email
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateAccountLevel, fields)
-
-	return err
-}
-
 func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	coEntityID, coEmail, err := currentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 	if err != nil {
@@ -80,12 +66,6 @@ func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	// add entity - calendar
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, fields)
 
-	return err
-}
-
-func BootstrapStreams(ctx context.Context, b *base.Base) error {
-	// add entity - streams
-	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
 	return err
 }
 
@@ -104,7 +84,7 @@ func currentOwner(ctx context.Context, db *sqlx.DB, accountID, teamID string) (s
 // THE TEAM SPECIFIC BOOTS
 
 func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
-	fmt.Printf("\n\t\tBootstrap:CRM STARTED for the accountID %s\n", accountID)
+	fmt.Printf("\nBootstrap:CRM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
@@ -116,22 +96,16 @@ func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 
 	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
 
-	//streams
-	err = BootstrapStreams(ctx, b)
-	if err != nil {
-		return err
-	}
-
 	//boot
 	fmt.Println("\t\t\tBootstrap:CRM `boot` functions started")
 	err = crm.Boot(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `boot` functions failed")
 	}
-	fmt.Println("\t\t\tBootstrap:CRM `boot` functions completed successfully")
+	fmt.Println("Bootstrap:CRM `boot` functions completed successfully")
 
 	//samples
-	fmt.Println("\t\t\tBootstrap:CRM `samples` functions started")
+	fmt.Println("Bootstrap:CRM `samples` functions started")
 	err = crm.AddSamples(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `samples` functions failed")
@@ -147,13 +121,13 @@ func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	fmt.Println("\t\t\tBootstrap:CRM `event props` functions completed successfully")
 
 	//all done
-	fmt.Printf("\n\t\tBootstrap:CRM ENDED successfully for the accountID: %s\n", accountID)
+	fmt.Printf("\nBootstrap:CRM ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }
 
 func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
-	fmt.Printf("\n\t\tBootstrap:CSM STARTED for the accountID %s\n", accountID)
+	fmt.Printf("\nBootstrap:CSM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
@@ -165,12 +139,6 @@ func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 
 	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
 
-	//streams
-	err = BootstrapStreams(ctx, b)
-	if err != nil {
-		return err
-	}
-
 	//boot
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions started")
 	err = csm.Boot(ctx, b)
@@ -180,7 +148,7 @@ func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions completed successfully")
 
 	//all done
-	fmt.Printf("\n\t\tBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
+	fmt.Printf("\nBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }

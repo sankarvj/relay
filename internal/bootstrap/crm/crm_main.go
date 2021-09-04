@@ -19,12 +19,14 @@ func Boot(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	// Retrive Emails Entity, Which is created for the account
-	emailsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmails)
+
+	//Retrive Email Config entity
+	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:BOOT Owner & Emails Entities Retrived")
+
+	fmt.Println("\tCRM:BOOT Retrive Owner & EmailConfig Entities Retrived")
 
 	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
 	flowEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, entity.StateTeamLevel, FlowFields())
@@ -98,6 +100,11 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:BOOT Contacts Entity Created")
 
+	// add entity - emails
+	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
+	if err != nil {
+		return err
+	}
 	// add entity - companies
 	companyEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, entity.StateAccountLevel, CompanyFields(ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
@@ -140,12 +147,18 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:BOOT Tickets Entity Created")
 
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Streams Entity Created")
+
 	return nil
 }
 
 func AddSamples(ctx context.Context, b *base.Base) error {
 
-	emailsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, "", entity.FixedEntityEmails)
+	emailsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmails)
 	if err != nil {
 		return err
 	}

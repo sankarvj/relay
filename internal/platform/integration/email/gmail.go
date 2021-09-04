@@ -17,7 +17,7 @@ type Gmail struct {
 	TokenJson string
 }
 
-func (g *Gmail) Watch(topicName string) (string, error) {
+func (g Gmail) Watch(topicName string) (string, error) {
 	config, err := getGmailConfig(g.OAuthFile)
 	if err != nil {
 		return "", err
@@ -53,6 +53,32 @@ func (g *Gmail) Watch(topicName string) (string, error) {
 	return emailAddress, nil
 }
 
+func Message(oAuthFile, tokenJson string, user string, messageID string) error {
+	config, err := getGmailConfig(oAuthFile)
+	if err != nil {
+		return err
+	}
+
+	client, err := integration.Client(config, tokenJson)
+	if err != nil {
+		return err
+	}
+
+	srv, err := gmail.New(client)
+	if err != nil {
+		return err
+	}
+
+	rgmsg, err := srv.Users.Threads.Get("me", messageID).Do()
+	if err != nil {
+		log.Println("rgmsg err ", err)
+		return err
+	}
+	log.Printf("rgmsg %+v ", rgmsg)
+
+	return nil
+}
+
 func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 	config, err := getGmailConfig(oAuthFile)
 	if err != nil {
@@ -79,13 +105,14 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 			if err != nil {
 				return err
 			}
-			raw, err := base64.StdEncoding.DecodeString(msg.Raw)
-			if err != nil {
-				return errors.Wrap(err, "decoding message payload")
-			}
-			log.Printf("internal.platform.integration.email.gmail message  %+v\n", raw)
+
+			log.Printf("internal.platform.integration.email.gmail message  %+v\n", msg)
 
 			if len(msg.Payload.Parts) > 0 {
+
+				log.Println("msg snippet ", msg.Snippet)
+				log.Println("msg threadID ", msg.ThreadId)
+
 				for _, part := range msg.Payload.Parts {
 					if part.MimeType == "text/html" {
 						data, err := base64.StdEncoding.DecodeString(part.Body.Data)
@@ -118,7 +145,7 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
 	return nil
 }
 
-func (g *Gmail) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
+func (g Gmail) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
 	config, err := getGmailConfig(g.OAuthFile)
 	if err != nil {
 		return nil, err

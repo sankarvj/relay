@@ -2,12 +2,16 @@ package job
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"go.opencensus.io/trace"
 )
 
@@ -39,4 +43,40 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	}
 
 	return evItem, nil
+}
+
+func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {
+	if ruler.Compare(f.Value, of.Value) { // handle delete alone here
+		deletedItems, newItems := item.CompareItems(f.Value.([]interface{}), of.Value.([]interface{}))
+		for _, deletedItem := range deletedItems {
+			err := connection.Delete(ctx, db, relationshipID, deletedItem.(string))
+			if err != nil {
+				log.Println("unexpected error occurred when deleting connection. error:", err)
+			}
+		}
+		return newItems
+	}
+	return []interface{}{}
+}
+
+func makeGraphFields(fields []entity.Field) []graphdb.Field {
+	gFields := make([]graphdb.Field, len(fields))
+	for i, f := range fields {
+		gFields[i] = *makeGraphField(&f)
+	}
+	return gFields
+}
+
+func makeGraphField(f *entity.Field) *graphdb.Field {
+	if f == nil {
+		return nil
+	}
+
+	return &graphdb.Field{
+		Key:      f.Key,
+		Value:    f.Value,
+		DataType: graphdb.DType(f.DataType),
+		RefID:    f.RefID,
+		Field:    makeGraphField(f.Field),
+	}
 }

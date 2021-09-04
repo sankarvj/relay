@@ -8,9 +8,10 @@ import (
 )
 
 type Choicer struct {
-	ID   string
-	Name string
-	Verb interface{}
+	ID    string
+	Name  string
+	Value interface{}
+	Verb  interface{}
 }
 
 func nodeChoices(nodes []node.Node) []Choicer {
@@ -46,9 +47,10 @@ func itemChoices(f entity.Field, items []item.Item) []Choicer {
 			displayNameStr = *item.Name
 		}
 		choicers[i] = Choicer{
-			ID:   item.ID,
-			Name: displayNameStr,
-			Verb: item.Fields()[entity.VerbKey], // is it okay to have `uuid-00-verb`?
+			ID:    item.ID,
+			Name:  displayNameStr,
+			Value: item.Fields()[f.EmailGex()],   //  is it okay to have a specific logic with name emailgex?
+			Verb:  item.Fields()[entity.VerbKey], // is it okay to have `uuid-00-verb`?
 		}
 	}
 	return choicers

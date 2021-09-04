@@ -65,6 +65,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 
 	integrationID := params["integration_id"]
 	accountID := params["account_id"]
+	teamID := params["team_id"] //actually in the routes the teamID is not there
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
 		return err
@@ -97,7 +98,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			Owner:  []string{currentUserID},
 		}
 
-		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityEmailConfig, "Gmail Config", discoveryID, integrationID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
+		err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityEmailConfig, "Gmail Config", discoveryID, integrationID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to create integration")
 		}
@@ -122,7 +123,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			err = errors.Wrapf(err, "Unable to watch event")
 		}
 
-		err = entity.SaveFixedEntityItem(ctx, accountID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
+		err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to create integration")
 		}

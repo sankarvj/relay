@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -120,7 +122,8 @@ func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 }
 
 func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntity string) (Entity, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.predefined.RetrieveUserEntity")
+	log.Println("Selecting the pre-defined entity ", preDefinedEntity)
+	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntity))
 	defer span.End()
 
 	if teamID == "" {
@@ -171,8 +174,21 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 	return entityFields, updateFields(accountID, preDefinedEntity.ID, it.ID, entityFields), err
 }
 
-func SaveFixedEntityItem(ctx context.Context, accountID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) error {
-	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, "", preDefinedEntity)
+func RetrieveUnmarshalledItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, marshalItem interface{}, db *sqlx.DB) (UpdaterFunc, error) {
+	valueAddedConfigFields, upFunc, err := RetrieveFixedItem(ctx, accountID, preDefinedEntityID, itemID, db)
+	if err != nil {
+		return upFunc, err
+	}
+
+	err = ParseFixedEntity(valueAddedConfigFields, marshalItem)
+	if err != nil {
+		return upFunc, err
+	}
+	return upFunc, nil
+}
+
+func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) error {
+	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, teamID, preDefinedEntity)
 	if err != nil {
 		return err
 	}

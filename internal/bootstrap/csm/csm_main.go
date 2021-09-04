@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
@@ -94,6 +95,12 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCSM:BOOT Tasks Entity Created")
+
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Streams Entity Created")
 
 	return nil
 

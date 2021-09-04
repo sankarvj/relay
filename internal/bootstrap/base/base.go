@@ -50,16 +50,6 @@ func (b *Base) EntityFieldsUpdate(ctx context.Context, entityID string, fields [
 	return entity.Update(ctx, b.DB, b.AccountID, entityID, string(input), time.Now())
 }
 
-func (b *Base) EntityPropsUpdate(ctx context.Context, entityID string, fields []entity.Field) error {
-	input, err := json.Marshal(fields)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("\t\tEntity '%s' Updated With Props\n", entityID)
-	return entity.UpdateProps(ctx, b.DB, b.AccountID, entityID, string(input), time.Now())
-}
-
 func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string, category, state int, fields []entity.Field) (entity.Entity, error) {
 	ne := entity.NewEntity{
 		ID:          entityID,
@@ -86,8 +76,10 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 }
 
 func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genieID string, fields map[string]interface{}) (item.Item, error) {
+	name := "System Generated"
 	ni := item.NewItem{
 		ID:        itemID,
+		Name:      &name,
 		AccountID: b.AccountID,
 		EntityID:  entityID,
 		UserID:    &userID,
@@ -103,7 +95,7 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 	j := job.Job{}
 	j.EventItemCreated(b.AccountID, entityID, it.ID, ni.Source, b.DB, b.RP)
 
-	fmt.Printf("\t\tItem Added\n")
+	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil
 }
 

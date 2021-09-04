@@ -111,24 +111,6 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 	return relationship.ReBonding(ctx, db, accountID, entityID, refFields(updatedFields))
 }
 
-func UpdateProps(ctx context.Context, db *sqlx.DB, accountID, entityID string, propsB string, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateProps")
-	defer span.End()
-
-	const q = `UPDATE entities SET
-		"propsb" = $2,
-		"updated_at" = $3
-		WHERE entity_id = $1`
-	_, err := db.ExecContext(ctx, q, entityID,
-		propsB, now.Unix(),
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Retrieve gets the specified entity from the database.
 func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Retrieve")

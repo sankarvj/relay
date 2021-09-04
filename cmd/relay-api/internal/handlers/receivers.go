@@ -14,6 +14,7 @@ import (
 	integ "gitlab.com/vjsideprojects/relay/internal/integration"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
+	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
@@ -58,6 +59,10 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "unmarshal data from the data bytes")
 	}
 
+	log.Printf("data.raw raw raw---> %+v", pushMsgPayload)
+	log.Println("data.EmailAddress---> ", data.EmailAddress)
+	log.Println("data.EmailAddress---> ", data.HistoryID)
+
 	sub, err := discovery.Retrieve(ctx, data.EmailAddress, g.db)
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
@@ -78,7 +83,8 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return err
 	}
-	//integration.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 1709032)
+	err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 2016821)
+	log.Println("err ", err)
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }

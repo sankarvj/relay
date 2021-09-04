@@ -2,7 +2,6 @@ package conversation
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
@@ -52,7 +51,7 @@ func (hub *Hub) listenPubSubChannel(rp *redis.Pool) error {
 	for {
 		switch v := psc.Receive().(type) {
 		case redis.Message:
-			fmt.Printf("redis.Message  -----------------> channel: %s: message: %s\n", v.Channel, v.Data)
+			//DEBUGGING LOG fmt.Printf("redis.Message  -----------------> channel: %s: message: %s\n", v.Channel, v.Data)
 			var message Message
 			if err := json.Unmarshal([]byte(v.Data), &message); err != nil {
 				return errors.Wrap(err, "Error on unmarshal JSON message")
@@ -66,7 +65,7 @@ func (hub *Hub) listenPubSubChannel(rp *redis.Pool) error {
 				hub.handleUserLeft(message)
 			}
 		case redis.Subscription:
-			fmt.Printf("redis.Subscription -----------------> %s: %s %d\n", v.Channel, v.Kind, v.Count)
+			//DEBUGGING LOG fmt.Printf("redis.Subscription -----------------> %s: %s %d\n", v.Channel, v.Kind, v.Count)
 		case error:
 			return v
 		}

@@ -218,6 +218,7 @@ func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 				ID:           choicer.ID,
 				ParentIDs:    []string{parentID},
 				DisplayValue: choicer.Name,
+				Value:        choicer.Value,
 			})
 		}
 	}

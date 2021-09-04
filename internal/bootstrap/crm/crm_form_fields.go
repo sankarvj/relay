@@ -106,7 +106,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	emailField := entity.Field{
@@ -115,7 +115,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DisplayName: "Email",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "sub-title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "sub-title"},
 	}
 
 	mobileField := entity.Field{
@@ -168,7 +168,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -184,7 +184,8 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": ownerEntityKey},
+		Who:         entity.WhoAssignee,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -215,7 +216,7 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	websiteField := entity.Field{
@@ -274,7 +275,8 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": ownerEntityKey},
+		Who:         entity.WhoAssignee,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -301,7 +303,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	statusField := entity.Field{
@@ -312,7 +314,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -327,7 +329,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -342,7 +344,7 @@ func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []ent
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -370,7 +372,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DisplayName: "Notes",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	dueByField := entity.Field{
@@ -388,7 +390,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -403,7 +405,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       dealEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-deal-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-deal-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -418,7 +420,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -432,6 +434,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DisplayName: "Reminder",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoReminder,
 	}
 
 	statusFieldKey := "uuid-00-status"
@@ -443,7 +446,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Dependent: &entity.Dependent{
 			ParentKey:   dueByField.Key,
 			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", statusFieldKey, stItem2), fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key), fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key)},
@@ -462,7 +465,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DomType:  entity.DomNotApplicable,
 		DataType: entity.TypeReference,
 		RefID:    nodeEntityID,
-		Meta:     map[string]string{"node": "true"},
+		Meta:     map[string]string{entity.MetaKeyNode: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -478,7 +481,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DataType:    entity.TypeReference,
 		RefID:       typeEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "load_choices": "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name", entity.MetaKeyLoadChoices: "true"},
 		Value:       []interface{}{typeItemTodoID},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -494,7 +497,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       emailEntityID,
-		Meta:        map[string]string{"display_gex": "name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "name"},
 		Dependent: &entity.Dependent{
 			ParentKey:   typeField.Key,
 			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", typeField.Key, typeItemEmailID), fmt.Sprintf("{{%s.%s}} !in {%s}", "self", typeField.Key, typeItemEmailID)},
@@ -534,7 +537,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "Title",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	summaryField := entity.Field{
@@ -552,7 +555,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-email"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-email"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -574,7 +577,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "End Time",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
-		Meta:        map[string]string{"row": "true"},
+		Meta:        map[string]string{entity.MetaKeyRow: "true"},
 	}
 
 	timezoneField := entity.Field{
@@ -583,7 +586,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "Timezone",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"hidden": "true"},
+		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
 	createdAtField := entity.Field{
@@ -592,7 +595,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "Created At",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
-		Meta:        map[string]string{"hidden": "true"},
+		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
 	updatedAtField := entity.Field{
@@ -601,7 +604,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DisplayName: "Updated At",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
-		Meta:        map[string]string{"hidden": "true"},
+		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
 	contactField := entity.Field{
@@ -611,7 +614,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -626,7 +629,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name", "row": "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name", entity.MetaKeyRow: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -641,7 +644,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string) []enti
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       dealEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-deal-name", "row": "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-deal-name", entity.MetaKeyRow: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -659,7 +662,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DisplayName: "Deal Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	dealAmount := entity.Field{
@@ -677,7 +680,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomMultiSelect,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -692,7 +695,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -708,7 +711,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DataType:    entity.TypeReference,
 		RefID:       flowEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{"flow": "true"},
+		Meta:        map[string]string{entity.MetaKeyFlow: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -729,7 +732,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 			Expressions: []string{""}, // empty means positive
 			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
 		},
-		Meta: map[string]string{"display_gex": "uuid-00-fname", "node": "true"},
+		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaKeyNode: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      pipeField.Key,
@@ -768,7 +771,7 @@ func NoteFields(contactEntityID, companyEntityID, dealEntityID string) []entity.
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -783,7 +786,7 @@ func NoteFields(contactEntityID, companyEntityID, dealEntityID string) []entity.
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       dealEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-deal-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-deal-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -798,7 +801,7 @@ func NoteFields(contactEntityID, companyEntityID, dealEntityID string) []entity.
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{"display_gex": "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

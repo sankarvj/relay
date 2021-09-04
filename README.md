@@ -1,17 +1,17 @@
 # Relay
-Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software. 
+Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software for some extend. 
 
 ## Prerequisite
 > ~Install GO
 > ~Install PSQL
 > `psql -U postgres` //to enter psql cli
 > `\c relaydb` //go to relaydb
-> ~Install Redis
+> ~Install Redis with graph
 > `docker run -p 6379:6379 -it --rm redislabs/redisgraph`
 
 ## Getting Started
 > make seed
-> make crm
+> make crm/csm/ctm
 > make run
 
 ## Running Tests
@@ -20,7 +20,7 @@ go test ./...
 ## Technical Stack
 - Core Stack - Golang
 - Core DB - Psql
-- Segmentation/Workflow - Psql-Pivot-Tables/RedisGraph
+- Segmentation/Workflow - RedisGraph
 - Analytics - Not decided (Analyse RedisGraph or other redis services)
 
 ## Features
@@ -111,7 +111,7 @@ Filter the contacts which have deal.amount>1000 where the deal has contacts and 
 3. Adding templates
 
 ### Brainstrom
-- How to attach a company to multiple playbooks at a time.
+- How to attach a company to multiple playbooks at a time. (Ans: Create multi projects for each company)
 - Playbook properties(status, date on-boarded) for the specific company.
 - Workflow - send internal notification when the user activity declined.
 - Is the reference handled in the rule engine
@@ -129,14 +129,18 @@ Filter the contacts which have deal.amount>1000 where the deal has contacts and 
 - AND/OR in segmentation/workflow
 - Add aggregation <,> in "IN" of list rule engine
 - Stop cyclic looping of references - pivot.go
-- comments for notes/meetings
+- comments for notes/meetings - half completed
 - Add aggregation funcs in the rGraph segmentation.
 - Task Reminder - notification
 - e-mail integration watch needs to be called every day.
 - receive email and associate - more info on email readme
 - implement BulkCreate/BulkUpdate/BulkDelete in relationship
-- all the query must have the accountID (MUST, MUST) / teamID(can leave in some places)
+- all the query must have the accountID (MUST, MUST) 
 
+- email from app to users for signup, updates such as - (@mention/assigned/status change/new ticket)
+- email with in entity - user has to integrate and read/write
+- email as inbox - not needed now.
+- calendar reminder
 
 
 
