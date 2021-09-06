@@ -2,6 +2,7 @@ package schema
 
 import (
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 const (
@@ -38,7 +39,21 @@ const (
 )
 
 func IsEntitySeeded(entityName string) bool {
-	seededEntities := map[string]bool{SeedFlowEntityName: true, SeedNodeEntityName: true, SeedContactsEntityName: true, SeedCompaniesEntityName: true, SeedTasksEntityName: true, SeedEmailEntityName: true, SeedNotesEntityName: true, SeedMeetingsEntityName: true, SeedTicketsEntityName: true, SeedDealsEntityName: true, SeedStatusEntityName: true, SeedTypeEntityName: true}
+	seededEntities := map[string]bool{
+		SeedFlowEntityName:             true,
+		SeedNodeEntityName:             true,
+		SeedContactsEntityName:         true,
+		SeedCompaniesEntityName:        true,
+		SeedTasksEntityName:            true,
+		SeedEmailEntityName:            true,
+		SeedNotesEntityName:            true,
+		SeedMeetingsEntityName:         true,
+		SeedTicketsEntityName:          true,
+		SeedDealsEntityName:            true,
+		SeedStatusEntityName:           true,
+		SeedTypeEntityName:             true,
+		entity.FixedEntityNotification: true,
+	}
 	return seededEntities[entityName]
 }
 

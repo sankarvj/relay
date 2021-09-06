@@ -53,7 +53,6 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 	fields := forms.EmailConfigFields(coEntityID, coEmail)
 	// add entity - email- configs
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, fields)
-
 	return err
 }
 
@@ -65,7 +64,13 @@ func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	fields := forms.CalendarFields(coEntityID, coEmail)
 	// add entity - calendar
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, fields)
+	return err
+}
 
+func BootstrapNotificationEntity(ctx context.Context, b *base.Base) error {
+	fields := forms.NotificationFields()
+	// add entity - notifications
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNotification, "Notification", entity.CategoryNotification, entity.StateAccountLevel, fields)
 	return err
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
@@ -49,7 +50,7 @@ func (l Listener) AddReminder(accountID, entityID, itemID string, when time.Time
 	return zadd(conn, reminders, whenMilli, string(raw))
 }
 
-func (l Listener) RunReminderListener(rp *redis.Pool) {
+func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 	conn := rp.Get()
 	defer conn.Close()
 
@@ -62,6 +63,7 @@ func (l Listener) RunReminderListener(rp *redis.Pool) {
 		if redisJob.State == JobStateRiped {
 			//do the notifications
 			log.Printf("perform notifications.... %+v \n", redisJob)
+			(&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
 		}
 		time.Sleep(3 * time.Second) //reduce this time when more requests received
 	}

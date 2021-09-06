@@ -7,11 +7,14 @@ all: relay-api metrics
 run: 
 	go run ./cmd/relay-api/main.go
 
-keys:
-	go run ./cmd/relay-admin/main.go keygen private.pem
+worker: 
+	go run ./cmd/relay-worker/main.go
 
 admin:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 useradd admin@example.com gophers
+
+keys:
+	go run ./cmd/relay-admin/main.go keygen private.pem
 
 migrate:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 migrate
@@ -21,10 +24,13 @@ seed: migrate
 
 crm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 crmadd
+
 csm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 csmadd
+
 ctm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 ctmadd
+
 hr:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 hradd
 

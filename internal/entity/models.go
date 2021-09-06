@@ -58,22 +58,23 @@ const (
 
 //Category specifies the different type of entities
 const (
-	CategoryUnknown     = 0
-	CategoryData        = 1
-	CategoryAPI         = 2
-	CategoryTimeSeries  = 3
-	CategoryEmail       = 4
-	CategoryUsers       = 5
-	CategorySchedule    = 6
-	CategoryDelay       = 7
-	CategoryChildUnit   = 8
-	CategoryTask        = 9
-	CategoryEmailConfig = 10
-	CategoryFlow        = 11 // alais for actual flow
-	CategoryNode        = 12 // alais for actual node
-	CategoryNotes       = 13
-	CategoryMeeting     = 14 // this is a type like task, email, notes
-	CategoryCalendar    = 15 // this is integration
-	CategoryEvent       = 16
-	CategoryStream      = 17
+	CategoryUnknown      = 0
+	CategoryData         = 1
+	CategoryAPI          = 2
+	CategoryTimeSeries   = 3
+	CategoryEmail        = 4
+	CategoryUsers        = 5
+	CategorySchedule     = 6
+	CategoryDelay        = 7
+	CategoryChildUnit    = 8
+	CategoryTask         = 9
+	CategoryEmailConfig  = 10
+	CategoryFlow         = 11 // alais for actual flow
+	CategoryNode         = 12 // alais for actual node
+	CategoryNotes        = 13
+	CategoryMeeting      = 14 // this is a type like task, email, notes
+	CategoryCalendar     = 15 // this is integration
+	CategoryEvent        = 16
+	CategoryStream       = 17
+	CategoryNotification = 18
 )

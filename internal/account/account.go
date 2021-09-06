@@ -86,6 +86,11 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cuser *user.Use
 		return err
 	}
 
+	err = bootstrap.BootstrapNotificationEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but notification bootstrap failed")
+	}
+
 	err = bootstrap.BootstrapEmailConfigEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but email config bootstrap failed")

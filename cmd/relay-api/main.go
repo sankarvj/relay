@@ -151,7 +151,7 @@ func run() error {
 	// =========================================================================
 	// Start Secondary Database
 
-	redisPool := &redis.Pool{
+	rp := &redis.Pool{
 		MaxIdle:     50,
 		MaxActive:   50,
 		IdleTimeout: 240 * time.Second,
@@ -170,7 +170,7 @@ func run() error {
 	}
 	defer func() {
 		log.Printf("main : Redis Database Stopping : %s", cfg.SecDB.Host)
-		redisPool.Close()
+		rp.Close()
 	}()
 
 	// =========================================================================
@@ -195,7 +195,7 @@ func run() error {
 		Topic: cfg.PubSub.GmailPublisherTopic,
 	}
 
-	handler := c.Handler(handlers.API(shutdown, log, db, redisPool, authenticator, publisher))
+	handler := c.Handler(handlers.API(shutdown, log, db, rp, authenticator, publisher))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

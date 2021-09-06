@@ -82,6 +82,7 @@ const (
 
 const (
 	WhoReminder = "reminder"
+	WhoDueBy    = "dueby"
 	WhoAssignee = "assignee"
 	WhoOwner    = "owner"
 	WhoFollower = "follower"

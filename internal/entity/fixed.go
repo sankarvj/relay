@@ -22,11 +22,12 @@ const (
 )
 
 const (
-	FixedEntityOwner       = "owners"
-	FixedEntityEmailConfig = "email_config"
-	FixedEntityCalendar    = "calendar"
-	FixedEntityEmails      = "emails"
-	FixedEntityStream      = "stream"
+	FixedEntityOwner        = "owners"
+	FixedEntityEmailConfig  = "email_config"
+	FixedEntityCalendar     = "calendar"
+	FixedEntityEmails       = "emails"
+	FixedEntityStream       = "stream"
+	FixedEntityNotification = "notification"
 )
 
 var (
@@ -109,6 +110,17 @@ type FlowEntity struct {
 	Status      int    `json:"status"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
+}
+
+// NotificationEntity represents structural format of notification entity
+type NotificationEntity struct {
+	AccountID string `json:"account_id"`
+	EntityID  string `json:"entity_id"`
+	ItemID    string `json:"item_id"`
+	Subject   string `json:"subject"`
+	Body      string `json:"body"`
+	Type      int    `json:"type"`
+	CreatedAt string `json:"created_at"`
 }
 
 //ParseFixedEntity creates the entity from the given value added fields
@@ -207,19 +219,21 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 	}
 
 	//check for existence
-	dis, err := discovery.Retrieve(ctx, discoveryID, db)
-	if err != nil && err != discovery.ErrDiscoveryEmpty {
-		return err
-	}
+	if discoveryID != "" {
+		dis, err := discovery.Retrieve(ctx, discoveryID, db)
+		if err != nil && err != discovery.ErrDiscoveryEmpty {
+			return err
+		}
 
-	if dis != nil {
-		if dis.Type == discoveryType {
-			it, err := item.Retrieve(ctx, dis.EntityID, dis.ItemID, db)
-			if err != nil {
-				return err
-			}
-			if *it.UserID == currentUserID { //in some cases we might have to check account level.
-				return ErrIntegAlreadyExists
+		if dis != nil {
+			if dis.Type == discoveryType {
+				it, err := item.Retrieve(ctx, dis.EntityID, dis.ItemID, db)
+				if err != nil {
+					return err
+				}
+				if *it.UserID == currentUserID { //in some cases we might have to check account level.
+					return ErrIntegAlreadyExists
+				}
 			}
 		}
 	}

@@ -82,9 +82,12 @@ func run() error {
 
 	db, err := database.Open(dbConfig)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "connecting to primary db")
 	}
-	defer db.Close()
+	defer func() {
+		log.Printf("main : Primary Database Stopping : %s", cfg.DB.Host)
+		db.Close()
+	}()
 
 	rp := &redis.Pool{
 		MaxIdle:     50,
@@ -103,7 +106,10 @@ func run() error {
 			return err
 		},
 	}
-	defer rp.Close()
+	defer func() {
+		log.Printf("main : Redis Database Stopping : %s", cfg.SecDB.Host)
+		rp.Close()
+	}()
 
 	switch cfg.Args.Num(0) {
 	case "migrate":

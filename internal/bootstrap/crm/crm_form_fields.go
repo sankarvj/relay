@@ -381,6 +381,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DisplayName: "Due By",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoDueBy,
 	}
 
 	contactField := entity.Field{
