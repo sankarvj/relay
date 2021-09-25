@@ -264,7 +264,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Delay Item Created")
 
-	pID, _, err := b.AddPipelines(ctx, dealEntity.ID, webhookEntity.ID, delayEntity.ID, delayItem.ID)
+	pID, _, err := b.AddCRMPipelines(ctx, dealEntity.ID, webhookEntity.ID, delayEntity.ID, delayItem.ID)
 	if err != nil {
 		return err
 	}
@@ -337,5 +337,40 @@ func AddProps(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func AddCompanies(ctx context.Context, b *base.Base) error {
+
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedCompaniesEntityName)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Freshworks", "freshworks.com"))
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Acme Intl", "acme.com"))
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Tesla Inc", "tesla.com"))
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Cisco Inc", "cisco.com"))
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Salesforce Inc", "salesforce.com"))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

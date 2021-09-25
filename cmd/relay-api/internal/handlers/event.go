@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -61,6 +62,8 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "selecting related item ids")
 	}
 
+	log.Println("itemIDs--", itemIDs)
+
 	childItems, err := item.JustBulkRetrieve(ctx, itemIDs, ev.db)
 	if err != nil {
 		return errors.Wrap(err, "fetching items from selected ids")
@@ -71,7 +74,7 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		if _, ok := entityMap[it.EntityID]; ok {
 			entityMap[it.EntityID] = append(entityMap[it.EntityID], it)
 		} else {
-			entityMap[it.EntityID] = []item.Item{}
+			entityMap[it.EntityID] = []item.Item{it}
 		}
 	}
 

@@ -13,12 +13,17 @@ import (
 
 func Boot(ctx context.Context, b *base.Base) error {
 
-	// Retrive Emails Entity, Which is created for the account
-	emailsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmails)
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityOwner)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCSM:BOOT Owner & Emails Entities Retrived")
+
+	//Retrive Email Config entity
+	emailConfigEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSM:BOOT Retrive EmailConfig Entities Retrived")
 
 	contactEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedContactsEntityName)
 	if err != nil {
@@ -29,6 +34,12 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCSM:BOOT Company & Contacts Entities Retrived")
+
+	// add entity - emails
+	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
+	if err != nil {
+		return err
+	}
 
 	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
 	flowEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, entity.StateTeamLevel, FlowFields())
@@ -83,7 +94,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Type Entity With It's Three types Items Created")
 
 	// add entity - project
-	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedProjectsEntityName, "Projects", entity.CategoryData, entity.StateTeamLevel, ProjectFields(contactEntity.ID, companyEntity.ID, flowEntity.ID, nodeEntity.ID))
+	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedProjectsEntityName, "Projects", entity.CategoryData, entity.StateTeamLevel, ProjectFields(statusEntity.ID, ownerEntity.ID, ownerEntity.Key("email"), contactEntity.ID, companyEntity.ID, flowEntity.ID, nodeEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -96,6 +107,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCSM:BOOT Tasks Entity Created")
 
+	// add entity - meetings
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, MeetingFields(contactEntity.ID, companyEntity.ID, projectEntity.ID))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Meetings Entity Created")
+
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
 	if err != nil {
 		return err
@@ -104,4 +122,27 @@ func Boot(ctx context.Context, b *base.Base) error {
 
 	return nil
 
+}
+
+func AddSamples(ctx context.Context, b *base.Base) error {
+	projectEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedProjectsEntityName)
+	if err != nil {
+		return err
+	}
+
+	err = b.AddCSMPipeline(ctx, projectEntity.ID, "Demo Pipeline", "Kick Off", "Solutioning & Traning", "Go-live")
+	if err != nil {
+		return err
+	}
+	err = b.AddCSMPipeline(ctx, projectEntity.ID, "Upscale Pipeline", "Meeting", "Product overview", "Traning and Go-live")
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSM:SAMPLES Pipeline And Its Nodes Created")
+
+	err = b.AddSegments(ctx, projectEntity.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

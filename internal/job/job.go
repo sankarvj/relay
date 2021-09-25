@@ -20,7 +20,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
@@ -149,7 +149,18 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 	reference.UpdateChoicesWrapper(ctx, db, accountID, entityID, valueAddedFields, NewJabEngine())
 
 	//save the notification to the notifications.
-	err = j.actOnNotifications(ctx, accountID, e, it, valueAddedFields, notification.TypeReminder, db)
+	err = notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, notification.TypeReminder, db)
+	if err != nil {
+		log.Println("unexpected error occurred on EventItemReminded. error: ", err)
+	}
+}
+
+func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
+	ctx := context.Background()
+	err := notification.UserInvitation(ctx)
+	if err != nil {
+		log.Println("unexpected error occurred on EventUserInvited. error: ", err)
+	}
 }
 
 //act ons
@@ -312,49 +323,5 @@ func (j Job) actOnWho(accountID, entityID, itemID string, valueAddedFields []ent
 			return (Listener{}).AddReminder(accountID, entityID, itemID, when, rp)
 		}
 	}
-	return nil
-}
-
-func (j Job) actOnNotifications(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, notificationType int, db *sqlx.DB) error {
-	// send email using aws SES if email notification enabled.
-	// from: no-reply@baserelay.com
-	// to: <individual user who got assigned> , <updates to the user if already assigned>, <@mention on the notes/conversations>
-
-	var subject string
-	var body string
-	var formettedTime string
-	for _, f := range valueAddedFields {
-		if f.IsTitleLayout() {
-			body = f.Value.(string)
-		}
-
-		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime && f.Value != nil {
-			when, _ := util.ParseTime(f.Value.(string))
-			formettedTime = util.FormatTimeGo(when)
-		}
-	}
-
-	switch notificationType {
-	case notification.TypeReminder:
-		subject = fmt.Sprintf("your %s is due on %s", e.Name, formettedTime)
-	case notification.TypeAssigned:
-	case notification.TypeCreated:
-	case notification.TypeUpdated:
-	}
-
-	notificationItem := entity.NotificationEntity{
-		AccountID: accountID,
-		EntityID:  e.ID,
-		ItemID:    it.ID,
-		Subject:   subject,
-		Body:      body,
-		Type:      notificationType,
-		CreatedAt: "some time",
-	}
-	err := entity.SaveFixedEntityItem(ctx, accountID, e.TeamID, schema.SeedUserID1, entity.FixedEntityNotification, "Notification", "", "", util.ConvertInterfaceToMap(notificationItem), db)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

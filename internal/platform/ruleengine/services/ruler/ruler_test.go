@@ -1,9 +1,10 @@
-package ruler
+package ruler_test
 
 import (
 	"strings"
 	"testing"
 
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -16,13 +17,13 @@ func TestOperators(t *testing.T) {
 			var triggered bool
 			exp := `{{e1.appinfo.index}} lt {{e2.index}} && {{e1.appinfo.index}} lt {{e2.index}} <e3.status=e2.version>`
 			t.Log("expression --> ", exp)
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Execute), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Execute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
-				case PosExecutor:
+				case ruler.PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting lt", tests.Success)
 				}
@@ -37,13 +38,13 @@ func TestOperators(t *testing.T) {
 			var triggered bool
 			exp := `{{e1.appinfo.version}} eq {{e2.version}} && {{e1.appinfo.version}} eq {{e2.version}} <e3.status=e2.version>`
 			t.Log("expression --> ", exp)
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Execute), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Execute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
-				case PosExecutor:
+				case ruler.PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger after evaluting eq", tests.Success)
 				}
@@ -62,13 +63,13 @@ func TestContentParser(t *testing.T) {
 		{
 			var content string
 			exp := `Hello matty {{e1.appinfo.version}}. How are you?`
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Parse), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Parse), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
-				case Parser:
+				case ruler.Parser:
 					content = work.OutboundResp.(string)
 				}
 			}
@@ -89,14 +90,14 @@ func TestExpressionWithListOperands(t *testing.T) {
 		{
 			exp := `{{e1.supports}} in {sdk2}`
 			t.Log("expression --> ", exp)
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Execute), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Execute), signalsChan)
 			triggered := false
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInputWithList(work.Expression))
-				case PosExecutor:
+				case ruler.PosExecutor:
 					triggered = true
 					t.Logf("\t%s should receive positive trigger", tests.Success)
 				}
@@ -110,14 +111,14 @@ func TestExpressionWithListOperands(t *testing.T) {
 		{
 			exp := `{{e1.supports}} in {sdk3}`
 			t.Log("expression --> ", exp)
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Execute), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Execute), signalsChan)
 			triggered := false
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInputWithList(work.Expression))
-				case PosExecutor:
+				case ruler.PosExecutor:
 					triggered = true
 					t.Fatalf("\t%s should not revice positive trigger", tests.Failed)
 				}
@@ -139,15 +140,15 @@ func TestQuerySnippet(t *testing.T) {
 		{
 			var triggered bool
 			exp := `Hello matty {{e1.appinfo.version}}. How are you? <<d>>` //can't validate this from here. Go to engine test
-			signalsChan := make(chan Work)
-			go Run(exp, EngineFeedback(Parse), signalsChan)
+			signalsChan := make(chan ruler.Work)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Parse), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
-				case Worker:
+				case ruler.Worker:
 					work.InboundRespCh <- testevaluate(work.Expression, workerMockInput(work.Expression))
-				case Grapher:
+				case ruler.Grapher:
 					work.InboundRespCh <- testevaluate(work.Expression, map[string]interface{}{"hello": 1})
-				case Parser:
+				case ruler.Parser:
 					triggered = true
 					t.Logf("\t%s should receive parser trigger after evaluting lt", tests.Success)
 				}
@@ -161,7 +162,7 @@ func TestQuerySnippet(t *testing.T) {
 
 //mock inputs for workers
 func workerMockInput(exp string) map[string]interface{} {
-	key := FetchEntityID(exp)
+	key := ruler.FetchEntityID(exp)
 	if key == "e1" {
 		return map[string]interface{}{
 			"e1": map[string]interface{}{
@@ -183,7 +184,7 @@ func workerMockInput(exp string) map[string]interface{} {
 }
 
 func workerMockInputWithList(exp string) map[string]interface{} {
-	key := FetchEntityID(exp)
+	key := ruler.FetchEntityID(exp)
 	if key == "e1" {
 		return map[string]interface{}{
 			"e1": map[string]interface{}{

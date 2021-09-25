@@ -13,7 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func (b *Base) AddPipelines(ctx context.Context, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
+func (b *Base) AddCRMPipelines(ctx context.Context, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
 	//add pipelines
 	exp := fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", contactEntityID, schema.SeedFieldFNameKey, contactEntityID, schema.SeedFieldNPSKey)
 	p, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry, exp)
@@ -33,21 +33,36 @@ func (b *Base) AddPipelines(ctx context.Context, contactEntityID, webhookEntityI
 		return "", "", err
 	}
 
-	// no1, err := NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, mailEntityID, sno1.ID, "Email", node.Email, "", map[string]string{mailEntityID: mailItemID}, sno1.ID, "Send mail to customer")
-	// if err != nil {
-	// 	return "", "", err
-	// }
-
-	// _, err = NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, webhookEntityID, no1.ID, "Hook", node.Hook, "", map[string]string{}, sno1.ID, " Hit customer API")
-	// if err != nil {
-	// 	return "", "", err
-	// }
-
-	// _, err = NodeAdd(ctx, db, accountID, uuid.New().String(), p.ID, delayEntityID, sno2.ID, "Delay", node.Delay, "", map[string]string{delayEntityID: delayItemID}, sno2.ID, "Wait for 5 mins")
-	// if err != nil {
-	// 	return "", "", err
-	// }
 	return p.ID, sno1.ID, nil
+}
+
+func (b *Base) AddCSMPipeline(ctx context.Context, projectEntityID string, pipeLineName, node1, node2, node3 string) error {
+	//add pipelines
+	exp := fmt.Sprintf("")
+	p, err := b.FlowAdd(ctx, uuid.New().String(), projectEntityID, pipeLineName, flow.FlowModePipeLine, flow.FlowConditionEntry, exp)
+	if err != nil {
+		return err
+	}
+
+	dummyID := "00000000-0000-0000-0000-000000000000"
+
+	sno1, err := b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, node.Root, node1, node.Stage, "", map[string]string{}, dummyID, node1)
+	if err != nil {
+		return err
+	}
+
+	//exp = fmt.Sprintf("{{%s.%s}} eq {paid}", projectEntityID, schema.SeedFieldPlanKey)
+	sno2, err := b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, sno1.ID, node2, node.Stage, exp, map[string]string{}, dummyID, node2)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, sno2.ID, node3, node.Stage, "", map[string]string{}, dummyID, node3)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *Base) AddSegments(ctx context.Context, entityID string) error {
@@ -78,6 +93,11 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 		}
 	} else if e.Name == schema.SeedDealsEntityName {
 		err = addSegmentFlow(ctx, entityID, "All Deals", "", b)
+		if err != nil {
+			return err
+		}
+	} else if e.Name == schema.SeedProjectsEntityName {
+		err = addSegmentFlow(ctx, entityID, "All Projects", "", b)
 		if err != nil {
 			return err
 		}

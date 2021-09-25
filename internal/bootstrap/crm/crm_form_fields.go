@@ -289,9 +289,14 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 
 func CompanyVals(name, website string) map[string]interface{} {
 	companyVals := map[string]interface{}{
-		"uuid-00-name":    name,
-		"uuid-00-website": website,
-		"uuid-00-owner":   []interface{}{},
+		"uuid-00-name":            name,
+		"uuid-00-website":         website,
+		"uuid-00-city":            "san francisco",
+		"uuid-00-state":           "california",
+		"uuid-00-country":         "USA",
+		"uuid-00-employees-count": 1000,
+		"uuid-00-revenue":         "2000",
+		"uuid-00-owner":           []interface{}{},
 	}
 	return companyVals
 }

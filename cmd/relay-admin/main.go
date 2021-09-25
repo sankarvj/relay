@@ -123,7 +123,7 @@ func run() error {
 	case "ctmadd":
 		err = bootstrap.BootCSM(schema.SeedAccountID, db, rp)
 	case "useradd":
-		err = useradd(db, cfg.Args.Num(1), cfg.Args.Num(2))
+		err = useradd(db, schema.SeedAccountID, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
 		err = keygen(cfg.Args.Num(1))
 	default:
@@ -177,7 +177,7 @@ func seed(db *sqlx.DB, rp *redis.Pool) error {
 	return nil
 }
 
-func useradd(db *sqlx.DB, email, password string) error {
+func useradd(db *sqlx.DB, accountID, email, password string) error {
 	if email == "" || password == "" {
 		return errors.New("useradd command must be called with two additional arguments for email and password")
 	}
@@ -198,6 +198,7 @@ func useradd(db *sqlx.DB, email, password string) error {
 	ctx := context.Background()
 
 	nu := user.NewUser{
+		AccountIDs:      []string{accountID},
 		Email:           email,
 		Password:        password,
 		PasswordConfirm: password,

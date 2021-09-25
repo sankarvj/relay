@@ -15,6 +15,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
+//TODO can be removed. not used anywhere
 func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entity, childEntity entity.Entity, childItem item.Item, db *sqlx.DB) (item.Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.event.Create")
 	defer span.End()

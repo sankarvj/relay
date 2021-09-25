@@ -30,14 +30,18 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 		db:            db,
 		authenticator: authenticator,
 	}
-	// This route is not authenticated
+	// users authentication
 	app.Handle("GET", "/v1/users/token/:id", u.Token)
-	app.Handle("GET", "/v1/users", u.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	// users creation
 	app.Handle("POST", "/v1/users", u.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	//this route is confusing?
-	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
+	app.Handle("GET", "/v1/users", u.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	// users profile
 	app.Handle("PUT", "/v1/users/:id", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("DELETE", "/v1/users/:id", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
+	// users invitation
+	app.Handle("POST", "/v1/accounts/:account_id/users/invite", u.Invite, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/users/invite", u.Invite, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	a := Account{
 		db:            db,

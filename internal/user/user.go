@@ -140,6 +140,19 @@ func RetrieveUser(ctx context.Context, db *sqlx.DB, currentUserID string) (*User
 	return &u, nil
 }
 
+func RetrieveUserByUniqIdentifier(ctx context.Context, db *sqlx.DB, email, phone string) (User, error) {
+	var u User
+	const q = `select * from users where (email=$1 AND email != '') OR (phone=$2 AND phone != '')`
+	if err := db.GetContext(ctx, &u, q, email, phone); err != nil {
+		if err == sql.ErrNoRows {
+			return User{}, ErrNotFound
+		}
+		return User{}, errors.Wrapf(err, "selecting current user by email: %s or phone: %s", email, phone)
+	}
+
+	return u, nil
+}
+
 // Create inserts a new user into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Create")
@@ -219,6 +232,28 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating user")
+	}
+
+	return nil
+}
+
+func UpdatePassword(ctx context.Context, db *sqlx.DB, userID string, password string, now time.Time) error {
+	//TODO exploitation possible. Anyone without claims can update the password it seems
+	ctx, span := trace.StartSpan(ctx, "internal.user.UpdatePassword")
+	defer span.End()
+
+	pw, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.Wrap(err, "generating password hash")
+	}
+
+	const q = `UPDATE users SET "password_hash" = $2, "updated_at" = $3
+		WHERE user_id = $1`
+	_, err = db.ExecContext(ctx, q, userID,
+		pw, now.Unix(),
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating user password")
 	}
 
 	return nil

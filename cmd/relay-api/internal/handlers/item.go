@@ -205,6 +205,10 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
+	if *ni.GenieID == "" {
+		ni.GenieID = nil
+	}
+
 	it, err := item.Create(ctx, i.db, ni, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)

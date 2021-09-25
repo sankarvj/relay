@@ -152,6 +152,14 @@ func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	}
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions completed successfully")
 
+	//samples
+	fmt.Println("Bootstrap:CSM `samples` functions started")
+	err = csm.AddSamples(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:CSM `samples` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:CSM `samples` functions completed successfully")
+
 	//all done
 	fmt.Printf("\nBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
 

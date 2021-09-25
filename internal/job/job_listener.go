@@ -62,8 +62,8 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 		}
 		if redisJob.State == JobStateRiped {
 			//do the notifications
-			log.Printf("perform notifications.... %+v \n", redisJob)
-			(&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
+			log.Printf("trigger event item reminded job for the redis job: %+v \n", redisJob)
+			go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
 		}
 		time.Sleep(3 * time.Second) //reduce this time when more requests received
 	}

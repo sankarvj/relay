@@ -36,6 +36,7 @@ const (
 	SeedFieldFNameKey = "uuid-00-fname"
 	SeedFieldNPSKey   = "uuid-00-nps-score"
 	SeedFieldVerbKey  = "uuid-00-verb"
+	SeedFieldPlanKey  = "uuid-00-plan"
 )
 
 func IsEntitySeeded(entityName string) bool {

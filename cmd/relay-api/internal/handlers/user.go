@@ -8,6 +8,7 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -62,6 +63,53 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelUser(*usr), http.StatusOK)
 }
 
+func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.User.Invite")
+	defer span.End()
+
+	accountID := params["account_id"]
+
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	var nusers []user.NewUser
+	if err := web.Decode(r, &nusers); err != nil {
+		return errors.Wrap(err, "")
+	}
+
+	//TODO add validation to restrict inviting users upto 100
+
+	var users []user.User
+	for _, nu := range nusers {
+		nu.Password = ""        //safty
+		nu.PasswordConfirm = "" //safty
+		nu.AccountIDs = []string{accountID}
+		usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
+		if err != nil {
+			if err == user.ErrNotFound {
+				usr, err = user.Create(ctx, u.db, nu, v.Now)
+				if err != nil {
+					log.Println("unexpected error when creating new users to the account. error: ", err)
+					usr.ID = "" //symbolically telling the UI that the invitation for the user is failed.
+				}
+			} else {
+				log.Println("unexpected error when retriving users when inviting. error: ", err)
+			}
+		}
+		users = append(users, usr)
+
+		if usr.ID != "" {
+			//TODO push this to stream/queue
+			(&job.Job{}).EventUserInvited(usr, u.db)
+		}
+
+	}
+
+	return web.Respond(ctx, w, users, http.StatusCreated)
+}
+
 // Create inserts a new user into the system.
 func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.User.Create")
@@ -77,9 +125,18 @@ func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	usr, err := user.Create(ctx, u.db, nu, v.Now)
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
+
 	if err != nil {
-		return errors.Wrapf(err, "User: %+v", &usr)
+		usr, err = user.Create(ctx, u.db, nu, v.Now)
+		if err != nil {
+			return errors.Wrapf(err, "User: %+v created", &usr)
+		}
+	} else {
+		err := user.UpdatePassword(ctx, u.db, usr.ID, nu.Password, v.Now)
+		if err != nil {
+			return errors.Wrapf(err, "User: %+v password updated", &usr)
+		}
 	}
 
 	return web.Respond(ctx, w, usr, http.StatusCreated)

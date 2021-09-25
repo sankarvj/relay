@@ -112,8 +112,8 @@ type FlowEntity struct {
 	UpdatedAt   string `json:"updated_at"`
 }
 
-// NotificationEntity represents structural format of notification entity
-type NotificationEntity struct {
+// NotificationEntityItem represents structural format of notification entity
+type NotificationEntityItem struct {
 	AccountID string `json:"account_id"`
 	EntityID  string `json:"entity_id"`
 	ItemID    string `json:"item_id"`

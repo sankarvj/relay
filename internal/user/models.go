@@ -28,6 +28,7 @@ type NewUser struct {
 	AccountIDs      []string `json:"account_ids" validate:"required"`
 	Name            string   `json:"name" validate:"required"`
 	Email           string   `json:"email" validate:"required"`
+	Phone           *string  `json:"phone"`
 	Roles           []string `json:"roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`
 	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
