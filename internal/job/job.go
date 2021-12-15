@@ -33,7 +33,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("unexpected error occurred when retriving entity inside job. error:", err)
+		log.Println("EventItemUpdated: unexpected error occurred when retriving entity inside job. error:", err)
 		return
 	}
 
@@ -42,28 +42,28 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, oldFields, newFields, db, rp)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnWorkflows. error: ", err)
+		log.Println("EventItemUpdated: unexpected error occurred on actOnWorkflows. error: ", err)
 		return
 	}
 
 	//connections
 	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, valueAddedFields, e.ValueAdd(oldFields), db)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnConnections. error: ", err)
+		log.Println("EventItemUpdated: unexpected error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//who
 	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnWho. error: ", err)
+		log.Println("EventItemUpdated: unexpected error occurred on actOnWho. error: ", err)
 		return
 	}
 
 	//graph
 	err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
+		log.Println("EventItemUpdated: unexpected error occurred on actOnRedisGraph. error: ", err)
 		return
 	}
 }
@@ -73,12 +73,12 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("unexpected error occurred when retriving entity on job. error:", err)
+		log.Println("EventItemCreated: unexpected error occurred when retriving entity on job. error:", err)
 		return
 	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("unexpected error occurred while retriving item on job. error:", err)
+		log.Println("EventItemCreated: unexpected error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -88,28 +88,28 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, nil, it.Fields(), db, rp)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnWorkflows. error: ", err)
+		log.Println("EventItemCreated: unexpected error occurred on actOnWorkflows. error: ", err)
 		return
 	}
 
 	//connect
 	err = j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnConnections. error: ", err)
+		log.Println("EventItemCreated: unexpected error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//integrations
 	err = actOnIntegrations(ctx, accountID, e, it, valueAddedFields, db)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnIntegrations. error: ", err)
+		log.Println("EventItemCreated: unexpected error occurred on actOnIntegrations. error: ", err)
 		return
 	}
 
 	//who
 	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
-		log.Println("unexpected error occurred on actOnWho. error: ", err)
+		log.Println("EventItemCreated: unexpected error occurred on actOnWho. error: ", err)
 		return
 	}
 
@@ -117,14 +117,14 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	if len(source) == 0 {
 		err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
 		if err != nil {
-			log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
+			log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
 			return
 		}
 	} else {
 		for baseEntityID, baseItemID := range source {
 			err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, baseEntityID, baseItemID, rp)
 			if err != nil {
-				log.Println("unexpected error occurred on actOnRedisGraph. error: ", err)
+				log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
 				return
 			}
 		}
@@ -136,12 +136,12 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("unexpected error occurred when retriving entity on job. error:", err)
+		log.Println("EventItemReminded: unexpected error occurred when retriving entity on job. error:", err)
 		return
 	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("unexpected error occurred while retriving item on job. error:", err)
+		log.Println("EventItemReminded: unexpected error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -151,7 +151,35 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 	//save the notification to the notifications.
 	err = notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, notification.TypeReminder, db)
 	if err != nil {
-		log.Println("unexpected error occurred on EventItemReminded. error: ", err)
+		log.Println("EventItemReminded: unexpected error occurred on EventItemReminded. error: ", err)
+	}
+}
+
+func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
+	ctx := context.Background()
+
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		log.Println("EventItemDeleted: unexpected error occurred when retriving entity on job. error:", err)
+		return
+	}
+	log.Println("coming here????")
+	it, err := item.Retrieve(ctx, entityID, itemID, db)
+	if err != nil {
+		log.Println("EventItemDeleted: unexpected error occurred while retriving item on job. error:", err)
+		return
+	}
+
+	err = destructOnIntegrations(ctx, accountID, e, it, db)
+	if err != nil {
+		log.Println("EventItemDeleted: unexpected error occurred on destructOnIntegrations. error: ", err)
+		return
+	}
+
+	err = item.Delete(ctx, db, accountID, entityID, itemID)
+	if err != nil {
+		log.Println("EventItemDeleted: unexpected error occurred on delete main item. error: ", err)
+		return
 	}
 }
 
@@ -161,6 +189,10 @@ func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
 	if err != nil {
 		log.Println("unexpected error occurred on EventUserInvited. error: ", err)
 	}
+}
+
+func (j *Job) EventEmailReceived(db *sqlx.DB) {
+
 }
 
 //act ons
@@ -324,4 +356,15 @@ func (j Job) actOnWho(accountID, entityID, itemID string, valueAddedFields []ent
 		}
 	}
 	return nil
+}
+
+func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
+	var err error
+	switch e.Category {
+	case entity.CategoryEmailConfig:
+		err = email.Destruct(ctx, accountID, e.ID, it.ID, db)
+	case entity.CategoryCalendar:
+		//calendar destruct yet to be implemented
+	}
+	return err
 }

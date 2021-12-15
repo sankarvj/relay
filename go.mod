@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.10.0+incompatible
 	github.com/ardanlabs/conf v1.2.0
+	github.com/aws/aws-sdk-go v1.42.22 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dimfeld/httptreemux/v5 v5.0.2
 	github.com/dimiro1/darwin v0.0.0-20191008194338-370f81775d3b
@@ -19,17 +20,18 @@ require (
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2
+	github.com/jhillyerd/enmime v0.9.2 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/mailgun/mailgun-go v2.0.0+incompatible
 	github.com/mcuadros/go-version v0.0.0-20190830083331-035f6764e8d2
-	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/redislabs/redisgraph-go v2.0.2+incompatible
 	github.com/rs/cors v1.7.0
+	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	go.opencensus.io v0.23.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d

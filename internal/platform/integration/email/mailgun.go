@@ -29,3 +29,7 @@ func (m MailGun) SendMail(fromName, fromEmail string, toName string, toEmail []s
 func (m MailGun) Watch(topicName string) (string, error) {
 	return "", nil
 }
+
+func (m MailGun) Stop(emailAddress string) error {
+	return nil
+}

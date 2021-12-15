@@ -245,7 +245,7 @@ var migrations = []darwin.Migration{
 			item_id 	    UUID REFERENCES items ON DELETE CASCADE,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
-			UNIQUE (discovery_id, discovery_type)
+			UNIQUE (account_id, entity_id, discovery_id, discovery_type)
 		);
 		`,
 	},

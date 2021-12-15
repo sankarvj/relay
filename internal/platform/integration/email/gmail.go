@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/mail"
 
-	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/gmail/v1"
@@ -41,7 +40,8 @@ func (g Gmail) Watch(topicName string) (string, error) {
 		return emailAddress, err
 	}
 	emailAddress = profile.EmailAddress
-
+	//calling this as a safer side because calling two watch is not allowed
+	srv.Users.Stop(emailAddress).Do()
 	watchCall := srv.Users.Watch(emailAddress, &gmail.WatchRequest{
 		TopicName: topicName,
 	})
@@ -51,6 +51,28 @@ func (g Gmail) Watch(topicName string) (string, error) {
 	}
 	log.Printf("internal.platform.integration.email.gmail started watching the user %s\n", emailAddress)
 	return emailAddress, nil
+}
+
+func (g Gmail) Stop(emailAddress string) error {
+	log.Println("Stop Called!")
+	config, err := getGmailConfig(g.OAuthFile)
+	if err != nil {
+		return err
+	}
+
+	client, err := integration.Client(config, g.TokenJson)
+	if err != nil {
+		return err
+	}
+
+	srv, err := gmail.New(client)
+	if err != nil {
+		return err
+	}
+
+	srv.Users.Stop(emailAddress)
+
+	return nil
 }
 
 func Message(oAuthFile, tokenJson string, user string, messageID string) error {
@@ -79,70 +101,51 @@ func Message(oAuthFile, tokenJson string, user string, messageID string) error {
 	return nil
 }
 
-func History(oAuthFile, tokenJson string, user string, historyID uint64) error {
+func History(oAuthFile, tokenJson string, user string, historyID uint64) (uint64, error) {
 	config, err := getGmailConfig(oAuthFile)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	client, err := integration.Client(config, tokenJson)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	srv, err := gmail.New(client)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	rgmsg, err := srv.Users.History.List(user).StartHistoryId(historyID).Do()
+	rgmsg, err := srv.Users.History.List(user).HistoryTypes("messageAdded").StartHistoryId(historyID).Do()
 	if err != nil {
-		return err
+		return 0, err
 	}
+
+	if len(rgmsg.History) == 0 {
+		log.Println("Why the heck the history of messages are empty!!!!!!!!!!!")
+	}
+
 	for _, history := range rgmsg.History {
 		for _, m := range history.Messages {
 			msg, err := srv.Users.Messages.Get(user, m.Id).Format("full").Do()
 			if err != nil {
-				return err
+				return 0, err
 			}
 
-			log.Printf("internal.platform.integration.email.gmail message  %+v\n", msg)
+			log.Println("msg snippet ", msg.Snippet)
+			log.Println("msg threadID ", msg.ThreadId)
 
-			if len(msg.Payload.Parts) > 0 {
-
-				log.Println("msg snippet ", msg.Snippet)
-				log.Println("msg threadID ", msg.ThreadId)
-
-				for _, part := range msg.Payload.Parts {
-					if part.MimeType == "text/html" {
-						data, err := base64.StdEncoding.DecodeString(part.Body.Data)
-						if err != nil {
-							return errors.Wrap(err, "decoding message payload")
-						}
-						html := string(data)
-						fmt.Println("JTML1-->", html)
-					} else if part.MimeType == "text/plain" {
-						data, err := base64.StdEncoding.DecodeString(part.Body.Data)
-						if err != nil {
-							return errors.Wrap(err, "decoding message payload")
-						}
-						html := string(data)
-						fmt.Println("JTML1-->", html)
-					}
-				}
-			} else {
-				data, err := base64.StdEncoding.DecodeString(msg.Payload.Body.Data)
-				if err != nil {
-					return errors.Wrap(err, "decoding message payload")
-				}
-				html := string(data)
-				fmt.Println("JTML2-->", html)
+			for i := 0; i < len(msg.Payload.Headers); i++ {
+				headerVal := msg.Payload.Headers[i]
+				log.Println("msg Header Name ", headerVal.Name)
+				log.Println("msg Header Value ", headerVal.Value)
 			}
 
 		}
 	}
 
-	return nil
+	return rgmsg.HistoryId, nil
 }
 
 func (g Gmail) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {

@@ -54,11 +54,12 @@ type EmailEntity struct {
 
 // EmailConfigEntity represents structural format of email config entity
 type EmailConfigEntity struct {
-	Domain string   `json:"domain"`
-	APIKey string   `json:"api_key"`
-	Email  string   `json:"email"`
-	Owner  []string `json:"owner"`
-	Common string   `json:"common"`
+	Domain    string   `json:"domain"`
+	APIKey    string   `json:"api_key"`
+	Email     string   `json:"email"`
+	Owner     []string `json:"owner"`
+	Common    string   `json:"common"`
+	HistoryID string   `json:"history_id"`
 }
 
 // CalendarxEntity represents structural format of calendar entity
@@ -154,20 +155,22 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	return e, nil
 }
 
-func RetriveFixedItemByCategory(ctx context.Context, accountID, teamID, entityCategory string, db *sqlx.DB) ([]Field, error) {
+func RetriveFixedItemByCategory(ctx context.Context, accountID, teamID, entityCategory string, db *sqlx.DB) ([]Field, UpdaterFunc, error) {
 	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, teamID, entityCategory)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	items, err := item.EntityItems(ctx, fixedEntity.ID, db)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(items) != 1 {
-		return nil, ErrIntegNotFound
+		return nil, nil, ErrIntegNotFound
 	}
-	return fixedEntity.ValueAdd(items[0].Fields()), nil
+	it := items[0]
+	entityFields := fixedEntity.ValueAdd(items[0].Fields())
+	return entityFields, updateFields(accountID, fixedEntity.ID, it.ID, entityFields), nil
 }
 
 func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB) ([]Field, UpdaterFunc, error) {
@@ -220,7 +223,7 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 
 	//check for existence
 	if discoveryID != "" {
-		dis, err := discovery.Retrieve(ctx, discoveryID, db)
+		dis, err := discovery.Retrieve(ctx, accountID, fixedEntity.ID, discoveryID, db)
 		if err != nil && err != discovery.ErrDiscoveryEmpty {
 			return err
 		}

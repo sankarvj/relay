@@ -84,6 +84,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 		}
 
 		g := email.Gmail{OAuthFile: i.authenticator.GoogleClientSecret, TokenJson: tokenJson}
+
 		emailAddress, err = g.Watch(i.publisher.Topic)
 		if err != nil {
 			return err

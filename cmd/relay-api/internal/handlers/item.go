@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,6 +47,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
 	viewID := r.URL.Query().Get("view_id")
+	exp := r.URL.Query().Get("exp")
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
@@ -53,18 +55,21 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	var items []item.Item
-	if viewID == "" {
+	if viewID == "" && exp == "" {
 		var err error
 		items, err = item.ListFilterByState(ctx, e.ID, state, i.db)
 		if err != nil {
 			return err
 		}
 	} else {
-		fl, err := flow.Retrieve(ctx, viewID, i.db)
-		if err != nil {
-			return err
+		if exp == "" {
+			fl, err := flow.Retrieve(ctx, viewID, i.db)
+			if err != nil {
+				return err
+			}
+			exp = fl.Expression
 		}
-		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, accountID, fl.Expression)
+		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, accountID, exp)
 		gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", makeConField(conditions))
 		result, err := graphdb.GetResult(i.rPool, gSegment)
 		if err != nil {
@@ -204,8 +209,9 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.EntityID = entityID
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
+	fmt.Printf("ni %+v", ni)
 
-	if *ni.GenieID == "" {
+	if ni.GenieID != nil && *ni.GenieID == "" {
 		ni.GenieID = nil
 	}
 
@@ -290,10 +296,12 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
-	err := item.Delete(ctx, i.db, accountID, entityID, itemID)
-	if err != nil {
-		return err
-	}
+	// Delete calls should be called in the last stage of job
+	// err := item.Delete(ctx, i.db, accountID, entityID, itemID)
+	// if err != nil {
+	// 	return err
+	// }
+	(&job.Job{}).EventItemDeleted(accountID, entityID, itemID, i.db, i.rPool)
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 

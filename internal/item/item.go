@@ -246,6 +246,9 @@ func DeleteAllByUser(ctx context.Context, db *sqlx.DB, accountID, entityID, user
 // Fields parses attribures to fields
 func (i Item) Fields() map[string]interface{} {
 	var fields map[string]interface{}
+	if i.Fieldsb == "" {
+		return fields
+	}
 	if err := json.Unmarshal([]byte(i.Fieldsb), &fields); err != nil {
 		log.Printf("unexpected error occurred when unmarshalling fields for item: %v error: %v\n", i.ID, err)
 	}

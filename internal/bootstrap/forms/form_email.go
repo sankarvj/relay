@@ -46,6 +46,16 @@ func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		DataType:    entity.TypeString,
 	}
 
+	historyFieldID := uuid.New().String()
+	historyField := entity.Field{
+		Key:         historyFieldID,
+		Name:        "history_id",
+		DisplayName: "",
+		Meta:        map[string]string{entity.MetaKeyConfig: "true"},
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+	}
+
 	ownerFieldID := uuid.New().String()
 	ownerField := entity.Field{
 		Key:         ownerFieldID,
@@ -62,7 +72,7 @@ func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		},
 	}
 
-	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField}
+	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField, historyField}
 }
 
 func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, nameFieldKey, emailFieldKey string) []entity.Field {

@@ -25,12 +25,8 @@ type Calendar struct {
 }
 
 func (c Calendar) Act(ctx context.Context, accountID string, actionID string, actionPayload intg.ActionPayload, db *sqlx.DB) error {
-	discoveryID := "6f37c43e-59e0-4603-9133-5e854ebbd1dd"
-	discovery, err := discovery.Retrieve(ctx, discoveryID, db)
-	if err != nil {
-		return err
-	}
-	calConfigItem, updaterFunc, err := calendarConfigItem(ctx, *discovery, db)
+	teamID := "0" //since the calendar StateAccountLevel is 1 this will work without teamID
+	calConfigItem, updaterFunc, err := calendarEntityItem(ctx, accountID, teamID, db)
 	if err != nil {
 		return err
 	}
@@ -73,7 +69,7 @@ func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemI
 	meeting.StartTime = util.FormatTimeGoogle(st)
 	meeting.EndTime = util.FormatTimeGoogle(end)
 
-	calConfigItem, err := calendarEntityItem(ctx, accountID, teamID, db)
+	calConfigItem, _, err := calendarEntityItem(ctx, accountID, teamID, db)
 	if err != nil {
 		return err
 	}
@@ -112,15 +108,15 @@ func calendarConfigItem(ctx context.Context, discovery discovery.Discover, db *s
 	return calendarEntity, updateFunc, nil
 }
 
-func calendarEntityItem(ctx context.Context, accountID, teamID string, db *sqlx.DB) (entity.CaldendarEntity, error) {
+func calendarEntityItem(ctx context.Context, accountID, teamID string, db *sqlx.DB) (entity.CaldendarEntity, entity.UpdaterFunc, error) {
 	var calendarEntityItem entity.CaldendarEntity
-	valueAddedFields, err := entity.RetriveFixedItemByCategory(ctx, accountID, teamID, entity.FixedEntityCalendar, db)
+	valueAddedFields, updateFunc, err := entity.RetriveFixedItemByCategory(ctx, accountID, teamID, entity.FixedEntityCalendar, db)
 	if err != nil {
-		return calendarEntityItem, err
+		return calendarEntityItem, nil, err
 	}
 	err = entity.ParseFixedEntity(valueAddedFields, &calendarEntityItem)
 	if err != nil {
-		return calendarEntityItem, err
+		return calendarEntityItem, nil, err
 	}
-	return calendarEntityItem, nil
+	return calendarEntityItem, updateFunc, nil
 }

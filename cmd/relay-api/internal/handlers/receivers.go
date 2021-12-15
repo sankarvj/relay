@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -61,9 +62,9 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 	log.Printf("data.raw raw raw---> %+v", pushMsgPayload)
 	log.Println("data.EmailAddress---> ", data.EmailAddress)
-	log.Println("data.EmailAddress---> ", data.HistoryID)
+	log.Println("data.HistoryID---> ", data.HistoryID)
 
-	sub, err := discovery.Retrieve(ctx, data.EmailAddress, g.db)
+	sub, err := discovery.Retrieve(ctx, "", "", data.EmailAddress, g.db)
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
 			//TODO call stop here.
@@ -74,7 +75,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 	}
 
-	valueAddedConfigFields, _, err := entity.RetrieveFixedItem(ctx, sub.AccountID, sub.EntityID, sub.ItemID, g.db)
+	valueAddedConfigFields, updaterFunc, err := entity.RetrieveFixedItem(ctx, sub.AccountID, sub.EntityID, sub.ItemID, g.db)
 	if err != nil {
 		return err
 	}
@@ -83,8 +84,18 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		return err
 	}
-	err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, 2016821)
-	log.Println("err ", err)
+	hisID, _ := strconv.ParseUint(emailConfigEntityItem.HistoryID, 10, 64)
+	if hisID != 0 {
+		log.Println("Calling History For ", hisID)
+		_, err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, data.HistoryID)
+		if err != nil {
+			log.Println("Err -> ", err)
+			return err
+		}
+	}
+	//save the new history ID
+	emailConfigEntityItem.HistoryID = strconv.FormatUint(data.HistoryID, 10)
+	updaterFunc(ctx, emailConfigEntityItem, g.db)
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }

@@ -48,18 +48,34 @@ func Create(ctx context.Context, db *sqlx.DB, ns NewDiscovery, now time.Time) (D
 
 // Retrieve gets the specified discovery from the database.
 // discoveries are unique to the whole product. It does not wrapped inside account/entity
-func Retrieve(ctx context.Context, id string, db *sqlx.DB) (*Discover, error) {
+func Retrieve(ctx context.Context, accountID, entityID, id string, db *sqlx.DB) (*Discover, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.discovery.Retrieve")
 	defer span.End()
 
+	//email integration is one-time. If integrated once he will not be able to add it again in other accounts
+	//in that case we might have the accountID and entityID as 0
+	if accountID == "" && entityID == "" {
+		var s Discover
+		const q = `SELECT * FROM discoveries WHERE discovery_id = $1`
+		if err := db.GetContext(ctx, &s, q, id); err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrDiscoveryEmpty
+			}
+
+			return nil, errors.Wrapf(err, "discovering id %q", id)
+		}
+
+		return &s, nil
+	}
+
 	var s Discover
-	const q = `SELECT * FROM discoveries WHERE discovery_id = $1`
-	if err := db.GetContext(ctx, &s, q, id); err != nil {
+	const q = `SELECT * FROM discoveries WHERE discovery_id = $1 AND account_id = $2 AND entity_id = $3`
+	if err := db.GetContext(ctx, &s, q, id, accountID, entityID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrDiscoveryEmpty
 		}
 
-		return nil, errors.Wrapf(err, "discovering id %q", id)
+		return nil, errors.Wrapf(err, "discovering id %q, account_id %q, entity_id %q ", id, accountID, entityID)
 	}
 
 	return &s, nil
