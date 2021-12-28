@@ -163,7 +163,7 @@ func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, 
 		log.Println("EventItemDeleted: unexpected error occurred when retriving entity on job. error:", err)
 		return
 	}
-	log.Println("coming here????")
+
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
 		log.Println("EventItemDeleted: unexpected error occurred while retriving item on job. error:", err)
@@ -338,7 +338,9 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
-		err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
+		if *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
+			err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
+		}
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
 	}

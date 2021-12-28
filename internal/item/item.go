@@ -299,6 +299,14 @@ func CompareItems(newItemVals, oldItemVals []interface{}) ([]interface{}, []inte
 	return oldItems, newItems
 }
 
+func FetchIDs(items []Item) []string {
+	ids := make([]string, 0)
+	for _, i := range items {
+		ids = append(ids, i.ID)
+	}
+	return ids
+}
+
 func removeIndex(s []interface{}, index int) []interface{} {
 	return append(s[:index], s[index+1:]...)
 }

@@ -152,27 +152,46 @@ func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickE
 
 func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEntityKeyEmail, contactEntityKeyNPS string) error {
 	emailConfigEntityItem := entity.EmailConfigEntity{
-		APIKey: "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
-		Domain: integration.DomainMailGun,
-		Email:  "vijayasankar.jothi@wayplot.com",
-		Common: "false",
-		Owner:  []string{schema.SeedUserID1},
+		AccountID: b.AccountID,
+		TeamID:    b.TeamID,
+		APIKey:    "9c2d8fbbab5c0ca5de49089c1e9777b3-7fba8a4e-b5d71e35",
+		Domain:    integration.DomainMailGun,
+		Email:     "vijayasankar.jothi@wayplot.com",
+		Common:    "false",
+		Owner:     []string{schema.SeedUserID1},
 	}
-	err := entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), b.DB)
+	_, err := entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), b.DB)
+	if err != nil {
+		return err
+	}
+
+	uniqueDiscoveryID := uuid.New().String()
+	emailConfigInboxEntityItem := entity.EmailConfigEntity{
+		AccountID: b.AccountID,
+		TeamID:    b.TeamID,
+		APIKey:    uniqueDiscoveryID,
+		Domain:    integration.DomainBaseInbox,
+		Email:     fmt.Sprintf("support@%s.wayplot.com", uniqueDiscoveryID),
+		Common:    "true",
+		Owner:     []string{schema.SeedSystemUserID},
+	}
+	_, err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedSystemUserID, entity.FixedEntityEmailConfig, "Base Inbox Integration", uniqueDiscoveryID, integration.TypeBaseInbox, util.ConvertInterfaceToMap(emailConfigInboxEntityItem), b.DB)
 	if err != nil {
 		return err
 	}
 
 	emailEntityItem := entity.EmailEntity{
-		From:    []string{},
-		To:      []string{fmt.Sprintf("{{%s.%s}}", contactEntityID, contactEntityKeyEmail)},
-		Cc:      []string{"vijayasankarmobile@gmail.com"},
-		Bcc:     []string{""},
-		Subject: fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", contactEntityID, contactEntityKeyNPS),
-		Body:    fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
+		From:      []string{},
+		To:        []string{fmt.Sprintf("{{%s.%s}}", contactEntityID, contactEntityKeyEmail)},
+		Cc:        []string{},
+		Bcc:       []string{},
+		Contacts:  []string{},
+		Companies: []string{},
+		Subject:   fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", contactEntityID, contactEntityKeyNPS),
+		Body:      fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
 	}
 
-	err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), b.DB)
+	_, err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), b.DB)
 	if err != nil {
 		return err
 	}

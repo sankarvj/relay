@@ -31,16 +31,10 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n 
 		to = namedFieldsObj["to"].Value.([]interface{})
 	}
 
-	choices := make([]entity.Choice, 0)
 	variables := n.VariablesMap()
 
 	subject = eng.RunExpRenderer(ctx, db, n.AccountID, subject, variables)
 	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, variables)
-	//Very confusing step.
-	//To satisfy the SendMail func in the job we are populating the to mails in the choices.
-	for _, t := range to {
-		choices = append(choices, entity.Choice{DisplayValue: eng.RunExpRenderer(ctx, db, n.AccountID, t.(string), variables)})
-	}
 
 	log.Printf("mailFields --> %+v", mailFields)
 
@@ -51,7 +45,7 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n 
 		case "body":
 			mailFields[i].Value = body
 		case "to":
-			mailFields[i].Choices = choices
+			mailFields[i].Value = to
 		}
 	}
 

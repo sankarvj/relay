@@ -30,7 +30,7 @@ func (appNotif AppNotification) Send(ctx context.Context, notifType Notification
 		CreatedAt: "some time",
 	}
 
-	err := entity.SaveFixedEntityItem(ctx, appNotif.AccountID, appNotif.TeamID, appNotif.UserID, entity.FixedEntityNotification, "Notification", "", "", util.ConvertInterfaceToMap(notificationItem), db)
+	_, err := entity.SaveFixedEntityItem(ctx, appNotif.AccountID, appNotif.TeamID, appNotif.UserID, entity.FixedEntityNotification, "Notification", "", "", util.ConvertInterfaceToMap(notificationItem), db)
 	if err != nil {
 		return err
 	}

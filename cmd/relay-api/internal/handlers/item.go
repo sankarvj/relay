@@ -215,15 +215,22 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		ni.GenieID = nil
 	}
 
-	it, err := item.Create(ctx, i.db, ni, time.Now())
+	it, err := CreateAndPublish(ctx, ni, i.db, i.rPool)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(accountID, entityID, it.ID, ni.Source, i.db, i.rPool)
-
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
+}
+
+func CreateAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
+	it, err := item.Create(ctx, db, ni, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+	//TODO push this to stream/queue
+	(&job.Job{}).EventItemCreated(ni.AccountID, ni.EntityID, it.ID, ni.Source, db, rp)
+	return it, err
 }
 
 // Retrieve gets the specified item with field meta from the database.
@@ -307,11 +314,12 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 func createViewModelItem(i item.Item) ViewModelItem {
 	return ViewModelItem{
-		ID:     i.ID,
-		Name:   i.Name,
-		Type:   i.Type,
-		State:  i.State,
-		Fields: i.Fields(),
+		ID:       i.ID,
+		EntityID: i.EntityID,
+		Name:     i.Name,
+		Type:     i.Type,
+		State:    i.State,
+		Fields:   i.Fields(),
 	}
 }
 
@@ -342,11 +350,12 @@ func itemResponse(e entity.Entity, items []item.Item) ([]entity.Field, []ViewMod
 // ViewModelItem represents the view model of item
 // (i.e) it has fields instead of attributes
 type ViewModelItem struct {
-	ID     string                 `json:"id"`
-	Name   *string                `json:"name"`
-	Type   int                    `json:"type"`
-	State  int                    `json:"state"`
-	Fields map[string]interface{} `json:"fields"`
+	ID       string                 `json:"id"`
+	EntityID string                 `json:"entity_id"`
+	Name     *string                `json:"name"`
+	Type     int                    `json:"type"`
+	State    int                    `json:"state"`
+	Fields   map[string]interface{} `json:"fields"`
 }
 
 //AEI accountID, entityID, itemID

@@ -6,6 +6,27 @@ import (
 )
 
 func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity.Field {
+
+	accountFieldID := uuid.New().String()
+	accountField := entity.Field{
+		Key:         accountFieldID,
+		Name:        "account_id",
+		DisplayName: "",
+		Meta:        map[string]string{entity.MetaKeyConfig: "true"},
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+	}
+
+	teamFieldID := uuid.New().String()
+	teamField := entity.Field{
+		Key:         teamFieldID,
+		Name:        "team_id",
+		DisplayName: "",
+		Meta:        map[string]string{entity.MetaKeyConfig: "true"},
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+	}
+
 	domainFieldID := uuid.New().String()
 	domainField := entity.Field{
 		Key:         domainFieldID,
@@ -72,10 +93,10 @@ func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 		},
 	}
 
-	return []entity.Field{domainField, apiKeyField, emailField, commanField, ownerField, historyField}
+	return []entity.Field{accountField, teamField, domainField, apiKeyField, emailField, commanField, ownerField, historyField}
 }
 
-func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID string, nameFieldKey, emailFieldKey string) []entity.Field {
+func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID, companyEntityID string, nameFieldKey, emailFieldKey string) []entity.Field {
 
 	fromFieldID := uuid.New().String()
 	fromField := entity.Field{
@@ -93,19 +114,29 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		},
 	}
 
+	receivingfromFieldID := uuid.New().String()
+	receivingfromField := entity.Field{
+		Key:         receivingfromFieldID,
+		Name:        "rfrom",
+		DisplayName: "Receving From",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
+	}
+
 	toFieldID := uuid.New().String()
 	toField := entity.Field{
 		Key:         toFieldID,
 		Name:        "to",
 		DisplayName: "To",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: nameFieldKey, entity.MetaKeyEmailGex: emailFieldKey},
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
+			Key:      "element",
 			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
 		},
 	}
 
@@ -160,5 +191,37 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{fromField, toField, ccField, bccField, subjectField, bodyField}
+	contactFieldID := uuid.New().String()
+	contactField := entity.Field{
+		Key:         contactFieldID,
+		Name:        "contacts",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyFieldID := uuid.New().String()
+	companyField := entity.Field{
+		Key:         companyFieldID,
+		Name:        "companies",
+		DisplayName: "Associated Companies",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{receivingfromField, fromField, toField, ccField, bccField, subjectField, bodyField, contactField, companyField}
 }

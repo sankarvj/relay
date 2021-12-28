@@ -14,7 +14,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -38,7 +40,7 @@ var upgrader = websocket.Upgrader{
 
 // List returns all the existing entities associated with team
 func (cv *Conversation) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Entity.List")
+	ctx, span := trace.StartSpan(ctx, "handlers.Conversation.List")
 	defer span.End()
 
 	conversations, err := conv.List(ctx, params["account_id"], params["entity_id"], params["item_id"], 0, cv.db)
@@ -108,6 +110,38 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 	return nil
 }
 
+func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Conversation.Create")
+	defer span.End()
+
+	currentUser, err := user.RetrieveCurrentUser(ctx, cv.db)
+	if err != nil {
+		return err
+	}
+
+	var nc conv.NewConversation
+	if err := web.Decode(r, &nc); err != nil {
+		return errors.Wrap(err, "")
+	}
+	itemID := params["item_id"]
+	nc.ID = uuid.New().String()
+	nc.AccountID = params["account_id"]
+	nc.EntityID = params["entity_id"]
+	nc.ItemID = &itemID
+	nc.UserID = currentUser.ID //TODO store name and avatar also
+
+	log.Printf("The nc = %+v", nc)
+
+	conversation, err := conv.Create(ctx, cv.db, nc, time.Now())
+	if err != nil {
+		return err
+	}
+
+	err = email.SendMail(ctx, params["account_id"], params["entity_id"], itemID, valueAddedFields, cv.db)
+
+	return web.Respond(ctx, w, conversation, http.StatusCreated)
+}
+
 //WS
 func (cv *Conversation) Listen() {
 	go cv.runGlobalMessageReceiver()
@@ -123,8 +157,8 @@ func (cv *Conversation) runGlobalMessageReceiver() {
 			newConversation := conv.NewConversation{
 				ID:        newMessage.Payload.ID,
 				AccountID: parts[0],
-				EntityID:  parts[1],
-				ItemID:    &parts[2],
+				EntityID:  parts[1],  // stream entity
+				ItemID:    &parts[2], // stream item
 				UserID:    newMessage.Payload.UserID,
 				Message:   newMessage.Payload.Message,
 			}

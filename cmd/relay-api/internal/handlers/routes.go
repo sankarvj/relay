@@ -53,6 +53,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	integ := Integration{
 		db:            db,
+		rPool:         redisPool,
 		authenticator: authenticator,
 		publisher:     publisher,
 	}
@@ -140,7 +141,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/relationships/:relationship_id", rs.ChildItems, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	ass := AwsSnsSubscription{
-		db: db,
+		db:    db,
+		rPool: redisPool,
 	}
 	// Register sns subscription from aws for the product key.
 	app.Handle("POST", "/aws/sns/:accountkey/:productkey", ass.Create)
@@ -155,6 +157,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/auth", cv.SocketPreAuth, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/ws/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/:token", cv.WebSocketMessage, mid.HasSocketAccess(redisPool))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	ev := Event{
 		db:    db,

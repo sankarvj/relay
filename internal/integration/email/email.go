@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -59,7 +60,6 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 
 	fromField := namedFieldsObj["from"]
 	toField := namedFieldsObj["to"]
-	to := toField.ChoicesValues()
 	fromFieldValue := fromField.Value.([]interface{})[0].(string)
 	subject := namedFieldsObj["subject"].Value.(string)
 	body := namedFieldsObj["body"].Value.(string)
@@ -71,16 +71,18 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 		return err
 	}
 
-	log.Printf("integration.email send email params : from: %+v subject: %+v body: %+v to: %+v ", emailConfigEntityItem.Email, subject, body, to)
+	log.Printf("integration.email send email params : from: %+v subject: %+v body: %+v to: %+v ", emailConfigEntityItem.Email, subject, body, toField)
 
 	var e email.Email
 	if emailConfigEntityItem.Domain == "mailgun.org" {
 		e = email.MailGun{Domain: emailConfigEntityItem.Domain, TokenJson: emailConfigEntityItem.APIKey}
 	} else if emailConfigEntityItem.Domain == "google.com" {
 		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey}
+	} else if emailConfigEntityItem.Domain == "base_inbox.com" {
+		e = email.FallbackMail{Domain: ""}
 	}
 
-	threadID, err := e.SendMail("", emailConfigEntityItem.Email, "", to, subject, body)
+	threadID, err := e.SendMail("", fromFieldValue, "", util.ConvertSliceTypeRev(toField.Value.([]interface{})), subject, body)
 	if err != nil {
 		return err
 	}

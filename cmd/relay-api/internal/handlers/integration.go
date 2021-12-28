@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -26,6 +27,7 @@ var (
 // Integration represents the data needed for the third party integration details.
 type Integration struct {
 	db            *sqlx.DB
+	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	publisher     *conversation.Publisher
 }
@@ -99,7 +101,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			Owner:  []string{currentUserID},
 		}
 
-		err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityEmailConfig, "Gmail Config", discoveryID, integrationID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
+		_, err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityEmailConfig, "Gmail Config", discoveryID, integrationID, util.ConvertInterfaceToMap(emailConfigEntityItem), i.db)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to create integration")
 		}
@@ -124,7 +126,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 			err = errors.Wrapf(err, "Unable to watch event")
 		}
 
-		err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
+		_, err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to create integration")
 		}

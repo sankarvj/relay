@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 )
 
 func ConvertSliceType(s []string) []interface{} {
@@ -52,4 +53,27 @@ func Contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func SubDomainInEmail(email string) string {
+	at := strings.LastIndex(email, "@")
+	if at >= 0 {
+		username, domain := email[:at], email[at+1:]
+		fmt.Printf("Username: %s, Domain: %s\n", username, domain)
+		components := strings.Split(domain, ".")
+		return components[0]
+	} else {
+		fmt.Printf("Error: %s is an invalid email address\n", email)
+		return ""
+	}
+}
+
+func MainMailRefernce(reference string) string {
+	components := strings.Split(reference, " ")
+	if len(components) >= 0 {
+		return components[0]
+	} else {
+		fmt.Printf("Error: %s is an invalid reference value\n", components)
+		return ""
+	}
 }

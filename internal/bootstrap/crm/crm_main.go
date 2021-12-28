@@ -100,17 +100,18 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:BOOT Contacts Entity Created")
 
-	// add entity - emails
-	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
-	if err != nil {
-		return err
-	}
 	// add entity - companies
 	companyEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, entity.StateAccountLevel, CompanyFields(ownerEntity.ID, ownerEntity.Key("email")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Companies Entity Created")
+
+	// add entity - emails
+	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, companyEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
+	if err != nil {
+		return err
+	}
 
 	// add entity - deal
 	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, entity.StateTeamLevel, DealFields(contactEntity.ID, companyEntity.ID, flowEntity.ID, nodeEntity.ID))

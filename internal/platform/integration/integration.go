@@ -15,17 +15,19 @@ import (
 
 //Integration types also used in the discoveries type
 const (
-	TypeFallback       = "fallback"
+	TypeBaseInbox      = "base_inbox"
 	TypeGmail          = "gmail"
 	TypeMailGun        = "mailgun"
 	TypeGoogleCalendar = "google_calendar"
+	//though the type is not integration. It is the by-product of integration
+	TypeMails = "mails"
 )
 
 //Integration Mail Domains
 const (
-	DomainFallback = "fallback.com"
-	DomainMailGun  = "mailgun.org"
-	DomainGMail    = "google.com"
+	DomainBaseInbox = "base_inbox.com"
+	DomainMailGun   = "mailgun.org"
+	DomainGMail     = "google.com"
 )
 
 //Google Scopes

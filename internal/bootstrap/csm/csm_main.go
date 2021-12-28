@@ -36,7 +36,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCSM:BOOT Company & Contacts Entities Retrived")
 
 	// add entity - emails
-	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
+	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, companyEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
 	if err != nil {
 		return err
 	}

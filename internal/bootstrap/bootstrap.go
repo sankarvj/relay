@@ -54,6 +54,7 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 	// add entity - email- configs
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, fields)
 	return err
+
 }
 
 func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {

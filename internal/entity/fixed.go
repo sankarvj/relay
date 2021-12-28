@@ -44,16 +44,21 @@ type UpdaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB)
 
 // EmailEntity represents structural format of email entity
 type EmailEntity struct {
-	From    []string `json:"from"`
-	To      []string `json:"to"`
-	Cc      []string `json:"cc"`
-	Bcc     []string `json:"bcc"`
-	Subject string   `json:"subject"`
-	Body    string   `json:"body"`
+	From      []string `json:"from"`
+	RFrom     []string `json:"rfrom"`
+	To        []string `json:"to"`
+	Cc        []string `json:"cc"`
+	Bcc       []string `json:"bcc"`
+	Subject   string   `json:"subject"`
+	Body      string   `json:"body"`
+	Contacts  []string `json:"contacts"`
+	Companies []string `json:"companies"`
 }
 
 // EmailConfigEntity represents structural format of email config entity
 type EmailConfigEntity struct {
+	AccountID string   `json:"account_id"`
+	TeamID    string   `json:"team_id"`
 	Domain    string   `json:"domain"`
 	APIKey    string   `json:"api_key"`
 	Email     string   `json:"email"`
@@ -202,14 +207,14 @@ func RetrieveUnmarshalledItem(ctx context.Context, accountID, preDefinedEntityID
 	return upFunc, nil
 }
 
-func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) error {
+func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, preDefinedEntity, name string, discoveryID, discoveryType string, namedValues map[string]interface{}, db *sqlx.DB) (item.Item, error) {
 	fixedEntity, err := RetrieveFixedEntity(ctx, db, accountID, teamID, preDefinedEntity)
 	if err != nil {
-		return err
+		return item.Item{}, err
 	}
 	entityFields, err := fixedEntity.Fields()
 	if err != nil {
-		return err
+		return item.Item{}, err
 	}
 
 	ni := item.NewItem{
@@ -225,17 +230,17 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 	if discoveryID != "" {
 		dis, err := discovery.Retrieve(ctx, accountID, fixedEntity.ID, discoveryID, db)
 		if err != nil && err != discovery.ErrDiscoveryEmpty {
-			return err
+			return item.Item{}, err
 		}
 
 		if dis != nil {
 			if dis.Type == discoveryType {
 				it, err := item.Retrieve(ctx, dis.EntityID, dis.ItemID, db)
 				if err != nil {
-					return err
+					return item.Item{}, err
 				}
 				if *it.UserID == currentUserID { //in some cases we might have to check account level.
-					return ErrIntegAlreadyExists
+					return item.Item{}, ErrIntegAlreadyExists
 				}
 			}
 		}
@@ -243,7 +248,7 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
-		return err
+		return item.Item{}, err
 	}
 
 	if discoveryID != "" {
@@ -257,11 +262,24 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 
 		_, err = discovery.Create(ctx, db, ns, time.Now())
 		if err != nil {
-			return err
+			return item.Item{}, err
 		}
 	}
 
-	return nil
+	return it, nil
+}
+
+func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID string, anyEntityItem interface{}, db *sqlx.DB) (string, error) {
+	dis, err := discovery.Retrieve(ctx, accountID, entityID, discoveryID, db)
+	if err != nil {
+		return "", err
+	}
+	valueAddedConfigFields, _, err := RetrieveFixedItem(ctx, dis.AccountID, dis.EntityID, dis.ItemID, db)
+	if err != nil {
+		return "", err
+	}
+
+	return dis.ItemID, ParseFixedEntity(valueAddedConfigFields, anyEntityItem)
 }
 
 //updateFields func encloses the update func
