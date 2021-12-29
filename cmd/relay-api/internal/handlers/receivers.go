@@ -188,7 +188,6 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		if err != nil {
 			return errors.Wrap(err, "unable to save the email received via SES for the discoveryID")
 		}
-
 	} else { // save as a conversation for the message saved
 		reference := references[0]
 		fixedEmailEntity, err := entity.RetrieveFixedEntity(ctx, db, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, entity.FixedEntityEmails)
@@ -207,7 +206,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 }
 
 func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool) error {
-	contacts, err := createContactIfNotExist(ctx, accountID, teamID, emailEntityItem.From[0], db)
+	contacts, err := createContactIfNotExist(ctx, accountID, teamID, emailEntityItem.RFrom[0], db, rp)
 	if err != nil {
 		return err
 	}
@@ -239,18 +238,20 @@ func saveConversation(ctx context.Context, accountID, entityID, parentItemId str
 	return nil
 }
 
-func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB) ([]string, error) {
+func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB, rp *redis.Pool) ([]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, schema.SeedContactsEntityName)
 	if err != nil {
 		return []string{}, err
 	}
 
-	items, err := item.SearchByKey(ctx, e.ID, e.Key("email"), value, db)
+	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
+	result, err := segment(ctx, accountID, e.ID, exp, db, rp)
 	if err != nil {
 		return []string{}, err
 	}
+	itemIds := itemIDs(result)
 
-	if len(items) == 0 {
+	if len(itemIds) == 0 {
 		fields := make(map[string]interface{}, 0)
 		e.FilteredFields()
 		name := "System Generated"
@@ -268,9 +269,9 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 		if err != nil {
 			return []string{}, err
 		}
-		items = append(items, it)
+		itemIds = append(itemIds, it.ID)
 
 	}
 
-	return item.FetchIDs(items), nil
+	return util.ConvertSliceTypeRev(itemIds), nil
 }

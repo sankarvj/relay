@@ -11,7 +11,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
-	"gitlab.com/vjsideprojects/relay/internal/tests"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
 	"github.com/gomodule/redigo/redis"
@@ -69,9 +68,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			}
 			exp = fl.Expression
 		}
-		conditions := job.NewJabEngine().RunExpGrapher(tests.Context(), i.db, i.rPool, accountID, exp)
-		gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", makeConField(conditions))
-		result, err := graphdb.GetResult(i.rPool, gSegment)
+		result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -142,11 +139,23 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			choices = append(choices, choice)
 		}
 	} else {
+		var items []item.Item
+		var err error
+		if term == "" {
+			items, err = item.SearchByKey(ctx, e.ID, key, term, i.db)
+		} else {
+			exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, key, term)
+			result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
+			if err != nil {
+				return err
+			}
+			items, err = itemsResp(ctx, i.db, accountID, e, result)
+		}
 
-		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
 		if err != nil {
 			return err
 		}
+
 		for _, item := range items {
 			displayV := item.Fields()[key]
 			if displayV == nil {

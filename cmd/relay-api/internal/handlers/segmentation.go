@@ -129,7 +129,22 @@ type Condition struct {
 	Expression string      `json:"expression"`
 }
 
+func segment(ctx context.Context, accountID, entityID string, exp string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
+	conditions := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
+	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", makeConField(conditions))
+	return graphdb.GetResult(rp, gSegment)
+}
+
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Entity, result *rg.QueryResult) ([]item.Item, error) {
+	items, err := item.BulkRetrieveItems(ctx, accountID, itemIDs(result), db)
+	if err != nil {
+		return []item.Item{}, err
+	}
+
+	return items, nil
+}
+
+func itemIDs(result *rg.QueryResult) []interface{} {
 	itemIds := make([]interface{}, 0)
 	for result.Next() { // Next returns true until the iterator is depleted.
 		// Get the current Record.
@@ -139,11 +154,5 @@ func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Enti
 		record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
 		itemIds = append(itemIds, record["id"])
 	}
-
-	items, err := item.BulkRetrieveItems(ctx, accountID, itemIds, db)
-	if err != nil {
-		return []item.Item{}, err
-	}
-
-	return items, nil
+	return itemIds
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
+	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
@@ -183,6 +184,28 @@ func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, 
 	}
 }
 
+func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string, db *sqlx.DB) {
+	ctx := context.Background()
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		log.Println("EventConvAdded: unexpected error occurred on retriving the entity on job. error:", err)
+		return
+	}
+
+	cv, err := conv.Retrieve(ctx, accountID, conversationID, db)
+	if err != nil {
+		log.Println("EventConvAdded: unexpected error occurred while retriving item on job. error:", err)
+		return
+	}
+
+	//TODO push to job
+	valueAddedFields := e.ValueAdd(cv.PayloadMap())
+	err = email.SendMail(ctx, accountID, entityID, itemID, valueAddedFields, db)
+	if err != nil {
+		log.Println("Error while sending the mail - ", err)
+	}
+}
+
 func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
 	ctx := context.Background()
 	err := notification.UserInvitation(ctx)
@@ -338,7 +361,7 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
-		if *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
+		if it.Name == nil || *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
 			err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
 		}
 	case entity.CategoryMeeting:

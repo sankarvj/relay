@@ -2,12 +2,22 @@ package conversation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+)
+
+var (
+	// ErrNotFound is used when a specific entity is requested but does not exist.
+	ErrNotFound = errors.New("Conversation not found")
+
+	// ErrInvalidID occurs when an ID is not in a valid form.
+	ErrInvalidID = errors.New("Conversation ID is not in its proper form")
 )
 
 // Create add new conversation with respective types.
@@ -61,4 +71,32 @@ func List(ctx context.Context, accountID, entityID, itemID string, ctype int, db
 	}
 
 	return conversations, nil
+}
+
+func Retrieve(ctx context.Context, accountID, conversationID string, db *sqlx.DB) (Conversation, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.conversation.Retrieve")
+	defer span.End()
+
+	var cv Conversation
+	const q = `SELECT * FROM conversations WHERE account_id = $1 AND conversation_id = $2`
+	if err := db.GetContext(ctx, &cv, q, accountID, conversationID); err != nil {
+		if err == sql.ErrNoRows {
+			return Conversation{}, ErrNotFound
+		}
+
+		return Conversation{}, errors.Wrapf(err, "selecting conversation %q", conversationID)
+	}
+
+	return cv, nil
+}
+
+func (c Conversation) PayloadMap() map[string]interface{} {
+	var payload map[string]interface{}
+	if c.Payload == "" {
+		return payload
+	}
+	if err := json.Unmarshal([]byte(c.Payload), &payload); err != nil {
+		log.Printf("unexpected error occurred when unmarshalling payload for conversation: %v error: %v\n", c.ID, err)
+	}
+	return payload
 }

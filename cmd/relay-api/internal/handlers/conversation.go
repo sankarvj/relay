@@ -16,7 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
-	"gitlab.com/vjsideprojects/relay/internal/integration/email"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -137,7 +137,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	err = email.SendMail(ctx, params["account_id"], params["entity_id"], itemID, valueAddedFields, cv.db)
+	(&job.Job{}).EventConvAdded(params["account_id"], params["entity_id"], itemID, conversation.ID, cv.db)
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }

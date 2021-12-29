@@ -98,11 +98,10 @@ func populateExistingItemIds(items []item.Item, fields []entity.Field) map[strin
 			continue
 		}
 		for _, f := range fields {
-			if f.IsReference() && f.RefID != "" {
+			if f.IsReference() && f.RefID != "" && i.Fields()[f.Key] != nil {
 				if _, ok := referenceIds[f.Key]; ok { // if the parent item exists please add it to the item
 					referenceIds[f.Key] = append(referenceIds[f.Key], i.Fields()[f.Key].([]interface{})...)
 				} else {
-					log.Printf("f.Key --- %+v", f)
 					referenceIds[f.Key] = i.Fields()[f.Key].([]interface{})
 				}
 			}

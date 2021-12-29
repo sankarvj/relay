@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 const (
@@ -95,10 +96,10 @@ type MailBody struct {
 	Content string `json:"content"`
 }
 
-func (m FallbackMail) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {
+func (m FallbackMail) SendMail(fromName, fromEmail string, toName string, toEmails []string, subject string, body string) (*string, error) {
 	log.Printf("internal.platform.integration.email.fallback request - domain:%s  from: %s\n", m.Domain, fromEmail)
-	resMsg, err := send()
-	log.Printf("internal.platform.integration.email.fallback response - resMsg:%s  id: %s err:%v\n", resMsg, *resMsg.MessageId, err)
+	resMsg, err := send(fromEmail, util.ConvertStrToPtStr(toEmails), subject, body)
+	log.Printf("internal.platform.integration.email.fallback response - resMsg:%s  err:%v\n", resMsg, err)
 	return resMsg.MessageId, err
 }
 
@@ -110,7 +111,7 @@ func (m FallbackMail) Stop(emailAddress string) error {
 	return nil
 }
 
-func send() (*ses.SendEmailOutput, error) {
+func send(fromEmail string, toEmails []*string, subject string, body string) (*ses.SendEmailOutput, error) {
 	// Create a new session in the us-west-2 region.
 	// Replace us-west-2 with the AWS Region you're using for Amazon SES.
 	sess, err := session.NewSession(&aws.Config{
@@ -125,29 +126,27 @@ func send() (*ses.SendEmailOutput, error) {
 	input := &ses.SendEmailInput{
 		Destination: &ses.Destination{
 			CcAddresses: []*string{},
-			ToAddresses: []*string{
-				aws.String(Recipient),
-			},
+			ToAddresses: toEmails,
 		},
 		Message: &ses.Message{
 			Body: &ses.Body{
 				Html: &ses.Content{
 					Charset: aws.String(CharSet),
-					Data:    aws.String(HtmlBody),
+					Data:    aws.String(body),
 				},
 				Text: &ses.Content{
 					Charset: aws.String(CharSet),
-					Data:    aws.String(TextBody),
+					Data:    aws.String(body),
 				},
 			},
 			Subject: &ses.Content{
 				Charset: aws.String(CharSet),
-				Data:    aws.String(Subject),
+				Data:    aws.String(subject),
 			},
 		},
-		Source: aws.String(Sender),
+		Source: aws.String(fromEmail),
 		// Uncomment to use a configuration set
-		//ConfigurationSetName: aws.String(ConfigurationSet),
+		// ConfigurationSetName: aws.String(ConfigurationSet),
 	}
 
 	// Attempt to send the email.

@@ -24,6 +24,14 @@ func ConvertSliceTypeRev(inf []interface{}) []string {
 	return s
 }
 
+func ConvertStrToPtStr(inf []string) []*string {
+	s := make([]*string, len(inf))
+	for i, v := range inf {
+		s[i] = &v
+	}
+	return s
+}
+
 func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
 	var itemMap map[string]interface{}
 	jsonbody, err := json.Marshal(intf)

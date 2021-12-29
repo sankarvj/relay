@@ -115,6 +115,8 @@ func Destruct(ctx context.Context, accountID, entityID, itemID string, db *sqlx.
 		e = email.MailGun{Domain: emailConfigEntityItem.Domain, TokenJson: emailConfigEntityItem.APIKey}
 	} else if emailConfigEntityItem.Domain == "google.com" {
 		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey}
+	} else if emailConfigEntityItem.Domain == "base_inbox.com" {
+		e = email.FallbackMail{Domain: ""}
 	}
 	return e.Stop("me")
 }
