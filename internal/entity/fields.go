@@ -44,6 +44,8 @@ const (
 	DomMinute            = "MI"
 	DomReminder          = "RE"
 	DomDueBy             = "DB"
+	DomContact           = "CO" //type which as avatar,name,email and id
+	DomOwnCon            = "OC" //type which as avatar,name,email and id + two entities clubed
 	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
 )
 

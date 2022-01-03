@@ -14,6 +14,7 @@ import (
 type Gmail struct {
 	OAuthFile string
 	TokenJson string
+	ReplyTo   string
 }
 
 func (g Gmail) Watch(topicName string) (string, error) {

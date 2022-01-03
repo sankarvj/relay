@@ -12,6 +12,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
+//remove not needed.....
 type Stream struct {
 	db    *sqlx.DB
 	rPool *redis.Pool

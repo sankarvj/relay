@@ -1,5 +1,5 @@
 # Relay
-Project Relay is the sales/customer-success software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software for some extend. 
+Project Relay is the sales/customer-success/service-desk/support-desk software built on top of the no-code framework. Which means, the end user can build `n` number of entities/modules on top of the base software based on his business needs. But the UI still needs to customized for each software for some extend. 
 
 ## Prerequisite
 > ~Install GO
@@ -85,9 +85,9 @@ If the type of the field is reference, the choices will be populated based on th
 ### child units:
 If the referenced entity is child unit then the items are fetched and passed as the choices
 ### nodes:
-The nodes and flows are handled specifically
+The nodes are handled specifically
 ### flows:
-The nodes and flows are handled specifically
+The flows are handled specifically
 [more info](internal/reference/README.md)
 
 ### How the segmentation for the reverse usecase works?

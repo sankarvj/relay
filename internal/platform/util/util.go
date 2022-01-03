@@ -76,6 +76,11 @@ func SubDomainInEmail(email string) string {
 	}
 }
 
+func NameInEmail(email string) string {
+	at := strings.LastIndex(email, "@")
+	return email[:at]
+}
+
 func MainMailRefernce(reference string) string {
 	components := strings.Split(reference, " ")
 	if len(components) >= 0 {

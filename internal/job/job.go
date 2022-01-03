@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
@@ -192,6 +194,13 @@ func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string,
 		return
 	}
 
+	var parentEmailEntityItem entity.EmailEntity
+	_, err = entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &parentEmailEntityItem, db)
+	if err != nil {
+		log.Println("EventConvAdded: unexpected error occurred on retriving the parent entity on job. error:", err)
+		return
+	}
+
 	cv, err := conv.Retrieve(ctx, accountID, conversationID, db)
 	if err != nil {
 		log.Println("EventConvAdded: unexpected error occurred while retriving item on job. error:", err)
@@ -199,8 +208,9 @@ func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string,
 	}
 
 	//TODO push to job
+	replyTo := parentEmailEntityItem.MessageID
 	valueAddedFields := e.ValueAdd(cv.PayloadMap())
-	err = email.SendMail(ctx, accountID, entityID, itemID, valueAddedFields, db)
+	_, err = email.SendMail(ctx, accountID, entityID, itemID, valueAddedFields, replyTo, db)
 	if err != nil {
 		log.Println("Error while sending the mail - ", err)
 	}
@@ -362,7 +372,11 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 	switch e.Category {
 	case entity.CategoryEmail:
 		if it.Name == nil || *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
-			err = email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, db)
+			msgID, err := email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, "", db)
+			if err == nil {
+				err = saveMsgID(ctx, accountID, e.ID, it.ID, *msgID, db)
+
+			}
 		}
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
@@ -392,4 +406,25 @@ func destructOnIntegrations(ctx context.Context, accountID string, e entity.Enti
 		//calendar destruct yet to be implemented
 	}
 	return err
+}
+
+func saveMsgID(ctx context.Context, accountID, entityID, itemID, msgID string, db *sqlx.DB) error {
+	ns := discovery.NewDiscovery{
+		ID:        msgID,
+		AccountID: accountID,
+		EntityID:  entityID,
+		ItemID:    itemID,
+	}
+
+	_, err := discovery.Create(ctx, db, ns, time.Now())
+	if err != nil {
+		return err
+	}
+	var emailItem entity.EmailEntity
+	upFunc, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, emailItem, db)
+	if err != nil {
+		return err
+	}
+	emailItem.MessageID = msgID
+	return upFunc(ctx, emailItem, db)
 }

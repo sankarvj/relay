@@ -170,6 +170,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 	}
 
 	emailEntityItem := entity.EmailEntity{
+		MessageID: messageID,
 		From:      []string{eConfigItemID},
 		RFrom:     []string{from},
 		To:        []string{to},
@@ -194,13 +195,16 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		if err != nil {
 			return err
 		}
-		var emailEntityItem entity.EmailEntity
-		parentItemId, err := entity.DiscoverAnyEntityItem(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, reference, &emailEntityItem, db)
+		var parentEmailEntityItem entity.EmailEntity
+		parentItemId, err := entity.DiscoverAnyEntityItem(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, reference, &parentEmailEntityItem, db)
 		if err != nil {
 			return err
 		}
-		return saveConversation(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, parentItemId, emailEntityItem, db)
 
+		err = saveConversation(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, parentItemId, emailEntityItem, email.TextBody, db)
+		if err != nil {
+			log.Println("err -- ", err)
+		}
 	}
 	return nil
 }
@@ -222,13 +226,14 @@ func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID stri
 	return nil
 }
 
-func saveConversation(ctx context.Context, accountID, entityID, parentItemId string, emailEntityItem entity.EmailEntity, db *sqlx.DB) error {
+func saveConversation(ctx context.Context, accountID, entityID, parentItemId string, emailEntityItem entity.EmailEntity, message string, db *sqlx.DB) error {
 	newConversation := conv.NewConversation{
 		ID:        uuid.New().String(),
 		AccountID: accountID,
 		EntityID:  entityID,
 		ItemID:    &parentItemId,
 		UserID:    schema.SeedSystemUserID,
+		Message:   message,
 		Payload:   util.ConvertInterfaceToMap(emailEntityItem),
 	}
 	_, err := conv.Create(ctx, db, newConversation, time.Now())
@@ -255,6 +260,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 		fields := make(map[string]interface{}, 0)
 		e.FilteredFields()
 		name := "System Generated"
+		fields[e.Key("first_name")] = util.NameInEmail(value)
 		fields[e.Key("email")] = value
 		//create a new contact here
 		ni := item.NewItem{
@@ -265,7 +271,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 			Fields:    fields,
 		}
 
-		it, err := item.Create(ctx, db, ni, time.Now())
+		it, err := createAndPublish(ctx, ni, db, rp)
 		if err != nil {
 			return []string{}, err
 		}

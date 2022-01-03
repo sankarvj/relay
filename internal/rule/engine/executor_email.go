@@ -49,5 +49,6 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n 
 		}
 	}
 
-	return email.SendMail(ctx, n.AccountID, n.ActorID, n.ActualsItemID(), mailFields, db)
+	_, err = email.SendMail(ctx, n.AccountID, n.ActorID, n.ActualsItemID(), mailFields, "", db)
+	return err
 }

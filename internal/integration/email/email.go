@@ -4,10 +4,8 @@ import (
 	"context"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
-	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
@@ -54,7 +52,7 @@ func DailyWatch(ctx context.Context, accountID, teamID, oAuthFile, topic string,
 	return nil
 }
 
-func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, db *sqlx.DB) error {
+func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, replyToID string, db *sqlx.DB) (*string, error) {
 
 	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedMailFields)
 
@@ -68,38 +66,26 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 	var emailConfigEntityItem entity.EmailConfigEntity
 	_, err := entity.RetrieveUnmarshalledItem(ctx, accountID, fromField.RefID, fromFieldValue, &emailConfigEntityItem, db)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Printf("integration.email send email params : from: %+v subject: %+v body: %+v to: %+v ", emailConfigEntityItem.Email, subject, body, toField)
 
 	var e email.Email
 	if emailConfigEntityItem.Domain == "mailgun.org" {
-		e = email.MailGun{Domain: emailConfigEntityItem.Domain, TokenJson: emailConfigEntityItem.APIKey}
+		e = email.MailGun{Domain: emailConfigEntityItem.Domain, TokenJson: emailConfigEntityItem.APIKey, ReplyTo: replyToID}
 	} else if emailConfigEntityItem.Domain == "google.com" {
-		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey}
+		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey, ReplyTo: replyToID}
 	} else if emailConfigEntityItem.Domain == "base_inbox.com" {
-		e = email.FallbackMail{Domain: ""}
+		e = email.FallbackMail{Domain: "", ReplyTo: replyToID}
 	}
 
-	threadID, err := e.SendMail("", fromFieldValue, "", util.ConvertSliceTypeRev(toField.Value.([]interface{})), subject, body)
+	messageID, err := e.SendMail("", emailConfigEntityItem.Email, "", util.ConvertSliceTypeRev(toField.Value.([]interface{})), subject, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	ns := discovery.NewDiscovery{
-		ID:        *threadID,
-		AccountID: accountID,
-		EntityID:  entityID,
-		ItemID:    itemID,
-	}
-
-	_, err = discovery.Create(ctx, db, ns, time.Now())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return messageID, nil
 }
 
 func Destruct(ctx context.Context, accountID, entityID, itemID string, db *sqlx.DB) error {

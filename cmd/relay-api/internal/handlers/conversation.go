@@ -48,6 +48,11 @@ func (cv *Conversation) List(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
+	log.Println("e ", params["entity_id"])
+	log.Println("i ", params["item_id"])
+	log.Println("conversations ", conversations)
+	log.Println("err ", err)
+
 	// viewModelConversations := make([]conv.ViewModelConversation, len(conversations))
 	// for i, conversation := range conversations {
 	// 	viewModelConversations[i] = createViewModelConversation(conversation)
@@ -181,10 +186,12 @@ func generateToken(email string) string {
 }
 
 func createViewModelConversation(c conv.Conversation) conv.ViewModelConversation {
+	dummyName := "vijay"
+	dummayAvatar := "someting"
 	return conv.ViewModelConversation{
-		UserID:     c.UserID,
-		UserName:   "vijay",
-		UserAvatar: "someting",
+		UserID:     &c.UserID,
+		UserName:   &dummyName,
+		UserAvatar: &dummayAvatar,
 		Message:    c.Message,
 		Type:       c.Type,
 	}

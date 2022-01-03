@@ -9,6 +9,7 @@ import (
 type MailGun struct {
 	Domain    string
 	TokenJson string
+	ReplyTo   string
 }
 
 func (m MailGun) SendMail(fromName, fromEmail string, toName string, toEmail []string, subject string, body string) (*string, error) {

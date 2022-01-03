@@ -318,6 +318,10 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	gn.ItemID = itemID
 
 	for _, f := range fields {
+
+		if f.Value == nil {
+			continue
+		}
 		switch f.DataType {
 		case entity.TypeList:
 			for i, element := range f.Value.([]interface{}) {
@@ -328,9 +332,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-			if f.Value == nil {
-				continue
-			}
+
 			for i, rItemID := range f.Value.([]interface{}) {
 				rEntityID := f.RefID
 				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).

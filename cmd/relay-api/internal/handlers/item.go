@@ -224,7 +224,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		ni.GenieID = nil
 	}
 
-	it, err := CreateAndPublish(ctx, ni, i.db, i.rPool)
+	it, err := createAndPublish(ctx, ni, i.db, i.rPool)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
@@ -232,7 +232,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func CreateAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
+func createAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
 		return item.Item{}, err

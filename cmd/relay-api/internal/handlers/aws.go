@@ -23,6 +23,7 @@ type AwsSnsSubscription struct {
 
 const subConfrmType = "SubscriptionConfirmation"
 const notificationType = "Notification"
+const deliveryType = "Delivery"
 
 //Create confirms SNS topic subscription
 func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -46,6 +47,8 @@ func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter
 	} else if subscription.Type == notificationType {
 		message := getMessage(subscription.Message)
 		log.Println("internal.handlers.aws recieved this message : ", message)
+	} else if subscription.Type == deliveryType {
+		log.Println("internal.handlers.aws recieved delivery confirmation : ", subscription.Message)
 	} else {
 		mb, err := getMailBody(body)
 		if err != nil {

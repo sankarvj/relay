@@ -27,10 +27,10 @@ type NewConversation struct {
 }
 
 type ViewModelConversation struct {
-	ID         string `db:"conversation_id" json:"id"`
-	UserID     string `db:"user_id" json:"user_id"`
-	UserName   string `db:"user_name" json:"user_name"`
-	UserAvatar string `db:"user_avatar" json:"user_avatar"`
-	Type       int    `db:"type" json:"type"`
-	Message    string `db:"message" json:"message"`
+	ID         string  `db:"conversation_id" json:"id"`
+	UserID     *string `db:"user_id" json:"user_id"`
+	UserName   *string `db:"user_name" json:"user_name"`
+	UserAvatar *string `db:"user_avatar" json:"user_avatar"`
+	Type       int     `db:"type" json:"type"`
+	Message    string  `db:"message" json:"message"`
 }

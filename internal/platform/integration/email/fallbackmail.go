@@ -1,6 +1,7 @@
 package email
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -8,14 +9,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 const (
-	AccessKey = ""
-	SecretKey = ""
+	AccessKey = "AKIATXI72V4SPCT335WD"
+	SecretKey = "Tk8mVp/lffXyb7b4y5smHkGbHn8w7x9gw+CCE5IH"
 	// Replace sender@example.com with your "From" address.
 	// This address must be verified with Amazon SES.
 	Sender = "contact@wayplot.com"
@@ -44,7 +46,8 @@ const (
 )
 
 type FallbackMail struct {
-	Domain string
+	Domain  string
+	ReplyTo string
 }
 
 type MailBody struct {
@@ -98,7 +101,7 @@ type MailBody struct {
 
 func (m FallbackMail) SendMail(fromName, fromEmail string, toName string, toEmails []string, subject string, body string) (*string, error) {
 	log.Printf("internal.platform.integration.email.fallback request - domain:%s  from: %s\n", m.Domain, fromEmail)
-	resMsg, err := send(fromEmail, util.ConvertStrToPtStr(toEmails), subject, body)
+	resMsg, err := send(fromEmail, util.ConvertStrToPtStr(toEmails), subject, body, m.ReplyTo)
 	log.Printf("internal.platform.integration.email.fallback response - resMsg:%s  err:%v\n", resMsg, err)
 	return resMsg.MessageId, err
 }
@@ -111,13 +114,16 @@ func (m FallbackMail) Stop(emailAddress string) error {
 	return nil
 }
 
-func send(fromEmail string, toEmails []*string, subject string, body string) (*ses.SendEmailOutput, error) {
+func send(fromEmail string, toEmails []*string, subject string, body string, replyTo string) (*ses.SendEmailOutput, error) {
 	// Create a new session in the us-west-2 region.
 	// Replace us-west-2 with the AWS Region you're using for Amazon SES.
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-1"),
 		Credentials: credentials.NewStaticCredentials(AccessKey, SecretKey, "")},
 	)
+
+	log.Println("fromEmail---", fromEmail)
+	log.Println("toEmails---", toEmails)
 
 	// Create an SES session.
 	svc := ses.New(sess)
@@ -150,7 +156,13 @@ func send(fromEmail string, toEmails []*string, subject string, body string) (*s
 	}
 
 	// Attempt to send the email.
-	result, err := svc.SendEmail(input)
+
+	replyTO := fmt.Sprintf("<%s>", replyTo)
+	references := fmt.Sprintf("<%s>", replyTo)
+	result, err := svc.SendEmailWithContext(context.Background(), input,
+		request.WithGetResponseHeader("in-reply-to", &replyTO),
+		request.WithGetResponseHeader("references", &references),
+	)
 
 	// Display error messages if they occur.
 	if err != nil {

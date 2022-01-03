@@ -88,13 +88,15 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	reference.UpdateReferenceFields(ctx, accountID, relatedEntityID, fields, childItems, sourceMap, rs.db, job.NewJabEngine())
 
 	response := struct {
-		Items    []ViewModelItem `json:"items"`
-		Category int             `json:"category"`
-		Fields   []entity.Field  `json:"fields"`
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
 		Fields:   fields,
+		Entity:   createViewModelEntity(e),
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)

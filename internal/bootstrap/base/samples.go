@@ -114,7 +114,7 @@ func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) er
 	return nil
 }
 
-func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid string, conID, comID, dealID, ticketID string, emailKey string) error {
+func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid string, conID, comID, dealID, ticketID string, streamEID string) error {
 	//contact company association
 	associationID, err := b.AssociationAdd(ctx, conEid, comEid)
 	if err != nil {
@@ -143,6 +143,31 @@ func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickE
 
 	//ticket email association
 	_, err = b.AssociationAdd(ctx, tickEid, emailEid)
+	if err != nil {
+		return err
+	}
+
+	//ASSOCIATE STREAMS
+	//contact stream association
+	_, err = b.AssociationAdd(ctx, streamEID, conEid)
+	if err != nil {
+		return err
+	}
+
+	//company stream association
+	_, err = b.AssociationAdd(ctx, streamEID, comEid)
+	if err != nil {
+		return err
+	}
+
+	//deal stream association
+	_, err = b.AssociationAdd(ctx, streamEID, deEid)
+	if err != nil {
+		return err
+	}
+
+	//ticket stream association
+	_, err = b.AssociationAdd(ctx, streamEID, tickEid)
 	if err != nil {
 		return err
 	}
