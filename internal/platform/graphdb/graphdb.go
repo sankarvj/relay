@@ -462,6 +462,11 @@ var operatorMap = map[string]string{
 	"lt": "<",
 }
 
+//TODO genralise and remove the if check
+//In segmentation call sometimes the value will be passed as 'eq' and sometime '='
 func Operator(lexerOp string) string {
-	return operatorMap[lexerOp]
+	if val, ok := operatorMap[lexerOp]; ok {
+		return val
+	}
+	return lexerOp
 }

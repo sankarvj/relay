@@ -10,6 +10,16 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 )
 
+type Filter struct {
+	Conditions map[string]Condition `json:"conditions"` // key is the field key
+}
+
+type Condition struct {
+	Term       interface{} `json:"term"`
+	Expression string      `json:"expression"`
+	DataType   DType       `json:"d_type"`
+}
+
 //ExpressionType returns the type of expression
 type ExpressionType int
 
@@ -34,11 +44,11 @@ type Work struct {
 
 //Ruler has the full set of rule items
 type Ruler struct {
-	RuleItem   *RuleItem
-	positive   *bool
-	trigger    string
-	content    interface{}
-	conditions []Condition
+	RuleItem *RuleItem
+	positive *bool
+	trigger  string
+	content  interface{}
+	filter   *Filter
 	//channels to send the results back and forth
 	workChan chan Work
 }
@@ -68,13 +78,6 @@ const (
 	TypeList            = "L"
 	TypeReference       = "R"
 )
-
-type Condition struct {
-	Operator string
-	Key      string
-	DataType DType
-	Value    interface{}
-}
 
 //EngineFeedback defines the type of response execution
 type EngineFeedback int
@@ -130,7 +133,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 	case Graph:
 		log.Printf("internal.platform.ruleengine.services.ruler case: `graph`  expression: %s\n", rule)
 		r = r.startGraphingLexer(rule)
-		workChan <- Work{Grapher, "", r.conditions, nil}
+		workChan <- Work{Grapher, "", r.filter, nil}
 	}
 
 }
@@ -400,17 +403,22 @@ func (r *Ruler) execute() error {
 }
 
 func (r *Ruler) makeGraph() error {
+	if r.filter == nil {
+		r.filter = &Filter{
+			Conditions: map[string]Condition{},
+		}
+	}
 	r.constructRuleItem()
 	log.Printf("internal.platform.ruleengine.services.ruler : `query:` execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
 		condition := Condition{
-			Operator: r.RuleItem.operator,
-			Key:      r.RuleItem.left.(string),
-			DataType: dtype(findDT(r.RuleItem.right)),
-			Value:    r.RuleItem.right,
+			Expression: r.RuleItem.operator,
+			DataType:   dtype(findDT(r.RuleItem.right)),
+			Term:       r.RuleItem.right,
 		}
-		r.conditions = append(r.conditions, condition)
+		key := r.RuleItem.left.(string)
+		r.filter.Conditions[key] = condition
 	} else {
 		//Its in the middle. Don't execute
 		return nil

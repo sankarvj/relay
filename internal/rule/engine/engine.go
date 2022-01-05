@@ -102,8 +102,8 @@ func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, accountID
 }
 
 //RunExpGrapher run the expression and returns graph query in a readable format
-func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string) []ruler.Condition {
-	var conditions []ruler.Condition
+func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string) *ruler.Filter {
+	var filter *ruler.Filter
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, ruler.Graph, signalsChan)
 	//signalsChan wait to receive evaluation work and final evaluated string
@@ -112,15 +112,15 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 		case ruler.Worker: //why worker calling grapher? because the logic is same as worker
 			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
 				log.Printf("unexpected error occurred. sending empty conditions - error: %v ", err)
-				return []ruler.Condition{}
+				return nil
 			} else {
 				work.InboundRespCh <- result
 			}
 		case ruler.Grapher: //output:executes this when it finds EOF/Response
-			conditions = work.OutboundResp.([]ruler.Condition)
+			filter = work.OutboundResp.(*ruler.Filter)
 		}
 	}
-	return conditions
+	return filter
 }
 
 //RunExpEvaluator runs the expression to see whether the condition met or not

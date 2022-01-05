@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -16,6 +17,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"go.opencensus.io/trace"
 )
 
@@ -25,6 +27,54 @@ type Segmentation struct {
 	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
+}
+
+func filterItems(ctx context.Context, accountID, entityID, exp, viewID string, state int, db *sqlx.DB, rp *redis.Pool) (interface{}, error) {
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []item.Item
+	if viewID == "" && exp == "" {
+		var err error
+		items, err = item.ListFilterByState(ctx, e.ID, state, db)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if exp == "" {
+			fl, err := flow.Retrieve(ctx, viewID, db)
+			if err != nil {
+				return nil, err
+			}
+			exp = fl.Expression
+		}
+		result, err := segment(ctx, accountID, e.ID, exp, db, rp)
+		if err != nil {
+			return nil, err
+		}
+		items, err = itemsResp(ctx, db, accountID, e, result)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fields, viewModelItems := itemResponse(e, items)
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, db, job.NewJabEngine())
+
+	response := struct {
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+	}{
+		Items:    viewModelItems,
+		Category: e.Category,
+		Fields:   fields,
+		Entity:   createViewModelEntity(e),
+	}
+	return response, nil
 }
 
 func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -84,6 +134,34 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 
 }
 
+func segment(ctx context.Context, accountID, entityID string, exp string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
+	conditionFields := make([]graphdb.Field, 0)
+	log.Printf("exp -- %+v", exp)
+	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
+	if filter != nil {
+		e, err := entity.Retrieve(ctx, accountID, entityID, db)
+		if err != nil {
+			return nil, err
+		}
+
+		fields, err := e.FilteredFields()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, f := range fields {
+			if condition, ok := filter.Conditions[f.Key]; ok {
+				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression))
+			}
+		}
+	}
+
+	log.Printf("conditionFields -- %+v", conditionFields)
+	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
+	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
+	return graphdb.GetResult(rp, gSegment)
+}
+
 func makeGraphField(f *entity.Field, value interface{}, expression string) graphdb.Field {
 	if f.IsReference() {
 		return graphdb.Field{
@@ -93,7 +171,7 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 			RefID:     f.RefID,
 			IsReverse: false,
 			Field: &graphdb.Field{
-				Expression: expression,
+				Expression: graphdb.Operator(expression),
 				Key:        "id",
 				DataType:   graphdb.TypeString,
 				Value:      value,
@@ -102,17 +180,17 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 	} else if f.IsList() {
 		return graphdb.Field{
 			Key:      f.Key,
-			Value:    value,
+			Value:    []interface{}{value},
 			DataType: graphdb.DType(f.DataType),
 			Field: &graphdb.Field{
-				Expression: expression,
+				Expression: graphdb.Operator(expression),
 				Key:        "element",
 				DataType:   graphdb.DType(f.Field.DataType),
 			},
 		}
 	} else {
 		return graphdb.Field{
-			Expression: expression,
+			Expression: graphdb.Operator(expression),
 			Key:        f.Key,
 			DataType:   graphdb.DType(f.DataType),
 			Value:      value,
@@ -127,12 +205,6 @@ type Segment struct {
 type Condition struct {
 	Term       interface{} `json:"term"`
 	Expression string      `json:"expression"`
-}
-
-func segment(ctx context.Context, accountID, entityID string, exp string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
-	conditions := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
-	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", makeConField(conditions))
-	return graphdb.GetResult(rp, gSegment)
 }
 
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, e entity.Entity, result *rg.QueryResult) ([]item.Item, error) {
@@ -155,4 +227,8 @@ func itemIDs(result *rg.QueryResult) []interface{} {
 		itemIds = append(itemIds, record["id"])
 	}
 	return itemIds
+}
+
+type FilterBody struct {
+	Exp string `json:"exp"`
 }

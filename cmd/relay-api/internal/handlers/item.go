@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,8 +22,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -48,49 +47,29 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	response, err := filterItems(ctx, accountID, entityID, exp, viewID, state, i.db, i.rPool)
 	if err != nil {
 		return err
 	}
 
-	var items []item.Item
-	if viewID == "" && exp == "" {
-		var err error
-		items, err = item.ListFilterByState(ctx, e.ID, state, i.db)
-		if err != nil {
-			return err
-		}
-	} else {
-		if exp == "" {
-			fl, err := flow.Retrieve(ctx, viewID, i.db)
-			if err != nil {
-				return err
-			}
-			exp = fl.Expression
-		}
-		result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
-		if err != nil {
-			return err
-		}
-		items, err = itemsResp(ctx, i.db, accountID, e, result)
-		if err != nil {
-			return err
-		}
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
+func (i *Item) FList(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
+	defer span.End()
+
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
+	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
+	viewID := r.URL.Query().Get("view_id")
+	var filterBo FilterBody
+	if err := web.Decode(r, &filterBo); err != nil {
+		return errors.Wrap(err, "")
 	}
-
-	fields, viewModelItems := itemResponse(e, items)
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, i.db, job.NewJabEngine())
-
-	response := struct {
-		Items    []ViewModelItem        `json:"items"`
-		Category int                    `json:"category"`
-		Fields   []entity.Field         `json:"fields"`
-		Entity   entity.ViewModelEntity `json:"entity"`
-	}{
-		Items:    viewModelItems,
-		Category: e.Category,
-		Fields:   fields,
-		Entity:   createViewModelEntity(e),
+	log.Println("received exp ", filterBo.Exp)
+	response, err := filterItems(ctx, accountID, entityID, filterBo.Exp, viewID, state, i.db, i.rPool)
+	if err != nil {
+		return err
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
@@ -330,21 +309,6 @@ func createViewModelItem(i item.Item) ViewModelItem {
 		State:    i.State,
 		Fields:   i.Fields(),
 	}
-}
-
-func makeConField(conditions []ruler.Condition) []graphdb.Field {
-	conFields := make([]graphdb.Field, 0)
-	for _, c := range conditions {
-		operator := graphdb.Operator(c.Operator)
-		gf := graphdb.Field{
-			Expression: operator,
-			Key:        c.Key,
-			DataType:   graphdb.DType(c.DataType),
-			Value:      c.Value,
-		}
-		conFields = append(conFields, gf)
-	}
-	return conFields
 }
 
 func itemResponse(e entity.Entity, items []item.Item) ([]entity.Field, []ViewModelItem) {
