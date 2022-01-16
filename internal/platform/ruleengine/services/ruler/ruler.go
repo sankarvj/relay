@@ -122,11 +122,13 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
 	case Parse:
+		rule = replaceHTML(rule) // From the UI the tokens will be added as <span data-id="{{entityID.key}}"></span> hence added this mechanism
 		log.Printf("internal.platform.ruleengine.services.ruler case: `parse`  expression: %s\n", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		workChan <- Work{Parser, "", r.content, nil}
 	case Compute:
+		rule = replaceHTML(rule)
 		log.Printf("internal.platform.ruleengine.services.ruler case: `compute`  expression: %s\n", rule)
 		r = r.startComputingLexer(rule)
 		workChan <- Work{Computer, "", r.content, nil}
@@ -216,6 +218,7 @@ func (r Ruler) startComputingLexer(rule string) Ruler {
 			return r
 		}
 	}
+
 }
 
 func (r Ruler) startGraphingLexer(rule string) Ruler {
@@ -242,6 +245,8 @@ func (r Ruler) startGraphingLexer(rule string) Ruler {
 			r.addINOperation(false)
 		case lexertoken.TokenNotINSign:
 			r.addINOperation(true)
+		case lexertoken.TokenLKSign:
+			r.addLKOperation()
 		case lexertoken.TokenANDOperation:
 			r.addANDCondition()
 		case lexertoken.TokenOROperation:
@@ -306,6 +311,13 @@ func (r *Ruler) addLTCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = lesserThan
 	r.RuleItem.operator = lexertoken.LTSign
+	return nil
+}
+
+func (r *Ruler) addLKOperation() error {
+	r.constructRuleItem()
+	r.RuleItem.operation = like
+	r.RuleItem.operator = lexertoken.LikeSign
 	return nil
 }
 

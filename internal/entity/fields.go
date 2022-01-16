@@ -80,6 +80,7 @@ const (
 	MetaKeyConfig      = "config"
 	MetaKeyLoadChoices = "load_choices"
 	MetaKeyRow         = "row"
+	MetaMultiChoice    = "multi"
 )
 
 const (

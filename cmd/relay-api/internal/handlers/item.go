@@ -117,36 +117,24 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			}
 			choices = append(choices, choice)
 		}
-	} else {
-		var items []item.Item
-		var err error
-		if term == "" {
-			items, err = item.SearchByKey(ctx, e.ID, key, term, i.db)
-		} else {
-			exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, key, term)
-			result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
-			if err != nil {
-				return err
-			}
-			items, err = itemsResp(ctx, i.db, accountID, e, result)
-		}
-
+	} else if e.Category == entity.CategoryChildUnit || term == "" {
+		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
 		if err != nil {
 			return err
 		}
-
-		for _, item := range items {
-			displayV := item.Fields()[key]
-			if displayV == nil {
-				displayV = item.Name
-			}
-			choice := entity.Choice{
-				ID:           item.ID,
-				DisplayValue: displayV,
-			}
-			choices = append(choices, choice)
-
+		choices = choiceResponse(key, items)
+	} else {
+		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
+		result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
+		if err != nil {
+			return err
 		}
+		items, err := itemsResp(ctx, i.db, accountID, e, result)
+		if err != nil {
+			return err
+		}
+		choices = choiceResponse(key, items)
+
 	}
 
 	return web.Respond(ctx, w, choices, http.StatusOK)
@@ -166,6 +154,8 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return errors.Wrapf(err, "Item Get During Update")
 	}
+
+	log.Printf("ni ----- %+v", ni)
 
 	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
 	if err != nil {
@@ -214,8 +204,11 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 func createAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
+		log.Println("err ", err)
 		return item.Item{}, err
 	}
+	log.Println("it --- > ", it)
+
 	//TODO push this to stream/queue
 	(&job.Job{}).EventItemCreated(ni.AccountID, ni.EntityID, it.ID, ni.Source, db, rp)
 	return it, err
@@ -231,15 +224,19 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	baseItemID := r.URL.Query().Get("bi")
 	populateBR, _ := strconv.ParseBool(r.URL.Query().Get("bp")) // blue print
 
+	log.Println("baseEntityID ", baseEntityID)
+	log.Println("baseItemID ", baseItemID)
+	log.Printf("populateBR %+v ", populateBR)
+
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
 
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return err
-	}
+	// fields, err := e.FilteredFields()
+	// if err != nil {
+	// 	return err
+	// }
 
 	it := item.Item{}
 	if itemID != "undefined" {
@@ -318,6 +315,22 @@ func itemResponse(e entity.Entity, items []item.Item) ([]entity.Field, []ViewMod
 	}
 
 	return e.FieldsIgnoreError(), viewModelItems
+}
+
+func choiceResponse(key string, items []item.Item) []entity.Choice {
+	choices := make([]entity.Choice, 0)
+	for _, item := range items {
+		displayV := item.Fields()[key]
+		if displayV == nil {
+			displayV = item.Name
+		}
+		choice := entity.Choice{
+			ID:           item.ID,
+			DisplayValue: displayV,
+		}
+		choices = append(choices, choice)
+	}
+	return choices
 }
 
 // ViewModelItem represents the view model of item

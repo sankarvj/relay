@@ -106,7 +106,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	// Register items management endpoints.
 	// TODO Add team authorization middleware
-	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/segments", s.Segment, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/segments", s.Segment, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/segments", s.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	f := Flow{
 		db:            db,

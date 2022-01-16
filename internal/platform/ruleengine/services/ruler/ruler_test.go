@@ -1,6 +1,7 @@
 package ruler_test
 
 import (
+	"log"
 	"strings"
 	"testing"
 
@@ -62,9 +63,9 @@ func TestContentParser(t *testing.T) {
 		t.Log("\twhen evaluating subject line : ")
 		{
 			var content string
-			exp := `Hello matty {{e1.appinfo.version}}. How are you?`
+			exp := `<p>The task created for the company <span class="mention" data-index="0" data-denotation-char="#" data-id="{{4a88eef5-72a7-4903-a6ca-944e72a79c33.uuid-00-name}}" data-value="Name"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>Name</span></span> from the city <span class="mention" data-index="2" data-denotation-char="#" data-id="{{4a88eef5-72a7-4903-a6ca-944e72a79c33.uuid-00-city}}" data-value="City"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>City</span></span> </p>`
 			signalsChan := make(chan ruler.Work)
-			go ruler.Run(exp, ruler.EngineFeedback(ruler.Parse), signalsChan)
+			go ruler.Run(exp, ruler.EngineFeedback(ruler.Compute), signalsChan)
 			for work := range signalsChan {
 				switch work.Type {
 				case ruler.Worker:
@@ -73,7 +74,10 @@ func TestContentParser(t *testing.T) {
 					content = work.OutboundResp.(string)
 				}
 			}
-			if content == "Hello matty 2 . How are you?" {
+
+			log.Println("content ---> ", content)
+
+			if content == "Hello matty 2 . How are you?</body></html>" {
 				t.Logf("\t%s should parse the expression with proper value", tests.Success)
 			} else {
 				t.Fatalf("\t%s should parse the expression with proper value. Parsed content: %s", tests.Failed, content)

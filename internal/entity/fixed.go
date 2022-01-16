@@ -149,12 +149,17 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 		teamID = DefaultTeamID
 	}
 
+	log.Println("account_id --> ", accountID)
+	log.Println("preDefinedEntity --> ", preDefinedEntity)
+
 	var e Entity
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
 	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntity, teamID, StateAccountLevel); err != nil {
 		if err == sql.ErrNoRows {
+			log.Println("preDefinedEntity err ", err)
 			return Entity{}, ErrFixedEntityNotFound
 		}
+		log.Println("err err ", err)
 		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntity)
 	}
 

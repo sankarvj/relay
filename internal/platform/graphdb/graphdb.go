@@ -332,7 +332,6 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			}
 		case entity.TypeReference:
 			//TODO: handle cyclic looping
-
 			for i, rItemID := range f.Value.([]interface{}) {
 				rEntityID := f.RefID
 				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
@@ -460,6 +459,7 @@ var operatorMap = map[string]string{
 	"eq": "=",
 	"gt": ">",
 	"lt": "<",
+	"lk": "STARTS WITH",
 }
 
 //TODO genralise and remove the if check

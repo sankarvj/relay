@@ -243,6 +243,7 @@ func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFiel
 }
 
 func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
+	log.Println("actOnWorkflows Kicked IN.......")
 	eng := engine.Engine{
 		Job: j,
 	}

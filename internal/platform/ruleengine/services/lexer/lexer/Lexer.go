@@ -143,7 +143,6 @@ func (l *Lexer) NextToken() lexertoken.Token {
 			l.State = l.State(l)
 		}
 	}
-	panic("Lexer.NextToken reached an invalid state!!")
 }
 
 /*

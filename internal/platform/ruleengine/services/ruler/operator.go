@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	version "github.com/mcuadros/go-version"
@@ -171,6 +172,19 @@ func notin(left, right Operand) bool { // assumption: left is a interface list &
 		}
 	}
 	return true
+}
+
+func like(left, right Operand) bool {
+	c := cast(left, right, true)
+	if c.err != nil {
+		log.Println("unexpected error occurred when comparing operands for operator: lk and error:", c.err)
+		return false
+	}
+	switch c.leftDataType {
+	case StrDT:
+		return strings.HasPrefix(c.leftString, c.rightString)
+	}
+	return false
 }
 
 func same(leftList, rightList []interface{}) bool {

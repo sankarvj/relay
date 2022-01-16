@@ -26,6 +26,7 @@ const (
 	TokenNotINSign
 	TokenBFSign
 	TokenAFSign
+	TokenLKSign
 
 	TokenANDOperation
 	TokenOROperation

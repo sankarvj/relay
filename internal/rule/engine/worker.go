@@ -49,7 +49,8 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	if err != nil {
 		result = map[string]interface{}{"error": err}
 	}
-	return evaluate(expression, buildResultant(e.ID, result)), nil
+	finalResult := evaluate(expression, buildResultant(e.ID, result))
+	return finalResult, nil
 }
 
 func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, error) {

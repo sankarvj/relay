@@ -683,10 +683,10 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		Key:         "uuid-00-contacts",
 		Name:        "contact",
 		DisplayName: "Associated Contacts",
-		DomType:     entity.DomMultiSelect,
+		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -701,7 +701,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name", entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -717,7 +717,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DataType:    entity.TypeReference,
 		RefID:       flowEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyFlow: "true"},
+		Meta:        map[string]string{entity.MetaKeyFlow: "true", entity.MetaMultiChoice: "false"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

@@ -4,8 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
@@ -18,6 +20,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
 )
 
@@ -29,52 +32,29 @@ type Segmentation struct {
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
-func filterItems(ctx context.Context, accountID, entityID, exp, viewID string, state int, db *sqlx.DB, rp *redis.Pool) (interface{}, error) {
-	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	var filterBo FilterBody
+	if err := web.Decode(r, &filterBo); err != nil {
+		return errors.Wrap(err, "")
+	}
+
+	nf := flow.NewFlow{
+		ID:         uuid.New().String(),
+		AccountID:  params["account_id"],
+		EntityID:   params["entity_id"],
+		Mode:       flow.FlowModeSegment,
+		Type:       flow.FlowTypeUnknown,
+		Condition:  flow.FlowConditionNil,
+		Expression: filterBo.Exp,
+		Name:       filterBo.Name,
+	}
+
+	f, err := flow.Create(ctx, s.db, nf, time.Now())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var items []item.Item
-	if viewID == "" && exp == "" {
-		var err error
-		items, err = item.ListFilterByState(ctx, e.ID, state, db)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		if exp == "" {
-			fl, err := flow.Retrieve(ctx, viewID, db)
-			if err != nil {
-				return nil, err
-			}
-			exp = fl.Expression
-		}
-		result, err := segment(ctx, accountID, e.ID, exp, db, rp)
-		if err != nil {
-			return nil, err
-		}
-		items, err = itemsResp(ctx, db, accountID, e, result)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	fields, viewModelItems := itemResponse(e, items)
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, db, job.NewJabEngine())
-
-	response := struct {
-		Items    []ViewModelItem        `json:"items"`
-		Category int                    `json:"category"`
-		Fields   []entity.Field         `json:"fields"`
-		Entity   entity.ViewModelEntity `json:"entity"`
-	}{
-		Items:    viewModelItems,
-		Category: e.Category,
-		Fields:   fields,
-		Entity:   createViewModelEntity(e),
-	}
-	return response, nil
+	return web.Respond(ctx, w, createViewModelFlow(f, []node.ViewModelNode{}), http.StatusCreated)
 }
 
 func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -134,10 +114,59 @@ func (s *Segmentation) Segment(ctx context.Context, w http.ResponseWriter, r *ht
 
 }
 
+func filterItems(ctx context.Context, accountID, entityID, exp, viewID string, state int, db *sqlx.DB, rp *redis.Pool) (interface{}, error) {
+	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []item.Item
+	if viewID == "" && exp == "" {
+		var err error
+		items, err = item.ListFilterByState(ctx, e.ID, state, db)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if exp == "" {
+			fl, err := flow.Retrieve(ctx, viewID, db)
+			if err != nil {
+				return nil, err
+			}
+			exp = fl.Expression
+		}
+		result, err := segment(ctx, accountID, e.ID, exp, db, rp)
+		if err != nil {
+			return nil, err
+		}
+		items, err = itemsResp(ctx, db, accountID, e, result)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fields, viewModelItems := itemResponse(e, items)
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, db, job.NewJabEngine())
+
+	response := struct {
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+	}{
+		Items:    viewModelItems,
+		Category: e.Category,
+		Fields:   fields,
+		Entity:   createViewModelEntity(e),
+	}
+	return response, nil
+}
+
 func segment(ctx context.Context, accountID, entityID string, exp string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
 	conditionFields := make([]graphdb.Field, 0)
 	log.Printf("exp -- %+v", exp)
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
+	log.Printf("filter -- %+v", filter)
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
@@ -230,5 +259,6 @@ func itemIDs(result *rg.QueryResult) []interface{} {
 }
 
 type FilterBody struct {
-	Exp string `json:"exp"`
+	Name string `json:"name"`
+	Exp  string `json:"exp"`
 }

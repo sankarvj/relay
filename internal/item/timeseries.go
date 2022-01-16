@@ -37,7 +37,7 @@ func SearchByKey(ctx context.Context, entityID, key, term string, db *sqlx.DB) (
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1`
+	const q = `SELECT * FROM items where entity_id = $1 limit 50`
 
 	if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
 		return nil, errors.Wrap(err, "searching items")
