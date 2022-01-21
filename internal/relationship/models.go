@@ -2,20 +2,22 @@ package relationship
 
 // Relationship represents relationship of the reference fields or the explicit relationships with `0` for field id
 type Relationship struct {
-	RelationshipID string `db:"relationship_id" json:"relationship_id"`
-	AccountID      string `db:"account_id" json:"account_id"`
-	SrcEntityID    string `db:"src_entity_id" json:"src_entity_id"`
-	DstEntityID    string `db:"dst_entity_id" json:"dst_entity_id"`
-	FieldID        string `db:"field_id" json:"field_id"`
-	Type           RType  `db:"type" json:"type"`
+	RelationshipID string  `db:"relationship_id" json:"relationship_id"`
+	ParentRelID    *string `db:"parent_rel_id" json:"parent_rel_id"`
+	AccountID      string  `db:"account_id" json:"account_id"`
+	SrcEntityID    string  `db:"src_entity_id" json:"src_entity_id"`
+	DstEntityID    string  `db:"dst_entity_id" json:"dst_entity_id"`
+	FieldID        string  `db:"field_id" json:"field_id"`
+	Type           RType   `db:"type" json:"type"`
 }
 
 type Bond struct {
-	RelationshipID string `db:"relationship_id" json:"relationship_id"`
-	DisplayName    string `db:"display_name" json:"display_name"`
-	Category       int    `db:"category" json:"category"`
-	EntityID       string `db:"entity_id" json:"entity_id"`
-	Type           RType  `db:"type" json:"type"`
+	RelationshipID string  `db:"relationship_id" json:"relationship_id"`
+	ParentRelID    *string `db:"parent_rel_id" json:"parent_rel_id"`
+	DisplayName    string  `db:"display_name" json:"display_name"`
+	Category       int     `db:"category" json:"category"`
+	EntityID       string  `db:"entity_id" json:"entity_id"`
+	Type           RType   `db:"type" json:"type"`
 }
 
 type Relatable struct {

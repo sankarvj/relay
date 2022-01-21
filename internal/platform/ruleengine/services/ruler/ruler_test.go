@@ -63,7 +63,7 @@ func TestContentParser(t *testing.T) {
 		t.Log("\twhen evaluating subject line : ")
 		{
 			var content string
-			exp := `<p>The task created for the company <span class="mention" data-index="0" data-denotation-char="#" data-id="{{4a88eef5-72a7-4903-a6ca-944e72a79c33.uuid-00-name}}" data-value="Name"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>Name</span></span> from the city <span class="mention" data-index="2" data-denotation-char="#" data-id="{{4a88eef5-72a7-4903-a6ca-944e72a79c33.uuid-00-city}}" data-value="City"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>City</span></span> </p>`
+			exp := `<p><span class="mention" data-index="0" data-denotation-char="#" data-id="{{216a6cc0-7b0e-426b-bee8-bac1816b1386.uuid-00-name}}" data-value="Name"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>Name</span></span> Hello</p>`
 			signalsChan := make(chan ruler.Work)
 			go ruler.Run(exp, ruler.EngineFeedback(ruler.Compute), signalsChan)
 			for work := range signalsChan {
@@ -82,6 +82,20 @@ func TestContentParser(t *testing.T) {
 			} else {
 				t.Fatalf("\t%s should parse the expression with proper value. Parsed content: %s", tests.Failed, content)
 			}
+		}
+	}
+
+}
+
+func TestHTMLConverter(t *testing.T) {
+	t.Log("Given the need convert the given expression")
+	{
+		t.Log("\twhen evaluating subject line : ")
+		{
+			exp := `<p>Hello <span class="mention" data-index="0" data-denotation-char="#" data-id="{{c5e21266-db5f-424a-858c-4908d91be095.uuid-00-name}}" data-value="Name"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>Name</span></span> </p>`
+			replacedHTML := ruler.ReplaceHTML(exp)
+			log.Println("replacedHTML ", replacedHTML)
+			t.Logf("\t%s should parse the expression with proper value", tests.Success)
 		}
 	}
 

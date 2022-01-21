@@ -17,6 +17,7 @@ const (
 	TypeDataTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
+	TypeWist            = "W" // wist( implies: where clause list) is handled as `Where clause IN` instead of `Has/Contains` in list & reference
 )
 
 const (

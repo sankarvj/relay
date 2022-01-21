@@ -84,7 +84,8 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 	//When populating the fields for the child items please populate the parent id also
-	fields, viewModelItems := itemResponse(e, childItems)
+	fields = e.FieldsIgnoreError()
+	viewModelItems := itemResponse(childItems)
 	reference.UpdateReferenceFields(ctx, accountID, relatedEntityID, fields, childItems, sourceMap, rs.db, job.NewJabEngine())
 
 	response := struct {

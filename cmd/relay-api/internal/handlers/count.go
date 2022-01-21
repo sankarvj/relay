@@ -1,0 +1,149 @@
+package handlers
+
+import (
+	"context"
+	"log"
+	"net/http"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
+	rg "github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+)
+
+type Counter struct {
+	db    *sqlx.DB
+	rPool *redis.Pool
+	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
+}
+
+// started with the not so generic manner. Will add the generic later
+func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	var countBody CountRequest
+	if err := web.Decode(r, &countBody); err != nil {
+		return errors.Wrap(err, "")
+	}
+	accountID := params["account_id"]
+	teamID := params["team_id"]
+	entityID := params["entity_id"]      //deal entity
+	destination := params["destination"] //entity.FixedEntityTask --> tasks
+
+	log.Println("destination ", destination)
+
+	dstEntity, err := entity.RetrieveFixedEntity(ctx, c.db, accountID, teamID, destination)
+	if err != nil {
+		return err
+	}
+
+	var statusField entity.Field
+	for _, f := range dstEntity.FieldsIgnoreError() {
+		if f.Who == entity.WhoStatus {
+			statusField = f
+			break
+		}
+	}
+
+	conditionFieldsForAll := makeConditionFieldForAll(countBody.IDs, dstEntity, statusField)
+	doneID, _ := entity.DiscoverDoneStatusID(ctx, accountID, statusField.RefID, c.db)
+	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
+
+	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)
+	resultA, err := graphdb.GetCount(c.rPool, gSegmentA)
+	if err != nil {
+		return err
+	}
+	allTasksCount := counts(resultA)
+
+	gSegmentD := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForDone)
+	resultD, err := graphdb.GetCount(c.rPool, gSegmentD)
+	if err != nil {
+		return err
+	}
+	doneTasksCount := counts(resultD)
+
+	return web.Respond(ctx, w, countsResponse(allTasksCount, doneTasksCount), http.StatusOK)
+}
+
+func counts(result *rg.QueryResult) map[string]int {
+	responseArr := make(map[string]int, 0)
+	for result.Next() { // Next returns true until the iterator is depleted.
+		// Get the current Record.
+		r := result.Record()
+		id := r.GetByIndex(1).(string)
+		count := r.GetByIndex(0).(int)
+		responseArr[id] = count
+	}
+	return responseArr
+}
+
+func countsResponse(allMap, doneMap map[string]int) map[string]CountResponse {
+	responseArr := make(map[string]CountResponse, 0)
+
+	for key, acount := range allMap {
+		if dCount, ok := doneMap[key]; ok {
+			responseArr[key] = CountResponse{All: acount, Done: dCount}
+		} else {
+			responseArr[key] = CountResponse{All: acount, Done: 0}
+		}
+	}
+	return responseArr
+}
+
+func makeConditionFieldForAll(ids []string, dstEntity entity.Entity, statusField entity.Field) []graphdb.Field {
+	conditionFields := []graphdb.Field{
+		{
+			Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode
+			Key:        "id",
+			DataType:   graphdb.TypeWist,
+			Value:      ids,
+		},
+		{
+			Value:    []interface{}{""}, //this makes the relation between src and dst entity
+			RefID:    dstEntity.ID,
+			DataType: graphdb.TypeReference,
+			Field:    &graphdb.Field{ // this adds the condition to the relation over the task
+			},
+		},
+	}
+	return conditionFields
+}
+
+func makeConditionFieldForDone(ids []string, doneID string, dstEntity entity.Entity, statusField entity.Field) []graphdb.Field {
+	conditionFields := []graphdb.Field{
+		{
+			Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode
+			Key:        "id",
+			DataType:   graphdb.TypeWist,
+			Value:      ids,
+		},
+		{
+			Value:    []interface{}{""}, //this makes the relation between src and dst entity
+			RefID:    dstEntity.ID,
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{ // this adds the condition to the relation over the task
+				RefID:    statusField.RefID,
+				DataType: graphdb.TypeReference,
+				Value:    []interface{}{""},
+				Field: &graphdb.Field{
+					Expression: "=",
+					Key:        "id",
+					DataType:   graphdb.TypeString,
+					Value:      doneID, // status verb as done
+				},
+			},
+		},
+	}
+	return conditionFields
+}
+
+type CountRequest struct {
+	IDs []string `json:"ids"`
+}
+
+type CountResponse struct {
+	Done int `json:"done"`
+	All  int `json:"all"`
+}

@@ -34,7 +34,8 @@ func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
-	fields, viewModelItems := itemResponse(e, items)
+	fields := e.FieldsIgnoreError()
+	viewModelItems := itemResponse(items)
 
 	response := struct {
 		Items  []ViewModelItem        `json:"items"`

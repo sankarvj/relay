@@ -54,6 +54,13 @@ func ConvertStrToInt(s string) int {
 	return 0
 }
 
+func ConvertIntfToStr(intf interface{}) string {
+	if intf != nil {
+		return intf.(string)
+	}
+	return ""
+}
+
 func Contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -89,4 +96,11 @@ func MainMailRefernce(reference string) string {
 		fmt.Printf("Error: %s is an invalid reference value\n", components)
 		return ""
 	}
+}
+
+func AddExpression(exTexp string, newExp string) string {
+	if exTexp == "" {
+		return newExp
+	}
+	return fmt.Sprintf("%s && %s", exTexp, newExp)
 }

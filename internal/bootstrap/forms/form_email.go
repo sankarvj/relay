@@ -188,7 +188,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		DisplayName: "Subject",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title", entity.MetaKeyHTML: "true"},
 	}
 
 	bodyFieldID := uuid.New().String()
@@ -198,6 +198,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		DisplayName: "Body",
 		DomType:     entity.DomTextArea,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyHTML: "true"},
 	}
 
 	contactFieldID := uuid.New().String()

@@ -81,14 +81,24 @@ const (
 	MetaKeyLoadChoices = "load_choices"
 	MetaKeyRow         = "row"
 	MetaMultiChoice    = "multi"
+	MetaKeyHTML        = "html"
 )
 
 const (
-	WhoReminder = "reminder"
-	WhoDueBy    = "dueby"
-	WhoAssignee = "assignee"
-	WhoOwner    = "owner"
-	WhoFollower = "follower"
+	MetaLayoutTitle    = "title"
+	MetaLayoutSubTitle = "sub-title"
+	MetaLayoutUsers    = "users"
+	MetaLayoutDate     = "date"
+)
+
+const (
+	WhoStatus    = "status"
+	WhoReminder  = "reminder"
+	WhoDueBy     = "dueby"
+	WhoCloseDate = "close_date"
+	WhoAssignee  = "assignee"
+	WhoOwner     = "owner"
+	WhoFollower  = "follower"
 )
 
 // Field represents structural format of attributes in entity
@@ -191,6 +201,26 @@ func (e Entity) Key(name string) string {
 		return ""
 	}
 	return NamedKeysMap(fields)[name]
+}
+
+func (e Entity) FlowField() *Field {
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.IsFlow() {
+			return &f
+		}
+	}
+	return nil
+}
+
+func (e Entity) NodeField() *Field {
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.IsNode() {
+			return &f
+		}
+	}
+	return nil
 }
 
 func (f *Field) SetDisplayGex(key string) {

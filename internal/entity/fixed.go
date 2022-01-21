@@ -17,6 +17,11 @@ import (
 	"go.opencensus.io/trace"
 )
 
+var (
+	// ErrNotFound is used when a specific entity is requested but does not exist.
+	ErrNotFound = errors.New("Fixed item not found")
+)
+
 const (
 	DefaultTeamID = "00000000-0000-0000-0000-000000000000"
 )
@@ -28,6 +33,7 @@ const (
 	FixedEntityEmails       = "emails"
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
+	FixedEntityTask         = "tasks"
 )
 
 var (
@@ -148,9 +154,6 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	if teamID == "" {
 		teamID = DefaultTeamID
 	}
-
-	log.Println("account_id --> ", accountID)
-	log.Println("preDefinedEntity --> ", preDefinedEntity)
 
 	var e Entity
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
@@ -286,6 +289,24 @@ func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID
 	}
 
 	return dis.ItemID, ParseFixedEntity(valueAddedConfigFields, anyEntityItem)
+}
+
+func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *sqlx.DB) (string, error) {
+	statusEntity, err := Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		return "", err
+	}
+
+	refItems, _ := item.EntityItems(ctx, statusEntity.ID, db)
+	for _, i := range refItems {
+		statusFields := statusEntity.ValueAdd(i.Fields())
+		for _, statusField := range statusFields {
+			if statusField.Name == Verb && statusField.Value == FuExpDone {
+				return i.ID, nil
+			}
+		}
+	}
+	return "", ErrNotFound
 }
 
 //updateFields func encloses the update func

@@ -106,18 +106,18 @@ func bulkDelete(ctx context.Context, db *sqlx.DB, accountID string, relationship
 	return nil
 }
 
-// Create add new relationship with respective types.
+// Create adds new relationship with respective types.
 func Create(ctx context.Context, db *sqlx.DB, r Relationship) (Relationship, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.Create")
 	defer span.End()
 
 	const q = `INSERT INTO relationships
-		(relationship_id, account_id, src_entity_id, dst_entity_id, field_id, type)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(relationship_id, parent_rel_id, account_id, src_entity_id, dst_entity_id, field_id, type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		r.RelationshipID, r.AccountID, r.SrcEntityID, r.DstEntityID, r.FieldID, r.Type,
+		r.RelationshipID, r.ParentRelID, r.AccountID, r.SrcEntityID, r.DstEntityID, r.FieldID, r.Type,
 	)
 	if err != nil {
 		return Relationship{}, errors.Wrap(err, "inserting relationships")
@@ -198,25 +198,26 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) 
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3)  AND r.dst_entity_id = $4 AND r.type = $5`
+	const q = `SELECT r.relationship_id, r.parent_rel_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3) AND r.dst_entity_id = $4 AND r.type = $5`
 
-	// can't import entity.StateAccountLevel -- 1
+	// can't import entity.StateAccountLevel due to cyclic import error hence hardcoded -- 1
 	stateAccountLevel := 1
 	if err := db.SelectContext(ctx, &bonds, q, accountID, teamID, stateAccountLevel, entityID, RTypeAbsolute); err != nil {
 		return nil, errors.Wrap(err, "selecting bonds/relationships for dst entity")
 	}
 
-	//trim bonds by reducing the same entity IDS
+	//trim bonds by reducing relationships with the same entity id
 	relatedEntitesMap := make(map[string]Bond, 0)
 	for _, b := range bonds {
 		relatedEntitesMap[b.EntityID] = b
 	}
-	trimmerBonds := []Bond{}
+
+	trimmedBonds := []Bond{}
 	for _, value := range relatedEntitesMap {
-		trimmerBonds = append(trimmerBonds, value)
+		trimmedBonds = append(trimmedBonds, value)
 	}
 
-	return trimmerBonds, nil
+	return trimmedBonds, nil
 }
 
 func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string) ([]Relationship, error) {
@@ -240,10 +241,18 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 			log.Printf("unexpected/expected error occurred. src_entity_id (%s) or ref_entity_id (%s) is empty. bonding skipped \n", srcEntityId, relatable.RefID)
 			continue
 		}
+
+		//Pick parent ID
+		var parentRelationID string
+		if len(relationships) > 0 {
+			parentRelationID = relationships[len(relationships)-1].RelationshipID
+		}
+
 		relationshipID := uuid.New().String()
 		if relatable.RType == RTypeAbsolute || relatable.RType == RTypeStraight {
 			relationships = append(relationships, Relationship{
 				RelationshipID: relationshipID,
+				ParentRelID:    &parentRelationID,
 				AccountID:      accountID,
 				SrcEntityID:    srcEntityId,
 				DstEntityID:    relatable.RefID,
@@ -255,6 +264,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 		if relatable.RType == RTypeAbsolute || relatable.RType == RTypeReverse {
 			relationships = append(relationships, Relationship{
 				RelationshipID: relationshipID,
+				ParentRelID:    &parentRelationID,
 				AccountID:      accountID,
 				SrcEntityID:    relatable.RefID,
 				DstEntityID:    srcEntityId,
@@ -305,4 +315,15 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		Type:           RTypeAbsolute,
 	})
 	return relationshipID, relationships
+}
+
+func parentIndex(bs []Bond, parentID string) int {
+	parentIndex := 0
+	for i, b := range bs {
+		if b.RelationshipID == parentID {
+			parentIndex = i
+			break
+		}
+	}
+	return parentIndex
 }

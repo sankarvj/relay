@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -214,11 +215,13 @@ func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 				choice.ParentIDs = append(choice.ParentIDs, parentID)
 			}
 		} else {
+
 			f.Choices = append(f.Choices, entity.Choice{
 				ID:           choicer.ID,
 				ParentIDs:    []string{parentID},
 				DisplayValue: choicer.Name,
 				Value:        choicer.Value,
+				Verb:         util.ConvertIntfToStr(choicer.Verb),
 			})
 		}
 	}

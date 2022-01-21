@@ -37,8 +37,51 @@ type GraphNode struct {
 	ItemID       string
 	Fields       []Field
 	Relations    []GraphNode // list/map fields
+	ReturnNode   *rg.Node
 	IsReverse    bool
 	Unlink       bool
+}
+
+func BuildGNode(graphName, label string, unlink bool) GraphNode {
+	gn := GraphNode{
+		GraphName: graphName,
+		Label:     label,
+		Fields:    []Field{},
+		Relations: make([]GraphNode, 0),
+		Unlink:    unlink,
+	}
+	return gn
+}
+
+func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
+	gn.ItemID = itemID
+
+	for _, f := range fields {
+
+		if f.Value == nil {
+			continue
+		}
+		switch f.DataType {
+		case entity.TypeList:
+			for i, element := range f.Value.([]interface{}) {
+				f.Field.Value = element
+				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
+					MakeBaseGNode("", []Field{*f.Field}).relateLists()
+				gn.Relations = append(gn.Relations, rn)
+			}
+		case entity.TypeReference:
+			//TODO: handle cyclic looping
+			for i, rItemID := range f.Value.([]interface{}) {
+				rEntityID := f.RefID
+				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
+					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
+				gn.Relations = append(gn.Relations, rn)
+			}
+		default:
+			gn.Fields = append(gn.Fields, f)
+		}
+	}
+	return gn
 }
 
 //GetNode fetches the node for the id provided
@@ -80,25 +123,48 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 		s = append(s, strings.Join(wh, " AND "))
 	}
 
-	for _, rn := range gn.Relations {
-		dstNode := rn.justNode()
-		edge := rg.EdgeNew(rn.RelationName, srcNode, dstNode, nil)
-		if rn.IsReverse {
-			edge = rg.EdgeNew(rn.RelationName, dstNode, srcNode, nil)
-		}
-		s = append(s, matchNode(dstNode)...)
-		s = append(s, matchEdge(edge)...)
-		wi, wh := where(rn, dstNode.Alias, srcNode.Alias)
-		s = append(s, wi...)
-		s = append(s, "WHERE")
-		s = append(s, strings.Join(wh, " AND "))
-	}
+	s = chainRelations(&gn, srcNode, s)
 
 	q := strings.Join(s, " ")
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
 	result, err := graph.Query(q)
-	log.Printf("internal.platform.graphdb : graphdb - result: %s - err:%v\n", q, err)
+	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
+	if err != nil {
+		return result, err
+	}
+	result.PrettyPrint()
+	return result, err
+}
+
+//GetCount fetches count of destination node
+func GetCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	srcNode := gn.justNode()
+	s := matchNode(srcNode)
+	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
+	s = append(s, wi...)
+	if len(wh) > 0 {
+		s = append(s, "WHERE")
+		s = append(s, strings.Join(wh, " AND "))
+	}
+
+	s = chainRelations(&gn, srcNode, s)
+
+	returnNode := srcNode
+	if gn.ReturnNode != nil { // By default count acts on the dstNode if exists
+		returnNode = gn.ReturnNode
+	}
+
+	q := strings.Join(s, " ")
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", returnNode.Alias, srcNode.Alias))
+
+	result, err := graph.Query(q)
+	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
@@ -126,6 +192,8 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 				wh = append(wh, fmt.Sprintf("%s %s \"%v\"", f.WithAlias, f.Expression, f.Value))
 			case TypeNumber:
 				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
+			case TypeWist:
+				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, quoteSlice(f.Value.([]string))))
 			default:
 				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
 			}
@@ -133,6 +201,35 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 	}
 
 	return wi, wh
+}
+
+func chainRelations(gn *GraphNode, srcNode *rg.Node, s []string) []string {
+	for _, rn := range gn.Relations {
+		dstNode := rn.justNode()
+		gn.ReturnNode = dstNode
+		var localS []string
+		if len(rn.Relations) > 0 {
+			localS = chainRelations(&rn, dstNode, localS)
+		}
+
+		edge := rg.EdgeNew(rn.RelationName, srcNode, dstNode, nil)
+		if rn.IsReverse {
+			edge = rg.EdgeNew(rn.RelationName, dstNode, srcNode, nil)
+		}
+
+		s = append(s, matchNode(dstNode)...)
+		s = append(s, matchEdge(edge)...)
+		wi, wh := where(rn, dstNode.Alias, srcNode.Alias)
+		s = append(s, wi...)
+		if len(wh) > 0 {
+			s = append(s, "WHERE")
+			s = append(s, strings.Join(wh, " AND "))
+		}
+
+		s = append(s, localS...)
+
+	}
+	return s
 }
 
 //UpsertNode create/update the node with the given properties.
@@ -303,48 +400,6 @@ func unlinkEdge(unlinkAlias string, e *rg.Edge) []string {
 	return s
 }
 
-func BuildGNode(graphName, label string, unlink bool) GraphNode {
-	gn := GraphNode{
-		GraphName: graphName,
-		Label:     label,
-		Fields:    []Field{},
-		Relations: make([]GraphNode, 0),
-		Unlink:    unlink,
-	}
-	return gn
-}
-
-func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
-	gn.ItemID = itemID
-
-	for _, f := range fields {
-
-		if f.Value == nil {
-			continue
-		}
-		switch f.DataType {
-		case entity.TypeList:
-			for i, element := range f.Value.([]interface{}) {
-				f.Field.Value = element
-				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
-					MakeBaseGNode("", []Field{*f.Field}).relateLists()
-				gn.Relations = append(gn.Relations, rn)
-			}
-		case entity.TypeReference:
-			//TODO: handle cyclic looping
-			for i, rItemID := range f.Value.([]interface{}) {
-				rEntityID := f.RefID
-				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
-					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
-				gn.Relations = append(gn.Relations, rn)
-			}
-		default:
-			gn.Fields = append(gn.Fields, f)
-		}
-	}
-	return gn
-}
-
 func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string) GraphNode {
 	rn := BuildGNode(gn.GraphName, parentEntityID, false).
 		MakeBaseGNode(parentItemID, []Field{}).relateRefs(true)
@@ -397,6 +452,11 @@ func (gn GraphNode) relateLists() GraphNode {
 
 func quote(label string) string {
 	return fmt.Sprintf("`%s`", label)
+}
+
+func quoteSlice(strs []string) string {
+	commaSep := "\"" + strings.Join(strs, "\", \"") + "\""
+	return fmt.Sprintf("[%s]", commaSep)
 }
 
 func (gn GraphNode) JsonB() (string, error) {
@@ -460,6 +520,7 @@ var operatorMap = map[string]string{
 	"gt": ">",
 	"lt": "<",
 	"lk": "STARTS WITH",
+	"in": "IN",
 }
 
 //TODO genralise and remove the if check

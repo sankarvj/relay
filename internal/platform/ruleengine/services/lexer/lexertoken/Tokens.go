@@ -19,10 +19,10 @@ const (
 	NotINSign         string = "!in"
 	LikeSign          string = "lk"
 
-	LeftSnippet        string = "<<<"
-	RightSnippet       string = ">>>"
-	LeftDoubleSnippet  string = "<<<<"
-	RightDoubleSnippet string = ">>>>"
+	LeftSnippet        string = "<"
+	RightSnippet       string = ">"
+	LeftDoubleSnippet  string = "<<"
+	RightDoubleSnippet string = ">>"
 	ANDOperation       string = "&&"
 	OROperation        string = "||"
 )

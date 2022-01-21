@@ -106,7 +106,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	emailField := entity.Field{
@@ -115,7 +115,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DisplayName: "Email",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "sub-title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
 	mobileField := entity.Field{
@@ -377,7 +377,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		DisplayName: "Notes",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: "title", entity.MetaKeyHTML: "true"},
 	}
 
 	dueByField := entity.Field{
@@ -453,6 +453,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Who:         entity.WhoStatus,
 		Dependent: &entity.Dependent{
 			ParentKey:   dueByField.Key,
 			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", statusFieldKey, stItem2), fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key), fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key)},
@@ -668,7 +669,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DisplayName: "Deal Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	dealAmount := entity.Field{
@@ -677,6 +678,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DisplayName: "Deal Amount",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeNumber,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
 	contactsField := entity.Field{
@@ -686,12 +688,22 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaMultiChoice: "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaMultiChoice: "true", entity.MetaKeyLayout: entity.MetaLayoutUsers},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
 			Value:    "--",
 		},
+	}
+
+	closeDateField := entity.Field{
+		Key:         "uuid-00-close-date",
+		Name:        "close_date",
+		DisplayName: "Close date",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoCloseDate,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutDate},
 	}
 
 	companyField := entity.Field{
@@ -746,7 +758,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		},
 	}
 
-	return []entity.Field{dealName, dealAmount, contactsField, companyField, pipeField, pipeStageField}
+	return []entity.Field{dealName, dealAmount, contactsField, companyField, closeDateField, pipeField, pipeStageField}
 }
 
 func DealVals(name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
@@ -757,6 +769,7 @@ func DealVals(name string, amount int, contactID1, contactID2, flowID string) ma
 		"uuid-00-pipe":        []interface{}{flowID},
 		"uuid-00-pipe-stage":  []interface{}{},
 		"uuid-00-company":     []interface{}{},
+		"uuid-00-close-date":  util.FormatTimeGo(time.Now()),
 	}
 	return dealVals
 }

@@ -291,6 +291,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 //actOnPipelines -  not a generic way. the way we use dependent is muddy
 func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
 	for _, fi := range e.FieldsIgnoreError() {
+
 		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := dirtyField.([]interface{})[0].(string)

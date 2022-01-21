@@ -46,30 +46,62 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
+	ls := r.URL.Query().Get("ls")
 
-	response, err := filterItems(ctx, accountID, entityID, exp, viewID, state, i.db, i.rPool)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
+	fields := e.FieldsIgnoreError()
 
-	return web.Respond(ctx, w, response, http.StatusOK)
-}
-
-func (i *Item) FList(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
-	defer span.End()
-
-	accountID, entityID, _ := takeAEI(ctx, params, i.db)
-	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
-	viewID := r.URL.Query().Get("view_id")
-	var filterBo FilterBody
-	if err := web.Decode(r, &filterBo); err != nil {
-		return errors.Wrap(err, "")
+	if viewID != "" {
+		fl, err := flow.Retrieve(ctx, viewID, i.db)
+		if err != nil {
+			return err
+		}
+		exp = util.AddExpression(exp, fl.Expression)
 	}
-	log.Println("received exp ", filterBo.Exp)
-	response, err := filterItems(ctx, accountID, entityID, filterBo.Exp, viewID, state, i.db, i.rPool)
-	if err != nil {
-		return err
+
+	ls = setRenderer(ctx, ls, e, i.db)
+
+	var viewModelItems []ViewModelItem
+	piper := Piper{Viable: e.FlowField() != nil}
+	if ls == entity.MetaRenderPipe {
+		err := pipeKanban(ctx, e, &piper, i.db)
+		if err != nil {
+			return err
+		}
+		piper.Viable = true
+		piper.Pipe = true
+
+		for _, node := range piper.Nodes {
+			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
+			exp = util.AddExpression(exp, newExp)
+			vitems, err := filterWrapper(ctx, accountID, e.ID, fields, exp, state, i.db, i.rPool)
+			if err != nil {
+				return err
+			}
+			piper.Items[node.ID] = vitems
+		}
+	} else {
+		viewModelItems, err = filterWrapper(ctx, accountID, e.ID, fields, exp, state, i.db, i.rPool)
+		if err != nil {
+			return err
+		}
+	}
+
+	response := struct {
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+		Piper    Piper                  `json:"piper"`
+	}{
+		Items:    viewModelItems,
+		Category: e.Category,
+		Fields:   fields,
+		Entity:   createViewModelEntity(e),
+		Piper:    piper,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
@@ -129,7 +161,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return err
 		}
-		items, err := itemsResp(ctx, i.db, accountID, e, result)
+		items, err := itemsResp(ctx, i.db, accountID, result)
 		if err != nil {
 			return err
 		}
@@ -207,8 +239,6 @@ func createAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *red
 		log.Println("err ", err)
 		return item.Item{}, err
 	}
-	log.Println("it --- > ", it)
-
 	//TODO push this to stream/queue
 	(&job.Job{}).EventItemCreated(ni.AccountID, ni.EntityID, it.ID, ni.Source, db, rp)
 	return it, err
@@ -224,19 +254,10 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	baseItemID := r.URL.Query().Get("bi")
 	populateBR, _ := strconv.ParseBool(r.URL.Query().Get("bp")) // blue print
 
-	log.Println("baseEntityID ", baseEntityID)
-	log.Println("baseItemID ", baseItemID)
-	log.Printf("populateBR %+v ", populateBR)
-
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
-
-	// fields, err := e.FilteredFields()
-	// if err != nil {
-	// 	return err
-	// }
 
 	it := item.Item{}
 	if itemID != "undefined" {
@@ -252,7 +273,8 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	fields, viewModelItems := itemResponse(e, []item.Item{it})
+	fields := e.FieldsIgnoreError()
+	viewModelItems := itemResponse([]item.Item{it})
 	if len(viewModelItems) == 0 {
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
@@ -308,13 +330,12 @@ func createViewModelItem(i item.Item) ViewModelItem {
 	}
 }
 
-func itemResponse(e entity.Entity, items []item.Item) ([]entity.Field, []ViewModelItem) {
+func itemResponse(items []item.Item) []ViewModelItem {
 	viewModelItems := make([]ViewModelItem, len(items))
 	for i, item := range items {
 		viewModelItems[i] = createViewModelItem(item)
 	}
-
-	return e.FieldsIgnoreError(), viewModelItems
+	return viewModelItems
 }
 
 func choiceResponse(key string, items []item.Item) []entity.Choice {

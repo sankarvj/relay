@@ -122,13 +122,11 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
 	case Parse:
-		rule = replaceHTML(rule) // From the UI the tokens will be added as <span data-id="{{entityID.key}}"></span> hence added this mechanism
 		log.Printf("internal.platform.ruleengine.services.ruler case: `parse`  expression: %s\n", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		workChan <- Work{Parser, "", r.content, nil}
 	case Compute:
-		rule = replaceHTML(rule)
 		log.Printf("internal.platform.ruleengine.services.ruler case: `compute`  expression: %s\n", rule)
 		r = r.startComputingLexer(rule)
 		workChan <- Work{Computer, "", r.content, nil}
@@ -201,10 +199,13 @@ func (r Ruler) startParsingLexer(rule string) Ruler {
 }
 
 func (r Ruler) startComputingLexer(rule string) Ruler {
+	rule = ReplaceHTML(rule)
+	log.Printf("rule --- %+v\n", rule)
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
 		token = l.NextToken()
+		log.Printf("token --- %+v\n", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))

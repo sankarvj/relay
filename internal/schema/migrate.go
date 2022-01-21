@@ -102,6 +102,7 @@ var migrations = []darwin.Migration{
 			state         INTEGER DEFAULT 0,
 			status        INTEGER DEFAULT 0,
 			fieldsb       JSONB,
+			metab         JSONB,
 			tags          TEXT[],
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
@@ -212,6 +213,7 @@ var migrations = []darwin.Migration{
 		Script: `
 		CREATE TABLE relationships (
 			relationship_id UUID,
+			parent_rel_id   TEXT,
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
 	    	src_entity_id	UUID REFERENCES entities ON DELETE CASCADE,
 			dst_entity_id   UUID REFERENCES entities ON DELETE CASCADE,

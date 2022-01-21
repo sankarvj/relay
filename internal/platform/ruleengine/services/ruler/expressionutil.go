@@ -2,6 +2,7 @@ package ruler
 
 import (
 	"bytes"
+	"io"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -43,41 +44,52 @@ func FetchItemID(expression string) string {
 	return ""
 }
 
-func replaceHTML(src string) string {
+func ReplaceHTML(src string) string {
 	root, err := html.Parse(strings.NewReader(src))
 	if err != nil {
 		panic(err)
 	}
-	replace(root)
+	ch := &CodeHTML{
+		isActive: false,
+	}
+	replace(root, ch)
+	if ch.isActive { // render HTML only for HTML strings
+		return renderNode(root)
+	} else {
+		return src
+	}
 
-	var b bytes.Buffer
-	html.Render(&b, root)
-	return b.String()
 }
 
-func replace(n *html.Node) {
+func renderNode(n *html.Node) string {
+	var buf bytes.Buffer
+	w := io.Writer(&buf)
+	html.Render(w, n)
+	return buf.String()
+}
+
+func replace(n *html.Node, ch *CodeHTML) {
 	var dataID string
 	if n.Type == html.ElementNode && n.Data == "span" {
 		dataID = ""
 		for _, a := range n.Attr {
 			if a.Key == "data-id" {
 				dataID = a.Val
-
 				break
 			}
 		}
 		if dataID != "" {
-			n1 := &html.Node{
-				Type: html.TextNode,
-				Data: dataID,
-			}
-			p := n.Parent
-			p.RemoveChild(n)
-			p.AppendChild(n1)
+			ch.isActive = true
+			n.Type = html.TextNode
+			n.Data = dataID
 		}
 	}
 
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		replace(child)
+		replace(child, ch)
 	}
+}
+
+type CodeHTML struct {
+	isActive bool
 }
