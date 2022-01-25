@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+const (
+	PageLimt int = 50
+	MaxLimt  int = 500
+)
+
 func ConvertSliceType(s []string) []interface{} {
 	inf := make([]interface{}, len(s))
 	for i, v := range s {

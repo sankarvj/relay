@@ -47,6 +47,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
 	ls := r.URL.Query().Get("ls")
+	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
@@ -62,11 +63,13 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		exp = util.AddExpression(exp, fl.Expression)
 	}
 
-	ls = setRenderer(ctx, ls, e, i.db)
+	if page == 0 {
+		ls = setRenderer(ctx, ls, e, i.db)
+	}
 
 	var viewModelItems []ViewModelItem
 	piper := Piper{Viable: e.FlowField() != nil}
-	if ls == entity.MetaRenderPipe {
+	if ls == entity.MetaRenderPipe && page == 0 {
 		err := pipeKanban(ctx, e, &piper, i.db)
 		if err != nil {
 			return err
@@ -75,16 +78,17 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		piper.Pipe = true
 
 		for _, node := range piper.Nodes {
+			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
 			exp = util.AddExpression(exp, newExp)
-			vitems, err := filterWrapper(ctx, accountID, e.ID, fields, exp, state, i.db, i.rPool)
+			vitems, err := filterWrapper(ctx, accountID, e.ID, fields, exp, state, page, i.db, i.rPool)
 			if err != nil {
 				return err
 			}
 			piper.Items[node.ID] = vitems
 		}
 	} else {
-		viewModelItems, err = filterWrapper(ctx, accountID, e.ID, fields, exp, state, i.db, i.rPool)
+		viewModelItems, err = filterWrapper(ctx, accountID, e.ID, fields, exp, state, page, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -157,7 +161,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		choices = choiceResponse(key, items)
 	} else {
 		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
-		result, err := segment(ctx, accountID, e.ID, exp, i.db, i.rPool)
+		result, err := segment(ctx, accountID, e.ID, exp, 0, i.db, i.rPool)
 		if err != nil {
 			return err
 		}

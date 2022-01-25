@@ -14,11 +14,12 @@ import (
 )
 
 type Piper struct {
-	Viable bool                       `json:"viable"`
-	Pipe   bool                       `json:"pipe"`
-	Flows  []flow.ViewModelFlow       `json:"flows"`
-	Nodes  []node.ViewModelNode       `json:"nodes"`
-	Items  map[string][]ViewModelItem `json:"items"`
+	Viable  bool                       `json:"viable"`
+	Pipe    bool                       `json:"pipe"`
+	NodeKey string                     `json:"node_key"`
+	Flows   []flow.ViewModelFlow       `json:"flows"`
+	Nodes   []node.ViewModelNode       `json:"nodes"`
+	Items   map[string][]ViewModelItem `json:"items"`
 }
 
 func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) string {
@@ -61,10 +62,10 @@ func pipeKanban(ctx context.Context, e entity.Entity, p *Piper, db *sqlx.DB) err
 				return err
 			}
 
-			viewModelNodes = make([]node.ViewModelNode, len(nodes))
-			for i, n := range nodes {
+			viewModelNodes = make([]node.ViewModelNode, 0)
+			for _, n := range nodes {
 				if n.Type == node.Stage {
-					viewModelNodes[i] = createViewModelNodeActor(n)
+					viewModelNodes = append(viewModelNodes, createViewModelNodeActor(n))
 				}
 			}
 

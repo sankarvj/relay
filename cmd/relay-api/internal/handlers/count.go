@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -29,7 +30,7 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	accountID := params["account_id"]
 	teamID := params["team_id"]
 	entityID := params["entity_id"]      //deal entity
-	destination := params["destination"] //entity.FixedEntityTask --> tasks
+	destination := params["destination"] //entity.FixedEntityTask --> tasks/nodes
 
 	log.Println("destination ", destination)
 
@@ -38,6 +39,24 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
+	switch destination {
+	case entity.FixedEntityTask:
+		res, err := taskCountPerItem(ctx, accountID, entityID, dstEntity, countBody, c.db, c.rPool)
+		if err != nil {
+			return err
+		}
+		return web.Respond(ctx, w, res, http.StatusOK)
+	case entity.FixedEntityNode:
+		res, err := itemCountPerStage(accountID, entityID, dstEntity, countBody, c.rPool)
+		if err != nil {
+			return err
+		}
+		return web.Respond(ctx, w, res, http.StatusOK)
+	}
+	return web.Respond(ctx, w, fmt.Sprintf("%s Not Implemented", destination), http.StatusNotImplemented)
+}
+
+func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, rPool *redis.Pool) (map[string]CountResponse, error) {
 	var statusField entity.Field
 	for _, f := range dstEntity.FieldsIgnoreError() {
 		if f.Who == entity.WhoStatus {
@@ -47,24 +66,35 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	conditionFieldsForAll := makeConditionFieldForAll(countBody.IDs, dstEntity, statusField)
-	doneID, _ := entity.DiscoverDoneStatusID(ctx, accountID, statusField.RefID, c.db)
+	doneID, _ := entity.DiscoverDoneStatusID(ctx, accountID, statusField.RefID, db)
 	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)
-	resultA, err := graphdb.GetCount(c.rPool, gSegmentA)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	allTasksCount := counts(resultA)
 
 	gSegmentD := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForDone)
-	resultD, err := graphdb.GetCount(c.rPool, gSegmentD)
+	resultD, err := graphdb.GetCount(rPool, gSegmentD, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	doneTasksCount := counts(resultD)
+	return countsResponse(allTasksCount, doneTasksCount), nil
+}
 
-	return web.Respond(ctx, w, countsResponse(allTasksCount, doneTasksCount), http.StatusOK)
+//itemCountPerStage
+func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, rPool *redis.Pool) (map[string]int, error) {
+	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
+
+	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForStage)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, false)
+	if err != nil {
+		return nil, err
+	}
+	return counts(resultA), nil
 }
 
 func counts(result *rg.QueryResult) map[string]int {
@@ -133,6 +163,23 @@ func makeConditionFieldForDone(ids []string, doneID string, dstEntity entity.Ent
 					DataType:   graphdb.TypeString,
 					Value:      doneID, // status verb as done
 				},
+			},
+		},
+	}
+	return conditionFields
+}
+
+func makeItemPerStage(dstEntity entity.Entity, ids []string) []graphdb.Field {
+	conditionFields := []graphdb.Field{
+		{
+			Value:    []interface{}{""}, //this makes the relation between src and dst entity
+			RefID:    dstEntity.ID,
+			DataType: graphdb.TypeReference,
+			Field: &graphdb.Field{ // this adds the condition to the relation over the task
+				Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode
+				Key:        "id",
+				DataType:   graphdb.TypeWist,
+				Value:      ids,
 			},
 		},
 	}

@@ -33,7 +33,9 @@ const (
 	FixedEntityEmails       = "emails"
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
-	FixedEntityTask         = "tasks"
+	//not fixed yet known entities
+	FixedEntityTask = "tasks"
+	FixedEntityNode = "nodes"
 )
 
 var (

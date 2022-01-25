@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -33,9 +34,9 @@ func ListFilterByState(ctx context.Context, entityID string, state int, db *sqlx
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND state = $2`
+	const q = `SELECT * FROM items where entity_id = $1 AND state = $2 LIMIT $3`
 
-	if err := db.SelectContext(ctx, &items, q, entityID, state); err != nil {
+	if err := db.SelectContext(ctx, &items, q, entityID, state, util.MaxLimt); err != nil {
 		return nil, errors.Wrap(err, "selecting items")
 	}
 

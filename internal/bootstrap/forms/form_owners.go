@@ -29,8 +29,9 @@ func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string
 		Key:         avatarFieldID,
 		Name:        "avatar",
 		DisplayName: "Avatar",
-		DomType:     entity.DomText,
+		DomType:     entity.DomImage,
 		DataType:    entity.TypeString,
+		Who:         entity.WhoAvatar,
 	}
 
 	emailFieldID := uuid.New().String()

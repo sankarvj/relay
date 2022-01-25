@@ -130,6 +130,15 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		},
 	}
 
+	avatarField := entity.Field{
+		Key:         "uuid-00-avatar",
+		Name:        "avatar",
+		DisplayName: "Avatar",
+		DataType:    entity.TypeString,
+		DomType:     entity.DomImage,
+		Who:         entity.WhoAvatar,
+	}
+
 	npsField := entity.Field{
 		Key:         schema.SeedFieldNPSKey,
 		Name:        "nps_score",
@@ -193,7 +202,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		},
 	}
 
-	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, statusField, ownerField}
+	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, statusField, avatarField, ownerField}
 }
 
 func ContactVals(name, email, statusID string) map[string]interface{} {

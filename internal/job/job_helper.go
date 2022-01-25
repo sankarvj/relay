@@ -65,6 +65,7 @@ func makeGraphFields(fields []entity.Field) []graphdb.Field {
 	for i, f := range fields {
 		gFields[i] = *makeGraphField(&f)
 	}
+
 	return gFields
 }
 
@@ -74,10 +75,11 @@ func makeGraphField(f *entity.Field) *graphdb.Field {
 	}
 
 	return &graphdb.Field{
-		Key:      f.Key,
-		Value:    f.Value,
-		DataType: graphdb.DType(f.DataType),
-		RefID:    f.RefID,
-		Field:    makeGraphField(f.Field),
+		Key:          f.Key,
+		Value:        f.Value,
+		DataType:     graphdb.DType(f.DataType),
+		RefID:        f.RefID,
+		Field:        makeGraphField(f.Field),
+		UnlinkOffset: f.UnlinkOffset,
 	}
 }

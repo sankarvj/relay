@@ -64,7 +64,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	}
 
 	//graph
-	err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
+	err = j.actOnRedisGraph(accountID, entityID, itemID, oldFields, valueAddedFields, "", "", rp)
 	if err != nil {
 		log.Println("EventItemUpdated: unexpected error occurred on actOnRedisGraph. error: ", err)
 		return
@@ -118,14 +118,14 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 
 	//insertion in to redis graph DB
 	if len(source) == 0 {
-		err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, "", "", rp)
+		err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, "", "", rp)
 		if err != nil {
 			log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
 			return
 		}
 	} else {
 		for baseEntityID, baseItemID := range source {
-			err = j.actOnRedisGraph(accountID, entityID, itemID, valueAddedFields, baseEntityID, baseItemID, rp)
+			err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, baseEntityID, baseItemID, rp)
 			if err != nil {
 				log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
 				return
@@ -230,7 +230,24 @@ func (j *Job) EventEmailReceived(db *sqlx.DB) {
 
 //act ons
 
-func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, valueAddedFields []entity.Field, baseEntityID, baseItemID string, rp *redis.Pool) error {
+func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, baseEntityID, baseItemID string, rp *redis.Pool) error {
+
+	if oldFields != nil { //use only during the update
+		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
+
+		for i := 0; i < len(valueAddedFields); i++ {
+			f := &valueAddedFields[i]
+			if _, ok := dirtyFields[f.Key]; ok {
+				if old, ok := oldFields[f.Key]; ok && f.Value != nil && (f.IsReference() || f.IsList()) {
+					if len(old.([]interface{})) > 0 {
+						f.UnlinkOffset = len(f.Value.([]interface{})) + 1
+						f.Value = append(f.Value.(([]interface{})), old.([]interface{})...)
+					}
+				}
+			}
+		}
+	}
+
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
 	if baseEntityID != "" && baseItemID != "" {
 		gpbNode = gpbNode.ParentEdge(baseEntityID, baseItemID)

@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 //GraphDB creates the base GraphNode with the fields of an item.
@@ -38,8 +40,8 @@ type GraphNode struct {
 	Fields       []Field
 	Relations    []GraphNode // list/map fields
 	ReturnNode   *rg.Node
-	IsReverse    bool
-	Unlink       bool
+	unlink       bool
+	isReverse    bool
 }
 
 func BuildGNode(graphName, label string, unlink bool) GraphNode {
@@ -48,7 +50,7 @@ func BuildGNode(graphName, label string, unlink bool) GraphNode {
 		Label:     label,
 		Fields:    []Field{},
 		Relations: make([]GraphNode, 0),
-		Unlink:    unlink,
+		unlink:    unlink,
 	}
 	return gn
 }
@@ -109,7 +111,7 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 }
 
 //GetResult fetches resultant node
-func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
@@ -128,6 +130,10 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	q := strings.Join(s, " ")
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
+	skipCount := pageNo * util.PageLimt
+	//pagination/sorting
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("SKIP %d LIMIT %d", skipCount, util.PageLimt))
+
 	result, err := graph.Query(q)
 	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
@@ -139,7 +145,7 @@ func GetResult(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 }
 
 //GetCount fetches count of destination node
-func GetCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+func GetCount(rPool *redis.Pool, gn GraphNode, swap bool) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
@@ -154,14 +160,13 @@ func GetCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
 	}
 
 	s = chainRelations(&gn, srcNode, s)
-
-	returnNode := srcNode
-	if gn.ReturnNode != nil { // By default count acts on the dstNode if exists
-		returnNode = gn.ReturnNode
-	}
-
 	q := strings.Join(s, " ")
-	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", returnNode.Alias, srcNode.Alias))
+
+	if swap {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", gn.ReturnNode.Alias, srcNode.Alias))
+	} else {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
+	}
 
 	result, err := graph.Query(q)
 	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
@@ -213,7 +218,7 @@ func chainRelations(gn *GraphNode, srcNode *rg.Node, s []string) []string {
 		}
 
 		edge := rg.EdgeNew(rn.RelationName, srcNode, dstNode, nil)
-		if rn.IsReverse {
+		if rn.isReverse {
 			edge = rg.EdgeNew(rn.RelationName, dstNode, srcNode, nil)
 		}
 
@@ -237,6 +242,7 @@ func chainRelations(gn *GraphNode, srcNode *rg.Node, s []string) []string {
 //TODO: For update, properties should include only the modified values including null for deleted keys.
 //TODO: handle deleted field/field values
 func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
+
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
@@ -251,7 +257,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, mps...)
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
-		//DEBUGGING LOG log.Println("internal.platform.graphdb upsert node query:", sq)
+		log.Println("internal.platform.graphdb upsert node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -265,7 +271,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ruQ)
 		sq := strings.Join(s, " ")
-		//DEBUGGING LOG log.Println("internal.platform.graphdb unlink node query:", sq)
+		log.Println("internal.platform.graphdb unlink node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -329,10 +335,10 @@ func updateRelation(gn GraphNode, srcNode *rg.Node) ([]string, []string) {
 	s, u := []string{}, []string{}
 	for _, rn := range gn.Relations {
 		dstNode := rn.rgNode()
-		if rn.Unlink {
+		if rn.unlink {
 			u = append(u, strings.Join(unlinkRelation(rn.RelationName, srcNode, dstNode), " "))
 		} else {
-			if rn.IsReverse {
+			if rn.isReverse {
 				s = append(s, mergeRevRelation(rn.RelationName, srcNode, dstNode)...)
 			} else {
 				s = append(s, mergeRelation(rn.RelationName, srcNode, dstNode)...)
@@ -440,7 +446,7 @@ func (gn GraphNode) onlyProps() map[string]interface{} {
 func (gn GraphNode) relateRefs(reverse bool) GraphNode {
 	gn.RelationName = "has"
 	if reverse { // reverse true on segmentations when segmenting contacts which are associated to deals. (deals entity has contacts but contacts entity do not have the relationship with deals)
-		gn.IsReverse = true
+		gn.isReverse = true
 	}
 	return gn
 }
@@ -516,11 +522,13 @@ func deleteEncode(e *rg.Edge, relationAlias string) string {
 }
 
 var operatorMap = map[string]string{
-	"eq": "=",
-	"gt": ">",
-	"lt": "<",
-	"lk": "STARTS WITH",
-	"in": "IN",
+	lexertoken.EqualSign:    "=",
+	lexertoken.NotEqualSign: "!=",
+	lexertoken.GTSign:       ">",
+	lexertoken.LTSign:       "<",
+	lexertoken.LikeSign:     "STARTS WITH",
+	lexertoken.INSign:       "IN",
+	lexertoken.NotINSign:    "NOT IN",
 }
 
 //TODO genralise and remove the if check

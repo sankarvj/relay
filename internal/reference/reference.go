@@ -127,7 +127,7 @@ func populateExistingItemIds(items []item.Item, fields []entity.Field) map[strin
 // 	return refIDs
 // }
 
-//updateChoices simply update single value to the choice if that itemID is populated already.
+//updateChoices simply update single value to the choice if that itemID if populated already.
 //updateChoices won't pull all the choices available to that reference entity in the list view.
 //updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
 //updateChoices should work differently in the detail use-case
@@ -144,20 +144,22 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			if err != nil {
 				log.Printf("unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", itemChoices(*f, refItems))
+			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
 		} else if e.Category == entity.CategoryEmail {
 			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
 				log.Printf("unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", itemChoices(*f, refItems))
+			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
 		} else { // useful for auto-complete while viewing
+
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
 				log.Printf("unexpected error occurred when retriving reference items inside updating choices error: %v.\n continuing...", err)
 				return
 			}
-			choicesMaker(f, "", itemChoices(*f, refItems))
+
+			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
 		}
 
 		//RETHINK

@@ -84,6 +84,7 @@ type ViewModelNode struct {
 	ActorID        string            `json:"actor_id"`
 	Type           int               `json:"type"`
 	Actuals        map[string]string `json:"actuals"`
+	Exp            string            `json:"exp"`
 }
 
 type ViewModelActiveNode struct {

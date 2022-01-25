@@ -190,21 +190,24 @@ func like(left, right Operand) bool {
 func same(leftList, rightList []interface{}) bool {
 	matched := false
 	if len(leftList) != len(rightList) {
-		return matched
-	}
-
-	for _, lv := range leftList {
-		matched = false
-		for _, rv := range rightList {
-			if compare(lv, rv) {
-				matched = true
-				break
+		return false
+	} else if len(leftList) == 0 && len(rightList) == 0 {
+		return true
+	} else {
+		for _, lv := range leftList { //sorted list optimise: use i,j looping instead of range
+			matched = false
+			for _, rv := range rightList { // optimise: move j wrt to i
+				if compare(lv, rv) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return false
 			}
 		}
-		if !matched {
-			return false
-		}
 	}
+
 	return matched
 }
 

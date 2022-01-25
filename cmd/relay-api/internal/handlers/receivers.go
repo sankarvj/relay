@@ -250,7 +250,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 	}
 
 	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
-	result, err := segment(ctx, accountID, e.ID, exp, db, rp)
+	result, err := segment(ctx, accountID, e.ID, exp, 0, db, rp)
 	if err != nil {
 		return []string{}, err
 	}

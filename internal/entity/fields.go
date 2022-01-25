@@ -47,6 +47,7 @@ const (
 	DomContact           = "CO" //type which as avatar,name,email and id
 	DomOwnCon            = "OC" //type which as avatar,name,email and id + two entities clubed
 	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
+	DomImage             = "IM"
 )
 
 const (
@@ -73,6 +74,7 @@ const (
 const (
 	MetaKeyDisplayGex  = "display_gex"
 	MetaKeyEmailGex    = "email_gex"
+	MetaKeyAvatarGex   = "avatar_gex"
 	MetaKeyHidden      = "hidden"
 	MetaKeyLayout      = "layout"
 	MetaKeyFlow        = "flow"
@@ -99,23 +101,25 @@ const (
 	WhoAssignee  = "assignee"
 	WhoOwner     = "owner"
 	WhoFollower  = "follower"
+	WhoAvatar    = "avatar"
 )
 
 // Field represents structural format of attributes in entity
 type Field struct {
-	Name        string            `json:"name" validate:"required"`
-	DisplayName string            `json:"display_name" validate:"required"`
-	Key         string            `json:"key" validate:"required"`
-	Value       interface{}       `json:"value" validate:"required"`
-	DataType    DType             `json:"data_type" validate:"required"`
-	DomType     Dom               `json:"dom_type" validate:"required"`
-	Field       *Field            `json:"field"`
-	Meta        map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
-	Choices     []Choice          `json:"choices"`
-	RefID       string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
-	RefType     string            `json:"ref_type"`
-	Dependent   *Dependent        `json:"dependent"` // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
-	Who         string            `json:"who"`       // who specifies the exact field function. such as:
+	Name         string            `json:"name" validate:"required"`
+	DisplayName  string            `json:"display_name" validate:"required"`
+	Key          string            `json:"key" validate:"required"`
+	Value        interface{}       `json:"value" validate:"required"`
+	DataType     DType             `json:"data_type" validate:"required"`
+	DomType      Dom               `json:"dom_type" validate:"required"`
+	Field        *Field            `json:"field"`
+	Meta         map[string]string `json:"meta"` //shall we move the extra prop to this meta or shall we keep it flat?
+	Choices      []Choice          `json:"choices"`
+	RefID        string            `json:"ref_id"` // this could be another entity_id for reference, pipeline_id for odd with pipleline/playbook
+	RefType      string            `json:"ref_type"`
+	Dependent    *Dependent        `json:"dependent"`     // if exists, then the results of this field should be filtered by the value of the parent_key specified over the reference_key on the refID specified
+	Who          string            `json:"who"`           // who specifies the exact field function. such as:
+	UnlinkOffset int               `json:"unlink_offset"` // useful for the graphDB
 }
 
 type FieldMeta struct {
@@ -193,6 +197,20 @@ func (e Entity) FilteredFields() ([]Field, error) {
 	}
 
 	return tmp, nil
+}
+
+func (e Entity) WhoFields() map[string]string {
+	tmp := make(map[string]string, 0)
+	fields, err := unmarshalFields(e.Fieldsb)
+	if err != nil {
+		return tmp
+	}
+
+	for _, f := range fields {
+		tmp[f.Who] = f.Key
+	}
+
+	return tmp
 }
 
 func (e Entity) Key(name string) string {
@@ -338,6 +356,14 @@ func (f Field) IsHidden() bool {
 		return val == "true"
 	}
 	return false
+}
+
+func FieldsMap(entityFields []Field) map[string]interface{} {
+	params := map[string]interface{}{}
+	for _, f := range entityFields {
+		params[f.Key] = f.Value
+	}
+	return params
 }
 
 func NamedKeysMap(entityFields []Field) map[string]string {

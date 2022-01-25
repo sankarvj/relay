@@ -358,7 +358,7 @@ func TestGraphRuleRunner(t *testing.T) {
 
 		t.Log("\twhen segmenting the updated item with relation to the graph")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment)
+			_, err := graphdb.GetResult(residPool, gSegment, 0)
 			if err != nil {
 				t.Fatalf("\t%s should fetch the item - %s", tests.Failed, err)
 			}
