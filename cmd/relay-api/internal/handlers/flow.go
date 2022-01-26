@@ -173,7 +173,7 @@ func (f *Flow) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	nf.ID = uuid.New().String()
 	nf.AccountID = params["account_id"]
 	nf.EntityID = params["entity_id"]
-	nf.Expression = makeExpression(nf.Queries)
+	nf.Expression, nf.Tokens = makeExpression(nf.Queries)
 
 	flow, err := flow.Create(ctx, f.db, nf, time.Now())
 	if err != nil {
@@ -191,7 +191,7 @@ func (f *Flow) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &uf); err != nil {
 		return errors.Wrap(err, "")
 	}
-	uf.Expression = makeExpression(uf.Queries)
+	uf.Expression, uf.Tokens = makeExpression(uf.Queries)
 	uf.AccountID = params["account_id"]
 	uf.EntityID = params["entity_id"]
 
@@ -223,6 +223,7 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Mode:        f.Mode,
 		Type:        f.Type,
 		Nodes:       nodes,
+		Tokens:      f.Tokens(),
 	}
 }
 
@@ -273,18 +274,22 @@ func nameOfType(typeOfNode int) string {
 	return ""
 }
 
-func makeExpression(queries []node.Query) string {
+func makeExpression(queries []node.Query) (string, map[string]interface{}) {
 	var expression string
+	tokens := make(map[string]interface{}, 0)
 	for i, q := range queries {
 		if q.Key == "" {
 			continue
+		}
+		if q.Value != q.Display {
+			tokens[q.Value] = q.Display
 		}
 		expression = fmt.Sprintf("%s {{%s.%s}} %s {%s}", expression, q.EntityID, q.Key, q.Operator, q.Value)
 		if i < len(queries)-1 {
 			expression = fmt.Sprintf("%s %s", expression, "&&")
 		}
 	}
-	return expression
+	return expression, tokens
 }
 
 func flowMode(fm string) int {

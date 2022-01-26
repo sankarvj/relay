@@ -35,6 +35,8 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 		return errors.Wrap(err, "")
 	}
 
+	expression, tokens := makeExpression(filterBo.Queries)
+
 	nf := flow.NewFlow{
 		ID:         uuid.New().String(),
 		AccountID:  params["account_id"],
@@ -42,7 +44,8 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 		Mode:       flow.FlowModeSegment,
 		Type:       flow.FlowTypeUnknown,
 		Condition:  flow.FlowConditionNil,
-		Expression: filterBo.Exp,
+		Expression: expression,
+		Tokens:     tokens,
 		Name:       filterBo.Name,
 	}
 
@@ -105,6 +108,6 @@ func segment(ctx context.Context, accountID, entityID string, exp string, page i
 }
 
 type FilterBody struct {
-	Name string `json:"name"`
-	Exp  string `json:"exp"`
+	Name    string       `json:"name"`
+	Queries []node.Query `json:"queries"`
 }

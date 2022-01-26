@@ -140,6 +140,7 @@ var migrations = []darwin.Migration{
 			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id     UUID REFERENCES entities ON DELETE CASCADE,
 			expression    TEXT,
+			tokenb        JSONB,
 			name    	  TEXT,
 			description   TEXT,
 			mode      	  INTEGER DEFAULT 0,

@@ -105,7 +105,7 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	if nn.ActorID == "-1" || nn.ActorID == "" {
 		nn.ActorID = node.NoActor
 	}
-	nn.Expression = makeExpression(nn.Queries)
+	nn.Expression, _ = makeExpression(nn.Queries)
 	return nn
 }
 

@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -74,6 +75,12 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Create")
 	defer span.End()
 
+	tokenBytes, err := json.Marshal(nf.Tokens)
+	if err != nil {
+		return Flow{}, errors.Wrap(err, "encode tokens to bytes")
+	}
+	tokenB := string(tokenBytes)
+
 	f := Flow{
 		ID:          nf.ID,
 		AccountID:   nf.AccountID,
@@ -81,6 +88,7 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 		Name:        nf.Name,
 		Description: nf.Description,
 		Expression:  nf.Expression,
+		Tokenb:      &tokenB,
 		Mode:        nf.Mode,
 		Type:        nf.Type,
 		Condition:   nf.Condition,
@@ -90,12 +98,12 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 	}
 
 	const q = `INSERT INTO flows
-		(flow_id, account_id, entity_id, name, description, expression, type, mode, condition, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		(flow_id, account_id, entity_id, name, description, expression, tokenb, type, mode, condition, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
-	_, err := db.ExecContext(
+	_, err = db.ExecContext(
 		ctx, q,
-		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Type, f.Mode, f.Condition, f.Status,
+		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Tokenb, f.Type, f.Mode, f.Condition, f.Status,
 		f.CreatedAt, f.UpdatedAt,
 	)
 	if err != nil {
@@ -127,6 +135,42 @@ func Update(ctx context.Context, db *sqlx.DB, uf NewFlow, now time.Time) (Flow, 
 	}
 
 	return Retrieve(ctx, uf.ID, db)
+}
+
+//Call this only for segments
+func (f *Flow) UpdateToken(ctx context.Context, db *sqlx.DB, tokens map[string]interface{}) error {
+	ctx, span := trace.StartSpan(ctx, "internal.item.UpdateMeta")
+	defer span.End()
+
+	existingTokens := f.Tokens()
+	for key, value := range tokens {
+		existingTokens[key] = value
+	}
+	input, err := json.Marshal(existingTokens)
+	if err != nil {
+		return errors.Wrap(err, "encode meta to input")
+	}
+	tokenb := string(input)
+	f.Tokenb = &tokenb
+
+	const q = `UPDATE flows SET
+		"toeknb" = $3 
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err = db.ExecContext(ctx, q, f.AccountID, f.ID,
+		f.Tokenb,
+	)
+	return err
+}
+
+func (f *Flow) Tokens() map[string]interface{} {
+	display := make(map[string]interface{}, 0)
+	if f.Tokenb == nil || *f.Tokenb == "" {
+		return display
+	}
+	if err := json.Unmarshal([]byte(*f.Tokenb), &display); err != nil {
+		log.Printf("unexpected error occurred when unmarshalling token for flow: %v error: %v\n", f.ID, err)
+	}
+	return display
 }
 
 // Retrieve gets the specified flow from the database.
@@ -182,7 +226,7 @@ func BulkRetrieve(ctx context.Context, accountID string, ids []interface{}, db *
 // DirtyFlows filters the flows which matches the field name in the rules with the modified fields during the update/insert
 // operation of the item on the entity.
 func DirtyFlows(ctx context.Context, flows []Flow, dirtyFields map[string]interface{}) []Flow {
-	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.LazyFlows")
+	_, span := trace.StartSpan(ctx, "internal.rule.flow.LazyFlows")
 	defer span.End()
 
 	if len(flows) == 0 {

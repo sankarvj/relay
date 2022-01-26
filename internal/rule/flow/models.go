@@ -38,6 +38,7 @@ type Flow struct {
 	AccountID   string    `db:"account_id" json:"account_id"`
 	EntityID    string    `db:"entity_id" json:"entity_id"`
 	Expression  string    `db:"expression" json:"expression"`
+	Tokenb      *string   `db:"tokenb" json:"tokenb"` //useful for displaying the values in the filterconditions.ts
 	Name        string    `db:"name" json:"name"`
 	Description string    `db:"description" json:"description"`
 	Mode        int       `db:"mode" json:"mode"`
@@ -60,29 +61,31 @@ type ActiveFlow struct {
 
 // ViewModelFlow represents the view model of flow
 type ViewModelFlow struct {
-	ID          string               `json:"id"`
-	EntityID    string               `json:"entity_id"`
-	Name        string               `json:"name"`
-	Description string               `json:"description"`
-	Expression  string               `json:"expression"`
-	Mode        int                  `json:"mode"`
-	Type        int                  `json:"type"`
-	Nodes       []node.ViewModelNode `json:"nodes"`
+	ID          string                 `json:"id"`
+	EntityID    string                 `json:"entity_id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Expression  string                 `json:"expression"`
+	Mode        int                    `json:"mode"`
+	Type        int                    `json:"type"`
+	Nodes       []node.ViewModelNode   `json:"nodes"`
+	Tokens      map[string]interface{} `json:"tokens"`
 }
 
 // NewFlow has information needed to creat new flow
 type NewFlow struct {
-	ID          string         `json:"id"`
-	AccountID   string         `json:"account_id"`
-	EntityID    string         `json:"entity_id"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Expression  string         `json:"expression"`
-	Mode        int            `json:"mode"`
-	Type        int            `json:"type"`
-	Condition   int            `json:"condition"`
-	Nodes       []node.NewNode `json:"nodes"`
-	Queries     []node.Query   `json:"queries"`
+	ID          string                 `json:"id"`
+	AccountID   string                 `json:"account_id"`
+	EntityID    string                 `json:"entity_id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Expression  string                 `json:"expression"`
+	Tokens      map[string]interface{} `json:"tokens"`
+	Mode        int                    `json:"mode"`
+	Type        int                    `json:"type"`
+	Condition   int                    `json:"condition"`
+	Nodes       []node.NewNode         `json:"nodes"`
+	Queries     []node.Query           `json:"queries"`
 }
 
 // ActiveNode represents the node which are currently active

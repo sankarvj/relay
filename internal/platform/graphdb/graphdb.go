@@ -192,6 +192,12 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 				f.WithAlias = fmt.Sprintf("%s.`%s`", alias, f.Key)
 			}
 
+			switch f.Expression {
+			case operatorMap[lexertoken.LikeSign]:
+				f.Value = strings.ToLower(f.Value.(string))
+				f.WithAlias = fmt.Sprintf("tolower(%s)", f.WithAlias)
+			}
+
 			switch f.DataType {
 			case TypeString:
 				wh = append(wh, fmt.Sprintf("%s %s \"%v\"", f.WithAlias, f.Expression, f.Value))
