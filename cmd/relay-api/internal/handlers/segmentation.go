@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -82,8 +83,11 @@ func filterItems(ctx context.Context, accountID, entityID string, exp string, st
 }
 
 func segment(ctx context.Context, accountID, entityID string, exp string, page int, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
+	log.Println("exp ----> ", exp)
 	conditionFields := make([]graphdb.Field, 0)
+
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
+	log.Printf("filter ----> %+v\n", filter)
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
@@ -104,6 +108,7 @@ func segment(ctx context.Context, accountID, entityID string, exp string, page i
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
+	log.Printf("gSegment--> %+v\n", gSegment)
 	return graphdb.GetResult(rp, gSegment, page)
 }
 

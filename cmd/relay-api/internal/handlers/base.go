@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -82,6 +84,15 @@ func pipeKanban(ctx context.Context, e entity.Entity, p *Piper, db *sqlx.DB) err
 
 func makeGraphField(f *entity.Field, value interface{}, expression string) graphdb.Field {
 	if f.IsReference() {
+		dataType := graphdb.TypeString
+		if strings.EqualFold(lexertoken.INSign, expression) || strings.EqualFold(lexertoken.NotINSign, expression) {
+			dataType = graphdb.TypeWist
+			switch v := value.(type) {
+			case string:
+				arr := strings.Split(strings.ReplaceAll(v, " ", ""), ",")
+				value = arr
+			}
+		}
 		return graphdb.Field{
 			Key:       f.Key,
 			Value:     []interface{}{""},
@@ -91,7 +102,7 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 			Field: &graphdb.Field{
 				Expression: graphdb.Operator(expression),
 				Key:        "id",
-				DataType:   graphdb.TypeString,
+				DataType:   dataType,
 				Value:      value,
 			},
 		}
@@ -105,6 +116,30 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 				Key:        "element",
 				DataType:   graphdb.DType(f.Field.DataType),
 			},
+		}
+	} else if f.IsDateTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis
+		var min string
+		var max string
+		dataType := graphdb.DType(f.DataType)
+		switch value := value.(type) {
+		case string:
+			parts := strings.Split(value, "-")
+			if len(parts) == 2 { // date range
+				dataType = graphdb.TypeDateRange
+				min = parts[0]
+				max = parts[1]
+			}
+		case int, int64:
+			dataType = graphdb.TypeDateTimeMillis
+		}
+
+		return graphdb.Field{
+			Expression: graphdb.Operator(expression),
+			Key:        f.Key,
+			DataType:   dataType,
+			Value:      value,
+			Min:        min,
+			Max:        max,
 		}
 	} else {
 		return graphdb.Field{

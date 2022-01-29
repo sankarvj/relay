@@ -238,10 +238,14 @@ func (r Ruler) startGraphingLexer(rule string) Ruler {
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
 			r.addLTCompareOperation()
+		case lexertoken.TokenONSign:
+			r.addONCompareOperation()
 		case lexertoken.TokenAFSign:
 			r.addAFCompareOperation()
 		case lexertoken.TokenBFSign:
 			r.addBFCompareOperation()
+		case lexertoken.TokenBWSign:
+			r.addBWCompareOperation()
 		case lexertoken.TokenINSign:
 			r.addINOperation(false)
 		case lexertoken.TokenNotINSign:
@@ -322,6 +326,13 @@ func (r *Ruler) addLKOperation() error {
 	return nil
 }
 
+func (r *Ruler) addONCompareOperation() error { // TODO. Implementation missing
+	r.constructRuleItem()
+	r.RuleItem.operation = between
+	r.RuleItem.operator = lexertoken.BWSign
+	return nil
+}
+
 func (r *Ruler) addAFCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = after
@@ -333,6 +344,13 @@ func (r *Ruler) addBFCompareOperation() error {
 	r.constructRuleItem()
 	r.RuleItem.operation = before
 	r.RuleItem.operator = lexertoken.BFSign
+	return nil
+}
+
+func (r *Ruler) addBWCompareOperation() error { // TODO. Implementation missing
+	r.constructRuleItem()
+	r.RuleItem.operation = between
+	r.RuleItem.operator = lexertoken.BWSign
 	return nil
 }
 

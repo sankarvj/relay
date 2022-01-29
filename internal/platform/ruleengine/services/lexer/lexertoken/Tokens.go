@@ -15,6 +15,8 @@ const (
 	LTSign            string = "lt"
 	BFSign            string = "bf"
 	AFSign            string = "af"
+	BWSign            string = "bw"
+	ONSign            string = "on"
 	INSign            string = "in"
 	NotINSign         string = "!in"
 	LikeSign          string = "lk"

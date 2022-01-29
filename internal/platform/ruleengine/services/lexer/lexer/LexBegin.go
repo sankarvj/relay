@@ -31,10 +31,14 @@ func LexBegin(lexer *Lexer) LexFn {
 		return LexGTSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LTSign) {
 		return LexLTSign
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.ONSign) {
+		return LexONSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.AFSign) {
 		return LexAFSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.BFSign) {
 		return LexBFSign
+	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.BWSign) {
+		return LexBWSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.LikeSign) {
 		return LexLKSign
 	} else if strings.HasPrefix(lexer.InputToEnd(), lexertoken.ANDOperation) {

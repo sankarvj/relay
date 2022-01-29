@@ -9,7 +9,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
@@ -64,14 +63,14 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			continue
 		}
 		switch f.DataType {
-		case entity.TypeList:
+		case TypeList:
 			for i, element := range f.Value.([]interface{}) {
 				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
 					MakeBaseGNode("", []Field{*f.Field}).relateLists()
 				gn.Relations = append(gn.Relations, rn)
 			}
-		case entity.TypeReference:
+		case TypeReference:
 			//TODO: handle cyclic looping
 			for i, rItemID := range f.Value.([]interface{}) {
 				rEntityID := f.RefID
@@ -79,6 +78,17 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
 				gn.Relations = append(gn.Relations, rn)
 			}
+		case TypeDateTime: // converts the time to timestamp during upsert for easy filtering.
+			if f.Value != nil && f.Value != "" {
+				t, err := util.ParseTime(f.Value.(string))
+				if err != nil {
+					log.Println("unexpected error occurred. Unbale to convert the datetime str. Please fix the value ", f.Value)
+				}
+				f.Value = util.GetMilliSecondsFloat(t)
+			}
+			gn.Fields = append(gn.Fields, f)
+		case TypeDateRange, TypeDateTimeMillis: // using the time range, time in millis formats calculated in the base.go -> makeGraphField
+			gn.Fields = append(gn.Fields, f)
 		default:
 			gn.Fields = append(gn.Fields, f)
 		}
@@ -196,6 +206,9 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 			case operatorMap[lexertoken.LikeSign]:
 				f.Value = strings.ToLower(f.Value.(string))
 				f.WithAlias = fmt.Sprintf("tolower(%s)", f.WithAlias)
+			case operatorMap[lexertoken.NotINSign]: //to support `WHERE NOT qvHZjOKbzM.`id` IN ["0ce398f5-8d85-4436-af0f-b884d18ecc5a"]`
+				f.Expression = lexertoken.INSign
+				f.WithAlias = fmt.Sprintf("NOT %s", f.WithAlias)
 			}
 
 			switch f.DataType {
@@ -203,6 +216,10 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 				wh = append(wh, fmt.Sprintf("%s %s \"%v\"", f.WithAlias, f.Expression, f.Value))
 			case TypeNumber:
 				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
+			case TypeDateTime: //datetime in graph DB always expects a range
+				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, f.Value))
+			case TypeDateRange:
+				wh = append(wh, fmt.Sprintf("%s %s %v AND %s %s %v", f.WithAlias, ">", f.Min, f.WithAlias, "<", f.Max))
 			case TypeWist:
 				wh = append(wh, fmt.Sprintf("%s %s %v", f.WithAlias, f.Expression, quoteSlice(f.Value.([]string))))
 			default:
@@ -294,6 +311,7 @@ func mergeProperties(gn GraphNode, srcNode *rg.Node) []string {
 	if len(props) > 0 {
 		p := make([]string, 0, len(props))
 		for k, v := range props {
+			log.Println("v ---> ", v)
 			p = append(p, fmt.Sprintf("%s.%s = %v", srcNode.Alias, k, rg.ToString(v)))
 		}
 		s = append(s, "SET")
@@ -535,6 +553,8 @@ var operatorMap = map[string]string{
 	lexertoken.LikeSign:     "STARTS WITH",
 	lexertoken.INSign:       "IN",
 	lexertoken.NotINSign:    "NOT IN",
+	lexertoken.BFSign:       "<",
+	lexertoken.AFSign:       ">",
 }
 
 //TODO genralise and remove the if check

@@ -140,6 +140,19 @@ func before(left, right Operand) bool {
 	return false
 }
 
+func between(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
+	c := cast(left, right, true)
+	if c.err != nil {
+		log.Println("unexpected error occurred when comparing operands for operator: bf and error:", c.err)
+		return false
+	}
+	switch c.leftDataType {
+	case TimeDT:
+		return c.leftTime.Before(c.rightTime)
+	}
+	return false
+}
+
 func in(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {

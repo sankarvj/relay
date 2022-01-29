@@ -59,6 +59,14 @@ func ConvertStrToInt(s string) int {
 	return 0
 }
 
+func ConvertStrToInt64(s string) int64 {
+	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return i
+	}
+	log.Printf("expected error occured when converting string %s to int64 on `ConvertStrToInt64` sending zero\n", s)
+	return 0
+}
+
 func ConvertIntfToStr(intf interface{}) string {
 	if intf != nil {
 		return intf.(string)

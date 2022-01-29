@@ -14,6 +14,10 @@ func GetMilliSeconds(now time.Time) int64 {
 	return now.UTC().Unix() * 1000
 }
 
+func GetMilliSecondsFloat(now time.Time) float64 { // use this until redis g adds support for int64 in ToString method
+	return float64(now.UTC().Unix() * 1000)
+}
+
 func IsValidTime(fromTime time.Time) bool {
 	return fromTime.Year() != 1
 }

@@ -12,12 +12,14 @@ type DType string
 //Mode for the entity spcifies certain entity specific characteristics
 //Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
-	TypeString    DType = "S"
-	TypeNumber          = "N"
-	TypeDataTime        = "T"
-	TypeList            = "L"
-	TypeReference       = "R"
-	TypeWist            = "W" // wist( implies: where clause list) is handled as `Where clause IN` instead of `Has/Contains` in list & reference
+	TypeString         DType = "S"
+	TypeNumber               = "N"
+	TypeDateTime             = "T"
+	TypeDateRange            = "TR"
+	TypeDateTimeMillis       = "TM"
+	TypeList                 = "L"
+	TypeReference            = "R"
+	TypeWist                 = "W" // wist( implies: where clause list) is handled as `Where clause IN` instead of `Has/Contains` in list & reference
 )
 
 const (
@@ -28,6 +30,8 @@ const (
 type Field struct {
 	Key          string      `json:"key" validate:"required"`
 	Value        interface{} `json:"value" validate:"required"`
+	Min          interface{} `json:"min"` //min date
+	Max          interface{} `json:"max"` //max date
 	DataType     DType       `json:"data_type" validate:"required"`
 	Expression   string      `json:"expression"`
 	RefID        string      `json:"ref_id"`
