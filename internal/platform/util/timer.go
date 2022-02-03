@@ -38,3 +38,8 @@ func FormatTimeGo(t time.Time) string {
 func FormatTimeGoogle(t time.Time) string {
 	return t.Format(dateTimeGoogleLayout)
 }
+
+func ConvertMillisToTime(millis string) time.Time {
+	millsL := ConvertStrToInt64(millis)
+	return time.Unix(0, millsL*int64(time.Millisecond))
+}

@@ -154,10 +154,14 @@ func (r Ruler) startExecutingLexer(rule string) Ruler {
 			r.addGTCompareOperation()
 		case lexertoken.TokenLTSign:
 			r.addLTCompareOperation()
+		case lexertoken.TokenONSign:
+			r.addONCompareOperation()
 		case lexertoken.TokenAFSign:
 			r.addAFCompareOperation()
 		case lexertoken.TokenBFSign:
 			r.addBFCompareOperation()
+		case lexertoken.TokenBWSign:
+			r.addBWCompareOperation()
 		case lexertoken.TokenINSign:
 			r.addINOperation(false)
 		case lexertoken.TokenNotINSign:

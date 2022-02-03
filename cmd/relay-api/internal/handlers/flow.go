@@ -257,6 +257,7 @@ func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {
 		EntityName:     n.EntityName.String,
 		EntityCategory: int(n.EntityCategory.Int32),
 		Type:           n.Type,
+		Tokens:         n.Tokens(),
 		Actuals:        n.ActualsMap(),
 	}
 }

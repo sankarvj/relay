@@ -58,12 +58,30 @@ func (n *Node) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	vn = makeNode(params["account_id"], params["flow_id"], vn)
 
 	//update currently supports only the name & expression
-	err := node.Update(ctx, n.db, params["account_id"], params["flow_id"], params["node_id"], vn.Name, vn.Expression, time.Now())
+	err := node.Update(ctx, n.db, params["account_id"], params["flow_id"], params["node_id"], vn.Name, vn.Expression, vn.Tokens, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Node Name Update: %+v", &vn)
 	}
 
 	return web.Respond(ctx, w, vn, http.StatusOK)
+}
+
+func (n *Node) Map(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Node.Map")
+	defer span.End()
+
+	var nmw node.NodeMapWrapper
+	if err := web.Decode(r, &nmw); err != nil {
+		return errors.Wrap(err, "")
+	}
+
+	//update currently supports only the name & expression
+	err := node.Map(ctx, n.db, params["account_id"], params["flow_id"], nmw.Mapper, time.Now())
+	if err != nil {
+		return errors.Wrapf(err, "Node Map Update: %+v", &nmw.Mapper)
+	}
+
+	return web.Respond(ctx, w, nmw.Mapper, http.StatusOK)
 }
 
 func (n *Node) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -105,7 +123,7 @@ func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	if nn.ActorID == "-1" || nn.ActorID == "" {
 		nn.ActorID = node.NoActor
 	}
-	nn.Expression, _ = makeExpression(nn.Queries)
+	nn.Expression, nn.Tokens = makeExpression(nn.Queries)
 	return nn
 }
 

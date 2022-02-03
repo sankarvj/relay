@@ -109,7 +109,7 @@ func NodeActorsList(ctx context.Context, flowID string, db *sqlx.DB) ([]NodeActo
 	defer span.End()
 
 	nodes := []NodeActor{}
-	const q = `select e.name as entity_name,e.category,n.node_id,n.flow_id,n.parent_node_id,n.actor_id,n.stage_id,n.name,n.description,n.weight,n.type,n.expression,n.actuals from nodes as n left join entities as e on n.actor_id = e.entity_id where n.flow_id = $1`
+	const q = `select e.name as entity_name,e.category,n.node_id,n.flow_id,n.parent_node_id,n.actor_id,n.stage_id,n.name,n.description,n.weight,n.type,n.expression,n.tokenb,n.actuals from nodes as n left join entities as e on n.actor_id = e.entity_id where n.flow_id = $1`
 
 	if err := db.SelectContext(ctx, &nodes, q, flowID); err != nil {
 		return nil, errors.Wrap(err, "selecting node actors")
@@ -128,6 +128,11 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 		return Node{}, errors.Wrap(err, "encode actuals to bytes")
 	}
 
+	tokens, err := MapToJSONB(nn.Tokens)
+	if err != nil {
+		return Node{}, errors.Wrap(err, "encode tokens to bytes")
+	}
+
 	n := Node{
 		ID:           nn.ID,
 		ParentNodeID: nn.ParentNodeID,
@@ -140,19 +145,20 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 		Weight:       nn.Weight,
 		Type:         nn.Type,
 		Expression:   nn.Expression,
+		Tokenb:       tokens,
 		Actuals:      actuals,
 		CreatedAt:    now.UTC(),
 		UpdatedAt:    now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO nodes
-		(node_id, parent_node_id, account_id, flow_id, actor_id, stage_id, name, description, weight, type, expression, actuals, 
+		(node_id, parent_node_id, account_id, flow_id, actor_id, stage_id, name, description, weight, type, expression, tokenb, actuals, 
 		created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.StageID, n.Name, n.Description, n.Weight, n.Type, n.Expression, n.Actuals,
+		n.ID, n.ParentNodeID, n.AccountID, n.FlowID, n.ActorID, n.StageID, n.Name, n.Description, n.Weight, n.Type, n.Expression, n.Tokenb, n.Actuals,
 		n.CreatedAt, n.UpdatedAt,
 	)
 	if err != nil {
@@ -163,21 +169,45 @@ func Create(ctx context.Context, db *sqlx.DB, nn NewNode, now time.Time) (Node, 
 }
 
 // Update replaces just the name all other fields are not updatable currenlty.
-func Update(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, name, expression string, now time.Time) error {
+func Update(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, name, expression string, tokens map[string]interface{}, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.node.Update")
 	defer span.End()
 	updatedAt := now.Unix()
 
+	tokenb, err := MapToJSONB(tokens)
+	if err != nil {
+		return errors.Wrap(err, "encode tokens to bytes")
+	}
+
 	const q = `UPDATE nodes SET
 		"name" = $4,
 		"expression" = $5,
-		"updated_at" = $6
+		"tokenb" = $6,
+		"updated_at" = $7
 		WHERE account_id = $1 AND flow_id = $2 AND node_id = $3`
-	_, err := db.ExecContext(ctx, q, accountID, flowID, nodeID,
-		name, expression, updatedAt,
+	_, err = db.ExecContext(ctx, q, accountID, flowID, nodeID,
+		name, expression, tokenb, updatedAt,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating node")
+	}
+
+	return nil
+}
+
+func Map(ctx context.Context, db *sqlx.DB, accountID, flowID string, nm map[string]string, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.node.Map")
+	defer span.End()
+
+	//TODO do batch update by directly querring the psql instead of ORM way
+	for k, v := range nm {
+		const q = `UPDATE nodes SET
+		"parent_node_id" = $4 
+		WHERE account_id = $1 AND flow_id = $2 AND node_id = $3`
+		_, err := db.ExecContext(ctx, q, accountID, flowID, k, v)
+		if err != nil {
+			return errors.Wrap(err, "updating node")
+		}
 	}
 
 	return nil
@@ -321,4 +351,15 @@ func (n NodeActor) ActualsMap() map[string]string {
 
 	}
 	return actualsMap
+}
+
+func (n NodeActor) Tokens() map[string]interface{} {
+	display := make(map[string]interface{}, 0)
+	if n.Tokenb == "" {
+		return display
+	}
+	if err := json.Unmarshal([]byte(n.Tokenb), &display); err != nil {
+		log.Printf("unexpected error occurred when unmarshalling token for flow: %v error: %v\n", n.ID, err)
+	}
+	return display
 }

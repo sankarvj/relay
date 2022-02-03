@@ -117,3 +117,17 @@ func AddExpression(exTexp string, newExp string) string {
 	}
 	return fmt.Sprintf("%s && %s", exTexp, newExp)
 }
+
+func Similar(a, b []interface{}) []interface{} {
+	mb := make(map[interface{}]bool, len(b))
+	for _, x := range b {
+		mb[x] = true
+	}
+	var same []interface{}
+	for _, x := range a {
+		if _, found := mb[x]; found {
+			same = append(same, x)
+		}
+	}
+	return same
+}

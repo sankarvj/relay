@@ -9,6 +9,7 @@ import (
 	"time"
 
 	version "github.com/mcuadros/go-version"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 //OperandDT defines the datatype of operand
@@ -141,14 +142,29 @@ func before(left, right Operand) bool {
 }
 
 func between(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
-	c := cast(left, right, true)
+	c := cast(left, right, false)
 	if c.err != nil {
-		log.Println("unexpected error occurred when comparing operands for operator: bf and error:", c.err)
+		log.Println("unexpected error occurred when comparing operands for operator: bw and error:", c.err)
 		return false
 	}
+
+	min := time.Now()
+	max := time.Now()
+	switch c.rightDataType {
+	case VersionDT:
+		parts := strings.Split(c.rightString, "-")
+		if len(parts) == 2 {
+			min = util.ConvertMillisToTime(parts[0])
+			max = util.ConvertMillisToTime(parts[1])
+		}
+	}
+
+	log.Println("c.min ", min)
+	log.Println("c.max ", max)
+
 	switch c.leftDataType {
 	case TimeDT:
-		return c.leftTime.Before(c.rightTime)
+		return c.leftTime.After(min) && c.leftTime.Before(max)
 	}
 	return false
 }

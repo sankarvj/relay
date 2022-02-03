@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -58,45 +59,49 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 	return web.Respond(ctx, w, createViewModelFlow(f, []node.ViewModelNode{}), http.StatusCreated)
 }
 
-func filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, exp string, state int, page int, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, error) {
-	items, err := filterItems(ctx, accountID, entityID, exp, state, page, db, rp)
+func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, state int, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
+	itemResultBody, err := s.filterItems(ctx, accountID, entityID, state, db, rp)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	viewModelItems := itemResponse(items)
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, items, map[string]interface{}{}, db, job.NewJabEngine())
-	return viewModelItems, nil
+	viewModelItems := itemResponse(itemResultBody.Items)
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, map[string]interface{}{}, db, job.NewJabEngine())
+	return viewModelItems, itemResultBody.TotalCount, nil
 }
 
-func filterItems(ctx context.Context, accountID, entityID string, exp string, state int, page int, db *sqlx.DB, rp *redis.Pool) ([]item.Item, error) {
+func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, state int, db *sqlx.DB, rp *redis.Pool) (*ItemResultBody, error) {
 
-	result, err := segment(ctx, accountID, entityID, exp, page, db, rp)
+	segmentResult, countResult, err := s.segment(ctx, accountID, entityID, db, rp)
 	if err != nil {
 		return nil, err
 	}
-	items, err := itemsResp(ctx, db, accountID, result)
+	items, err := itemsResp(ctx, db, accountID, segmentResult)
 	if err != nil {
 		return nil, err
 	}
+	var totalCount map[string]int
+	if s.CountEnabled() {
+		totalCount = counts(countResult)
+	}
 
-	return items, nil
+	return &ItemResultBody{Items: items, TotalCount: totalCount}, nil
 }
 
-func segment(ctx context.Context, accountID, entityID string, exp string, page int, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, error) {
-	log.Println("exp ----> ", exp)
+func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, *rg.QueryResult, error) {
+	log.Printf("segmenter %+v\n ----> ", s)
 	conditionFields := make([]graphdb.Field, 0)
 
-	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, exp)
+	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, s.exp)
 	log.Printf("filter ----> %+v\n", filter)
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		fields, err := e.FilteredFields()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		for _, f := range fields {
@@ -108,11 +113,98 @@ func segment(ctx context.Context, accountID, entityID string, exp string, page i
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
+
 	log.Printf("gSegment--> %+v\n", gSegment)
-	return graphdb.GetResult(rp, gSegment, page)
+	return listWithCountAsync(rp, gSegment, s.page, s.sortby, s.direction, s.CountEnabled())
+}
+
+func listWithCountAsync(rp *redis.Pool, gSegment graphdb.GraphNode, page int, sortby, direction string, doCount bool) (*rg.QueryResult, *rg.QueryResult, error) {
+	//going async way
+	loopCount := 1
+	type dbResult struct {
+		result *rg.QueryResult
+		_type  string
+	}
+
+	resc, errc := make(chan dbResult), make(chan error)
+	go func(rPool *redis.Pool, gSegment graphdb.GraphNode, pageNo int, sortBy, direction string) {
+		result, err := graphdb.GetResult(rp, gSegment, page, sortby, direction)
+		if err != nil {
+			errc <- err
+			return
+		}
+		resc <- dbResult{result: result, _type: "segment"}
+	}(rp, gSegment, page, sortby, direction)
+	if doCount {
+		loopCount = 2
+		go func(rPool *redis.Pool, gCount graphdb.GraphNode) {
+			result, err := graphdb.GetCount(rPool, gCount, false, false)
+			if err != nil {
+				errc <- err
+				return
+			}
+			resc <- dbResult{result: result, _type: "count"}
+		}(rp, gSegment)
+	}
+
+	var err error
+	var segmentResult *rg.QueryResult
+	var countResult *rg.QueryResult
+
+	for i := 0; i < loopCount; i++ {
+		select {
+		case dbResult := <-resc:
+			switch dbResult._type {
+			case "segment":
+				segmentResult = dbResult.result
+			case "count":
+				countResult = dbResult.result
+			}
+		case err := <-errc:
+			fmt.Println(err)
+		}
+	}
+	return segmentResult, countResult, err
+}
+
+type ItemResultBody struct {
+	Items      []item.Item    `json:"items"`
+	TotalCount map[string]int `json:"total_count"`
 }
 
 type FilterBody struct {
 	Name    string       `json:"name"`
 	Queries []node.Query `json:"queries"`
+}
+
+type Segmenter struct {
+	exp       string
+	sortby    string
+	direction string
+	page      int
+	doCount   bool
+}
+
+func NewSegmenter(exp string) *Segmenter {
+	return &Segmenter{exp: exp}
+}
+
+func (s *Segmenter) AddSortLogic(sortby, direction string) *Segmenter {
+	s.sortby = sortby
+	s.direction = direction
+	return s
+}
+
+func (s *Segmenter) AddPage(page int) *Segmenter {
+	s.page = page
+	return s
+}
+
+func (s *Segmenter) AddCount() *Segmenter {
+	s.doCount = true
+	return s
+}
+
+func (s *Segmenter) CountEnabled() bool {
+	return s.doCount && s.page == 0
 }

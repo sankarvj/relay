@@ -50,10 +50,10 @@ func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemI
 	meetingID := uuid.New().String()
 	meeting := &integration.Meeting{
 		ID:          meetingID,
-		Summary:     namedFieldsObj["summary"].Value.(string),
-		Description: namedFieldsObj["cal_title"].Value.(string),
-		StartTime:   namedFieldsObj["start_time"].Value.(string),
-		EndTime:     namedFieldsObj["end_time"].Value.(string),
+		Summary:     entityFieldVal(namedFieldsObj["summary"]),
+		Description: entityFieldVal(namedFieldsObj["start_time"]),
+		StartTime:   entityFieldVal(namedFieldsObj["start_time"]),
+		EndTime:     entityFieldVal(namedFieldsObj["end_time"]),
 		Attendees:   namedFieldsObj["attendess"].ChoicesValues(),
 	}
 
@@ -119,4 +119,11 @@ func calendarEntityItem(ctx context.Context, accountID, teamID string, db *sqlx.
 		return calendarEntityItem, nil, err
 	}
 	return calendarEntityItem, updateFunc, nil
+}
+
+func entityFieldVal(f entity.Field) string {
+	if f.Value != nil {
+		return f.Value.(string)
+	}
+	return ""
 }

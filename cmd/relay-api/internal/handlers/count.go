@@ -70,14 +70,14 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, true, true)
 	if err != nil {
 		return nil, err
 	}
 	allTasksCount := counts(resultA)
 
 	gSegmentD := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForDone)
-	resultD, err := graphdb.GetCount(rPool, gSegmentD, true)
+	resultD, err := graphdb.GetCount(rPool, gSegmentD, true, true)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, coun
 	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForStage)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, false)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, false, true)
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +101,13 @@ func counts(result *rg.QueryResult) map[string]int {
 	responseArr := make(map[string]int, 0)
 	for result.Next() { // Next returns true until the iterator is depleted.
 		// Get the current Record.
+
 		r := result.Record()
-		id := r.GetByIndex(1).(string)
+
+		id := "total_count"
+		if len(r.Keys()) > 1 {
+			id = r.GetByIndex(1).(string)
+		}
 		count := r.GetByIndex(0).(int)
 		responseArr[id] = count
 	}
@@ -175,7 +180,7 @@ func makeItemPerStage(dstEntity entity.Entity, ids []string) []graphdb.Field {
 			Value:    []interface{}{""}, //this makes the relation between src and dst entity
 			RefID:    dstEntity.ID,
 			DataType: graphdb.TypeReference,
-			Field: &graphdb.Field{ // this adds the condition to the relation over the task
+			Field: &graphdb.Field{ // this adds the condition to the relation over the dst entity
 				Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode
 				Key:        "id",
 				DataType:   graphdb.TypeWist,

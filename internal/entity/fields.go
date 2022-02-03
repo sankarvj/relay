@@ -76,6 +76,8 @@ const (
 	MetaKeyEmailGex    = "email_gex"
 	MetaKeyAvatarGex   = "avatar_gex"
 	MetaKeyHidden      = "hidden"
+	MetaKeyUnique      = "unique"
+	MetaKeyRequired    = "required"
 	MetaKeyLayout      = "layout"
 	MetaKeyFlow        = "flow"
 	MetaKeyNode        = "node"
@@ -146,6 +148,7 @@ type Choice struct {
 	BaseChoice   bool        `json:"base_choice"`
 	Default      bool        `json:"default"`
 	Verb         string      `json:"verb"` // are we still using this??
+	Avatar       interface{} `json:"avatar"`
 }
 
 type Dependent struct {
@@ -197,6 +200,30 @@ func (e Entity) FilteredFields() ([]Field, error) {
 	}
 
 	return tmp, nil
+}
+
+func (e Entity) UniqueFields() []Field {
+	tmp := make([]Field, 0)
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.IsUnique() {
+			tmp = append(tmp, f)
+		}
+	}
+
+	return tmp
+}
+
+func (e Entity) RequiredFields() []Field {
+	tmp := make([]Field, 0)
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.IsRequired() {
+			tmp = append(tmp, f)
+		}
+	}
+
+	return tmp
 }
 
 func (e Entity) WhoFields() map[string]string {
@@ -353,6 +380,20 @@ func (f Field) IsTitleLayout() bool {
 
 func (f Field) IsHidden() bool {
 	if val, ok := f.Meta[MetaKeyHidden]; ok {
+		return val == "true"
+	}
+	return false
+}
+
+func (f Field) IsUnique() bool {
+	if val, ok := f.Meta[MetaKeyUnique]; ok {
+		return val == "true"
+	}
+	return false
+}
+
+func (f Field) IsRequired() bool {
+	if val, ok := f.Meta[MetaKeyRequired]; ok {
 		return val == "true"
 	}
 	return false

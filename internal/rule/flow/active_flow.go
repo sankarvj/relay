@@ -121,7 +121,7 @@ func (af ActiveFlow) entryFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redi
 func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
 	_, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger.exitFlowTrigger")
 	defer span.End()
-	log.Printf("internal.rule.flow.active_flow  triggering exitflow\n")
+	log.Printf("internal.rule.flow.active_flow  triggering exitflow %+v\n", af)
 	if err := af.disableAF(ctx, db); err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (af ActiveFlow) stopEntryTriggerFlow(ftype int) bool {
 }
 
 func (af ActiveFlow) stopExitTriggerFlow(ftype int) bool {
-	return (ftype == FlowTypeLeavesSegment) && (af.Life == 0 && !af.IsActive)
+	return ((ftype == FlowTypeLeavesSegment) && (af.Life == 0 && !af.IsActive))
 }
 
 func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {

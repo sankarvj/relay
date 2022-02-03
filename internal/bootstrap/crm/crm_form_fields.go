@@ -106,7 +106,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyUnique: "true"},
 	}
 
 	emailField := entity.Field{
@@ -194,7 +194,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		RefID:       ownerEntityID,
 		RefType:     entity.RefTypeStraight,
 		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

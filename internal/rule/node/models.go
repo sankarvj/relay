@@ -38,6 +38,7 @@ type Node struct {
 	Weight       int       `db:"weight" json:"weight"`
 	Type         int       `db:"type" json:"type"`
 	Expression   string    `db:"expression" json:"expression"`
+	Tokenb       string    `db:"tokenb" json:"tokenb"`   //useful for displaying the values in the filterconditions.ts
 	Variables    string    `db:"-" json:"variables"`     //Variables is to evaluate the expression during the runtime
 	Meta         Meta      `db:"-" json:"meta"`          //Meta used to pass meta data to queues during specific node run time
 	Actuals      string    `db:"actuals" json:"actuals"` //Actuals used to get the actual item of the actionable entity - ActorID's item
@@ -66,25 +67,27 @@ type NodeActor struct {
 	EntityCategory sql.NullInt32  `db:"category" json:"category"`
 	Type           int            `db:"type" json:"type"`
 	Expression     string         `db:"expression" json:"expression"`
+	Tokenb         string         `db:"tokenb" json:"tokenb"` //useful for displaying the values in the filterconditions.ts
 	Actuals        string         `db:"actuals" json:"actuals"`
 }
 
 // ViewModelNode represents the view model of node
 type ViewModelNode struct {
-	ID             string            `json:"id"`
-	FlowID         string            `json:"flow_id"`
-	StageID        string            `json:"stage_id"`
-	Name           string            `json:"name"`
-	Description    string            `json:"description"`
-	Weight         int               `json:"weight"`
-	Expression     string            `json:"expression"`
-	ParentNodeID   string            `json:"parent_node_id"`
-	EntityName     string            `json:"entity_name"`
-	EntityCategory int               `json:"entity_category"`
-	ActorID        string            `json:"actor_id"`
-	Type           int               `json:"type"`
-	Actuals        map[string]string `json:"actuals"`
-	Exp            string            `json:"exp"`
+	ID             string                 `json:"id"`
+	FlowID         string                 `json:"flow_id"`
+	StageID        string                 `json:"stage_id"`
+	Name           string                 `json:"name"`
+	Description    string                 `json:"description"`
+	Weight         int                    `json:"weight"`
+	Expression     string                 `json:"expression"`
+	ParentNodeID   string                 `json:"parent_node_id"`
+	EntityName     string                 `json:"entity_name"`
+	EntityCategory int                    `json:"entity_category"`
+	ActorID        string                 `json:"actor_id"`
+	Type           int                    `json:"type"`
+	Actuals        map[string]string      `json:"actuals"`
+	Exp            string                 `json:"exp"`
+	Tokens         map[string]interface{} `json:"tokens"`
 }
 
 type ViewModelActiveNode struct {
@@ -95,19 +98,20 @@ type ViewModelActiveNode struct {
 
 // NewNode has information needed to creat new node
 type NewNode struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Description  string            `json:"description"`
-	Weight       int               `json:"weight"`
-	ParentNodeID string            `json:"parent_node_id"`
-	AccountID    string            `json:"account_id"`
-	FlowID       string            `json:"flow_id"`
-	ActorID      string            `json:"actor_id"`
-	StageID      string            `json:"stage_id"`
-	Type         int               `json:"type" validate:"required"`
-	Expression   string            `json:"expression"`
-	Actuals      map[string]string `json:"actuals"`
-	Queries      []Query           `json:"queries"`
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Weight       int                    `json:"weight"`
+	ParentNodeID string                 `json:"parent_node_id"`
+	AccountID    string                 `json:"account_id"`
+	FlowID       string                 `json:"flow_id"`
+	ActorID      string                 `json:"actor_id"`
+	StageID      string                 `json:"stage_id"`
+	Type         int                    `json:"type" validate:"required"`
+	Expression   string                 `json:"expression"`
+	Tokens       map[string]interface{} `json:"tokens"`
+	Actuals      map[string]string      `json:"actuals"`
+	Queries      []Query                `json:"queries"`
 }
 
 type Query struct {
@@ -116,6 +120,10 @@ type Query struct {
 	Value    string `json:"value"`
 	Operator string `json:"operator"`
 	Display  string `json:"display"`
+}
+
+type NodeMapWrapper struct {
+	Mapper map[string]string `json:"mapper"`
 }
 
 // VariablesMap parses variables jsonb to map

@@ -55,7 +55,6 @@ func Decode(r *http.Request, val interface{}) error {
 	}
 
 	if err := validate.Struct(val); err != nil {
-
 		// Use a type assertion to get the real error value.
 		verrors, ok := err.(validator.ValidationErrors)
 		if !ok {

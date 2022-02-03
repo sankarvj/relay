@@ -224,6 +224,7 @@ func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 				DisplayValue: choicer.Name,
 				Value:        choicer.Value,
 				Verb:         util.ConvertIntfToStr(choicer.Verb),
+				Avatar:       choicer.Avatar,
 			})
 		}
 	}

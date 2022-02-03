@@ -171,6 +171,7 @@ var migrations = []darwin.Migration{
 			weight          INTEGER DEFAULT 0,
 			type			INTEGER DEFAULT 0,
 			expression    	TEXT,
+			tokenb          JSONB,
 			actuals         JSONB,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,

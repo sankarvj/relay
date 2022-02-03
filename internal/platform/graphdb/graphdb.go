@@ -121,7 +121,7 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 }
 
 //GetResult fetches resultant node
-func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int) (*rg.QueryResult, error) {
+func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction string) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
@@ -140,8 +140,12 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int) (*rg.QueryResult, er
 	q := strings.Join(s, " ")
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
 
+	//sorting
+	if sortBy != "" && direction != "" {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("ORDER BY %s.`%s` %s", srcNode.Alias, sortBy, direction))
+	}
 	skipCount := pageNo * util.PageLimt
-	//pagination/sorting
+	//pagination
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("SKIP %d LIMIT %d", skipCount, util.PageLimt))
 
 	result, err := graph.Query(q)
@@ -155,7 +159,7 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int) (*rg.QueryResult, er
 }
 
 //GetCount fetches count of destination node
-func GetCount(rPool *redis.Pool, gn GraphNode, swap bool) (*rg.QueryResult, error) {
+func GetCount(rPool *redis.Pool, gn GraphNode, swap, groupById bool) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
@@ -173,9 +177,17 @@ func GetCount(rPool *redis.Pool, gn GraphNode, swap bool) (*rg.QueryResult, erro
 	q := strings.Join(s, " ")
 
 	if swap {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", gn.ReturnNode.Alias, srcNode.Alias))
+		if groupById {
+			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
+		} else {
+			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", srcNode.Alias))
+		}
 	} else {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
+		if groupById {
+			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
+		} else {
+			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", srcNode.Alias))
+		}
 	}
 
 	result, err := graph.Query(q)

@@ -47,6 +47,8 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
 	ls := r.URL.Query().Get("ls")
+	sortby := r.URL.Query().Get("sortby")
+	direction := r.URL.Query().Get("direction")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
@@ -68,6 +70,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	var viewModelItems []ViewModelItem
+	var countMap map[string]int
 	piper := Piper{Viable: e.FlowField() != nil}
 	if ls == entity.MetaRenderPipe && page == 0 {
 		err := pipeKanban(ctx, e, &piper, i.db)
@@ -81,14 +84,22 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
 			exp = util.AddExpression(exp, newExp)
-			vitems, err := filterWrapper(ctx, accountID, e.ID, fields, exp, state, page, i.db, i.rPool)
+			//TODO: segment call doesn't need the count. But it is executing count query in the call. Shall we stop it?
+			vitems, _, err := NewSegmenter(exp).
+				AddPage(page).
+				AddSortLogic(sortby, direction).
+				filterWrapper(ctx, accountID, e.ID, fields, state, i.db, i.rPool)
 			if err != nil {
 				return err
 			}
 			piper.Items[node.ID] = vitems
 		}
 	} else {
-		viewModelItems, err = filterWrapper(ctx, accountID, e.ID, fields, exp, state, page, i.db, i.rPool)
+		viewModelItems, countMap, err = NewSegmenter(exp).
+			AddPage(page).
+			AddSortLogic(sortby, direction).
+			AddCount().
+			filterWrapper(ctx, accountID, e.ID, fields, state, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -100,12 +111,14 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
 		Piper    Piper                  `json:"piper"`
+		CountMap map[string]int         `json:"count_map"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
 		Fields:   fields,
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
+		CountMap: countMap,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
@@ -158,18 +171,21 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return err
 		}
-		choices = choiceResponse(key, items)
+		whoMap := e.WhoFields()
+		choices = choiceResponse(key, items, whoMap)
 	} else {
 		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
-		result, err := segment(ctx, accountID, e.ID, exp, 0, i.db, i.rPool)
+		result, _, err := NewSegmenter(exp).
+			segment(ctx, accountID, e.ID, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
+		whoMap := e.WhoFields()
 		items, err := itemsResp(ctx, i.db, accountID, result)
 		if err != nil {
 			return err
 		}
-		choices = choiceResponse(key, items)
+		choices = choiceResponse(key, items, whoMap)
 
 	}
 
@@ -227,6 +243,12 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	if ni.GenieID != nil && *ni.GenieID == "" {
 		ni.GenieID = nil
+	}
+
+	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.rPool)
+	log.Println("errorMap ", errorMap)
+	if errorMap != nil {
+		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
 	it, err := createAndPublish(ctx, ni, i.db, i.rPool)
@@ -342,16 +364,28 @@ func itemResponse(items []item.Item) []ViewModelItem {
 	return viewModelItems
 }
 
-func choiceResponse(key string, items []item.Item) []entity.Choice {
+func choiceResponse(key string, items []item.Item, whoMap map[string]string) []entity.Choice {
 	choices := make([]entity.Choice, 0)
 	for _, item := range items {
+		//display
 		displayV := item.Fields()[key]
 		if displayV == nil {
 			displayV = item.Name
 		}
+
+		//avatar
+		var avatar string
+		if ava, ok := whoMap[entity.WhoAvatar]; ok {
+			if aval, ok := item.Fields()[ava]; ok {
+				avatar = aval.(string)
+			}
+
+		}
+
 		choice := entity.Choice{
 			ID:           item.ID,
 			DisplayValue: displayV,
+			Avatar:       avatar,
 		}
 		choices = append(choices, choice)
 	}
@@ -369,7 +403,7 @@ type ViewModelItem struct {
 	Fields   map[string]interface{} `json:"fields"`
 }
 
-//AEI accountID, entityID, itemID
+// AEI accountID, entityID, itemID
 // entityID alone has a twist
 // Need to bring the same logic in the middleware too.
 func takeAEI(ctx context.Context, params map[string]string, db *sqlx.DB) (string, string, string) {

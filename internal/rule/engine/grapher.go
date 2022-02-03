@@ -25,7 +25,7 @@ func gSegmentJson(rp *redis.Pool, expression string, input map[string]interface{
 	}
 	if itemID, ok := input[gSegment.Label]; ok {
 		gSegment = gSegment.AddIDCondition(itemID)
-		qr, err := graphdb.GetResult(rp, gSegment, 0)
+		qr, err := graphdb.GetResult(rp, gSegment, 0, "", "")
 
 		if err != nil {
 			return nil, err

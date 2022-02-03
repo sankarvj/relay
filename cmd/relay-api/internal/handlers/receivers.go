@@ -250,7 +250,8 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 	}
 
 	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
-	result, err := segment(ctx, accountID, e.ID, exp, 0, db, rp)
+	//TODO: segment call doesn't need the count. But it is executing count query in the call. Shall we stop it?
+	result, _, err := NewSegmenter(exp).segment(ctx, accountID, e.ID, db, rp)
 	if err != nil {
 		return []string{}, err
 	}

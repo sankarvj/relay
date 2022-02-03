@@ -152,12 +152,13 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 }
 
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.QueryResult) ([]item.Item, error) {
-	items, err := item.BulkRetrieveItems(ctx, accountID, itemIDs(result), db)
+	itemIDs := itemIDs(result)
+	items, err := item.BulkRetrieveItems(ctx, accountID, itemIDs, db)
 	if err != nil {
 		return []item.Item{}, err
 	}
 
-	return items, nil
+	return sort(items, itemIDs), nil
 }
 
 func itemIDs(result *rg.QueryResult) []interface{} {
@@ -171,4 +172,16 @@ func itemIDs(result *rg.QueryResult) []interface{} {
 		itemIds = append(itemIds, record["id"])
 	}
 	return itemIds
+}
+
+func sort(items []item.Item, itemIds []interface{}) []item.Item {
+	itemMap := make(map[string]item.Item, len(items))
+	for i := 0; i < len(items); i++ {
+		itemMap[items[i].ID] = items[i]
+	}
+	sortedItems := make([]item.Item, 0)
+	for _, id := range itemIds {
+		sortedItems = append(sortedItems, itemMap[id.(string)])
+	}
+	return sortedItems
 }

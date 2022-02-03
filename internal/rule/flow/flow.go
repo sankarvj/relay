@@ -251,13 +251,16 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	triggerErrors := make([]error, 0)
 
 	//TODO what if the matched flows has 1 million records
+	log.Printf("flows ---> %+v", flows)
 	aflows, err := ActiveFlows(ctx, ids(flows), db)
 	if err != nil {
 		return append(triggerErrors, err)
 	}
 	activeFlowMap := activeFlowMap(aflows)
+	log.Printf("activeFlowMap ---> %+v", activeFlowMap)
 	for _, f := range flows {
 		af := activeFlowMap[f.ID]
+		log.Printf("af ---> %+v", af)
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Type) { //skip trigger if already active or of exit condition
@@ -265,8 +268,8 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 			} else {
 				err = af.entryFlowTrigger(ctx, db, rp, n, eng)
 			}
-		} else {
-			if af.stopExitTriggerFlow(f.Type) { //skip trigger if new  or inactive or not allowed.
+		} else if f.Type == FlowTypeLeavesSegment {
+			if af.stopExitTriggerFlow(f.Type) { //skip trigger if new or inactive or not allowed( i.e ftype != segment).
 				err = ErrFlowInActive
 			} else {
 				err = af.exitFlowTrigger(ctx, db, rp, n, eng)

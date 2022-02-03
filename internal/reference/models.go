@@ -52,7 +52,7 @@ func itemChoices(f entity.Field, items []item.Item, whoMap map[string]string) []
 			Name:   displayNameStr,
 			Value:  item.Fields()[f.EmailGex()],             //  is it okay to have a specific logic with name emailgex?
 			Verb:   item.Fields()[entity.VerbKey],           // is it okay to have `uuid-00-verb`?
-			Avatar: item.Fields()[whoMap[entity.WhoAvatar]], //finding the lookup from the child itemn
+			Avatar: item.Fields()[whoMap[entity.WhoAvatar]], // finding the lookup from the child itemn
 		}
 	}
 	return choicers

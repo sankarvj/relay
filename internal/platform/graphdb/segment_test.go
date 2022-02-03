@@ -380,7 +380,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen segmenting the updated item with relation to the graph")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment, 0)
+			_, err := graphdb.GetResult(residPool, gSegment, 0, "", "")
 			if err != nil {
 				t.Fatalf("\t%s should fetch with segmentation - %s", tests.Failed, err)
 			}
@@ -389,7 +389,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen querying with where clause as `IN ('itemID1')`")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment1, 0)
+			_, err := graphdb.GetResult(residPool, gSegment1, 0, "", "")
 			if err != nil {
 				t.Fatalf("\t%s should query with IN clause - %s", tests.Failed, err)
 			}
@@ -402,7 +402,7 @@ func TestGraph(t *testing.T) {
 			b, _ := json.Marshal(gSegment2)
 			fmt.Println(string(b))
 			log.Printf("gSegment2 JSON ---")
-			_, err := graphdb.GetCount(residPool, gSegment2, true)
+			_, err := graphdb.GetCount(residPool, gSegment2, true, true)
 			if err != nil {
 				t.Fatalf("\t%s should return count - %s", tests.Failed, err)
 			}
