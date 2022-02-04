@@ -101,7 +101,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
 			//TODO call stop here.
-			log.Println("internal.handlers.receivers silently killing the unwanted messages.")
+			log.Println("*********> debug internal.handlers.receivers silently killing the unwanted messages.")
 			return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 		}
 		return err
@@ -119,10 +119,8 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	}
 	hisID, _ := strconv.ParseUint(emailConfigEntityItem.HistoryID, 10, 64)
 	if hisID != 0 {
-		log.Println("Calling History For ", hisID)
 		_, err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, data.HistoryID)
 		if err != nil {
-			log.Println("Err -> ", err)
 			return err
 		}
 	}
@@ -198,11 +196,8 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		}
 
 		err = saveConversation(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, parentItemId, emailEntityItem, email.TextBody, db)
-		if err != nil {
-			log.Println("err -- ", err)
-		}
 	}
-	return nil
+	return err
 }
 
 func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool) error {

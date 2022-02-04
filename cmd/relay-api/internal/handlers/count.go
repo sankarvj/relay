@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -31,8 +30,6 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	teamID := params["team_id"]
 	entityID := params["entity_id"]      //deal entity
 	destination := params["destination"] //entity.FixedEntityTask --> tasks/nodes
-
-	log.Println("destination ", destination)
 
 	dstEntity, err := entity.RetrieveFixedEntity(ctx, c.db, accountID, teamID, destination)
 	if err != nil {

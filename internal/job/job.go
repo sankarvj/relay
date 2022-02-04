@@ -37,7 +37,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("EventItemUpdated: unexpected error occurred when retriving entity inside job. error:", err)
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
 		return
 	}
 
@@ -46,28 +46,28 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, oldFields, newFields, db, rp)
 	if err != nil {
-		log.Println("EventItemUpdated: unexpected error occurred on actOnWorkflows. error: ", err)
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 		return
 	}
 
 	//connections
 	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, valueAddedFields, e.ValueAdd(oldFields), db)
 	if err != nil {
-		log.Println("EventItemUpdated: unexpected error occurred on actOnConnections. error: ", err)
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//who
 	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
-		log.Println("EventItemUpdated: unexpected error occurred on actOnWho. error: ", err)
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 		return
 	}
 
 	//graph
 	err = j.actOnRedisGraph(accountID, entityID, itemID, oldFields, valueAddedFields, "", "", rp)
 	if err != nil {
-		log.Println("EventItemUpdated: unexpected error occurred on actOnRedisGraph. error: ", err)
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 		return
 	}
 }
@@ -77,12 +77,12 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred when retriving entity on job. error:", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return
 	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred while retriving item on job. error:", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -92,28 +92,28 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	//workflows
 	err = j.actOnWorkflows(ctx, e, itemID, nil, it.Fields(), db, rp)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred on actOnWorkflows. error: ", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 		return
 	}
 
 	//connect
 	err = j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred on actOnConnections. error: ", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//integrations
 	err = actOnIntegrations(ctx, accountID, e, it, valueAddedFields, db)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred on actOnIntegrations. error: ", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 		return
 	}
 
 	//who
 	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
-		log.Println("EventItemCreated: unexpected error occurred on actOnWho. error: ", err)
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 		return
 	}
 
@@ -121,14 +121,14 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	if len(source) == 0 {
 		err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, "", "", rp)
 		if err != nil {
-			log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 			return
 		}
 	} else {
 		for baseEntityID, baseItemID := range source {
 			err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, baseEntityID, baseItemID, rp)
 			if err != nil {
-				log.Println("EventItemCreated: unexpected error occurred on actOnRedisGraph. error: ", err)
+				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 				return
 			}
 		}
@@ -140,12 +140,12 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("EventItemReminded: unexpected error occurred when retriving entity on job. error:", err)
+		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return
 	}
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("EventItemReminded: unexpected error occurred while retriving item on job. error:", err)
+		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 	//save the notification to the notifications.
 	err = notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, notification.TypeReminder, db)
 	if err != nil {
-		log.Println("EventItemReminded: unexpected error occurred on notification update. error: ", err)
+		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
 }
 
@@ -164,25 +164,25 @@ func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, 
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("EventItemDeleted: unexpected error occurred when retriving entity on job. error:", err)
+		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return
 	}
 
 	it, err := item.Retrieve(ctx, entityID, itemID, db)
 	if err != nil {
-		log.Println("EventItemDeleted: unexpected error occurred while retriving item on job. error:", err)
+		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return
 	}
 
 	err = destructOnIntegrations(ctx, accountID, e, it, db)
 	if err != nil {
-		log.Println("EventItemDeleted: unexpected error occurred on destructOnIntegrations. error: ", err)
+		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on destructOnIntegrations. error: ", err)
 		return
 	}
 
 	err = item.Delete(ctx, db, accountID, entityID, itemID)
 	if err != nil {
-		log.Println("EventItemDeleted: unexpected error occurred on delete main item. error: ", err)
+		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete main item. error: ", err)
 		return
 	}
 }
@@ -191,20 +191,20 @@ func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string,
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
-		log.Println("EventConvAdded: unexpected error occurred on retriving the entity on job. error:", err)
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
 		return
 	}
 
 	var parentEmailEntityItem entity.EmailEntity
 	_, err = entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &parentEmailEntityItem, db)
 	if err != nil {
-		log.Println("EventConvAdded: unexpected error occurred on retriving the parent entity on job. error:", err)
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
 		return
 	}
 
 	cv, err := conv.Retrieve(ctx, accountID, conversationID, db)
 	if err != nil {
-		log.Println("EventConvAdded: unexpected error occurred while retriving item on job. error:", err)
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string,
 	valueAddedFields := e.ValueAdd(cv.PayloadMap())
 	_, err = email.SendMail(ctx, accountID, entityID, itemID, valueAddedFields, replyTo, db)
 	if err != nil {
-		log.Println("Error while sending the mail - ", err)
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while sending mail. error:", err)
 	}
 }
 
@@ -221,7 +221,7 @@ func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
 	ctx := context.Background()
 	err := notification.UserInvitation(ctx)
 	if err != nil {
-		log.Println("unexpected error occurred on EventUserInvited. error: ", err)
+		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invitation. error:", err)
 	}
 }
 
@@ -239,7 +239,7 @@ func (j *Job) EventDelayExhausted(accountID, entityID, itemID string, meta map[s
 
 	n, err := node.Retrieve(ctx, accountID, triggerFlowID, triggerNodeID, db)
 	if err != nil {
-		log.Println("EventDelayExhausted: unexpected error occurred on node retrive. error: ", err)
+		log.Println("***>***> EventDelayExhausted: unexpected error occurred on node retrive. error: ", err)
 	} else {
 		eng := engine.Engine{
 			Job: j,
@@ -248,7 +248,7 @@ func (j *Job) EventDelayExhausted(accountID, entityID, itemID string, meta map[s
 		n.UpdateMeta(triggerEntityID, triggerItemID, triggerFlowType).UpdateVariables(triggerEntityID, triggerItemID)
 		err = flow.StartJobFlow(ctx, db, rp, n, meta, eng)
 		if err != nil {
-			log.Println("EventDelayExhausted: unexpected error occurred on startJobFlow. error: ", err)
+			log.Println("***>***> EventDelayExhausted: unexpected error occurred on startJobFlow. error: ", err)
 		}
 
 	}
@@ -286,7 +286,7 @@ func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, oldFields map[
 }
 
 func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
-	log.Println("actOnWorkflows Kicked IN.......")
+	log.Println("*********> debug internal.job actOnWorkflows kicked in")
 	eng := engine.Engine{
 		Job: j,
 	}
@@ -390,19 +390,19 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
 					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 					if err != nil {
-						log.Println("TODO Handle this error ---> ", err)
+						log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when adding connections. error: ", err)
 					}
 					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
 					if err != nil {
 						return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 					}
 					itemFieldsMap := baseItem.Fields()
-					log.Println("internal.job BF itemFieldsMap ", itemFieldsMap)
+					log.Println("*********> debug internal.job BF itemFieldsMap ", itemFieldsMap)
 					if vals, ok := itemFieldsMap[r.FieldID]; ok { // little complex
 						exisitingVals := vals.([]interface{})
 						exisitingVals = append(exisitingVals, itemID)
 						itemFieldsMap[r.FieldID] = exisitingVals
-						log.Println("internal.job AF itemFieldsMap ", itemFieldsMap)
+						log.Println("*********> debug internal.job AF itemFieldsMap ", itemFieldsMap)
 						_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
 						if err != nil {
 							return errors.Wrap(err, "error: implicit connection with reverse reference failed")
@@ -424,7 +424,7 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 			if err == nil {
 				err = saveMsgID(ctx, accountID, e.ID, it.ID, *msgID, db)
 				if err != nil {
-					log.Println("TODO Handle this error ---> ", err)
+					log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when sending mails. error: ", err)
 				}
 			}
 		}

@@ -48,11 +48,6 @@ func (cv *Conversation) List(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
-	log.Println("e ", params["entity_id"])
-	log.Println("i ", params["item_id"])
-	log.Println("conversations ", conversations)
-	log.Println("err ", err)
-
 	// viewModelConversations := make([]conv.ViewModelConversation, len(conversations))
 	// for i, conversation := range conversations {
 	// 	viewModelConversations[i] = createViewModelConversation(conversation)
@@ -167,7 +162,7 @@ func (cv *Conversation) runGlobalMessageReceiver() {
 			}
 			_, err := conv.Create(context.Background(), cv.db, newConversation, time.Now())
 			if err != nil {
-				log.Println("Error inserting the chat message to the DB ", err)
+				log.Println("***> unhandled unexpected error occurred. when inserting the chat message to the DB", err)
 			}
 		}
 	}

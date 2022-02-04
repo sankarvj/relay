@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -255,7 +254,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 func createAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
-		log.Println("err ", err)
 		return item.Item{}, err
 	}
 	//TODO push this to stream/queue

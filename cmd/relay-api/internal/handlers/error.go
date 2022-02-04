@@ -70,7 +70,7 @@ func validationError(errorMap map[string]ErrorPayload) *ErrorResponse {
 }
 
 func unexpectedError(err error) *ErrorResponse {
-	log.Println("unexpected error occurred ", err)
+	log.Println("***> unexpected error occurred ", err)
 	return &ErrorResponse{
 		Type:    UnexpectedError,
 		Message: fmt.Sprintf("unexpected error occured:  %s", err.Error()),

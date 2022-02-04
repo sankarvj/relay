@@ -71,7 +71,7 @@ func getMailBody(body []byte) (email.MailBody, error) {
 func confirmSubscription(subcribeURL string) {
 	response, err := http.Get(subcribeURL)
 	if err != nil {
-		log.Println("unexpected error occurred. Unbale to confirm subscriptions")
+		log.Println("***> unexpected error occurred in internal.handlers.aws. when confirming subscriptions", err)
 	} else {
 		log.Printf("internal.handlers.aws subscription confirmed sucessfully. %d\n", response.StatusCode)
 	}
@@ -79,7 +79,6 @@ func confirmSubscription(subcribeURL string) {
 
 func getBody(reqBody io.Reader) ([]byte, error) {
 	body, err := ioutil.ReadAll(reqBody)
-	log.Println("internal.handlers.aws body:", string(body))
 	if err != nil {
 		return nil, err
 	}

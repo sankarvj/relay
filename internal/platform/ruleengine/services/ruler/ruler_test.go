@@ -75,8 +75,6 @@ func TestContentParser(t *testing.T) {
 				}
 			}
 
-			log.Println("content ---> ", content)
-
 			if content == "Hello matty 2 . How are you?</body></html>" {
 				t.Logf("\t%s should parse the expression with proper value", tests.Success)
 			} else {

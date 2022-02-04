@@ -280,7 +280,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	if len(triggerErrors) > 0 {
 		for _, err := range triggerErrors {
 			if err != nil {
-				log.Println("Flow: unexpected error occurred on trigger. error: ", err)
+				log.Println("***> unexpected error occurred on trigger. error: ", err)
 			}
 		}
 	}

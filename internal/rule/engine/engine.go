@@ -134,14 +134,14 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Poo
 		switch work.Type {
 		case ruler.Worker: //input:executes this when it finds the {{}}
 			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
-				log.Println("unexpected error occurred when evaluting the expression. error: ", err)
+				log.Println("***> unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result
 			}
 		case ruler.Grapher: //input:executes this when it finds the what??? - actually here the grapher should come into picture when the conditions refers the reference value. Need to implement
 			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
-				log.Println("unexpected error occurred when evaluting the expression. error: ", err)
+				log.Println("***> unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {
 				work.InboundRespCh <- result

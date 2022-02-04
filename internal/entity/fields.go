@@ -160,7 +160,7 @@ type Dependent struct {
 func (e Entity) FieldsIgnoreError() []Field {
 	fields, err := e.Fields()
 	if err != nil {
-		log.Println(err)
+		log.Println("***> unexpected/unhandled error occurred. internal.entity.fields")
 	}
 	return fields
 }

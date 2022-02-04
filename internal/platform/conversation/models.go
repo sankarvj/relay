@@ -35,7 +35,7 @@ func NewMessage(action string, viewModelConversation ViewModelConversation, room
 func (message *Message) encode() []byte {
 	json, err := json.Marshal(message)
 	if err != nil {
-		log.Println(err)
+		log.Println("***> unexpected/unhandled error in internal.platform.conversation. when marshaling message. error:", err)
 	}
 
 	return json
@@ -44,7 +44,7 @@ func (message *Message) encode() []byte {
 func (vmc *ViewModelConversation) encode() []byte {
 	json, err := json.Marshal(vmc)
 	if err != nil {
-		log.Println(err)
+		log.Println("***> unexpected/unhandled error in internal.platform.conversation. when unmarshaling message. error:", err)
 	}
 
 	return json

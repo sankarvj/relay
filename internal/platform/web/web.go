@@ -68,7 +68,7 @@ func NewApp(shutdown chan os.Signal, log *log.Logger, mw ...Middleware) *App {
 // SignalShutdown is used to gracefully shutdown the app when an integrity
 // issue is identified.
 func (a *App) SignalShutdown() {
-	a.log.Println("error returned from handler indicated integrity issue, shutting down service")
+	a.log.Println("******> crtical error returned from handler indicated integrity issue, shutting down service")
 	a.shutdown <- syscall.SIGSTOP
 }
 

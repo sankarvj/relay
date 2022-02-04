@@ -94,7 +94,6 @@ func Message(oAuthFile, tokenJson string, user string, messageID string) error {
 
 	rgmsg, err := srv.Users.Threads.Get("me", messageID).Do()
 	if err != nil {
-		log.Println("rgmsg err ", err)
 		return err
 	}
 	log.Printf("rgmsg %+v ", rgmsg)

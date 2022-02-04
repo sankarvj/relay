@@ -150,7 +150,6 @@ func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 }
 
 func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntity string) (Entity, error) {
-	log.Println("Selecting the pre-defined entity ", preDefinedEntity)
 	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntity))
 	defer span.End()
 
@@ -162,10 +161,9 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
 	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntity, teamID, StateAccountLevel); err != nil {
 		if err == sql.ErrNoRows {
-			log.Println("preDefinedEntity err ", err)
+			log.Println("*********> debug internal.entity.fixed entity not found.")
 			return Entity{}, ErrFixedEntityNotFound
 		}
-		log.Println("err err ", err)
 		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntity)
 	}
 

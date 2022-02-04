@@ -88,7 +88,7 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 		//the locks are approximate. check the item state before proceding with the operation. (Two clients should not execute the next node/send push notifications)
 		redisJob, err := zpop(conn, reminders)
 		if err != nil && err != redis.ErrNil {
-			log.Println("expected error in RunListener. Ignore err: ", err)
+			log.Println("*> expected error in RunListener. No reminders/delay exist in queue. Ignore", err)
 		}
 		if redisJob.State == JobStateRiped {
 			switch redisJob.Type {

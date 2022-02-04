@@ -122,9 +122,6 @@ func send(fromEmail string, toEmails []*string, subject string, body string, rep
 		Credentials: credentials.NewStaticCredentials(AccessKey, SecretKey, "")},
 	)
 
-	log.Println("fromEmail---", fromEmail)
-	log.Println("toEmails---", toEmails)
-
 	// Create an SES session.
 	svc := ses.New(sess)
 

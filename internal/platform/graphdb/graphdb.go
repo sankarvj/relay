@@ -82,7 +82,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			if f.Value != nil && f.Value != "" {
 				t, err := util.ParseTime(f.Value.(string))
 				if err != nil {
-					log.Println("unexpected error occurred. Unbale to convert the datetime str. Please fix the value ", f.Value)
+					log.Println("***> unexpected/unhandled error occurred. Unbale to convert the datetime str. Please fix the value ", f.Value)
 				}
 				f.Value = util.GetMilliSecondsFloat(t)
 			}
@@ -292,7 +292,6 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, mps...)
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb upsert node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -306,7 +305,6 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ruQ)
 		sq := strings.Join(s, " ")
-		log.Println("internal.platform.graphdb unlink node query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err

@@ -52,7 +52,7 @@ func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string,
 		for _, deletedItem := range deletedItems {
 			err := connection.Delete(ctx, db, relationshipID, deletedItem.(string))
 			if err != nil {
-				log.Println("unexpected error occurred when deleting connection. error:", err)
+				log.Println("***> unexpected/unhandled error occurred when deleting connection. error:", err)
 			}
 		}
 		return newItems

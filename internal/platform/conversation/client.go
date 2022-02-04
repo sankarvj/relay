@@ -80,14 +80,14 @@ func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 		_, jsonMessage, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Println("unexpected error occurred when closing the read connection. error:", err)
+				log.Println("***> unexpected/unhandled error occurred when closing the read connection. error:", err)
 			}
 			break
 		}
 
 		var viewModelConv ViewModelConversation
 		if err := json.Unmarshal(jsonMessage, &viewModelConv); err != nil {
-			log.Println("unexpected error occurred when unmarshal message. error:", err)
+			log.Println("***> unexpected/unhandled error occurred when unmarshal message. error:", err)
 		}
 
 		viewModelConv.ID = uuid.New().String()
@@ -102,7 +102,7 @@ func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 		//sending the message to the pub/sub
 		err = client.hub.publishReceivedMessage(message, rp)
 		if err != nil {
-			log.Println("unexpected error occurred when publishing the message to redis. error:", err)
+			log.Println("***> unexpected/unhandled error occurred when publishing the message to redis. error:", err)
 		}
 	}
 }

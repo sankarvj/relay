@@ -91,11 +91,11 @@ func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			if err == user.ErrNotFound {
 				usr, err = user.Create(ctx, u.db, nu, v.Now)
 				if err != nil {
-					log.Println("unexpected error when creating new users to the account. error: ", err)
+					log.Println("***> unexpected error when creating new users to the account. error: ", err)
 					usr.ID = "" //symbolically telling the UI that the invitation for the user is failed.
 				}
 			} else {
-				log.Println("unexpected error when retriving users when inviting. error: ", err)
+				log.Println("***> unexpected error when retriving users when inviting. error: ", err)
 			}
 		}
 		users = append(users, usr)

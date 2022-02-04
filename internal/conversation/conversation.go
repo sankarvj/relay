@@ -66,8 +66,6 @@ func List(ctx context.Context, accountID, entityID, itemID string, ctype int, db
 	conversations := []ViewModelConversation{}
 	const q = `SELECT c.conversation_id as conversation_id, c.user_id as user_id, u.name as user_name, u.avatar as user_avatar, c.type as type, c.message as message FROM conversations as c left join users as u on u.user_id = c.user_id where c.account_id = $1 AND c.entity_id = $2 AND c.item_id = $3`
 
-	log.Println("q ", q)
-
 	if err := db.SelectContext(ctx, &conversations, q, accountID, entityID, itemID); err != nil {
 		return nil, errors.Wrap(err, "selecting conversations")
 	}
