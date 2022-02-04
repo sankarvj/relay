@@ -2,7 +2,6 @@ package email
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -68,8 +67,6 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("integration.email send email params : from: %+v subject: %+v body: %+v to: %+v ", emailConfigEntityItem.Email, subject, body, toField)
 
 	var e email.Email
 	if emailConfigEntityItem.Domain == "mailgun.org" {

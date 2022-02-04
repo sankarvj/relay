@@ -19,6 +19,7 @@ import (
 var (
 	ErrNodeAlreadyActive = errors.New("Node is already active. Can't execute it again")
 	ErrCannotExecuteNode = errors.New("Node not executed due to expression condition")
+	ErrPauseExecuteNode  = errors.New("Node paused due to the execution of delay node")
 )
 
 // CreateAN inserts a new item into the active_nodes table.
@@ -27,12 +28,12 @@ func CreateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) (ActiveNode, erro
 	defer span.End()
 
 	const q = `INSERT INTO active_nodes
-		(account_id,flow_id, item_id, node_id, is_active, life)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(account_id, flow_id, node_id, entity_id, item_id, is_active, life)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		an.AccountID, an.FlowID, an.ItemID, an.NodeID, an.IsActive, an.Life,
+		an.AccountID, an.FlowID, an.NodeID, an.EntityID, an.ItemID, an.IsActive, an.Life,
 	)
 	if err != nil {
 		return ActiveNode{}, errors.Wrap(err, "inserting active_node")
@@ -49,7 +50,7 @@ func UpdateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) error {
 	const q = `UPDATE active_nodes SET
 		"is_active" = $4,
 		"life" = $5
-		WHERE item_id = $1 AND flow_id = $2 AND node_id = $3` //should I include account_id in the where clause for sharding?
+		WHERE item_id = $1 AND flow_id = $2 AND node_id = $3` //TODO: should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, an.ItemID, an.FlowID, an.NodeID,
 		an.IsActive, an.Life,
 	)
@@ -116,6 +117,11 @@ func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node
 	return nextRun(ctx, db, rp, *n, map[string]interface{}{}, eng)
 }
 
+func StartJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, ruleSetResponse map[string]interface{}, eng engine.Engine) error {
+	//TODO call this in job Q
+	return nextRun(ctx, db, rp, *n, ruleSetResponse, eng)
+}
+
 func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, parentResponseMap map[string]interface{}, eng engine.Engine) error {
 	err := upsertActives(ctx, db, n)
 	if err != nil {
@@ -155,10 +161,13 @@ func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng e
 	if !ruleResult.Executed {
 		return ErrCannotExecuteNode
 	}
+	if ruleResult.Pause { // the flow should be re-started from the delay listener.
+		return ErrPauseExecuteNode
+	}
 	return nextRun(ctx, db, rp, n, ruleResult.Response, eng)
 }
 
-func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) (bool, error) {
+func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, entityID, itemID string) (bool, error) {
 	an, err := RetrieveAN(ctx, db, nodeID, itemID, flowID)
 	if err != nil && err != ErrNotFound {
 		return false, err
@@ -166,6 +175,7 @@ func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemI
 	if err == ErrNotFound {
 		an.AccountID = accountID
 		an.FlowID = flowID
+		an.EntityID = entityID
 		an.ItemID = itemID
 		an.IsActive = true
 		an.NodeID = nodeID
@@ -189,7 +199,7 @@ func upsertActives(ctx context.Context, db *sqlx.DB, n node.Node) error {
 	}
 
 	if !n.IsRootNode() {
-		if _, err := upsertAN(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.ItemID); err != nil {
+		if _, err := upsertAN(ctx, db, n.AccountID, n.FlowID, n.ID, n.Meta.EntityID, n.Meta.ItemID); err != nil {
 			return err
 		}
 	}

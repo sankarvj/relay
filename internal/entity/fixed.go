@@ -34,8 +34,9 @@ const (
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
 	//not fixed yet known entities
-	FixedEntityTask = "tasks"
-	FixedEntityNode = "nodes"
+	FixedEntityTask  = "tasks"
+	FixedEntityNode  = "nodes"
+	FixedEntityDelay = "delay"
 )
 
 var (
@@ -90,7 +91,7 @@ type CaldendarEntity struct {
 
 //DelayEntity represents the structural format of delay entity
 type DelayEntity struct {
-	DelayBy string `json:"delay_by"`
+	DelayBy int    `json:"delay_by"` // in hours
 	Repeat  string `json:"repeat"`
 }
 

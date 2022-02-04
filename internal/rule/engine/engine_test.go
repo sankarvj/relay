@@ -181,7 +181,6 @@ func TestFlow(t *testing.T) {
 
 			branchNodeMap := node.BranceNodeMap(nodes)
 			rootNodes := node.ChildNodes(node.Root, branchNodeMap)
-			log.Printf("The rootNodes %v", rootNodes)
 
 			if len(rootNodes) > 0 {
 				childNodes := node.ChildNodes(rootNodes[0].ID, branchNodeMap)

@@ -30,7 +30,8 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, eng *Engine, n
 		err = nil
 		executionResponse[node.GlobalEntityResult] = true
 	case node.Delay:
-		err = executeDelay(ctx, db, n)
+		ruleResult.Pause = true
+		err = eng.executeDelay(ctx, n, ruleResult.Response, db, rp)
 	case node.Stage:
 		err = nil
 	}

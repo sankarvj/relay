@@ -98,7 +98,7 @@ func (c Conversation) PayloadMap() map[string]interface{} {
 		return payload
 	}
 	if err := json.Unmarshal([]byte(c.Payload), &payload); err != nil {
-		log.Printf("unexpected error occurred when unmarshalling payload for conversation: %v error: %v\n", c.ID, err)
+		log.Printf("***> unexpected error occurred when unmarshalling payload for conversation: %v error: %v\n", c.ID, err)
 	}
 	return payload
 }

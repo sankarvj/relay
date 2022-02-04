@@ -87,7 +87,7 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("unexpected error occurred when serving web sockets. error: %v\n", err)
+		log.Printf("***> unexpected error occurred when serving web sockets. error: %v\n", err)
 		return err
 	}
 
@@ -134,8 +134,6 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 	nc.EntityID = params["entity_id"]
 	nc.ItemID = &itemID
 	nc.UserID = currentUser.ID //TODO store name and avatar also
-
-	log.Printf("The nc = %+v", nc)
 
 	conversation, err := conv.Create(ctx, cv.db, nc, time.Now())
 	if err != nil {

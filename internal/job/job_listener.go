@@ -21,17 +21,24 @@ type RedisJob struct {
 	ItemID    string
 	Time      int64
 	State     int
+	Type      int
+	Meta      map[string]interface{}
 }
 
 const (
-	JobStateQueud = 0
-	JobStateRiped = 1
+	JobStateQueued = 0
+	JobStateRiped  = 1
+)
+
+const (
+	JobTypeReminder = 1
+	JobTypeDelay    = 2
 )
 
 type Listener struct {
 }
 
-func (l Listener) AddReminder(accountID, entityID, itemID string, when time.Time, rp *redis.Pool) error {
+func (j *Job) AddDelay(accountID, entityID, itemID string, meta map[string]interface{}, when time.Time, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
 	whenMilli := util.GetMilliSeconds(when)
@@ -40,6 +47,28 @@ func (l Listener) AddReminder(accountID, entityID, itemID string, when time.Time
 		EntityID:  entityID,
 		ItemID:    itemID,
 		Time:      whenMilli,
+		Meta:      meta,
+		Type:      JobTypeDelay,
+	}
+
+	raw, err := json.Marshal(rrj)
+	if err != nil {
+		return err
+	}
+
+	return zadd(conn, reminders, whenMilli, string(raw))
+}
+
+func (j *Job) AddReminder(accountID, entityID, itemID string, when time.Time, rp *redis.Pool) error {
+	conn := rp.Get()
+	defer conn.Close()
+	whenMilli := util.GetMilliSeconds(when)
+	rrj := RedisJob{
+		AccountID: accountID,
+		EntityID:  entityID,
+		ItemID:    itemID,
+		Time:      whenMilli,
+		Type:      JobTypeReminder,
 	}
 
 	raw, err := json.Marshal(rrj)
@@ -55,15 +84,19 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 	defer conn.Close()
 
 	for {
+		log.Println("internalRunReminderListener: Listening...")
 		//the locks are approximate. check the item state before proceding with the operation. (Two clients should not execute the next node/send push notifications)
 		redisJob, err := zpop(conn, reminders)
 		if err != nil && err != redis.ErrNil {
-			log.Println("unexpected error in RunListener. err: ", err)
+			log.Println("expected error in RunListener. Ignore err: ", err)
 		}
 		if redisJob.State == JobStateRiped {
-			//do the notifications
-			log.Printf("trigger event item reminded job for the redis job: %+v \n", redisJob)
-			go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
+			switch redisJob.Type {
+			case JobTypeReminder:
+				go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
+			case JobTypeDelay:
+				go (&Job{}).EventDelayExhausted(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta, db, rp)
+			}
 		}
 		time.Sleep(3 * time.Second) //reduce this time when more requests received
 	}
@@ -80,6 +113,7 @@ func zpop(c redis.Conn, key string) (result RedisJob, err error) {
 
 	// Loop until transaction is successful.
 	for {
+		time.Sleep(3 * time.Second)
 		if _, err := c.Do("WATCH", key); err != nil {
 			return redisJob, err
 		}
@@ -88,6 +122,8 @@ func zpop(c redis.Conn, key string) (result RedisJob, err error) {
 		if err != nil {
 			return redisJob, err
 		}
+
+		//if no members available
 		if len(members) != 1 {
 			return redisJob, redis.ErrNil
 		}
@@ -98,21 +134,20 @@ func zpop(c redis.Conn, key string) (result RedisJob, err error) {
 			return redisJob, err
 		}
 
-		//if not riped. Keep it.
-		if redisJob.Time <= time.Now().Unix() {
+		//if riped. Remove it.
+		now := util.GetMilliSeconds(time.Now())
+		if redisJob.Time < now {
 			c.Send("MULTI")
 			c.Send("ZREM", key, member)
-			queued, err := c.Do("EXEC")
+			_, err := c.Do("EXEC")
 			if err != nil {
 				return redisJob, err
 			}
-			if queued != nil {
-				redisJob.State = JobStateRiped
-				result = redisJob
-				break
-			}
+			log.Printf("internal.job.job_listener riped : type %d\n", redisJob.Type)
+			redisJob.State = JobStateRiped
+			result = redisJob
+			break
 		}
-
 	}
 
 	return result, nil

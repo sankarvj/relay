@@ -50,7 +50,7 @@ func (e Entity) Meta() map[string]interface{} {
 		return meta
 	}
 	if err := json.Unmarshal([]byte(*e.Metab), &meta); err != nil {
-		log.Printf("unexpected error occurred when unmarshalling meta for entity: %v error: %v\n", e.ID, err)
+		log.Printf("***> unexpected error occurred when unmarshalling meta for entity: %v error: %v\n", e.ID, err)
 	}
 	return meta
 }

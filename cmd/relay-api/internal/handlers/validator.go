@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -23,7 +22,6 @@ func validateItemCreate(ctx context.Context, accountID, entityID string, values 
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "required field validation failed"))
 	}
-	log.Println("requiredErrorsMap ", requiredErrorsMap)
 	if len(requiredErrorsMap) > 0 {
 		return requiredError(requiredErrorsMap)
 	}
@@ -33,7 +31,6 @@ func validateItemCreate(ctx context.Context, accountID, entityID string, values 
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "uniquness validation failed"))
 	}
-	log.Println("uniqueErrorsMap ", uniqueErrorsMap)
 	if len(uniqueErrorsMap) > 0 {
 		return validationError(uniqueErrorsMap)
 	}

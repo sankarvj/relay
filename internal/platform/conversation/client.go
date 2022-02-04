@@ -90,7 +90,6 @@ func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 			log.Println("unexpected error occurred when unmarshal message. error:", err)
 		}
 
-		log.Printf("viewModelConv %+v", viewModelConv)
 		viewModelConv.ID = uuid.New().String()
 		viewModelConv.UserID = client.user
 		viewModelConv.UserAvatar = client.avatar

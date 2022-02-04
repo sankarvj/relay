@@ -18,6 +18,7 @@ type Engine struct {
 // RuleResult returns back the recently executed results
 type RuleResult struct {
 	Executed bool
+	Pause    bool
 	Response map[string]interface{}
 }
 
@@ -111,7 +112,7 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 		switch work.Type {
 		case ruler.Worker: //why worker calling grapher? because the logic is same as worker
 			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
-				log.Printf("unexpected error occurred. sending empty conditions - error: %v ", err)
+				log.Printf("***> unexpected error occurred. sending empty conditions - error: %v ", err)
 				return nil
 			} else {
 				work.InboundRespCh <- result

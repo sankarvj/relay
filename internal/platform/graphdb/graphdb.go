@@ -149,8 +149,8 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("SKIP %d LIMIT %d", skipCount, util.PageLimt))
 
 	result, err := graph.Query(q)
-	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
-	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
+	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
 	}
@@ -191,8 +191,8 @@ func GetCount(rPool *redis.Pool, gn GraphNode, swap, groupById bool) (*rg.QueryR
 	}
 
 	result, err := graph.Query(q)
-	log.Printf("internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
-	//DEBUGGING LOG log.Printf("internal.platform.graphdb : graphdb - result: %v\n", result)
+	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
 	}

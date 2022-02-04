@@ -296,7 +296,7 @@ func makeExpression(queries []node.Query) (string, map[string]interface{}) {
 func flowMode(fm string) int {
 	i, err := strconv.Atoi(fm)
 	if err != nil {
-		log.Printf("unexpected error occurred cannot parse fm from the request %s", err)
+		log.Printf("***> unexpected error occurred cannot parse fm from the request %s", err)
 		return flow.FlowModeWorkFlow
 	}
 	return i

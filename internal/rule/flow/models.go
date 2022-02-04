@@ -92,6 +92,7 @@ type NewFlow struct {
 type ActiveNode struct {
 	AccountID string `db:"account_id" json:"account_id"`
 	FlowID    string `db:"flow_id" json:"flow_id"`
+	EntityID  string `db:"entity_id" json:"entity_id"`
 	ItemID    string `db:"item_id" json:"item_id"`
 	NodeID    string `db:"node_id" json:"node_id"`
 	Life      int    `db:"life" json:"life"`

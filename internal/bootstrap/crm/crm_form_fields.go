@@ -886,27 +886,40 @@ func APIFields() []entity.Field {
 
 func DelayVals() map[string]interface{} {
 	delayVals := map[string]interface{}{
-		"uuid-00-delay-by": "2",
-		"uuid-00-repeat":   "true",
+		"uuid-00-title":    "1 hr delay",
+		"uuid-00-delay-by": 1,
+		"uuid-00-repeat":   "false",
 	}
 	return delayVals
 }
 
 func DelayFields() []entity.Field {
+
+	titleField := entity.Field{
+		Key:         "uuid-00-title",
+		Name:        "title",
+		DisplayName: "Title",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+	}
+
 	delay_by := entity.Field{
-		Key:      "uuid-00-delay-by",
-		Name:     "delay_by",
-		DomType:  entity.DomText,
-		DataType: entity.TypeDateTime,
+		Key:         "uuid-00-delay-by",
+		Name:        "delay_by",
+		DisplayName: "Delay By",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
 	}
 
 	repeat := entity.Field{
-		Key:      "uuid-00-repeat",
-		Name:     "repeat",
-		DomType:  entity.DomText,
-		DataType: entity.TypeString,
-		Value:    "true",
+		Key:         "uuid-00-repeat",
+		Name:        "repeat",
+		DisplayName: "Repeat",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Value:       "true",
 	}
 
-	return []entity.Field{delay_by, repeat}
+	return []entity.Field{titleField, delay_by, repeat}
 }

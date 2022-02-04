@@ -201,11 +201,12 @@ var migrations = []darwin.Migration{
 		CREATE TABLE active_nodes (
 			account_id  UUID,
 			flow_id    	UUID REFERENCES flows ON DELETE CASCADE,
+			entity_id   UUID REFERENCES entities ON DELETE CASCADE,
 			item_id    	UUID REFERENCES items ON DELETE CASCADE,
 			node_id    	UUID REFERENCES nodes ON DELETE CASCADE,
 		    life 	   	INTEGER DEFAULT 0,
 			is_active	BOOLEAN DEFAULT FALSE,
-			UNIQUE (flow_id,item_id,node_id)
+			UNIQUE (flow_id,entity_id,item_id,node_id)
 		);
 		`,
 	},

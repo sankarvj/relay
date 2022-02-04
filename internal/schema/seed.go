@@ -55,6 +55,7 @@ func IsEntitySeeded(entityName string) bool {
 		SeedStatusEntityName:           true,
 		SeedTypeEntityName:             true,
 		entity.FixedEntityNotification: true,
+		entity.FixedEntityDelay:        true,
 	}
 	return seededEntities[entityName]
 }

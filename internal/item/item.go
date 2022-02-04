@@ -53,6 +53,14 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 		return Item{}, errors.Wrap(err, "encode fields to bytes")
 	}
 
+	if n.GenieID != nil && *n.GenieID == "" {
+		n.GenieID = nil
+	}
+
+	if n.UserID != nil && *n.UserID == "" {
+		n.UserID = nil
+	}
+
 	i := Item{
 		ID:        n.ID,
 		AccountID: n.AccountID,
@@ -251,7 +259,7 @@ func (i Item) Fields() map[string]interface{} {
 		return fields
 	}
 	if err := json.Unmarshal([]byte(i.Fieldsb), &fields); err != nil {
-		log.Printf("unexpected error occurred when unmarshalling fields for item: %v error: %v\n", i.ID, err)
+		log.Printf("***> unexpected error occurred when unmarshalling fields for item: %v error: %v\n", i.ID, err)
 	}
 	return fields
 }
@@ -272,7 +280,7 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 				log.Printf("internal.item diff : no change detected for key %s\n", key)
 				delete(diffFields, key)
 			} else {
-				log.Printf("internal.item diff :  change captured for key %s\n", key)
+				log.Printf("internal.item diff : change captured for key %s\n", key)
 			}
 		}
 	}

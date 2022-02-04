@@ -238,7 +238,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 	relationships := make([]Relationship, 0)
 	for fieldKey, relatable := range referenceFields {
 		if srcEntityId == "" || relatable.RefID == "" {
-			log.Printf("unexpected/expected error occurred. src_entity_id (%s) or ref_entity_id (%s) is empty. bonding skipped \n", srcEntityId, relatable.RefID)
+			log.Printf("***> unexpected/expected error occurred. src_entity_id (%s) or ref_entity_id (%s) is empty. bonding skipped \n", srcEntityId, relatable.RefID)
 			continue
 		}
 

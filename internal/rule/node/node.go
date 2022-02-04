@@ -271,7 +271,7 @@ func BranceNodeMap(nodes []Node) map[string][]Node {
 func VariablesJSON(varsMap map[string]interface{}) string {
 	jsonStr, err := MapToJSONB(varsMap)
 	if err != nil {
-		log.Printf("error while marshalling node variables %v ", err)
+		log.Printf("***> unexpected error while marshalling node variables %v ", err)
 		panic(err)
 	}
 	return jsonStr
@@ -359,7 +359,7 @@ func (n NodeActor) Tokens() map[string]interface{} {
 		return display
 	}
 	if err := json.Unmarshal([]byte(n.Tokenb), &display); err != nil {
-		log.Printf("unexpected error occurred when unmarshalling token for flow: %v error: %v\n", n.ID, err)
+		log.Printf("***> unexpected error occurred when unmarshalling token for flow: %v error: %v\n", n.ID, err)
 	}
 	return display
 }

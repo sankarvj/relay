@@ -3,7 +3,6 @@ package graphdb_test
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"testing"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
@@ -398,10 +397,8 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen querying the get count")
 		{
-			log.Printf("gSegment2 --- %+v\n", gSegment2)
 			b, _ := json.Marshal(gSegment2)
 			fmt.Println(string(b))
-			log.Printf("gSegment2 JSON ---")
 			_, err := graphdb.GetCount(residPool, gSegment2, true, true)
 			if err != nil {
 				t.Fatalf("\t%s should return count - %s", tests.Failed, err)

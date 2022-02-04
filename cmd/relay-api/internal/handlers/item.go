@@ -207,8 +207,6 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Get During Update")
 	}
 
-	log.Printf("ni ----- %+v", ni)
-
 	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
 	if err != nil {
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
@@ -241,12 +239,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.ID = uuid.New().String()
 	fmt.Printf("ni %+v", ni)
 
-	if ni.GenieID != nil && *ni.GenieID == "" {
-		ni.GenieID = nil
-	}
-
 	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.rPool)
-	log.Println("errorMap ", errorMap)
 	if errorMap != nil {
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}

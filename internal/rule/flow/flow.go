@@ -168,7 +168,7 @@ func (f *Flow) Tokens() map[string]interface{} {
 		return display
 	}
 	if err := json.Unmarshal([]byte(*f.Tokenb), &display); err != nil {
-		log.Printf("unexpected error occurred when unmarshalling token for flow: %v error: %v\n", f.ID, err)
+		log.Printf("***> unexpected error occurred when unmarshalling token for flow: %v error: %v\n", f.ID, err)
 	}
 	return display
 }
@@ -251,16 +251,13 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	triggerErrors := make([]error, 0)
 
 	//TODO what if the matched flows has 1 million records
-	log.Printf("flows ---> %+v", flows)
 	aflows, err := ActiveFlows(ctx, ids(flows), db)
 	if err != nil {
 		return append(triggerErrors, err)
 	}
 	activeFlowMap := activeFlowMap(aflows)
-	log.Printf("activeFlowMap ---> %+v", activeFlowMap)
 	for _, f := range flows {
 		af := activeFlowMap[f.ID]
-		log.Printf("af ---> %+v", af)
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Type) { //skip trigger if already active or of exit condition
@@ -278,6 +275,14 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 		//concat errors in the loop. nil if no error exists
 		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", f.ID)
 		triggerErrors = append(triggerErrors, err)
+	}
+
+	if len(triggerErrors) > 0 {
+		for _, err := range triggerErrors {
+			if err != nil {
+				log.Println("Flow: unexpected error occurred on trigger. error: ", err)
+			}
+		}
 	}
 
 	return triggerErrors

@@ -96,7 +96,7 @@ func (a *App) Handle(verb, path string, handler Handler, mw ...Middleware) {
 
 		// Call the wrapped handler functions.
 		if err := handler(ctx, w, r, params); err != nil {
-			a.log.Printf("*****> critical shutdown error: %v", err)
+			a.log.Printf("******> critical shutdown error: %v", err)
 			a.SignalShutdown()
 			return
 		}

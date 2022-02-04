@@ -97,10 +97,6 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "unmarshal data from the data bytes")
 	}
 
-	log.Printf("data.raw raw raw---> %+v", pushMsgPayload)
-	log.Println("data.EmailAddress---> ", data.EmailAddress)
-	log.Println("data.HistoryID---> ", data.HistoryID)
-
 	sub, err := discovery.Retrieve(ctx, "", "", data.EmailAddress, g.db)
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox

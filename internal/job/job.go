@@ -23,6 +23,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -154,7 +155,7 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 	//save the notification to the notifications.
 	err = notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, notification.TypeReminder, db)
 	if err != nil {
-		log.Println("EventItemReminded: unexpected error occurred on EventItemReminded. error: ", err)
+		log.Println("EventItemReminded: unexpected error occurred on notification update. error: ", err)
 	}
 }
 
@@ -226,6 +227,31 @@ func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
 
 func (j *Job) EventEmailReceived(db *sqlx.DB) {
 
+}
+
+func (j *Job) EventDelayExhausted(accountID, entityID, itemID string, meta map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
+	ctx := context.Background()
+	triggerFlowID := meta["trigger_flow_id"].(string)
+	triggerNodeID := meta["trigger_node_id"].(string)
+	triggerEntityID := meta["trigger_entity_id"].(string)
+	triggerItemID := meta["trigger_item_id"].(string)
+	triggerFlowType := int(meta["trigger_flow_type"].(float64))
+
+	n, err := node.Retrieve(ctx, accountID, triggerFlowID, triggerNodeID, db)
+	if err != nil {
+		log.Println("EventDelayExhausted: unexpected error occurred on node retrive. error: ", err)
+	} else {
+		eng := engine.Engine{
+			Job: j,
+		}
+
+		n.UpdateMeta(triggerEntityID, triggerItemID, triggerFlowType).UpdateVariables(triggerEntityID, triggerItemID)
+		err = flow.StartJobFlow(ctx, db, rp, n, meta, eng)
+		if err != nil {
+			log.Println("EventDelayExhausted: unexpected error occurred on startJobFlow. error: ", err)
+		}
+
+	}
 }
 
 //act ons
@@ -363,6 +389,9 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 				//log.Println("internal.job implicit connection with reverse reference handled")
 				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
 					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
+					if err != nil {
+						log.Println("TODO Handle this error ---> ", err)
+					}
 					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
 					if err != nil {
 						return errors.Wrap(err, "error: implicit connection with reverse reference failed")
@@ -394,7 +423,9 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 			msgID, err := email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, "", db)
 			if err == nil {
 				err = saveMsgID(ctx, accountID, e.ID, it.ID, *msgID, db)
-
+				if err != nil {
+					log.Println("TODO Handle this error ---> ", err)
+				}
 			}
 		}
 	case entity.CategoryMeeting:
@@ -410,7 +441,7 @@ func (j Job) actOnWho(accountID, entityID, itemID string, valueAddedFields []ent
 			if err != nil {
 				return err
 			}
-			return (Listener{}).AddReminder(accountID, entityID, itemID, when, rp)
+			return (j).AddReminder(accountID, entityID, itemID, when, rp)
 		}
 	}
 	return nil

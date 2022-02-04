@@ -204,12 +204,10 @@ func (r Ruler) startParsingLexer(rule string) Ruler {
 
 func (r Ruler) startComputingLexer(rule string) Ruler {
 	rule = ReplaceHTML(rule)
-	log.Printf("rule --- %+v\n", rule)
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {
 		token = l.NextToken()
-		log.Printf("token --- %+v\n", token)
 		switch token.Type {
 		case lexertoken.TokenValuate:
 			r.addEvalOperand(strings.TrimSpace(token.Value))
@@ -421,7 +419,8 @@ func (r *Ruler) addQuery(q string) {
 
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
-	log.Printf("internal.platform.ruleengine.services.ruler : `execute:` left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	//DEBUG LOGS
+	//log.Printf("*********> debug: internal.platform.ruleengine.services.ruler : `execute:` left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

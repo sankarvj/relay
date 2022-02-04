@@ -3,6 +3,7 @@ package node
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -130,7 +131,7 @@ type NodeMapWrapper struct {
 func (n Node) VariablesMap() map[string]interface{} {
 	var variables map[string]interface{}
 	if err := json.Unmarshal([]byte(n.Variables), &variables); err != nil && n.Variables != "" {
-		log.Printf("critical error occurred when unmarshalling node variables %v %v\n", n.ID, err)
+		log.Printf("******> critical error occurred when unmarshalling node variables %v %v\n", n.ID, err)
 		panic(err)
 	}
 	return variables
@@ -143,7 +144,12 @@ func (n Node) VarStrMap() map[string]string {
 		if k == GlobalEntity {
 			log.Println("rule.node.models: TODO What can be done here? shall we convert map to string?")
 		} else {
-			varStrMap[k] = v.(string)
+			switch v := v.(type) {
+			case string:
+				varStrMap[k] = v
+			default:
+				varStrMap[k] = fmt.Sprintf("%f", v)
+			}
 		}
 
 	}
@@ -154,7 +160,7 @@ func (n Node) VarStrMap() map[string]string {
 func (n Node) ActualsMap() map[string]string {
 	var actuals map[string]string
 	if err := json.Unmarshal([]byte(n.Actuals), &actuals); err != nil {
-		log.Printf("critical error occurred while unmarshalling node actuals %v %v\n", n.ID, err)
+		log.Printf("******> critical error occurred while unmarshalling node actuals %v %v\n", n.ID, err)
 		panic(err)
 	}
 	return actuals
