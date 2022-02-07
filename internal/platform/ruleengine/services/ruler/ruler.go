@@ -122,16 +122,16 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
 	case Parse:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `parse`  expression: %s\n", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `parse` expression: %s\n", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		workChan <- Work{Parser, "", r.content, nil}
 	case Compute:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `compute`  expression: %s\n", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `compute` expression: %s\n", rule)
 		r = r.startComputingLexer(rule)
 		workChan <- Work{Computer, "", r.content, nil}
 	case Graph:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `graph`  expression: %s\n", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `graph` expression: %s\n", rule)
 		r = r.startGraphingLexer(rule)
 		workChan <- Work{Grapher, "", r.filter, nil}
 	}

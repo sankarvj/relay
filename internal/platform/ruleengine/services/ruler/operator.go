@@ -258,15 +258,15 @@ func notsame(leftList, rightList []interface{}) bool {
 func cast(left, right Operand, checkEquality bool) caster {
 	log.Printf("internal.platform.ruleengine.services.ruler.operator : compare left: %v (%T) vs right: %v (%T)\n", left, left, right, right)
 	c := caster{}
-	if left == nil || right == nil {
-		c.err = errors.New("Any one or both the operands are null")
+	if left == nil || right == nil || left == "nil" || right == "nil" {
+		c.err = errors.New("any one or both the operands are null")
 		return c
 	}
 	c.setLeft(left)
 	c.setRight(right)
 
 	if checkEquality && (c.rightDataType != c.leftDataType) {
-		c.err = fmt.Errorf("unexpected error occurred. can't do operation in two different operand types %v & %v\n", c.leftDataType, c.rightDataType)
+		c.err = fmt.Errorf("unexpected error occurred. can't do operation in two different operand types %v & %v", c.leftDataType, c.rightDataType)
 	}
 	return c
 }

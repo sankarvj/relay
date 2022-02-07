@@ -42,7 +42,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 	for i := 0; i < len(fields); i++ {
 		f := &fields[i]
 		ids := refIds[f.Key]
-		if srcItemID, ok := srcMap[f.RefID]; ok { // if the parent item exists please add it to the item
+		if srcItemID, ok := srcMap[f.RefID]; ok && srcItemID != "" { // if the parent item exists please add it to the item
 			if ids == nil {
 				ids = []interface{}{}
 			}
@@ -51,17 +51,21 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 		updateChoices(ctx, db, accountID, entityID, f, ids, eng)
 	}
 
-	//dependent logic during list/retrive/edit. this logic will not get executed in create
+	//dependent logic during list/retrive/edit. this logic should not get executed in create or blueprint create
 	//the values evaluted using this logic should be attached to each item
 	for _, item := range items {
+
+		if item.ID == "" { // skip create/bp
+			continue
+		}
+
 		for i := 0; i < len(fields); i++ {
 			f := &fields[i]
 			if f.IsDependent() {
 				_, pv := parentField(fields, f.Dependent.ParentKey, item.Fields())
-
 				for k, exp := range f.Dependent.Expressions {
+					log.Printf("******> debug internal.reference called `RunExpEvaluator` for dependents evalution key: %+v exp: %+v ", k, exp)
 					result := eng.RunExpEvaluator(ctx, db, nil, accountID, exp, item.Fields())
-
 					if result {
 						action := f.Dependent.Actions[k] // take the corresponding action
 
@@ -152,7 +156,6 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			}
 			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
 		} else { // useful for auto-complete while viewing
-
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
 				log.Printf("***> unexpected error occurred when retriving reference items inside updating choices error: %v.\n continuing...", err)
@@ -273,7 +276,6 @@ func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID 
 			if valueAddedFields[i].Value != nil {
 				refIds = valueAddedFields[i].Value.([]interface{})
 			}
-
 			updateChoices(ctx, db, accountID, entityID, &valueAddedFields[i], refIds, eng)
 		}
 	}

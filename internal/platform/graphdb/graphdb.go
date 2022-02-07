@@ -321,7 +321,6 @@ func mergeProperties(gn GraphNode, srcNode *rg.Node) []string {
 	if len(props) > 0 {
 		p := make([]string, 0, len(props))
 		for k, v := range props {
-			log.Println("v ---> ", v)
 			p = append(p, fmt.Sprintf("%s.%s = %v", srcNode.Alias, k, rg.ToString(v)))
 		}
 		s = append(s, "SET")

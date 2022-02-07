@@ -58,8 +58,8 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 	return web.Respond(ctx, w, createViewModelFlow(f, []node.ViewModelNode{}), http.StatusCreated)
 }
 
-func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, state int, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
-	itemResultBody, err := s.filterItems(ctx, accountID, entityID, state, db, rp)
+func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
+	itemResultBody, err := s.filterItems(ctx, accountID, entityID, db, rp)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,7 +68,7 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	return viewModelItems, itemResultBody.TotalCount, nil
 }
 
-func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, state int, db *sqlx.DB, rp *redis.Pool) (*ItemResultBody, error) {
+func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, db *sqlx.DB, rp *redis.Pool) (*ItemResultBody, error) {
 
 	segmentResult, countResult, err := s.segment(ctx, accountID, entityID, db, rp)
 	if err != nil {

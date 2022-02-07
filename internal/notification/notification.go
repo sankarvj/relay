@@ -31,7 +31,7 @@ func ItemUpdates(ctx context.Context, name string, accountID, teamID, entityID, 
 	var body string
 	var formettedTime string
 	for _, f := range valueAddedFields {
-		if f.IsTitleLayout() {
+		if f.IsTitleLayout() && f.Value != nil {
 			body = f.Value.(string)
 		}
 

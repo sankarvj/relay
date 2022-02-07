@@ -42,7 +42,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
-	state := util.ConvertStrToInt(r.URL.Query().Get("state"))
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
 	ls := r.URL.Query().Get("ls")
@@ -87,7 +86,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			vitems, _, err := NewSegmenter(exp).
 				AddPage(page).
 				AddSortLogic(sortby, direction).
-				filterWrapper(ctx, accountID, e.ID, fields, state, i.db, i.rPool)
+				filterWrapper(ctx, accountID, e.ID, fields, i.db, i.rPool)
 			if err != nil {
 				return err
 			}
@@ -98,7 +97,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			AddPage(page).
 			AddSortLogic(sortby, direction).
 			AddCount().
-			filterWrapper(ctx, accountID, e.ID, fields, state, i.db, i.rPool)
+			filterWrapper(ctx, accountID, e.ID, fields, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -118,6 +117,40 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
 		CountMap: countMap,
+	}
+
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
+func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.LimitedList")
+	defer span.End()
+
+	accountID, entityID, _ := takeAEI(ctx, params, i.db)
+	state := util.ConvertStrToInt(params["state"])
+
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	if err != nil {
+		return err
+	}
+	fields := e.FieldsIgnoreError()
+
+	items, err := item.ListFilterByState(ctx, entityID, state, i.db)
+	if err != nil {
+		return err
+	}
+	viewModelItems := itemResponse(items)
+
+	response := struct {
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+	}{
+		Items:    viewModelItems,
+		Category: e.Category,
+		Fields:   fields,
+		Entity:   createViewModelEntity(e),
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
@@ -236,7 +269,6 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.EntityID = entityID
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
-	fmt.Printf("ni %+v", ni)
 
 	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.rPool)
 	if errorMap != nil {
@@ -295,6 +327,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if len(viewModelItems) == 0 {
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
+
 	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
 
 	if populateBR {
