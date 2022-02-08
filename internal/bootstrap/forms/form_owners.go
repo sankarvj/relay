@@ -43,15 +43,6 @@ func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string
 		DataType:    entity.TypeString,
 	}
 
-	typeFieldID := uuid.New().String()
-	typeField := entity.Field{ //user/sometime contact.
-		Key:         typeFieldID,
-		Name:        "type",
-		DisplayName: "Type",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
 	ownerVals := map[string]interface{}{
 		userIDFieldID: userID,
 		nameFieldID:   name,
@@ -59,5 +50,5 @@ func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string
 		emailFieldID:  email,
 	}
 
-	return []entity.Field{userIDField, nameField, avatarField, emailField, typeField}, ownerVals
+	return []entity.Field{userIDField, nameField, avatarField, emailField}, ownerVals
 }
