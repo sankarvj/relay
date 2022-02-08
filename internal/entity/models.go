@@ -78,4 +78,5 @@ const (
 	CategoryEvent        = 16
 	CategoryStream       = 17
 	CategoryNotification = 18
+	CategoryTeams        = 19
 )

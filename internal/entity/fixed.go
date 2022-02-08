@@ -27,6 +27,7 @@ const (
 )
 
 const (
+	FixedEntityTeam         = "teams"
 	FixedEntityOwner        = "owners"
 	FixedEntityEmailConfig  = "email_config"
 	FixedEntityCalendar     = "calendar"

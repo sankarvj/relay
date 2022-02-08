@@ -74,28 +74,12 @@ var migrations = []darwin.Migration{
 	},
 	{
 		Version:     3,
-		Description: "Add teams",
-		Script: `
-		CREATE TABLE teams (
-			team_id       UUID,
-			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
-			name          TEXT,
-			description   TEXT,
-			created_at    TIMESTAMP,
-			updated_at    BIGINT,
-			PRIMARY KEY (team_id),
-			UNIQUE (account_id,name)
-		);
-		`,
-	},
-	{
-		Version:     4,
 		Description: "Add entities",
 		Script: `
 		CREATE TABLE entities (
 			entity_id     UUID,
 			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
-			team_id       UUID REFERENCES teams ON DELETE CASCADE,
+			team_id       UUID, 
 			name          TEXT,
 			display_name  TEXT,
 			category      INTEGER DEFAULT 0,
@@ -112,7 +96,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     5,
+		Version:     4,
 		Description: "Add items",
 		Script: `
 		CREATE TABLE items (
@@ -132,7 +116,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     6,
+		Version:     5,
 		Description: "Add flows",
 		Script: `
 		CREATE TABLE flows (
@@ -156,7 +140,7 @@ var migrations = []darwin.Migration{
 	// In nodes it seems we are not using the stage_id effectively.
 	// We are using the parent_id + type logic to vet stage nodes inside a stage node.
 	{
-		Version:     7,
+		Version:     6,
 		Description: "Add nodes",
 		Script: `
 		CREATE TABLE nodes (
@@ -180,7 +164,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     8,
+		Version:     7,
 		Description: "Add active_flows",
 		Script: `
 		CREATE TABLE active_flows (
@@ -195,7 +179,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     9,
+		Version:     8,
 		Description: "Add active_nodes",
 		Script: `
 		CREATE TABLE active_nodes (
@@ -211,7 +195,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     10, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
+		Version:     9, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
 		Description: "Add relationships",
 		Script: `
 		CREATE TABLE relationships (
@@ -227,7 +211,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     11,
+		Version:     10,
 		Description: "Add connections",
 		Script: `
 		CREATE TABLE connections (
@@ -239,7 +223,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     12,
+		Version:     11,
 		Description: "Add discoveries",
 		Script: `
 		CREATE TABLE discoveries (
@@ -255,7 +239,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     13,
+		Version:     12,
 		Description: "Add layouts",
 		Script: `
 		CREATE TABLE layouts (
@@ -272,7 +256,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     14,
+		Version:     13,
 		Description: "Add conversations",
 		Script: `
 		CREATE TABLE conversations (

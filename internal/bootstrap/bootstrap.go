@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
@@ -17,16 +16,19 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
-func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
-	const q = `INSERT INTO teams
-		(team_id, account_id, name, description, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
-
-	_, err := db.ExecContext(
-		ctx, q,
-		teamID, accountID, teamName, "", time.Now().UTC(), time.Now().UTC().Unix(),
-	)
-	return err
+func BootstrapTeam(ctx context.Context, name, desc string, b *base.Base) error {
+	fields, teamVals := forms.TeamFields(name, desc)
+	// add entity - teams
+	te, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTeam, "Teams", entity.CategoryTeams, entity.StateAccountLevel, fields)
+	if err != nil {
+		return err
+	}
+	// add first user item
+	_, err = b.ItemAdd(ctx, te.ID, b.TeamID, b.UserID, teamVals)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.Base) error {
@@ -93,14 +95,14 @@ func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	fmt.Printf("\nBootstrap:CRM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
-	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "CRM")
+
+	b := base.NewBase(accountID, uuid.New().String(), base.UUIDHolder, db, rp)
+
+	err := BootstrapTeam(ctx, "CRM", "CRM Product", b)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `team` insertion failed")
 	}
 	fmt.Println("\t\t\tBootstrap:CRM `team` added")
-
-	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CRM `boot` functions started")
@@ -136,14 +138,13 @@ func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	fmt.Printf("\nBootstrap:CSM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
-	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "CSM")
+	b := base.NewBase(accountID, uuid.New().String(), base.UUIDHolder, db, rp)
+
+	err := BootstrapTeam(ctx, "CSM", "CSM Product", b)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CSM `team` insertion failed")
 	}
 	fmt.Println("\t\t\tBootstrap:CSM `team` added")
-
-	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions started")

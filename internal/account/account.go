@@ -67,6 +67,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cuser *user.Use
 	}
 	//Setting the accountID as the teamID for the base team of an account
 	teamID := a.ID
+	b := base.NewBase(a.ID, teamID, base.UUIDHolder, db, rp)
 
 	//TODO: all bootsrapping should happen in a single transaction
 	err = user.UpdateAccounts(ctx, db, cuser, a.ID, time.Now())
@@ -74,12 +75,10 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cuser *user.Use
 		return errors.Wrap(err, "account inserted but user update failed")
 	}
 
-	err = bootstrap.BootstrapTeam(ctx, db, a.ID, teamID, "Base")
+	err = bootstrap.BootstrapTeam(ctx, "Base", "Core Team", b)
 	if err != nil {
 		return errors.Wrap(err, "account inserted but team bootstrap failed")
 	}
-
-	b := base.NewBase(a.ID, teamID, base.UUIDHolder, db, rp)
 
 	err = bootstrap.BootstrapOwnerEntity(ctx, cuser, b)
 	if err != nil {
