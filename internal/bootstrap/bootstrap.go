@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -30,7 +31,11 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 }
 
 func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.Base) error {
-	fields, itemVals := forms.OwnerFields(currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
+
+	log.Printf("b-- %+v", b)
+	log.Printf("currentUser-- %+v", currentUser)
+
+	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
 	ue, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, entity.StateAccountLevel, fields)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	firebase "firebase.google.com/go"
 	"github.com/jmoiron/sqlx"
@@ -97,6 +98,8 @@ func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			} else {
 				log.Println("***> unexpected error when retriving users when inviting. error: ", err)
 			}
+		} else { //update account ID
+
 		}
 		users = append(users, usr)
 
@@ -127,12 +130,13 @@ func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
 
-	if err != nil {
+	if err != nil && err == user.ErrNotFound {
 		usr, err = user.Create(ctx, u.db, nu, v.Now)
 		if err != nil {
 			return errors.Wrapf(err, "User: %+v created", &usr)
 		}
-	} else {
+
+	} else if err == nil {
 		err := user.UpdatePassword(ctx, u.db, usr.ID, nu.Password, v.Now)
 		if err != nil {
 			return errors.Wrapf(err, "User: %+v password updated", &usr)
@@ -237,32 +241,32 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	log.Printf("sk/saravana please replace the word sk_replacetokenhere/sarvana_replacetokenhere in seed.go with this token to login %s", token.UID)
 
-	dbUser, claims, err := user.Authenticate(ctx, u.db, v.Now, userRecord.Email, token.UID)
-	if err != nil {
-		switch err {
-		case user.ErrAuthenticationFailure:
-			return web.NewRequestError(err, http.StatusUnauthorized)
-		default:
-			return errors.Wrap(err, "authenticating")
-		}
-	}
-
-	var tkn struct {
-		Token    string   `json:"token"`
-		Accounts []string `json:"accounts"`
-	}
-	tkn.Token, err = u.authenticator.GenerateToken(claims)
-	tkn.Accounts = dbUser.AccountIDs
+	tkn, err := authenticate(ctx, userRecord.Email, v.Now, token.UID, u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
 
-	//dbuser, err := model.CreateNewUserIfNotExists(name, email, phone, avatar, provider, uid, token.Expires, token.IssuedAt, emailVerified)
+	return web.Respond(ctx, w, tkn, http.StatusOK)
+}
+
+func authenticate(ctx context.Context, email string, now time.Time, uid string, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
+	dbUser, claims, err := user.Authenticate(ctx, db, now, email, uid)
 	if err != nil {
-		return errors.Wrap(err, "")
+		switch err {
+		case user.ErrAuthenticationFailure:
+			return nil, web.NewRequestError(err, http.StatusUnauthorized)
+		default:
+			return nil, errors.Wrap(err, "authenticating")
+		}
 	}
 
-	return web.Respond(ctx, w, tkn, http.StatusOK)
+	var tkn UserToken
+	tkn.Token, err = a.GenerateToken(claims)
+	if err != nil {
+		return nil, err
+	}
+	tkn.Accounts = dbUser.AccountIDs
+	return &tkn, nil
 }
 
 func createViewModelUser(u user.User) user.ViewModelUser {
@@ -274,4 +278,9 @@ func createViewModelUser(u user.User) user.ViewModelUser {
 		Roles:     u.Roles,
 		CreatedAt: u.CreatedAt.String(),
 	}
+}
+
+type UserToken struct {
+	Token    string   `json:"token"`
+	Accounts []string `json:"accounts"`
 }

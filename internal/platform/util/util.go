@@ -131,3 +131,7 @@ func Similar(a, b []interface{}) []interface{} {
 	}
 	return same
 }
+
+func String(v string) *string {
+	return &v
+}

@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"go.opencensus.io/trace"
 )
 
@@ -20,13 +19,25 @@ var (
 	ErrInvalidID = errors.New("ID is not in its proper form")
 )
 
+func Map(ctx context.Context, accountID string, db *sqlx.DB) (map[string]Team, error) {
+	teams, err := List(ctx, accountID, db)
+	if err != nil {
+		return nil, err
+	}
+	teamMap := make(map[string]Team, 0)
+	for _, t := range teams {
+		teamMap[t.ID] = t
+	}
+	return teamMap, nil
+}
+
 // List retrieves a list of existing teams for the account associated from the database.
 func List(ctx context.Context, accountID string, db *sqlx.DB) ([]Team, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.team.List")
 	defer span.End()
 
 	teams := []Team{}
-	const q = `SELECT * FROM teams where account_id = $1`
+	const q = `SELECT * FROM teams where account_id = $1 LIMIT 50`
 
 	if err := db.SelectContext(ctx, &teams, q, accountID); err != nil {
 		return nil, errors.Wrap(err, "selecting teams")
@@ -60,18 +71,6 @@ func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (Team, e
 		return Team{}, errors.Wrap(err, "inserting team")
 	}
 
-	ne := entity.NewEntity{
-		Name:      "Members",
-		AccountID: t.AccountID,
-		TeamID:    t.ID,
-		Category:  entity.CategoryUsers,
-		Fields:    makeMemberSeriesFields(),
-	}
-	_, err = entity.Create(ctx, db, ne, now)
-	if err != nil {
-		return Team{}, errors.Wrap(err, "inserting members enetity of each team")
-	}
-
 	return t, nil
 }
 
@@ -91,26 +90,4 @@ func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (Team, error) {
 	}
 
 	return t, nil
-}
-
-func makeMemberSeriesFields() []entity.Field {
-	fields := make([]entity.Field, 0)
-	fields = append(fields, makeNewField("Email", uuid.New().String(), "e1", "false", entity.TypeString))
-	fields = append(fields, makeNewField("Name", uuid.New().String(), "", "false", entity.TypeString))
-	fields = append(fields, makeNewField("Email", uuid.New().String(), "", "false", entity.TypeString))
-	return fields
-}
-
-func makeNewField(name, key, value string, hidden string, dataType entity.DType) entity.Field {
-	field := entity.Field{
-		Name:     name,
-		Key:      key,
-		DataType: dataType,
-		Value:    value,
-		Meta: map[string]string{
-			"unique": "true",
-			"hidden": hidden,
-		},
-	}
-	return field
 }

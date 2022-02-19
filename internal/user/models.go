@@ -18,7 +18,7 @@ type User struct {
 	Roles        pq.StringArray `db:"roles" json:"roles"`
 	PasswordHash []byte         `db:"password_hash" json:"-"`
 	Provider     *string        `db:"provider" json:"provider"`
-	IssuedAt     *string        `db:"issued_at" json:"issued_at"`
+	IssuedAt     time.Time      `db:"issued_at" json:"issued_at"`
 	CreatedAt    time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt    int64          `db:"updated_at" json:"updated_at"`
 }
@@ -28,7 +28,9 @@ type NewUser struct {
 	AccountIDs      []string `json:"account_ids" validate:"required"`
 	Name            string   `json:"name" validate:"required"`
 	Email           string   `json:"email" validate:"required"`
+	Avatar          *string  `json:"avatar"`
 	Phone           *string  `json:"phone"`
+	Provider        *string  `json:"provider"`
 	Roles           []string `json:"roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`
 	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
@@ -50,7 +52,7 @@ type ViewModelUser struct {
 // we do not want to use pointers to basic types but we make exceptions around
 // marshalling/unmarshalling.
 type UpdateUser struct {
-	AccountID       string   `json:"account_id"`
+	AccountIDs      []string `json:"account_ids"`
 	Name            *string  `json:"name"`
 	Email           *string  `json:"email"`
 	Roles           []string `json:"roles"`

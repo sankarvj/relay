@@ -45,9 +45,15 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	a := Account{
 		db:            db,
+		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register accounts management endpoints.
+	app.Handle("POST", "/v1/accounts/drafts", a.Draft)
+	// app.Handle("GET", "/v1/accounts/drafts/:draft_id/identifier/:business_email", a.RetriveDraft)
+	app.Handle("POST", "/v1/accounts/launch", a.Launch)
+
+	app.Handle("GET", "/v1/accounts/availability", a.Availability)
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
 	// app.Handle("POST", "/v1/accounts", a.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
@@ -71,6 +77,16 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("POST", "/v1/accounts/:account_id/teams", t.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams", t.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
+	m := Member{
+		db:            db,
+		rPool:         redisPool,
+		authenticator: authenticator,
+	}
+	// Register teams management endpoints.
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members", m.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members/:member_id", m.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members", m.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
 	e := Entity{
 		db:            db,
 		rPool:         redisPool,
@@ -80,6 +96,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	// TODO Add team authorization middleware
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities", e.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities", e.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/home", e.Home, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 

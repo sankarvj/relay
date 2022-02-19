@@ -24,7 +24,19 @@ type Account struct {
 
 // NewAccount contains information needed to create a new Account.
 type NewAccount struct {
-	ID     string `json:"id" validate:"required"`
-	Name   string `json:"name" validate:"required"`
-	Domain string `json:"domain" validate:"required"`
+	ID      string `json:"id" validate:"required"`
+	Name    string `json:"name" validate:"required"`
+	Domain  string `json:"domain"`
+	DraftID string `json:"draft_id"`
+}
+
+type LaunchAccount struct {
+	DraftID           string `json:"draft_id" validate:"required"`
+	BusinessEmailHash string `json:"business_email_hash" validate:"required"`
+	AccountName       string `json:"account_name" validate:"required"`
+	FirstName         string `json:"first_name" validate:"required"`
+	LastName          string `json:"last_name"`
+	Domain            string `json:"domain"`
+	Password          string `json:"password" validate:"required"`
+	PasswordConfirm   string `json:"password_confirm" validate:"eqfield=Password"`
 }

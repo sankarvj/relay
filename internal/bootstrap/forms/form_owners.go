@@ -1,11 +1,13 @@
 package forms
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
+func OwnerFields(teamID, userID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
 	userIDFieldID := uuid.New().String()
 	userIDField := entity.Field{
 		Key:         userIDFieldID,
@@ -43,12 +45,43 @@ func OwnerFields(userID, name, avatar, email string) ([]entity.Field, map[string
 		DataType:    entity.TypeString,
 	}
 
+	accessFieldID := uuid.New().String()
+	accessField := entity.Field{
+		Key:         accessFieldID,
+		Name:        "access_map",
+		DisplayName: "Access",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	teamFieldID := uuid.New().String()
+	teamListField := entity.Field{
+		Key:         teamFieldID,
+		Name:        "team_ids",
+		DisplayName: "Associated teams",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
+		Meta:        map[string]string{entity.MetaMultiChoice: "true"},
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
+	}
+
+	//V_E_C is view,edit,create
+	accessMap := make(map[string]string, 0)
+	accessMap["W"] = "V_E_C"
+	accessMap["D"] = "V_E_C"
+	fieldsBytes, _ := json.Marshal(accessMap)
+
 	ownerVals := map[string]interface{}{
 		userIDFieldID: userID,
 		nameFieldID:   name,
 		avatarFieldID: avatar,
 		emailFieldID:  email,
+		teamFieldID:   []interface{}{teamID},
+		accessFieldID: string(fieldsBytes),
 	}
 
-	return []entity.Field{userIDField, nameField, avatarField, emailField}, ownerVals
+	return []entity.Field{userIDField, nameField, avatarField, emailField, teamListField, accessField}, ownerVals
 }

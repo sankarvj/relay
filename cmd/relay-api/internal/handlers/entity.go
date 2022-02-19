@@ -18,6 +18,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 	"go.opencensus.io/trace"
 )
 
@@ -27,6 +28,42 @@ type Entity struct {
 	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
+}
+
+func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Home")
+	defer span.End()
+
+	teamID := params["team_id"]
+	teams, err := team.List(ctx, params["account_id"], e.db)
+	if err != nil {
+		return err
+	}
+	if teamID == "" || teamID == "undefined" {
+		teamID = teams[0].ID
+	}
+
+	entities, err := entity.List(ctx, params["account_id"], teamID, categories(r.URL.Query().Get("category_id")), e.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
+	for i, entt := range entities {
+		viewModelEntities[i] = createViewModelEntity(entt)
+	}
+
+	homeDetail := struct {
+		SelectedTeamID string                   `json:"selected_product_id"`
+		Teams          []team.Team              `json:"products"`
+		Entities       []entity.ViewModelEntity `json:"entities"`
+	}{
+		teamID,
+		teams,
+		viewModelEntities,
+	}
+
+	return web.Respond(ctx, w, homeDetail, http.StatusOK)
 }
 
 // List returns all the existing entities associated with team

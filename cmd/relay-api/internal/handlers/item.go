@@ -103,13 +103,26 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		}
 	}
 
+	//NOT SO GOOD
+	entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{entity.CategoryData}, i.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
+	for i, entt := range entities {
+		viewModelEntities[i] = createViewModelEntity(entt)
+	}
+	//NOT SO GOOD
+
 	response := struct {
-		Items    []ViewModelItem        `json:"items"`
-		Category int                    `json:"category"`
-		Fields   []entity.Field         `json:"fields"`
-		Entity   entity.ViewModelEntity `json:"entity"`
-		Piper    Piper                  `json:"piper"`
-		CountMap map[string]int         `json:"count_map"`
+		Items    []ViewModelItem          `json:"items"`
+		Category int                      `json:"category"`
+		Fields   []entity.Field           `json:"fields"`
+		Entity   entity.ViewModelEntity   `json:"entity"`
+		Piper    Piper                    `json:"piper"`
+		CountMap map[string]int           `json:"count_map"`
+		Entities []entity.ViewModelEntity `json:"entities"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
@@ -117,6 +130,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
 		CountMap: countMap,
+		Entities: viewModelEntities,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)

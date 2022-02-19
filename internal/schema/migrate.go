@@ -33,8 +33,8 @@ var migrations = []darwin.Migration{
 		CREATE TABLE accounts (
 			account_id    		UUID,
 			parent_account_id   UUID,
-			name          		TEXT,
-			domain        		TEXT UNIQUE,
+			name          		TEXT UNIQUE,
+			domain        		TEXT,
 			avatar        		TEXT,
 			plan          		INTEGER DEFAULT 0,
 			mode          		INTEGER DEFAULT 0,
@@ -74,6 +74,21 @@ var migrations = []darwin.Migration{
 	},
 	{
 		Version:     3,
+		Description: "Add drafts",
+		Script: `
+		CREATE TABLE drafts (
+			draft_id    		UUID,
+			account_name        TEXT,
+			business_email      TEXT,
+			teams 				TEXT[],
+			created_at    		TIMESTAMP,
+			updated_at    		BIGINT,
+			PRIMARY KEY (draft_id)
+		);
+		`,
+	},
+	{
+		Version:     4,
 		Description: "Add teams",
 		Script: `
 		CREATE TABLE teams (
@@ -89,7 +104,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     4,
+		Version:     5,
 		Description: "Add entities",
 		Script: `
 		CREATE TABLE entities (
@@ -112,7 +127,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     5,
+		Version:     6,
 		Description: "Add items",
 		Script: `
 		CREATE TABLE items (
@@ -132,7 +147,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     6,
+		Version:     7,
 		Description: "Add flows",
 		Script: `
 		CREATE TABLE flows (
@@ -156,7 +171,7 @@ var migrations = []darwin.Migration{
 	// In nodes it seems we are not using the stage_id effectively.
 	// We are using the parent_id + type logic to vet stage nodes inside a stage node.
 	{
-		Version:     7,
+		Version:     8,
 		Description: "Add nodes",
 		Script: `
 		CREATE TABLE nodes (
@@ -180,7 +195,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     8,
+		Version:     9,
 		Description: "Add active_flows",
 		Script: `
 		CREATE TABLE active_flows (
@@ -195,7 +210,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     9,
+		Version:     10,
 		Description: "Add active_nodes",
 		Script: `
 		CREATE TABLE active_nodes (
@@ -211,7 +226,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     10, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
+		Version:     11, //TODO delete relationship on the update/delete of the field or make field_id as ON DELETE CASCADE
 		Description: "Add relationships",
 		Script: `
 		CREATE TABLE relationships (
@@ -227,7 +242,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     11,
+		Version:     12,
 		Description: "Add connections",
 		Script: `
 		CREATE TABLE connections (
@@ -239,7 +254,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     12,
+		Version:     13,
 		Description: "Add discoveries",
 		Script: `
 		CREATE TABLE discoveries (
@@ -255,7 +270,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     13,
+		Version:     14,
 		Description: "Add layouts",
 		Script: `
 		CREATE TABLE layouts (
@@ -272,7 +287,7 @@ var migrations = []darwin.Migration{
 		`,
 	},
 	{
-		Version:     14,
+		Version:     15,
 		Description: "Add conversations",
 		Script: `
 		CREATE TABLE conversations (
