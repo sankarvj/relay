@@ -363,7 +363,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 		//The user can only delete that association and he couldn't update it becasue there is no
 		//reference exists between the two entities implicitly.
 		if r.FieldID == relationship.FieldAssociationKey && createEvent {
-			if baseItemID, ok := base[r.DstEntityID]; ok {
+			if baseItemID, ok := base[r.DstEntityID]; ok { // same logic added to redis also
 				err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
 				if err != nil {
 					return errors.Wrap(err, "error: querying association")

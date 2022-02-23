@@ -11,6 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
@@ -44,6 +45,8 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	sourceItemID := params["item_id"]
 	accountID := params["account_id"]
 	relationshipID := params["relationship_id"]
+	ls := r.URL.Query().Get("ls")
+	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
 	relation, err := relationship.Retrieve(ctx, accountID, relationshipID, rs.db)
 	if err != nil {
@@ -67,13 +70,23 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 
 	//There are three ways to fetch the child ids
 	// 1. Fetch child item ids by querying the connections table.
-	// 2. Fetch child item ids by querying the graph db.
+	// 2. Fetch child item ids by querying the graph db. tick
 	// 3. Fetch child item ids by querying the parent_item_id (formerly genie_id)
 
 	//TODO: add pagination
 	itemIDs, err := connection.ChildItemIDs(ctx, rs.db, accountID, relationshipID, sourceItemID)
 	if err != nil {
 		return errors.Wrap(err, "selecting related item ids")
+	}
+
+	piper := Piper{Viable: true}
+	if ls == entity.MetaRenderPipe && page == 0 {
+		err := pipeKanban(ctx, e, &piper, rs.db)
+		if err != nil {
+			return err
+		}
+		piper.Viable = true
+		piper.Pipe = true
 	}
 
 	childItems, err := item.BulkRetrieve(ctx, e.ID, itemIDs, rs.db)

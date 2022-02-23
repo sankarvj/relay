@@ -103,7 +103,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	//NOT SO GOOD
+	//NOT SO GOOD - DOING THIS IS TO SHOW THE LIST OF ENTITIES IN THE ITEMS LIST PAGE FOR UI NAVIGATION
 	entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{entity.CategoryData}, i.db)
 	if err != nil {
 		return err
@@ -113,7 +113,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	for i, entt := range entities {
 		viewModelEntities[i] = createViewModelEntity(entt)
 	}
-	//NOT SO GOOD
 
 	response := struct {
 		Items    []ViewModelItem          `json:"items"`

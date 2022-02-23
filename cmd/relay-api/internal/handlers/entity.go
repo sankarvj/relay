@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
 
@@ -33,6 +34,11 @@ type Entity struct {
 func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Home")
 	defer span.End()
+
+	cu, err := user.RetrieveCurrentUser(ctx, e.db)
+	if err != nil {
+		return err
+	}
 
 	teamID := params["team_id"]
 	teams, err := team.List(ctx, params["account_id"], e.db)
@@ -57,10 +63,12 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		SelectedTeamID string                   `json:"selected_product_id"`
 		Teams          []team.Team              `json:"products"`
 		Entities       []entity.ViewModelEntity `json:"entities"`
+		User           user.ViewModelUser       `json:"user"`
 	}{
 		teamID,
 		teams,
 		viewModelEntities,
+		createViewModelUser(*cu),
 	}
 
 	return web.Respond(ctx, w, homeDetail, http.StatusOK)
