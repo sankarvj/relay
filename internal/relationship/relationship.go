@@ -234,6 +234,20 @@ func Relationships(ctx context.Context, db *sqlx.DB, accountID, entityID string)
 	return relationships, nil
 }
 
+func RetionshipType(ctx context.Context, db *sqlx.DB, accountID, baseEntityID, entityID string) ([]Relationship, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
+	defer span.End()
+
+	var relationships []Relationship
+	const q = `SELECT * FROM relationships WHERE account_id = $1 AND (src_entity_id = $2 AND dst_entity_id = $3) OR (src_entity_id = $3 AND dst_entity_id = $2)`
+
+	if err := db.SelectContext(ctx, &relationships, q, accountID, baseEntityID, entityID); err != nil {
+		return nil, errors.Wrap(err, "selecting relationships for src entity")
+	}
+
+	return relationships, nil
+}
+
 func populateBonds(accountID, srcEntityId string, referenceFields map[string]Relatable) []Relationship {
 	relationships := make([]Relationship, 0)
 	for fieldKey, relatable := range referenceFields {

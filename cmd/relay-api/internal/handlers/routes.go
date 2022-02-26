@@ -153,6 +153,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	rs := Relationship{
 		db:            db,
+		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register relationship management endpoints.

@@ -136,6 +136,7 @@ var migrations = []darwin.Migration{
 			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
 			genie_id         UUID,
 			user_id          UUID,
+			stage_id         UUID,
 			state            INTEGER DEFAULT 0,
 			type             INTEGER DEFAULT 0,
 			name             TEXT,

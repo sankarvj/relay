@@ -25,6 +25,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		AccountID: n.AccountID,
+		StageID:   &n.StageID,
 		EntityID:  n.ActorID,
 		Fields:    itemFields(valueAddedFields),
 	}

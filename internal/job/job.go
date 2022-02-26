@@ -29,6 +29,8 @@ import (
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 type Job struct {
+	baseItemID   string
+	baseEntityID string
 }
 
 // events
@@ -65,7 +67,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	}
 
 	//graph
-	err = j.actOnRedisGraph(accountID, entityID, itemID, oldFields, valueAddedFields, "", "", rp)
+	err = j.actOnRedisGraph(ctx, accountID, entityID, itemID, oldFields, valueAddedFields, db, rp)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 		return
@@ -119,14 +121,14 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 
 	//insertion in to redis graph DB
 	if len(source) == 0 {
-		err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, "", "", rp)
+		err = j.actOnRedisGraph(ctx, accountID, entityID, itemID, nil, valueAddedFields, db, rp)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 			return
 		}
 	} else {
-		for baseEntityID, baseItemID := range source {
-			err = j.actOnRedisGraph(accountID, entityID, itemID, nil, valueAddedFields, baseEntityID, baseItemID, rp)
+		for j.baseEntityID, j.baseItemID = range source {
+			err = j.actOnRedisGraph(ctx, accountID, entityID, itemID, nil, valueAddedFields, db, rp)
 			if err != nil {
 				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 				return
@@ -256,7 +258,7 @@ func (j *Job) EventDelayExhausted(accountID, entityID, itemID string, meta map[s
 
 //act ons
 
-func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, baseEntityID, baseItemID string, rp *redis.Pool) error {
+func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
 
 	if oldFields != nil { //use only during the update
 		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
@@ -275,8 +277,27 @@ func (j *Job) actOnRedisGraph(accountID, entityID, itemID string, oldFields map[
 	}
 
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
-	if baseEntityID != "" && baseItemID != "" {
-		gpbNode = gpbNode.ParentEdge(baseEntityID, baseItemID)
+	if j.baseEntityID != "" && j.baseItemID != "" {
+
+		relationShips, err := relationship.RetionshipType(ctx, db, accountID, j.baseEntityID, entityID)
+		if err != nil {
+			return errors.Wrap(err, "***> EventItemCreated: unexpected/unhandled error occurred when retriving relationships on job. error:")
+		}
+
+		log.Printf("ParentEdge------------> baseEntityID ---> %+v baseItemID --> %v", j.baseEntityID, j.baseItemID)
+
+		connType := connectionType(j.baseEntityID, entityID, relationShips)
+		log.Println("connType ------ ", connType)
+		switch connType {
+		case 1: // one way reverse
+			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, false) // contact creates companies : company has contacts
+		case 2: // one way straight
+			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, true) // contact creates companies : contact has companies
+		case 3: // two way
+			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, true)
+			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, false)
+		}
+
 	}
 	err := graphdb.UpsertNode(rp, gpbNode)
 	if err != nil {
@@ -477,4 +498,28 @@ func saveMsgID(ctx context.Context, accountID, entityID, itemID, msgID string, d
 	}
 	emailItem.MessageID = msgID
 	return upFunc(ctx, emailItem, db)
+}
+
+func connectionType(baseEntityID, entityID string, relationShips []relationship.Relationship) int {
+	typeOfConnection := 0 // no connection
+
+	for _, r := range relationShips {
+		if r.SrcEntityID == entityID && r.DstEntityID == baseEntityID {
+			if typeOfConnection == 2 {
+				typeOfConnection = 3 // two way connection
+			} else {
+				typeOfConnection = 1 // one way reverse
+			}
+
+		} else if r.DstEntityID == entityID && r.SrcEntityID == baseEntityID {
+			if typeOfConnection == 1 {
+				typeOfConnection = 3 // two way connection
+			} else {
+				typeOfConnection = 2 // one way staright
+			}
+
+		}
+	}
+	log.Println("typeOfConnection ", typeOfConnection)
+	return typeOfConnection
 }

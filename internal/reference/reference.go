@@ -220,7 +220,6 @@ func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 				choice.ParentIDs = append(choice.ParentIDs, parentID)
 			}
 		} else {
-
 			f.Choices = append(f.Choices, entity.Choice{
 				ID:           choicer.ID,
 				ParentIDs:    []string{parentID},

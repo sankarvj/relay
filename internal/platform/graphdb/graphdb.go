@@ -149,7 +149,8 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("SKIP %d LIMIT %d", skipCount, util.PageLimt))
 
 	result, err := graph.Query(q)
-	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
@@ -292,6 +293,8 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, mps...)
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
+		//DEBUGGING LOG
+		log.Println("internal.platform.graphdb upsert edge query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -305,6 +308,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s := matchNode(srcNode)
 		s = append(s, ruQ)
 		sq := strings.Join(s, " ")
+		log.Println("internal.platform.graphdb unlink edge query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err
@@ -439,9 +443,9 @@ func unlinkEdge(unlinkAlias string, e *rg.Edge) []string {
 	return s
 }
 
-func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string) GraphNode {
+func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string, rev bool) GraphNode {
 	rn := BuildGNode(gn.GraphName, parentEntityID, false).
-		MakeBaseGNode(parentItemID, []Field{}).relateRefs(true)
+		MakeBaseGNode(parentItemID, []Field{}).relateRefs(rev)
 	gn.Relations = append(gn.Relations, rn)
 	return gn
 }

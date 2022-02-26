@@ -61,12 +61,17 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 		n.UserID = nil
 	}
 
+	if n.StageID != nil && *n.StageID == "" {
+		n.StageID = nil
+	}
+
 	i := Item{
 		ID:        n.ID,
 		AccountID: n.AccountID,
 		EntityID:  n.EntityID,
 		GenieID:   n.GenieID,
 		UserID:    n.UserID,
+		StageID:   n.StageID,
 		Name:      n.Name,
 		Type:      n.Type,
 		State:     n.State,
@@ -76,12 +81,12 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 	}
 
 	const q = `INSERT INTO items
-		(item_id, account_id, entity_id, genie_id, user_id, name, type, state, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		(item_id, account_id, entity_id, genie_id, user_id, stage_id, name, type, state, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		i.ID, i.AccountID, i.EntityID, i.GenieID, i.UserID, i.Name, i.Type, i.State, i.Fieldsb,
+		i.ID, i.AccountID, i.EntityID, i.GenieID, i.UserID, i.StageID, i.Name, i.Type, i.State, i.Fieldsb,
 		i.CreatedAt, i.UpdatedAt,
 	)
 	if err != nil {

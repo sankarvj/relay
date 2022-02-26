@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -58,13 +59,13 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 	return web.Respond(ctx, w, createViewModelFlow(f, []node.ViewModelNode{}), http.StatusCreated)
 }
 
-func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
+func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, sourceMap map[string]interface{}, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
 	itemResultBody, err := s.filterItems(ctx, accountID, entityID, db, rp)
 	if err != nil {
 		return nil, nil, err
 	}
 	viewModelItems := itemResponse(itemResultBody.Items)
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, map[string]interface{}{}, db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, sourceMap, db, job.NewJabEngine())
 	return viewModelItems, itemResultBody.TotalCount, nil
 }
 
@@ -90,6 +91,8 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 	conditionFields := make([]graphdb.Field, 0)
 
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, s.exp)
+
+	log.Println("filter ---------------------->", filter)
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
@@ -106,6 +109,11 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression))
 			}
 		}
+
+	}
+
+	if s.source != nil {
+		conditionFields = append(conditionFields, *s.source)
 	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
@@ -179,6 +187,11 @@ type Segmenter struct {
 	direction string
 	page      int
 	doCount   bool
+	source    *graphdb.Field
+}
+
+func NewEmptySegmenter() *Segmenter {
+	return &Segmenter{}
 }
 
 func NewSegmenter(exp string) *Segmenter {
@@ -191,8 +204,39 @@ func (s *Segmenter) AddSortLogic(sortby, direction string) *Segmenter {
 	return s
 }
 
+func (s *Segmenter) AddExp(exp string) *Segmenter {
+	s.exp = exp
+	return s
+}
+
 func (s *Segmenter) AddPage(page int) *Segmenter {
 	s.page = page
+	return s
+}
+
+func (s *Segmenter) AddSourceCondition(sourceEntityID, sourceItemID string) *Segmenter {
+	s.source = &graphdb.Field{
+		Value:     []interface{}{""},
+		DataType:  graphdb.TypeReference,
+		RefID:     sourceEntityID,
+		IsReverse: false,
+		Field: &graphdb.Field{
+			Expression: graphdb.Operator("eq"),
+			Key:        "id",
+			DataType:   graphdb.TypeString,
+			Value:      sourceItemID,
+		},
+	}
+	return s
+}
+
+func (s *Segmenter) AddSourceIDCondition(ids []string) *Segmenter {
+	s.source = &graphdb.Field{
+		Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode
+		Key:        "id",
+		DataType:   graphdb.TypeWist,
+		Value:      ids,
+	}
 	return s
 }
 

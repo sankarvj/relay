@@ -16,12 +16,14 @@ import (
 )
 
 type Piper struct {
-	Viable  bool                       `json:"viable"`
-	Pipe    bool                       `json:"pipe"`
-	NodeKey string                     `json:"node_key"`
-	Flows   []flow.ViewModelFlow       `json:"flows"`
-	Nodes   []node.ViewModelNode       `json:"nodes"`
-	Items   map[string][]ViewModelItem `json:"items"`
+	Viable         bool                       `json:"viable"`
+	Pipe           bool                       `json:"pipe"`
+	NodeKey        string                     `json:"node_key"`
+	Flows          []flow.ViewModelFlow       `json:"flows"`
+	Nodes          []node.ViewModelNode       `json:"nodes"`
+	Items          map[string][]ViewModelItem `json:"items"`
+	sourceEntityID string
+	sourceItemID   string
 }
 
 func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) string {
@@ -43,11 +45,11 @@ func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) s
 	return ls
 }
 
-func pipeKanban(ctx context.Context, e entity.Entity, p *Piper, db *sqlx.DB) error {
+func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper, db *sqlx.DB) error {
 	//If true, pass the values needed for the view
 	var viewModelFlows []flow.ViewModelFlow
 	var viewModelNodes []node.ViewModelNode
-	if e.FlowField() != nil {
+	if e.FlowField() != nil { //main stages. ex: deal stages
 		flows, err := flow.List(ctx, []string{e.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
 		if err != nil {
 			return err
@@ -59,20 +61,32 @@ func pipeKanban(ctx context.Context, e entity.Entity, p *Piper, db *sqlx.DB) err
 		}
 
 		if len(flows) > 0 {
-			nodes, err := node.NodeActorsList(ctx, flows[0].ID, db)
+			viewModelNodes, err = nodeStages(ctx, flows[0].ID, db)
 			if err != nil {
 				return err
 			}
-
-			viewModelNodes = make([]node.ViewModelNode, 0)
-			for _, n := range nodes {
-				if n.Type == node.Stage {
-					viewModelNodes = append(viewModelNodes, createViewModelNodeActor(n))
-				}
-			}
-
 		}
 
+	} else if p.sourceEntityID != "" && p.sourceItemID != "" { //child stages. ex: tasks created in the deal stages
+		e, err := entity.Retrieve(ctx, accountID, p.sourceEntityID, db)
+		if err != nil {
+			return err
+		}
+		it, err := item.Retrieve(ctx, p.sourceEntityID, p.sourceItemID, db)
+		if err != nil {
+			return err
+		}
+		f := e.FlowField()
+		if f != nil {
+			flowIDs := it.Fields()[f.Key]
+			if flowIDs != nil {
+				flowID := flowIDs.([]interface{})[0]
+				viewModelNodes, err = nodeStages(ctx, flowID.(string), db)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	p.Flows = viewModelFlows
@@ -80,6 +94,21 @@ func pipeKanban(ctx context.Context, e entity.Entity, p *Piper, db *sqlx.DB) err
 	p.Items = make(map[string][]ViewModelItem, 0)
 
 	return nil
+}
+
+func nodeStages(ctx context.Context, flowID string, db *sqlx.DB) ([]node.ViewModelNode, error) {
+	nodes, err := node.NodeActorsList(ctx, flowID, db)
+	if err != nil {
+		return nil, err
+	}
+
+	viewModelNodes := make([]node.ViewModelNode, 0)
+	for _, n := range nodes {
+		if n.Type == node.Stage {
+			viewModelNodes = append(viewModelNodes, createViewModelNodeActor(n))
+		}
+	}
+	return viewModelNodes, nil
 }
 
 func makeGraphField(f *entity.Field, value interface{}, expression string) graphdb.Field {

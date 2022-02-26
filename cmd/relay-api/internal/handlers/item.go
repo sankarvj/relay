@@ -71,7 +71,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	var countMap map[string]int
 	piper := Piper{Viable: e.FlowField() != nil}
 	if ls == entity.MetaRenderPipe && page == 0 {
-		err := pipeKanban(ctx, e, &piper, i.db)
+		err := pipeKanban(ctx, accountID, e, &piper, i.db)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			vitems, _, err := NewSegmenter(exp).
 				AddPage(page).
 				AddSortLogic(sortby, direction).
-				filterWrapper(ctx, accountID, e.ID, fields, i.db, i.rPool)
+				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			AddPage(page).
 			AddSortLogic(sortby, direction).
 			AddCount().
-			filterWrapper(ctx, accountID, e.ID, fields, i.db, i.rPool)
+			filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -386,6 +386,7 @@ func createViewModelItem(i item.Item) ViewModelItem {
 	return ViewModelItem{
 		ID:       i.ID,
 		EntityID: i.EntityID,
+		StageID:  i.StageID,
 		Name:     i.Name,
 		Type:     i.Type,
 		State:    i.State,
@@ -434,6 +435,7 @@ func choiceResponse(key string, items []item.Item, whoMap map[string]string) []e
 type ViewModelItem struct {
 	ID       string                 `json:"id"`
 	EntityID string                 `json:"entity_id"`
+	StageID  *string                `json:"stage_id"`
 	Name     *string                `json:"name"`
 	Type     int                    `json:"type"`
 	State    int                    `json:"state"`

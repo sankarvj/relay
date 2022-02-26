@@ -2,18 +2,17 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
 )
@@ -22,6 +21,7 @@ import (
 type Relationship struct {
 	db            *sqlx.DB
 	authenticator *auth.Authenticator
+	rPool         *redis.Pool
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
@@ -46,6 +46,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	accountID := params["account_id"]
 	relationshipID := params["relationship_id"]
 	ls := r.URL.Query().Get("ls")
+	exp := r.URL.Query().Get("exp")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
 	relation, err := relationship.Retrieve(ctx, accountID, relationshipID, rs.db)
@@ -63,55 +64,95 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return err
-	}
-
 	//There are three ways to fetch the child ids
 	// 1. Fetch child item ids by querying the connections table.
 	// 2. Fetch child item ids by querying the graph db. tick
 	// 3. Fetch child item ids by querying the parent_item_id (formerly genie_id)
-
-	//TODO: add pagination
-	itemIDs, err := connection.ChildItemIDs(ctx, rs.db, accountID, relationshipID, sourceItemID)
+	viewModelItems, fields, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.rPool)
 	if err != nil {
-		return errors.Wrap(err, "selecting related item ids")
+		return err
 	}
 
 	piper := Piper{Viable: true}
 	if ls == entity.MetaRenderPipe && page == 0 {
-		err := pipeKanban(ctx, e, &piper, rs.db)
+		piper.sourceEntityID, piper.sourceItemID = sourceEntityID, sourceItemID
+		err := pipeKanban(ctx, accountID, e, &piper, rs.db)
 		if err != nil {
 			return err
 		}
 		piper.Viable = true
 		piper.Pipe = true
-	}
 
-	childItems, err := item.BulkRetrieve(ctx, e.ID, itemIDs, rs.db)
-	if err != nil {
-		return errors.Wrap(err, "fetching items from selected ids")
-	}
+		piper.Items = make(map[string][]ViewModelItem, 0)
+		for _, vmi := range viewModelItems {
+			if vmi.StageID != nil {
+				if _, ok := piper.Items[*vmi.StageID]; !ok {
+					piper.Items[*vmi.StageID] = make([]ViewModelItem, 0)
+				}
+				piper.Items[*vmi.StageID] = append(piper.Items[*vmi.StageID], vmi)
+			}
+		}
 
-	sourceMap := make(map[string]interface{}, 0)
-	sourceMap[sourceEntityID] = sourceItemID
-	//When populating the fields for the child items please populate the parent id also
-	fields = e.FieldsIgnoreError()
-	viewModelItems := itemResponse(childItems)
-	reference.UpdateReferenceFields(ctx, accountID, relatedEntityID, fields, childItems, sourceMap, rs.db, job.NewJabEngine())
+	}
 
 	response := struct {
 		Items    []ViewModelItem        `json:"items"`
 		Category int                    `json:"category"`
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
+		Piper    Piper                  `json:"piper"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
 		Fields:   fields,
 		Entity:   createViewModelEntity(e),
+		Piper:    piper,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
+func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, db *sqlx.DB, rPool *redis.Pool) ([]ViewModelItem, []entity.Field, error) {
+	sourceMap := make(map[string]interface{}, 0)
+	sourceMap[sourceEntityID] = sourceItemID
+
+	fields := e.FieldsIgnoreError()
+	var err error
+	var viewModelItems []ViewModelItem
+	if relation.FieldID == relationship.FieldAssociationKey { //explicit
+		viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+			AddCount().
+			AddSourceCondition(sourceEntityID, sourceItemID).
+			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+	} else { // implicit straight. tasks are the child of deals because task has a deal field
+		if isFieldKeyExist(relation.FieldID, entity.FieldsMap(fields)) {
+			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)
+			exp = util.AddExpression(exp, newExp)
+			viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+				AddCount().
+				filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+		} else { // implicit reverse. contacts are the child of deals because deals has a contact field
+			var it item.Item
+			it, err = item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
+			if err != nil {
+				return nil, nil, err
+			}
+			ids := it.Fields()[relation.FieldID]
+			if ids != nil {
+				viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+					AddCount().
+					AddSourceIDCondition(util.ConvertSliceTypeRev(ids.([]interface{}))).
+					filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+			}
+		}
+	}
+
+	return viewModelItems, fields, err
+}
+
+func isFieldKeyExist(fieldID string, fields map[string]interface{}) bool {
+	if _, ok := fields[fieldID]; ok {
+		return true
+	}
+	return false
 }

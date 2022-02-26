@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -85,6 +86,10 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			// value add properties
 			for _, vaf := range valueAddedFields {
 				dynamicPlaceHolder[vaf.Meta["layout"]] = vaf.Value
+			}
+
+			if it.UserID == nil {
+				it.UserID = util.String("")
 			}
 
 			viewModelEvent := ViewModelEvent{

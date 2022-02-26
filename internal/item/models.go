@@ -11,6 +11,7 @@ type Item struct {
 	EntityID  string    `db:"entity_id" json:"entity_id"`
 	GenieID   *string   `db:"genie_id" json:"genie_id"` // * because it could be null
 	UserID    *string   `db:"user_id" json:"user_id"`   // * because it could be null
+	StageID   *string   `db:"stage_id" json:"stage_id"` // * because it could be null
 	State     int       `db:"state" json:"state"`
 	Type      int       `db:"type" json:"type"`
 	Name      *string   `db:"name" json:"name"`
@@ -33,6 +34,7 @@ type NewItem struct {
 	EntityID  string                 `json:"entity_id"`
 	GenieID   *string                `json:"genie_id"`
 	UserID    *string                `json:"user_id"`
+	StageID   *string                `json:"stage_id"`
 	Name      *string                `json:"name"`
 	Type      int                    `json:"type"`
 	State     int                    `json:"state"`
