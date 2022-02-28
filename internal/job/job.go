@@ -263,6 +263,7 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 	if oldFields != nil { //use only during the update
 		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
 
+		//unlink
 		for i := 0; i < len(valueAddedFields); i++ {
 			f := &valueAddedFields[i]
 			if _, ok := dirtyFields[f.Key]; ok {

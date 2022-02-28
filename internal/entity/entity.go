@@ -60,6 +60,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 		DisplayName: n.DisplayName,
 		Category:    n.Category,
 		State:       n.State,
+		Tags:        []string{},
 		Fieldsb:     string(fieldsBytes),
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
@@ -82,8 +83,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	//TODO: this relationship should happen only if the user explicitly specifies that.
 	//may be, we can give add the boolean in the meta to identify that.
 	err = relationship.Bonding(ctx, db, e.AccountID, e.ID, refFields(n.Fields))
+	if err != nil {
+		return Entity{}, errors.Wrap(err, "making bonds")
+	}
 
-	return e, err
+	return e, nil
 }
 
 // Update replaces a item document in the database.

@@ -56,6 +56,7 @@ func (ev *Event) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	sourceItemID := params["item_id"]
 	accountID := params["account_id"]
+
 	//TODO: add pagination
 	itemIDs, err := connection.JustChildItemIDs(ctx, ev.db, accountID, sourceItemID)
 	if err != nil {

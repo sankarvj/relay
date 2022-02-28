@@ -238,6 +238,7 @@ var migrations = []darwin.Migration{
 			dst_entity_id   UUID REFERENCES entities ON DELETE CASCADE,
 			field_id        TEXT, 
 			type 	   	    INTEGER DEFAULT 0,
+			position 	   	BIGINT,
 			UNIQUE (account_id,src_entity_id,dst_entity_id,field_id)
 		);
 		`,

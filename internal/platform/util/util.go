@@ -132,6 +132,48 @@ func Similar(a, b []interface{}) []interface{} {
 	return same
 }
 
+func Differ(a, b []interface{}) []interface{} {
+	mb := make(map[interface{}]bool, len(b))
+	for _, x := range b {
+		mb[x] = true
+	}
+	var differ []interface{}
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			differ = append(differ, x)
+		}
+	}
+	return differ
+}
+
+func Similars(a, b []string) []string {
+	mb := make(map[string]bool, len(b))
+	for _, x := range b {
+		mb[x] = true
+	}
+	var same []string
+	for _, x := range a {
+		if _, found := mb[x]; found {
+			same = append(same, x)
+		}
+	}
+	return same
+}
+
+func Differs(a, b []string) []string {
+	mb := make(map[string]bool, len(b))
+	for _, x := range b {
+		mb[x] = true
+	}
+	var differ []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			differ = append(differ, x)
+		}
+	}
+	return differ
+}
+
 func String(v string) *string {
 	return &v
 }

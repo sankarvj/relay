@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -112,12 +113,12 @@ func Create(ctx context.Context, db *sqlx.DB, r Relationship) (Relationship, err
 	defer span.End()
 
 	const q = `INSERT INTO relationships
-		(relationship_id, parent_rel_id, account_id, src_entity_id, dst_entity_id, field_id, type)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		(relationship_id, parent_rel_id, account_id, src_entity_id, dst_entity_id, field_id, type, position)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		r.RelationshipID, r.ParentRelID, r.AccountID, r.SrcEntityID, r.DstEntityID, r.FieldID, r.Type,
+		r.RelationshipID, r.ParentRelID, r.AccountID, r.SrcEntityID, r.DstEntityID, r.FieldID, r.Type, r.Position,
 	)
 	if err != nil {
 		return Relationship{}, errors.Wrap(err, "inserting relationships")
@@ -198,7 +199,7 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) 
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, r.parent_rel_id, e.display_name, e.category, e.entity_id, r.type FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3) AND r.dst_entity_id = $4 AND r.type = $5`
+	const q = `SELECT r.relationship_id, r.parent_rel_id, e.display_name, e.category, e.entity_id, r.type, r.position FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3) AND r.dst_entity_id = $4 AND r.type = $5`
 
 	// can't import entity.StateAccountLevel due to cyclic import error hence hardcoded -- 1
 	stateAccountLevel := 1
@@ -250,6 +251,7 @@ func RetionshipType(ctx context.Context, db *sqlx.DB, accountID, baseEntityID, e
 
 func populateBonds(accountID, srcEntityId string, referenceFields map[string]Relatable) []Relationship {
 	relationships := make([]Relationship, 0)
+	var position int64
 	for fieldKey, relatable := range referenceFields {
 		if srcEntityId == "" || relatable.RefID == "" {
 			log.Printf("***> unexpected/expected error occurred. src_entity_id (%s) or ref_entity_id (%s) is empty. bonding skipped \n", srcEntityId, relatable.RefID)
@@ -263,6 +265,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 		}
 
 		relationshipID := uuid.New().String()
+		position = position + 1
 		if relatable.RType == RTypeAbsolute || relatable.RType == RTypeStraight {
 			relationships = append(relationships, Relationship{
 				RelationshipID: relationshipID,
@@ -272,6 +275,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 				DstEntityID:    relatable.RefID,
 				FieldID:        fieldKey,
 				Type:           relatable.RType,
+				Position:       position,
 			})
 		}
 
@@ -284,6 +288,7 @@ func populateBonds(accountID, srcEntityId string, referenceFields map[string]Rel
 				DstEntityID:    srcEntityId,
 				FieldID:        fieldKey,
 				Type:           relatable.RType,
+				Position:       position,
 			})
 		}
 
@@ -313,6 +318,7 @@ func updateBonds(accountID, srcEntityId string, existingRelationshipMap map[stri
 func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []Relationship) {
 	relationships := make([]Relationship, 0)
 	relationshipID := uuid.New().String()
+	position := time.Now().UnixNano()
 	relationships = append(relationships, Relationship{
 		RelationshipID: relationshipID,
 		AccountID:      accountID,
@@ -320,6 +326,7 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		DstEntityID:    dstEntityId,
 		FieldID:        FieldAssociationKey,
 		Type:           RTypeAbsolute,
+		Position:       position,
 	}, Relationship{
 		RelationshipID: relationshipID,
 		AccountID:      accountID,
@@ -327,6 +334,7 @@ func populateAssociation(accountID, srcEntityId, dstEntityId string) (string, []
 		DstEntityID:    srcEntityId,
 		FieldID:        FieldAssociationKey,
 		Type:           RTypeAbsolute,
+		Position:       position,
 	})
 	return relationshipID, relationships
 }

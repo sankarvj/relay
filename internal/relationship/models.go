@@ -9,6 +9,7 @@ type Relationship struct {
 	DstEntityID    string  `db:"dst_entity_id" json:"dst_entity_id"`
 	FieldID        string  `db:"field_id" json:"field_id"`
 	Type           RType   `db:"type" json:"type"`
+	Position       int64   `db:"position" json:"position"`
 }
 
 type Bond struct {
@@ -18,6 +19,7 @@ type Bond struct {
 	Category       int     `db:"category" json:"category"`
 	EntityID       string  `db:"entity_id" json:"entity_id"`
 	Type           RType   `db:"type" json:"type"`
+	Position       int64   `db:"position" json:"position"`
 }
 
 type Relatable struct {
