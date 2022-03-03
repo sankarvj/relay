@@ -248,10 +248,21 @@ var migrations = []darwin.Migration{
 		Description: "Add connections",
 		Script: `
 		CREATE TABLE connections (
+			connection_id   UUID,
 			account_id  	UUID REFERENCES accounts ON DELETE CASCADE,
+			user_id         UUID,
 			relationship_id UUID,
+			entity_name     TEXT,
+			src_entity_id 	UUID REFERENCES entities ON DELETE CASCADE,
+			dst_entity_id 	UUID REFERENCES entities ON DELETE CASCADE,
 			src_item_id 	UUID REFERENCES items ON DELETE CASCADE,
-			dst_item_id 	UUID REFERENCES items ON DELETE CASCADE 
+			dst_item_id 	UUID REFERENCES items ON DELETE CASCADE,
+			title           TEXT,
+			sub_title       TEXT,
+			action          TEXT,
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			PRIMARY KEY     (connection_id)
 		);
 		`,
 	},

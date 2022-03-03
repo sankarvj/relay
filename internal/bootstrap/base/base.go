@@ -72,10 +72,10 @@ func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string
 }
 
 func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}) (item.Item, error) {
-	return b.ItemAddGenie(ctx, entityID, itemID, userID, UUIDHolder, fields)
+	return b.ItemAddGenie(ctx, entityID, itemID, userID, UUIDHolder, fields, nil)
 }
 
-func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genieID string, fields map[string]interface{}) (item.Item, error) {
+func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genieID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
 	name := "System Generated"
 	ni := item.NewItem{
 		ID:        itemID,
@@ -85,6 +85,7 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 		UserID:    &userID,
 		GenieID:   &genieID,
 		Fields:    fields,
+		Source:    source,
 	}
 
 	it, err := item.Create(ctx, b.DB, ni, time.Now())
@@ -93,7 +94,7 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 	}
 
 	j := job.Job{}
-	j.EventItemCreated(b.AccountID, entityID, it.ID, ni.Source, b.DB, b.RP)
+	j.EventItemCreated(b.AccountID, userID, entityID, it.ID, ni.Source, b.DB, b.RP)
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil
@@ -154,8 +155,8 @@ func (b *Base) AssociationAdd(ctx context.Context, srcEntityID, dstEntityID stri
 	return relationshipID, nil
 }
 
-func (b *Base) ConnectionAdd(ctx context.Context, relationshipID, srcItemID, dstItemID string) error {
-	err := connection.Associate(ctx, b.DB, b.AccountID, relationshipID, srcItemID, dstItemID)
+func (b *Base) ConnectionAdd(ctx context.Context, relationshipID, entityName, srcEntityID, dstEntityID, srcItemID, dstItemID string, valueAddedFields []entity.Field, action string) error {
+	err := connection.Associate(ctx, b.DB, b.AccountID, b.UserID, relationshipID, entityName, srcEntityID, dstEntityID, srcItemID, dstItemID, valueAddedFields, action)
 	if err != nil {
 		return err
 	}

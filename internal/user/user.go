@@ -153,6 +153,20 @@ func RetrieveUserByUniqIdentifier(ctx context.Context, db *sqlx.DB, email, phone
 	return u, nil
 }
 
+func BulkRetrieveUsers(ctx context.Context, ids []string, db *sqlx.DB) ([]User, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.BulkRetrieveUsers")
+	defer span.End()
+
+	users := []User{}
+	const q = `SELECT * FROM users where user_id = any($1)`
+
+	if err := db.SelectContext(ctx, &users, q, pq.Array(ids)); err != nil {
+		return users, errors.Wrap(err, "selecting bulk users for selected user ids")
+	}
+
+	return users, nil
+}
+
 // Create inserts a new user into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Create")

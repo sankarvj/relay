@@ -36,6 +36,6 @@ func (eng *Engine) executeDelay(ctx context.Context, n node.Node, rulesetRespons
 	meta["trigger_flow_id"] = n.FlowID
 	meta["trigger_node_id"] = n.ID
 
-	err = eng.Job.AddDelay(n.AccountID, n.ActorID, actualItemID, meta, remindBy, rp)
+	err = eng.Job.AddDelay(n.AccountID, UUID_SYSTEM_USER, n.ActorID, actualItemID, meta, remindBy, rp)
 	return err
 }

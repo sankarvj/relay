@@ -40,13 +40,9 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	teamID := params["team_id"]
-	teams, err := team.List(ctx, params["account_id"], e.db)
+	teams, teamID, err := selectedTeam(ctx, params["account_id"], params["team_id"], e.db)
 	if err != nil {
 		return err
-	}
-	if teamID == "" || teamID == "undefined" {
-		teamID = teams[0].ID
 	}
 
 	entities, err := entity.List(ctx, params["account_id"], teamID, categories(r.URL.Query().Get("category_id")), e.db)

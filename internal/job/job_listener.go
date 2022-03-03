@@ -17,6 +17,7 @@ const (
 
 type RedisJob struct {
 	AccountID string
+	UserID    string
 	EntityID  string
 	ItemID    string
 	Time      int64
@@ -38,12 +39,13 @@ const (
 type Listener struct {
 }
 
-func (j *Job) AddDelay(accountID, entityID, itemID string, meta map[string]interface{}, when time.Time, rp *redis.Pool) error {
+func (j *Job) AddDelay(accountID, userID, entityID, itemID string, meta map[string]interface{}, when time.Time, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
 	whenMilli := util.GetMilliSeconds(when)
 	rrj := RedisJob{
 		AccountID: accountID,
+		UserID:    userID,
 		EntityID:  entityID,
 		ItemID:    itemID,
 		Time:      whenMilli,
@@ -59,12 +61,13 @@ func (j *Job) AddDelay(accountID, entityID, itemID string, meta map[string]inter
 	return zadd(conn, reminders, whenMilli, string(raw))
 }
 
-func (j *Job) AddReminder(accountID, entityID, itemID string, when time.Time, rp *redis.Pool) error {
+func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.Time, rp *redis.Pool) error {
 	conn := rp.Get()
 	defer conn.Close()
 	whenMilli := util.GetMilliSeconds(when)
 	rrj := RedisJob{
 		AccountID: accountID,
+		UserID:    userID,
 		EntityID:  entityID,
 		ItemID:    itemID,
 		Time:      whenMilli,
@@ -93,7 +96,7 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 		if redisJob.State == JobStateRiped {
 			switch redisJob.Type {
 			case JobTypeReminder:
-				go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, db, rp)
+				go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, db, rp)
 			case JobTypeDelay:
 				go (&Job{}).EventDelayExhausted(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta, db, rp)
 			}

@@ -178,6 +178,7 @@ func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) 
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Who:         entity.WhoStatus,
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

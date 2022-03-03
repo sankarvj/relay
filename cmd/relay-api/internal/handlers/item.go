@@ -242,6 +242,11 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Update")
 	defer span.End()
 
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
 	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
 	var ni item.NewItem
 	if err := web.Decode(r, &ni); err != nil {
@@ -257,7 +262,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemUpdated(accountID, entityID, ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
+	(&job.Job{}).EventItemUpdated(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -288,7 +293,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, ni, i.db, i.rPool)
+	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.rPool)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
@@ -296,13 +301,13 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func createAndPublish(ctx context.Context, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
+func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
 		return item.Item{}, err
 	}
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(ni.AccountID, ni.EntityID, it.ID, ni.Source, db, rp)
+	(&job.Job{}).EventItemCreated(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source, db, rp)
 	return it, err
 }
 
@@ -373,12 +378,17 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
 	// Delete calls should be called in the last stage of job
 	// err := item.Delete(ctx, i.db, accountID, entityID, itemID)
 	// if err != nil {
 	// 	return err
 	// }
-	(&job.Job{}).EventItemDeleted(accountID, entityID, itemID, i.db, i.rPool)
+	(&job.Job{}).EventItemDeleted(accountID, currentUserID, entityID, itemID, i.db, i.rPool)
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 

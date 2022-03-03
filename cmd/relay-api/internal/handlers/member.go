@@ -98,7 +98,7 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, ni, m.db, m.rPool)
+	it, err := createAndPublish(ctx, currentUserID, ni, m.db, m.rPool)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &ni)
 	}
@@ -116,6 +116,11 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Member.Update")
 	defer span.End()
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
 
 	accountID, entityID, memberID := params["account_id"], params["entity_id"], params["member_id"]
 	var vm ViewModelMember
@@ -142,7 +147,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrapf(err, "Item Update: %+v", &it)
 	}
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemUpdated(accountID, entityID, memberID, it.Fields(), existingItem.Fields(), m.db, m.rPool)
+	(&job.Job{}).EventItemUpdated(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields(), m.db, m.rPool)
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }

@@ -135,7 +135,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	(&job.Job{}).EventConvAdded(params["account_id"], params["entity_id"], itemID, conversation.ID, cv.db)
+	(&job.Job{}).EventConvAdded(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID, cv.db)
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }

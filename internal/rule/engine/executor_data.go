@@ -14,6 +14,10 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
+const (
+	UUID_SYSTEM_USER = "00000000-0000-0000-0000-000000000000"
+)
+
 func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
 	// value add the fields with the template item provided in the actuals.
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
@@ -38,7 +42,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 			return err
 		}
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
-		eng.Job.EventItemCreated(n.AccountID, it.EntityID, it.ID, n.VarStrMap(), db, rp)
+		eng.Job.EventItemCreated(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap(), db, rp)
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
 		it, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
@@ -53,7 +57,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.EventItemUpdated(n.AccountID, it.EntityID, it.ID, uit.Fields(), it.Fields(), db, rp)
+		eng.Job.EventItemUpdated(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields(), db, rp)
 	}
 
 	return err

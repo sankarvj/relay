@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
@@ -114,64 +115,70 @@ func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) er
 	return nil
 }
 
-func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid string, conID, comID, dealID, ticketID string, streamEID string) error {
+func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid, streamEID entity.Entity) (string, string, error) {
 	//contact company association
-
-	associationID, err := b.AssociationAdd(ctx, conEid, comEid)
+	assID1, err := b.AssociationAdd(ctx, conEid.ID, comEid.ID)
 	if err != nil {
-		return err
-	}
-	err = b.ConnectionAdd(ctx, associationID, conID, comID)
-	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//deal ticket  association
-	tdaID, err := b.AssociationAdd(ctx, deEid, tickEid)
+	assID2, err := b.AssociationAdd(ctx, deEid.ID, tickEid.ID)
 	if err != nil {
-		return err
-	}
-	err = b.ConnectionAdd(ctx, tdaID, ticketID, dealID)
-	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//deal email association
-	_, err = b.AssociationAdd(ctx, deEid, emailEid)
+	_, err = b.AssociationAdd(ctx, deEid.ID, emailEid.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//ticket email association
-	_, err = b.AssociationAdd(ctx, tickEid, emailEid)
+	_, err = b.AssociationAdd(ctx, tickEid.ID, emailEid.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//ASSOCIATE STREAMS
 	//contact stream association
-	_, err = b.AssociationAdd(ctx, conEid, streamEID)
+	_, err = b.AssociationAdd(ctx, conEid.ID, streamEID.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//company stream association
-	_, err = b.AssociationAdd(ctx, comEid, streamEID)
+	_, err = b.AssociationAdd(ctx, comEid.ID, streamEID.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//deal stream association
-	_, err = b.AssociationAdd(ctx, deEid, streamEID)
+	_, err = b.AssociationAdd(ctx, deEid.ID, streamEID.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
 	//ticket stream association
-	_, err = b.AssociationAdd(ctx, tickEid, streamEID)
+	_, err = b.AssociationAdd(ctx, tickEid.ID, streamEID.ID)
 	if err != nil {
-		return err
+		return "", "", err
 	}
+
+	return assID1, assID2, nil
+}
+
+func (b *Base) AddConnections(ctx context.Context, associationID1, associationID2 string, conEid, comEid, deEid, tickEid entity.Entity, conID, comID, dealID, ticketID item.Item) error {
+	//contact company association
+	// err := b.ConnectionAdd(ctx, associationID1, "Contact", conEid.ID, comEid.ID, conID.ID, comID.ID, comEid.ValueAdd(comID.Fields()), "Created")
+	// if err != nil {
+	// 	return err
+	// }
+
+	// err = b.ConnectionAdd(ctx, associationID2, "Ticket", deEid.ID, tickEid.ID, ticketID.ID, dealID.ID, tickEid.ValueAdd(ticketID.Fields()), "Created")
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

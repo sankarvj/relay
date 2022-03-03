@@ -200,7 +200,18 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
+	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("\tCRM:SAMPLES All CRM Entities Retrived")
+
+	assID1, assID2, err := b.AddAssociations(ctx, contactEntity, companyEntity, dealEntity, ticketEntity, emailsEntity, streamEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Sample Web Of Associations Created Between All The Above Entities")
 
 	statusItems, err := item.List(ctx, statusEntity.ID, b.DB)
 	if err != nil {
@@ -226,7 +237,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Zoho", "zoho.com"))
+	companyItem1, err := b.ItemAddGenie(ctx, companyEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -245,13 +256,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 
 	fmt.Println("\tCRM:SAMPLES Tasks Items Created")
-
-	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals("My Laptop Is Not Working", statusItems[0].ID))
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("\tCRM:SAMPLES Tickets Items Created")
 
 	// add delay item
 	delayItem, err := b.ItemAdd(ctx, delayEntity.ID, uuid.New().String(), b.UserID, DelayVals())
@@ -272,6 +276,13 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
+
+	ticketItem1, err := b.ItemAddGenie(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\tCRM:SAMPLES Tickets Items Created")
 
 	// //Stream entity add sample item
 	// _, err = b.ItemAddGenie(ctx, streamEntity.ID, uuid.New().String(), b.UserID, dealItem1.ID, forms.StreamVals("Deal Closed", "Yahooo", ""))
@@ -295,22 +306,17 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES  Email Config Entity And It's Item Created")
 
-	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
-	if err != nil {
-		return err
-	}
-
-	err = b.AddAssociations(ctx, contactEntity.ID, companyEntity.ID, dealEntity.ID, ticketEntity.ID, emailsEntity.ID, contactItem1.ID, companyItem1.ID, dealItem1.ID, ticketItem1.ID, streamEntity.ID)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Sample Web Of Associations Created Between All The Above Entities")
-
 	err = b.AddLayouts(ctx, "card", companyEntity.ID)
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Sample Layouts Created For All The Above Entities")
+
+	err = b.AddConnections(ctx, assID1, assID2, contactEntity, companyEntity, dealEntity, ticketEntity, contactItem1, companyItem1, dealItem1, ticketItem1)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Sample Web Of Connections Created Between All The Above Items")
 
 	err = b.AddSegments(ctx, contactEntity.ID)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 )
 
 type Piper struct {
@@ -213,4 +214,24 @@ func sort(items []item.Item, itemIds []interface{}) []item.Item {
 		sortedItems = append(sortedItems, itemMap[id.(string)])
 	}
 	return sortedItems
+}
+
+func selectedTeam(ctx context.Context, accountID, teamID string, db *sqlx.DB) ([]team.Team, string, error) {
+	teams, err := team.List(ctx, accountID, db)
+	if err != nil {
+		return nil, "", err
+	}
+
+	var oldTeamID string
+	var seletedTeamID string
+	for _, t := range teams {
+		if t.ID == teamID {
+			oldTeamID = t.ID
+		}
+		seletedTeamID = t.ID
+	}
+	if oldTeamID != "" {
+		return teams, oldTeamID, nil
+	}
+	return teams, seletedTeamID, nil
 }

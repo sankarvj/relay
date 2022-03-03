@@ -35,8 +35,9 @@ type Job struct {
 
 // events
 
-func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) EventItemUpdated(accountID, userID, entityID, itemID string, newFields, oldFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
+
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
@@ -53,14 +54,14 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	}
 
 	//connections
-	err = j.actOnConnections(accountID, map[string]string{}, entityID, itemID, valueAddedFields, e.ValueAdd(oldFields), db)
+	err = j.actOnConnections(accountID, userID, map[string]string{}, entityID, itemID, valueAddedFields, e.ValueAdd(oldFields), e.DisplayName, "updated", db)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 		return
 	}
 
 	//who
-	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
+	err = j.actOnWho(accountID, userID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 		return
@@ -74,7 +75,7 @@ func (j *Job) EventItemUpdated(accountID, entityID, itemID string, newFields, ol
 	}
 }
 
-func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) EventItemCreated(accountID, userID, entityID, itemID string, source map[string]string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -99,7 +100,7 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	}
 
 	//connect
-	err = j.actOnConnections(accountID, source, entityID, itemID, valueAddedFields, nil, db)
+	err = j.actOnConnections(accountID, userID, source, entityID, itemID, valueAddedFields, nil, e.DisplayName, "created", db)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 		return
@@ -113,7 +114,7 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	}
 
 	//who
-	err = j.actOnWho(accountID, entityID, itemID, valueAddedFields, rp)
+	err = j.actOnWho(accountID, userID, entityID, itemID, valueAddedFields, rp)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 		return
@@ -137,7 +138,7 @@ func (j *Job) EventItemCreated(accountID, entityID, itemID string, source map[st
 	}
 }
 
-func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) EventItemReminded(accountID, userID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -161,7 +162,7 @@ func (j *Job) EventItemReminded(accountID, entityID, itemID string, db *sqlx.DB,
 	}
 }
 
-func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) EventItemDeleted(accountID, userID, entityID, itemID string, db *sqlx.DB, rp *redis.Pool) {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -189,7 +190,7 @@ func (j *Job) EventItemDeleted(accountID, entityID, itemID string, db *sqlx.DB, 
 	}
 }
 
-func (j *Job) EventConvAdded(accountID, entityID, itemID, conversationID string, db *sqlx.DB) {
+func (j *Job) EventConvAdded(accountID, userID, entityID, itemID, conversationID string, db *sqlx.DB) {
 	ctx := context.Background()
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
@@ -370,7 +371,8 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 }
 
 // It connects the implicit relationships which as inferred by the field
-func (j Job) actOnConnections(accountID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, db *sqlx.DB) error {
+// Right now, the connection helps fetching the events and nothing else.
+func (j Job) actOnConnections(accountID, userID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
 	ctx := context.Background()
 	createEvent := oldFields == nil
 	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
@@ -386,7 +388,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 		//reference exists between the two entities implicitly.
 		if r.FieldID == relationship.FieldAssociationKey && createEvent {
 			if baseItemID, ok := base[r.DstEntityID]; ok { // same logic added to redis also
-				err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
+				err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
 				if err != nil {
 					return errors.Wrap(err, "error: querying association")
 				}
@@ -401,7 +403,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 						f.Value = compare(ctx, db, accountID, r.RelationshipID, f, of) //update the f.Value with only the updated value
 					}
 					for _, dstItemID := range f.RefValues() {
-						err := connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, dstItemID.(string))
+						err := connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, f.RefID, itemID, dstItemID.(string), newFields, action)
 						if err != nil {
 							return errors.Wrap(err, "error: implicit connection with straight reference failed")
 						}
@@ -410,7 +412,7 @@ func (j Job) actOnConnections(accountID string, base map[string]string, entityID
 			} else { //Implicit connection with reverse reference. When creating the contact inside a deal base
 				//log.Println("internal.job implicit connection with reverse reference handled")
 				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
-					err = connection.Associate(ctx, db, accountID, r.RelationshipID, itemID, baseItemID)
+					err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
 					if err != nil {
 						log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when adding connections. error: ", err)
 					}
@@ -456,14 +458,14 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 	return err
 }
 
-func (j Job) actOnWho(accountID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
+func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
 	for _, f := range valueAddedFields {
 		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil {
 			when, err := util.ParseTime(f.Value.(string))
 			if err != nil {
 				return err
 			}
-			return (j).AddReminder(accountID, entityID, itemID, when, rp)
+			return (j).AddReminder(accountID, userID, entityID, itemID, when, rp)
 		}
 	}
 	return nil

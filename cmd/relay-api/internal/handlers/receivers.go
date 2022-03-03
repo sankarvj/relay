@@ -28,6 +28,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 type PushMsgPayload struct {
@@ -213,7 +214,7 @@ func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID stri
 		return err
 	}
 	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(it.AccountID, it.EntityID, it.ID, map[string]string{}, db, rp)
+	(&job.Job{}).EventItemCreated(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}, db, rp)
 	return nil
 }
 
@@ -236,6 +237,11 @@ func saveConversation(ctx context.Context, accountID, entityID, parentItemId str
 
 func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB, rp *redis.Pool) ([]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, schema.SeedContactsEntityName)
+	if err != nil {
+		return []string{}, err
+	}
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
 		return []string{}, err
 	}
@@ -263,7 +269,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 			Fields:    fields,
 		}
 
-		it, err := createAndPublish(ctx, ni, db, rp)
+		it, err := createAndPublish(ctx, currentUserID, ni, db, rp)
 		if err != nil {
 			return []string{}, err
 		}
