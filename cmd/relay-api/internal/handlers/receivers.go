@@ -197,8 +197,11 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		}
 
 		err = saveConversation(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, parentItemId, emailEntityItem, email.TextBody, db)
+		if err != nil {
+			return errors.Wrap(err, "unable to save conversation")
+		}
 	}
-	return err
+	return nil
 }
 
 func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool) error {

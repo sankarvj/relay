@@ -423,6 +423,14 @@ func NamedFieldsObjMap(entityFields []Field) map[string]Field {
 	return params
 }
 
+func WhoFieldsMap(entityFields []Field) map[string]Field {
+	params := make(map[string]Field, 0)
+	for _, f := range entityFields {
+		params[f.Who] = f
+	}
+	return params
+}
+
 func MetaFieldsObjMap(entityFields []Field) map[string]Field {
 	params := map[string]Field{}
 	for _, f := range entityFields {

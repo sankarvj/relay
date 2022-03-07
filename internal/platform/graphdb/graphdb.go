@@ -192,8 +192,10 @@ func GetCount(rPool *redis.Pool, gn GraphNode, swap, groupById bool) (*rg.QueryR
 	}
 
 	result, err := graph.Query(q)
-	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
-	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
 		return result, err
 	}

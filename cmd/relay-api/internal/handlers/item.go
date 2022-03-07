@@ -82,7 +82,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
 			exp = util.AddExpression(exp, newExp)
-			//TODO: segment call doesn't need the count. But it is executing count query in the call. Shall we stop it?
 			vitems, _, err := NewSegmenter(exp).
 				AddPage(page).
 				AddSortLogic(sortby, direction).

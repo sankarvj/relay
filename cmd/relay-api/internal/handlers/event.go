@@ -11,7 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -106,36 +105,6 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func createViewModelEvents(entityMap map[string]entity.Entity, items []item.Item) []ViewModelEvent {
-	viewModelEvents := make([]ViewModelEvent, 0)
-	for _, it := range items {
-		enty := entityMap[it.EntityID]
-		fields := enty.FieldsIgnoreError()
-		itemFieldsMap := it.Fields()
-
-		dynamicPlaceHolder := make(map[string]interface{}, 0)
-		// value add properties
-		for i := 0; i < len(fields); i++ {
-			if val, ok := itemFieldsMap[fields[i].Key]; ok {
-				fields[i].Value = val
-				dynamicPlaceHolder[fields[i].Meta["layout"]] = val
-			}
-		}
-
-		viewModelEvent := ViewModelEvent{
-			EventID:         it.ID,
-			EventEntity:     it.EntityID,
-			EventEntityName: enty.DisplayName,
-			UserName:        *it.UserID,
-			Action:          dynamicPlaceHolder["action"],
-			Title:           dynamicPlaceHolder["title"],
-			Footer:          dynamicPlaceHolder["footer"],
-		}
-		viewModelEvents = append(viewModelEvents, viewModelEvent)
-	}
-	return viewModelEvents
-}
-
 func userMap(ctx context.Context, connections []connection.Connection, db *sqlx.DB) (map[string]*user.User, error) {
 	userMap := make(map[string]*user.User, 0)
 	userIDs := make(map[string]bool, 0)
@@ -169,14 +138,6 @@ type ViewModelEvent struct {
 	Title           interface{} `json:"title"`  //lable:title  - task, deal, amazon.com
 	Footer          interface{} `json:"footer"` //lable:footer - 8 times
 	Time            string      `json:"time"`
-}
-
-func keys(oneMap map[string][]item.Item) []string {
-	keys := make([]string, 0, len(oneMap))
-	for k := range oneMap {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 func userkeys(oneMap map[string]bool) []string {

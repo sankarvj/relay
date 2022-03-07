@@ -177,15 +177,3 @@ func generateToken(email string) string {
 	hasher.Write(hash)
 	return hex.EncodeToString(hasher.Sum(nil))
 }
-
-func createViewModelConversation(c conv.Conversation) conv.ViewModelConversation {
-	dummyName := "vijay"
-	dummayAvatar := "someting"
-	return conv.ViewModelConversation{
-		UserID:     &c.UserID,
-		UserName:   &dummyName,
-		UserAvatar: &dummayAvatar,
-		Message:    c.Message,
-		Type:       c.Type,
-	}
-}

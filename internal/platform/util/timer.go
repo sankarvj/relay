@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -15,7 +16,11 @@ func GetMilliSeconds(now time.Time) int64 {
 }
 
 func GetMilliSecondsFloat(now time.Time) float64 { // use this until redis g adds support for int64 in ToString method
-	return float64(now.UTC().Unix() * 1000)
+	return float64(GetMilliSeconds(now))
+}
+
+func GetMilliSecondsStr(now time.Time) string {
+	return fmt.Sprintf("%d", GetMilliSeconds(now))
 }
 
 func IsValidTime(fromTime time.Time) bool {

@@ -98,7 +98,7 @@ func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			} else {
 				log.Println("***> unexpected error when retriving users when inviting. error: ", err)
 			}
-		} else { //update account ID
+		} else { //TODO update account ID
 
 		}
 		users = append(users, usr)

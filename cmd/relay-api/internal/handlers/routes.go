@@ -191,5 +191,11 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/count/:destination", c.Count, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
+	d := Dashboard{
+		db:    db,
+		rPool: redisPool,
+	}
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/overview", d.Count, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
 	return app
 }

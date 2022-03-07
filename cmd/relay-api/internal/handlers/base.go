@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	rg "github.com/redislabs/redisgraph-go"
@@ -151,14 +152,20 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 		var min string
 		var max string
 		dataType := graphdb.DType(f.DataType)
-		switch value := value.(type) {
+		switch v := value.(type) {
 		case string:
-			parts := strings.Split(value, "-")
-			if len(parts) == 2 { // date range
-				dataType = graphdb.TypeDateRange
-				min = parts[0]
-				max = parts[1]
+			if value == "now" {
+				dataType = graphdb.TypeDateTimeMillis
+				value = util.GetMilliSecondsStr(time.Now())
+			} else {
+				parts := strings.Split(v, "-")
+				if len(parts) == 2 { // date range
+					dataType = graphdb.TypeDateRange
+					min = parts[0]
+					max = parts[1]
+				}
 			}
+
 		case int, int64:
 			dataType = graphdb.TypeDateTimeMillis
 		}
