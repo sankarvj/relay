@@ -399,7 +399,7 @@ func TestGraph(t *testing.T) {
 		{
 			b, _ := json.Marshal(gSegment2)
 			fmt.Println(string(b))
-			_, err := graphdb.GetCount(residPool, gSegment2, true, true)
+			_, err := graphdb.GetCount(residPool, gSegment2, true)
 			if err != nil {
 				t.Fatalf("\t%s should return count - %s", tests.Failed, err)
 			}

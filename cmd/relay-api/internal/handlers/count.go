@@ -67,14 +67,14 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, true, true)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
 	if err != nil {
 		return nil, err
 	}
 	allTasksCount := counts(resultA)
 
 	gSegmentD := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForDone)
-	resultD, err := graphdb.GetCount(rPool, gSegmentD, true, true)
+	resultD, err := graphdb.GetCount(rPool, gSegmentD, true)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, coun
 	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForStage)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, false, true)
+	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
 	if err != nil {
 		return nil, err
 	}

@@ -38,7 +38,8 @@ type GraphNode struct {
 	ItemID       string
 	Fields       []Field
 	Relations    []GraphNode // list/map fields
-	ReturnNode   *rg.Node
+	SourceNode   *rg.Node    // not a good. used for count
+	ReturnNode   *rg.Node    // not a good. used for count
 	unlink       bool
 	isReverse    bool
 }
@@ -125,24 +126,12 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
-
-	srcNode := gn.justNode()
-	s := matchNode(srcNode)
-	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
-	s = append(s, wi...)
-	if len(wh) > 0 {
-		s = append(s, "WHERE")
-		s = append(s, strings.Join(wh, " AND "))
-	}
-
-	s = chainRelations(&gn, srcNode, s)
-
-	q := strings.Join(s, " ")
-	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", srcNode.Alias))
+	q := makeQuery(rPool, &gn)
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", gn.SourceNode.Alias))
 
 	//sorting
 	if sortBy != "" && direction != "" {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("ORDER BY %s.`%s` %s", srcNode.Alias, sortBy, direction))
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("ORDER BY %s.`%s` %s", gn.SourceNode.Alias, sortBy, direction))
 	}
 	skipCount := pageNo * util.PageLimt
 	//pagination
@@ -160,35 +149,17 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 }
 
 //GetCount fetches count of destination node
-func GetCount(rPool *redis.Pool, gn GraphNode, swap, groupById bool) (*rg.QueryResult, error) {
+func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
 	graph := graph(gn.GraphName, conn)
 
-	srcNode := gn.justNode()
-	s := matchNode(srcNode)
-	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
-	s = append(s, wi...)
-	if len(wh) > 0 {
-		s = append(s, "WHERE")
-		s = append(s, strings.Join(wh, " AND "))
-	}
+	q := makeQuery(rPool, &gn)
 
-	s = chainRelations(&gn, srcNode, s)
-	q := strings.Join(s, " ")
-
-	if swap {
-		if groupById {
-			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
-		} else {
-			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", srcNode.Alias))
-		}
+	if groupById {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", gn.SourceNode.Alias, gn.ReturnNode.Alias))
 	} else {
-		if groupById {
-			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id", srcNode.Alias, gn.ReturnNode.Alias))
-		} else {
-			q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", srcNode.Alias))
-		}
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", gn.SourceNode.Alias))
 	}
 
 	result, err := graph.Query(q)
@@ -201,6 +172,22 @@ func GetCount(rPool *redis.Pool, gn GraphNode, swap, groupById bool) (*rg.QueryR
 	}
 	result.PrettyPrint()
 	return result, err
+}
+
+func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
+	srcNode := gn.justNode()
+	gn.SourceNode = srcNode
+	s := matchNode(srcNode)
+	wi, wh := where(*gn, srcNode.Alias, srcNode.Alias)
+	s = append(s, wi...)
+	if len(wh) > 0 {
+		s = append(s, "WHERE")
+		s = append(s, strings.Join(wh, " AND "))
+	}
+
+	s = chainRelations(gn, srcNode, s)
+	q := strings.Join(s, " ")
+	return q
 }
 
 func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {

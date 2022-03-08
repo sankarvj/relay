@@ -142,7 +142,7 @@ func listWithCountAsync(rp *redis.Pool, gSegment graphdb.GraphNode, page int, so
 	if doCount {
 		loopCount = 2
 		go func(rPool *redis.Pool, gCount graphdb.GraphNode) {
-			result, err := graphdb.GetCount(rPool, gCount, false, false)
+			result, err := graphdb.GetCount(rPool, gCount, false)
 			if err != nil {
 				errc <- err
 				return
