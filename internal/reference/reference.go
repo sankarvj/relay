@@ -148,13 +148,13 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
+			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		} else if e.Category == entity.CategoryEmail {
 			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
+			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		} else { // useful for auto-complete while viewing
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
@@ -162,7 +162,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 				return
 			}
 
-			choicesMaker(f, "", itemChoices(*f, refItems, e.WhoFields()))
+			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		}
 
 		//RETHINK

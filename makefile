@@ -83,3 +83,6 @@ deps-upgrade:
 
 deps-cleancache:
 	go clean -modcache
+
+build:
+	env GOOS=linux GOARCH=arm go build ./cmd/relay-api -o bin/application application.go

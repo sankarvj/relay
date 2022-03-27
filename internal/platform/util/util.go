@@ -67,6 +67,21 @@ func ConvertStrToInt64(s string) int64 {
 	return 0
 }
 
+func ConvertToNumber(in interface{}) interface{} {
+	switch v := in.(type) {
+	default:
+		return in
+	case int, int64, float64:
+		return v
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0
+		}
+		return f
+	}
+}
+
 func ConvertIntfToStr(intf interface{}) string {
 	if intf != nil {
 		return intf.(string)

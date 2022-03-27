@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -9,6 +10,7 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -75,6 +77,16 @@ func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return web.NewShutdownError("web value missing from context")
 	}
 
+	acc, err := account.Retrieve(ctx, u.db, accountID)
+	if err != nil {
+		return err
+	}
+
+	currentUser, err := user.RetrieveCurrentUser(ctx, u.db)
+	if err != nil {
+		return err
+	}
+
 	var nusers []user.NewUser
 	if err := web.Decode(r, &nusers); err != nil {
 		return errors.Wrap(err, "")
@@ -105,7 +117,8 @@ func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 		if usr.ID != "" {
 			//TODO push this to stream/queue
-			(&job.Job{}).EventUserInvited(usr, u.db)
+			magicLink := fmt.Sprintf("/accounts/%s", acc.ID)
+			(&job.Job{}).EventUserInvited(acc.Name, *currentUser.Name, magicLink, usr, u.db)
 		}
 
 	}
@@ -218,13 +231,14 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	opt := option.WithCredentialsFile(u.authenticator.FireBaseAdminSDK)
 	// Initialize default app
-	app, err := firebase.NewApp(context.Background(), nil, opt)
+	// config := &firebase.Config{ProjectID: "relay-94b69"}
+	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		return errors.Wrap(err, "")
 	}
 
 	// Access auth service from the default app
-	client, err := app.Auth(context.Background())
+	client, err := app.Auth(ctx)
 	if err != nil {
 		return errors.Wrap(err, "")
 	}
@@ -234,14 +248,9 @@ func (u *User) Token(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrap(err, "verifying token with firebase")
 	}
 
-	userRecord, err := client.GetUser(ctx, token.UID)
-	if err != nil {
-		return errors.Wrap(err, "fetching user from token UID")
-	}
-
 	log.Printf("sk/saravana please replace the word sk_replacetokenhere/sarvana_replacetokenhere in seed.go with this token to login %s", token.UID)
 
-	tkn, err := authenticate(ctx, userRecord.Email, v.Now, token.UID, u.authenticator, u.db)
+	tkn, err := authenticate(ctx, token.Claims["email"].(string), v.Now, token.UID, u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}

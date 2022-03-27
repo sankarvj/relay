@@ -18,6 +18,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	eml "gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
@@ -220,11 +221,31 @@ func (j *Job) EventConvAdded(accountID, userID, entityID, itemID, conversationID
 	}
 }
 
-func (j *Job) EventUserInvited(usr user.User, db *sqlx.DB) {
+func (j *Job) EventUserInvited(accountName, requester, magicLink string, usr user.User, db *sqlx.DB) {
 	ctx := context.Background()
 	err := notification.UserInvitation(ctx)
 	if err != nil {
 		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invitation. error:", err)
+	}
+
+	toField := []interface{}{usr.Email}
+	subject := fmt.Sprintf("%s has invited you to join %s", requester, accountName)
+	body := fmt.Sprintf("Hi %s, You are invited to join %s. Please click this <a href='%s'>link</a> to get started", *usr.Name, accountName, magicLink)
+	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
+	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
+	if err != nil {
+		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invited to join account. error:", err)
+	}
+}
+
+func (j *Job) EventUserSignedUp(accountName, emailAddress, magicLink string) {
+	toField := []interface{}{emailAddress}
+	subject := fmt.Sprintf("%s is ready", accountName)
+	body := fmt.Sprintf("Hi, /n Your account is ready. Please click this <a href='%s'>magic link</a> to start", magicLink)
+	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
+	_, err := e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
+	if err != nil {
+		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred when user signedup. error:", err)
 	}
 }
 

@@ -95,15 +95,14 @@ const (
 	MetaLayoutDate     = "date"
 )
 
+//traits of the field
 const (
-	WhoStatus    = "status"
-	WhoReminder  = "reminder"
-	WhoDueBy     = "dueby"
-	WhoCloseDate = "close_date"
-	WhoAssignee  = "assignee"
-	WhoOwner     = "owner"
-	WhoFollower  = "follower"
-	WhoAvatar    = "avatar"
+	WhoStatus   = "status"
+	WhoReminder = "reminder"
+	WhoDueBy    = "dueby"
+	WhoAssignee = "assignee"
+	WhoFollower = "follower"
+	WhoAvatar   = "avatar"
 )
 
 // Field represents structural format of attributes in entity

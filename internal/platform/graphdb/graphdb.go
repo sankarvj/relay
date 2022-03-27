@@ -64,6 +64,9 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			continue
 		}
 		switch f.DataType {
+		case TypeNumber:
+			f.Value = util.ConvertToNumber(f.Value)
+			gn.Fields = append(gn.Fields, f)
 		case TypeList:
 			for i, element := range f.Value.([]interface{}) {
 				f.Field.Value = element
@@ -163,13 +166,36 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 	}
 
 	result, err := graph.Query(q)
+	if err != nil {
+		return result, err
+	}
 	//DEBUG LOG
 	log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 	//DEBUG LOG
 	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+
+	result.PrettyPrint()
+	return result, err
+}
+
+func GetSum(rPool *redis.Pool, gn GraphNode, sumKey string) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	q := makeQuery(rPool, &gn)
+
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN SUM(%s.`%s`)", gn.SourceNode.Alias, sumKey))
+
+	result, err := graph.Query(q)
 	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 		return result, err
 	}
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+
 	result.PrettyPrint()
 	return result, err
 }

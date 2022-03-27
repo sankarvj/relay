@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -79,7 +80,7 @@ func (a *Account) Draft(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	encodedHash := base64.StdEncoding.EncodeToString(bmHash)
 	magicLink := fmt.Sprintf("home/%s/drafts/%s/identifier/%s", nd.AccountName, draft.ID, encodedHash)
 	log.Println("Magic Link --> ", magicLink)
-
+	(&job.Job{}).EventUserSignedUp(nd.AccountName, nd.BusinessEmail, magicLink)
 	return web.Respond(ctx, w, true, http.StatusCreated)
 }
 

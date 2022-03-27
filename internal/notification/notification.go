@@ -30,21 +30,32 @@ func ItemUpdates(ctx context.Context, name string, accountID, teamID, entityID, 
 	var subject string
 	var body string
 	var formettedTime string
+	var assignee string
 	for _, f := range valueAddedFields {
-		if f.IsTitleLayout() && f.Value != nil {
+
+		if f.Value == nil {
+			continue
+		}
+
+		if f.IsTitleLayout() {
 			body = f.Value.(string)
 		}
 
-		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime && f.Value != nil {
+		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime {
 			when, _ := util.ParseTime(f.Value.(string))
-			formettedTime = util.FormatTimeGo(when)
+			formettedTime = util.FormatTimeView(when)
+		}
+
+		if f.Who == entity.WhoAssignee {
+			assignee = f.Value.(string)
 		}
 	}
 
 	switch notificationType {
 	case TypeReminder:
-		subject = fmt.Sprintf("your %s is due on %s", name, formettedTime)
+		subject = fmt.Sprintf("Your %s is due on %s", name, formettedTime)
 	case TypeAssigned:
+		subject = fmt.Sprintf("A %s is assigned to %s", name, assignee)
 	case TypeCreated:
 	case TypeUpdated:
 	}

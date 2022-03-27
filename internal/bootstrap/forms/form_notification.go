@@ -69,5 +69,14 @@ func NotificationFields() []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, entityField, itemField}
+	ownerFieldID := uuid.New().String()
+	ownerField := entity.Field{
+		Key:         ownerFieldID,
+		Name:        "assignee",
+		DisplayName: "Assignee",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, entityField, itemField, ownerField}
 }

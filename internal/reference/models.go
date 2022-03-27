@@ -37,11 +37,15 @@ func flowChoices(flows []flow.Flow) []Choicer {
 	return choicers
 }
 
-func itemChoices(f entity.Field, items []item.Item, whoMap map[string]string) []Choicer {
+func ItemChoices(f *entity.Field, items []item.Item, whoMap map[string]string) []Choicer {
 	choicers := make([]Choicer, len(items))
 	for i, item := range items {
+		var displayName interface{}
 		displayNameStr := ""
-		displayName := item.Fields()[f.DisplayGex()] // finding the lookup from the main field
+		if f != nil {
+			displayName = item.Fields()[f.DisplayGex()] // finding the lookup from the main field
+		}
+
 		if displayName != nil {
 			displayNameStr = displayName.(string)
 		} else if item.Name != nil {

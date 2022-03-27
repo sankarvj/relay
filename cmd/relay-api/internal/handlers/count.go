@@ -105,9 +105,15 @@ func counts(result *rg.QueryResult) map[string]int {
 		if len(r.Keys()) > 1 {
 			id = r.GetByIndex(1).(string)
 		}
-		count := r.GetByIndex(0).(int)
-		responseArr[id] = count
+
+		switch v := r.GetByIndex(0).(type) {
+		case int:
+			responseArr[id] = v
+		case float64:
+			responseArr[id] = int(v)
+		}
 	}
+
 	return responseArr
 }
 

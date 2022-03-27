@@ -3,8 +3,8 @@ module gitlab.com/vjsideprojects/relay
 go 1.13
 
 require (
-	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.10.0+incompatible
+	firebase.google.com/go/v4 v4.7.1 // indirect
 	github.com/DusanKasan/parsemail v1.2.0 // indirect
 	github.com/ardanlabs/conf v1.2.0
 	github.com/aws/aws-sdk-go v1.42.22 // indirect
