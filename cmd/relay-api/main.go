@@ -70,10 +70,10 @@ func run() error {
 		}
 		Auth struct {
 			KeyID              string `conf:"default:1"`
-			PrivateKeyFile     string `conf:"default:private.pem"`
+			PrivateKeyFile     string `conf:"default:private.pem,env:AUTH_PRIVATE_KEY_FILE"`
 			Algorithm          string `conf:"default:RS256"`
-			GoogleKeyFile      string `conf:"default:config/dev/relay-firebase-adminsdk.json"`
-			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json"`
+			GoogleKeyFile      string `conf:"default:config/dev/relay-firebase-adminsdk.json,env:AUTH_GOOGLE_KEY_FILE"`
+			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
 		}
 		Zipkin struct {
 			LocalEndpoint string  `conf:"default:0.0.0.0:3000"`
