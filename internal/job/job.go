@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -18,14 +19,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-	eml "gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
@@ -108,7 +107,7 @@ func (j *Job) EventItemCreated(accountID, userID, entityID, itemID string, sourc
 	}
 
 	//integrations
-	err = actOnIntegrations(ctx, accountID, e, it, valueAddedFields, db)
+	err = actOnIntegrations(ctx, accountID, e, it, valueAddedFields, db, rp)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 		return
@@ -221,31 +220,10 @@ func (j *Job) EventConvAdded(accountID, userID, entityID, itemID, conversationID
 	}
 }
 
-func (j *Job) EventUserInvited(accountName, requester, magicLink string, usr user.User, db *sqlx.DB) {
-	ctx := context.Background()
-	err := notification.UserInvitation(ctx)
+func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, rp *redis.Pool) {
+	err := launchUser(draftID, accountName, "", "", emailAddress, db, rp)
 	if err != nil {
-		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invitation. error:", err)
-	}
-
-	toField := []interface{}{usr.Email}
-	subject := fmt.Sprintf("%s has invited you to join %s", requester, accountName)
-	body := fmt.Sprintf("Hi %s, You are invited to join %s. Please click this <a href='%s'>link</a> to get started", *usr.Name, accountName, magicLink)
-	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
-	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
-	if err != nil {
-		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invited to join account. error:", err)
-	}
-}
-
-func (j *Job) EventUserSignedUp(accountName, emailAddress, magicLink string) {
-	toField := []interface{}{emailAddress}
-	subject := fmt.Sprintf("%s is ready", accountName)
-	body := fmt.Sprintf("Hi, /n Your account is ready. Please click this <a href='%s'>magic link</a> to start", magicLink)
-	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
-	_, err := e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
-	if err != nil {
-		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred when user signedup. error:", err)
+		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred while sending launch mail. error:", err)
 	}
 }
 
@@ -460,7 +438,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 	return nil
 }
 
-func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB) error {
+func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
 	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
@@ -475,6 +453,11 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 		}
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
+	case entity.CategoryUsers:
+		var usr entity.UserEntity
+		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
+		json.Unmarshal(jsonbody, &usr)
+		err = inviteUser(accountID, "", "", usr.Name, usr.Email, db, rp)
 	}
 	return err
 }

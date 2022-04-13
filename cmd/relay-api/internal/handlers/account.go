@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/base64"
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -13,14 +10,13 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Account represents the Account API method handler set.
@@ -67,20 +63,12 @@ func (a *Account) Draft(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "")
 	}
 
-	bmHash, err := bcrypt.GenerateFromPassword([]byte(nd.BusinessEmail), bcrypt.DefaultCost)
-	if err != nil {
-		return errors.Wrap(err, "generating business email hash")
-	}
-
 	draft, err := draft.Create(ctx, nd, time.Now(), a.db)
 	if err != nil {
 		return errors.Wrapf(err, "Draft: %+v", &draft)
 	}
 
-	encodedHash := base64.StdEncoding.EncodeToString(bmHash)
-	magicLink := fmt.Sprintf("home/%s/drafts/%s/identifier/%s", nd.AccountName, draft.ID, encodedHash)
-	log.Println("Magic Link --> ", magicLink)
-	(&job.Job{}).EventUserSignedUp(nd.AccountName, nd.BusinessEmail, magicLink)
+	(&job.Job{}).EventUserSignedUp(draft.AccountName, draft.BusinessEmail, draft.ID, a.db, a.rPool)
 	return web.Respond(ctx, w, true, http.StatusCreated)
 }
 
@@ -102,53 +90,33 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	ctx, span := trace.StartSpan(ctx, "handlers.Account.Launch")
 	defer span.End()
 
-	var la account.LaunchAccount
-	if err := web.Decode(r, &la); err != nil {
-		return errors.Wrap(err, "")
+	draftID := params["draft_id"]
+	token := r.URL.Query().Get("token")
+
+	tokenUID, tokenEmail, err := verifyToken(ctx, a.authenticator.FireBaseAdminSDK, token)
+	if err != nil {
+		return errors.Wrap(err, "verifying token with firebase")
 	}
 
-	draft, err := draft.Retrieve(ctx, la.DraftID, a.db)
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, a.db, tokenEmail, "")
+	if err != nil {
+		return errors.Wrapf(err, "retrival of user failed")
+	}
+
+	draft, err := draft.Retrieve(ctx, draftID, a.db)
 	if err != nil {
 		return errors.Wrapf(err, "retrival of draft failed: %+v", &draft)
 	}
 
-	decodedHash, _ := base64.StdEncoding.DecodeString(la.BusinessEmailHash)
-
-	err = bcrypt.CompareHashAndPassword(decodedHash, []byte(draft.BusinessEmail))
-	if err != nil { //not equal
-		log.Println("err is password comparison ", err)
-		return web.Respond(ctx, w, nil, http.StatusForbidden)
-	}
-
-	usr, err := user.RetrieveUserByUniqIdentifier(ctx, a.db, draft.BusinessEmail, "")
-	if err != nil && err == user.ErrNotFound {
-		nu := user.NewUser{
-			Name:            la.FirstName,
-			Avatar:          util.String(""),
-			Email:           draft.BusinessEmail,
-			Phone:           util.String(""),
-			Provider:        util.String("default"),
-			Password:        la.Password,
-			PasswordConfirm: la.PasswordConfirm,
-			Roles:           []string{auth.RoleAdmin, auth.RoleUser},
-		}
-		usr, err = user.Create(ctx, a.db, nu, time.Now())
-	}
-	if err != nil {
-		return errors.Wrap(err, "User creation failed")
-	}
-
-	log.Println("Authentication----", string(usr.PasswordHash))
-
-	tkn, err := authenticate(ctx, usr.Email, time.Now(), string(usr.PasswordHash), a.authenticator, a.db)
+	tkn, err := authenticate(ctx, tokenEmail, time.Now(), tokenUID, a.authenticator, a.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
 
+	accountID := uuid.New().String()
 	nc := account.NewAccount{
-		ID:      uuid.New().String(),
-		Name:    la.AccountName,
-		Domain:  la.Domain,
+		ID:      accountID,
+		Name:    draft.AccountName,
 		DraftID: draft.ID,
 	}
 
@@ -158,6 +126,20 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	//this will take the user to the specific account even multiple accounts exists
 	tkn.Accounts = []string{nc.ID}
+
+	//update user with the account
+	user.UpdateAccounts(ctx, a.db, &usr, nc.ID, time.Now())
+
+	//TODO: boot crm for now. In future boot based on the launch account selection
+	err = bootstrap.BootCRM(accountID, a.db, a.rPool)
+	if err != nil {
+		return errors.Wrap(err, "Bootstrap CRM failed")
+	}
+
+	err = bootstrap.BootCSM(accountID, a.db, a.rPool)
+	if err != nil {
+		return errors.Wrap(err, "Bootstrap CSM failed")
+	}
 
 	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }

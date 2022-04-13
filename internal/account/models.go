@@ -33,10 +33,6 @@ type NewAccount struct {
 type LaunchAccount struct {
 	DraftID           string `json:"draft_id" validate:"required"`
 	BusinessEmailHash string `json:"business_email_hash" validate:"required"`
-	AccountName       string `json:"account_name" validate:"required"`
 	FirstName         string `json:"first_name" validate:"required"`
 	LastName          string `json:"last_name"`
-	Domain            string `json:"domain"`
-	Password          string `json:"password" validate:"required"`
-	PasswordConfirm   string `json:"password_confirm" validate:"eqfield=Password"`
 }

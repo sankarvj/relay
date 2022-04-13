@@ -2,17 +2,25 @@ package job
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/notification"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	eml "gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //TODO can be removed. not used anywhere
@@ -44,6 +52,56 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	}
 
 	return evItem, nil
+}
+
+func inviteUser(accountID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+	ctx := context.Background()
+	err := notification.UserInvitation(ctx)
+	if err != nil {
+		return err
+	}
+
+	magicLink, err := auth.CreateMagicLink(accountID, usrEmail, rp)
+	if err != nil {
+		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when creating the magic link. error:", err)
+		return err
+	}
+
+	toField := []interface{}{usrEmail}
+	subject := fmt.Sprintf("%s has invited you to join %s", requester, accountName)
+	body := fmt.Sprintf("Hi %s, You are invited to join %s. Please click this <a href='%s'>link</a> to get started", usrName, accountName, magicLink)
+	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
+	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
+	if err != nil {
+		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invited to join account. error:", err)
+		return err
+	}
+	return nil
+}
+
+func launchUser(draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+	ctx := context.Background()
+	err := notification.UserInvitation(ctx)
+	if err != nil {
+		return err
+	}
+
+	magicLink, err := auth.CreateMagicLaunchLink(draftID, accountName, usrEmail, rp)
+	if err != nil {
+		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when creating the magic link. error:", err)
+		return err
+	}
+
+	toField := []interface{}{usrEmail}
+	subject := fmt.Sprintf("%s is ready", accountName)
+	body := fmt.Sprintf("Hi, /n Your account is ready. Please click this <a href='%s'>magic link</a> to start", magicLink)
+	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
+	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
+	if err != nil {
+		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred when user signedup. error:", err)
+	}
+
+	return nil
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {
@@ -82,4 +140,12 @@ func makeGraphField(f *entity.Field) *graphdb.Field {
 		Field:        makeGraphField(f.Field),
 		UnlinkOffset: f.UnlinkOffset,
 	}
+}
+
+func emailHash(emailAddress string) (string, error) {
+	bmHash, err := bcrypt.GenerateFromPassword([]byte(emailAddress), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(bmHash), nil
 }

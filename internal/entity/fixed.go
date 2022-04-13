@@ -149,6 +149,14 @@ func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 	return err
 }
 
+func MakeJSONBody(valueAddedFields []Field) ([]byte, error) {
+	jsonbody, err := json.Marshal(namedFieldsMap(valueAddedFields))
+	if err != nil {
+		return nil, err
+	}
+	return jsonbody, nil
+}
+
 func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntity string) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntity))
 	defer span.End()

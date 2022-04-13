@@ -29,9 +29,15 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	u := User{
 		db:            db,
 		authenticator: authenticator,
+		rPool:         redisPool,
 	}
-	// users authentication
-	app.Handle("GET", "/v1/users/token/:id", u.Token)
+
+	// users login token
+	app.Handle("GET", "/v1/users/verify", u.Verfiy)
+	// users join token
+	app.Handle("GET", "/v1/users/join", u.Join)
+	// users launch token
+	app.Handle("GET", "/v1/users/launch", u.Launch)
 	// users creation
 	app.Handle("POST", "/v1/users", u.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/users", u.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
@@ -51,7 +57,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	// Register accounts management endpoints.
 	app.Handle("POST", "/v1/accounts/drafts", a.Draft)
 	// app.Handle("GET", "/v1/accounts/drafts/:draft_id/identifier/:business_email", a.RetriveDraft)
-	app.Handle("POST", "/v1/accounts/launch", a.Launch)
+	app.Handle("POST", "/v1/accounts/launch/:draft_id", a.Launch)
 
 	app.Handle("GET", "/v1/accounts/availability", a.Availability)
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))

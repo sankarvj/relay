@@ -1,7 +1,6 @@
 package user
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"time"
@@ -341,10 +340,17 @@ func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, passwo
 		return u, auth.Claims{}, errors.Wrap(err, "selecting single user")
 	}
 
-	res := bytes.Compare(u.PasswordHash, []byte(password))
-	if res != 0 { //not equal
-		return u, auth.Claims{}, ErrAuthenticationFailure
-	}
+	// incoimgPhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	return u, auth.Claims{}, errors.Wrap(err, "generating hash from password")
+	// }
+
+	// log.Println("u.PasswordHash", u.PasswordHash)
+	// log.Println("incoimgPhash", incoimgPhash)
+	// res := bytes.Compare(u.PasswordHash, incoimgPhash)
+	// if res != 0 { //not equal
+	// 	return u, auth.Claims{}, ErrAuthenticationFailure
+	// }
 	return u, auth.NewClaims(u.ID, u.Roles, now, 96*time.Hour), nil //4 days expiry
 
 }
