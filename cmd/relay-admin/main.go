@@ -37,10 +37,10 @@ func run() error {
 
 	var cfg struct {
 		DB struct {
-			User       string `conf:"default:postgres"`
-			Password   string `conf:"default:postgres,noprint"`
-			Host       string `conf:"default:0.0.0.0"`
-			Name       string `conf:"default:relaydb"`
+			User       string `conf:"default:postgres,env:DB_USER"`
+			Password   string `conf:"default:postgres,noprint,env:DB_PASSWORD"`
+			Host       string `conf:"default:0.0.0.0,env:DB_HOST"`
+			Name       string `conf:"default:relaydb,env:DB_NAME"`
 			DisableTLS bool   `conf:"default:true"`
 		}
 		SecDB struct {
@@ -52,9 +52,9 @@ func run() error {
 		Args conf.Args
 	}
 
-	if err := conf.Parse(os.Args[1:], "RELAY ADMIN", &cfg); err != nil {
+	if err := conf.Parse(os.Args[1:], "ADMIN", &cfg); err != nil {
 		if err == conf.ErrHelpWanted {
-			usage, err := conf.Usage("RELAY ADMIN", &cfg)
+			usage, err := conf.Usage("ADMIN", &cfg)
 			if err != nil {
 				return errors.Wrap(err, "generating usage")
 			}

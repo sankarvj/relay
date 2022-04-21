@@ -45,7 +45,7 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	entities, err := entity.List(ctx, params["account_id"], teamID, categories(r.URL.Query().Get("category_id")), e.db)
+	entities, err := entity.All(ctx, params["account_id"], categories(r.URL.Query().Get("category_id")), e.db)
 	if err != nil {
 		return err
 	}
@@ -153,6 +153,7 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 	return entity.ViewModelEntity{
 		ID:          e.ID,
+		TeamID:      e.TeamID,
 		Name:        e.Name,
 		DisplayName: e.DisplayName,
 		Category:    e.Category,

@@ -28,6 +28,7 @@ type Entity struct {
 // (i.e) it has fields instead of attributes
 type ViewModelEntity struct {
 	ID          string    `json:"id"`
+	TeamID      string    `json:"team_id"`
 	Name        string    `json:"name"`
 	DisplayName string    `json:"display_name"`
 	Category    int       `json:"category"`

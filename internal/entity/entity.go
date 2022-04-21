@@ -38,7 +38,24 @@ func List(ctx context.Context, accountID, teamID string, categoryIds []int, db *
 			return nil, errors.Wrap(err, "selecting entities for category")
 		}
 	}
+	return entities, nil
+}
 
+func All(ctx context.Context, accountID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
+	defer span.End()
+	entities := []Entity{}
+	if len(categoryIds) == 0 {
+		const q = `SELECT * FROM entities where account_id = $1`
+		if err := db.SelectContext(ctx, &entities, q, accountID); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for all category")
+		}
+	} else {
+		const q = `SELECT * FROM entities where account_id = $1 AND category = any($2)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, pq.Array(categoryIds)); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for category")
+		}
+	}
 	return entities, nil
 }
 
