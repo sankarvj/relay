@@ -25,6 +25,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
@@ -216,8 +217,8 @@ func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID stri
 	if err != nil {
 		return err
 	}
-	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}, db, rp)
+	//stream/queue
+	go job.NewJob(db, rp).Stream(stream.NewCreteItemMessage(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
 	return nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -41,8 +42,8 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
+		eng.Job.Stream(stream.NewCreteItemMessage(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
-		eng.Job.EventItemCreated(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap(), db, rp)
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
 		it, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
@@ -57,7 +58,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.EventItemUpdated(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields(), db, rp)
+		eng.Job.Stream(stream.NewUpdateItemMessage(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
 	}
 
 	return err

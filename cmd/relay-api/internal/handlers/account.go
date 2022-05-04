@@ -47,6 +47,9 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accName := r.URL.Query().Get("name")
+	if accName == "" {
+		return web.Respond(ctx, w, false, http.StatusOK)
+	}
 	_, err := account.CheckAvailability(ctx, accName, a.db)
 	if err == account.ErrNotFound {
 		return web.Respond(ctx, w, true, http.StatusOK)

@@ -9,13 +9,13 @@ The Server will store the token and call the watch with the topic name. So, that
 - We create a topic in the google console called "receive-gmail-message" and also we created the subscription called "sub-receive-gmail-message" 
 - On subscription we configured the push method which sends the message to the path `/receive/gmail/message` 
 - Since we can't give the localhost here. We are running the ngRok to receive the callback. 
-- ngrok http -hostname=vjrelay.ngrok.io 3000
+- ngrok http -hostname=vjrelay.ngrok.io 80
 
 # How receive works (Calendar)
 - We create a topic in the google console called "receive-gmail-message" and also we created the subscription called "sub-receive-gmail-message" 
 - On subscription we configured the push method which sends the message to the path `/notifications` 
 - Since we can't give the localhost here. We are running the ngRok to receive the callback. 
-- ngrok http -hostname=vjrelay.ngrok.io 3000
+- ngrok http -hostname=vjrelay.ngrok.io 80
 
 # Scopes
 Scopes is present at the getConfig

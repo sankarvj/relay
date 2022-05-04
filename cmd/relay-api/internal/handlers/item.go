@@ -21,6 +21,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -260,8 +261,8 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
-	//TODO push this to stream/queue
-	(&job.Job{}).EventItemUpdated(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields(), i.db, i.rPool)
+	//stream
+	go job.NewJob(i.db, i.rPool).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -305,8 +306,8 @@ func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *s
 	if err != nil {
 		return item.Item{}, err
 	}
-	//TODO push this to stream/queue
-	(&job.Job{}).EventItemCreated(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source, db, rp)
+	//stream
+	go job.NewJob(db, rp).Stream(stream.NewCreteItemMessage(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
 	return it, err
 }
 
@@ -387,7 +388,10 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// if err != nil {
 	// 	return err
 	// }
-	(&job.Job{}).EventItemDeleted(accountID, currentUserID, entityID, itemID, i.db, i.rPool)
+
+	//stream
+	go job.NewJob(i.db, i.rPool).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, itemID))
+
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 

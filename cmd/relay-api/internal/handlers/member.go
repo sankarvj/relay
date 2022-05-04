@@ -14,6 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -146,8 +147,8 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		log.Println("updatedFields err", err)
 		return errors.Wrapf(err, "Item Update: %+v", &it)
 	}
-	//TODO push this to stream/queue
-	(&job.Job{}).EventItemUpdated(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields(), m.db, m.rPool)
+	//stream
+	go job.NewJob(m.db, m.rPool).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }

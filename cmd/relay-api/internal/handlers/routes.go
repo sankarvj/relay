@@ -25,6 +25,13 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	app.Handle("GET", "/v1/health", check.Health)
 
+	workerD := Worker{
+		db:            db,
+		authenticator: authenticator,
+		rPool:         redisPool,
+	}
+	app.Handle("POST", "/v1/sqs/receiver", workerD.receiveSQSPayload)
+
 	// Register user management and authentication endpoints.
 	u := User{
 		db:            db,

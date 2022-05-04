@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -135,7 +136,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	(&job.Job{}).EventConvAdded(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID, cv.db)
+	job.NewJob(cv.db, cv.rPool).Stream(stream.NewConversationMessage(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }

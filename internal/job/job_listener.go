@@ -7,6 +7,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
@@ -96,9 +97,9 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool) {
 		if redisJob.State == JobStateRiped {
 			switch redisJob.Type {
 			case JobTypeReminder:
-				go (&Job{}).EventItemReminded(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, db, rp)
+				go NewJob(db, rp).Stream(stream.NewReminderMessage(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID))
 			case JobTypeDelay:
-				go (&Job{}).EventDelayExhausted(redisJob.AccountID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta, db, rp)
+				go NewJob(db, rp).Stream(stream.NewDelayMessage(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta))
 			}
 		}
 		time.Sleep(3 * time.Second) //reduce this time when more requests received

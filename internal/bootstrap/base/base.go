@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/layout"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -93,8 +94,7 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 		return item.Item{}, err
 	}
 
-	j := job.Job{}
-	j.EventItemCreated(b.AccountID, userID, entityID, it.ID, ni.Source, b.DB, b.RP)
+	job.NewJob(b.DB, b.RP).Stream(stream.NewCreteItemMessage(b.AccountID, userID, entityID, it.ID, ni.Source))
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil
