@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -31,9 +30,6 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 }
 
 func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.Base) error {
-
-	log.Printf("b-- %+v", b)
-	log.Printf("currentUser-- %+v", currentUser)
 
 	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
@@ -71,6 +67,28 @@ func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	// add entity - calendar
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, fields)
 	return err
+}
+
+func BootstrapContactCompanyEntity(ctx context.Context, b *base.Base) error {
+	coEntityID, coEmail, err := currentOwner(ctx, b.DB, b.AccountID, b.TeamID)
+	if err != nil {
+		return err
+	}
+
+	// add entity - contacts
+	conForms := forms.ContactFields(coEntityID, coEmail)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateAccountLevel, conForms)
+	if err != nil {
+		return err
+	}
+
+	// add entity - companies
+	comForms := forms.CompanyFields(coEntityID, coEmail)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateAccountLevel, comForms)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func BootstrapNotificationEntity(ctx context.Context, b *base.Base) error {

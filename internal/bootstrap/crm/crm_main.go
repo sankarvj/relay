@@ -14,8 +14,14 @@ import (
 
 func Boot(ctx context.Context, b *base.Base) error {
 
-	// Retrive Owner Entity, Which is created for the crm
-	ownerEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityOwner)
+	// Retrive Contact Entity
+	contactEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityContacts)
+	if err != nil {
+		return err
+	}
+
+	// Retrive Company Entity
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
 	if err != nil {
 		return err
 	}
@@ -92,20 +98,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Type Entity With It's Three types Items Created")
-
-	// add entity - contacts
-	contactEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedContactsEntityName, "Contacts", entity.CategoryData, entity.StateAccountLevel, ContactFields(statusEntity.ID, ownerEntity.ID, ownerEntity.Key("email")))
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Contacts Entity Created")
-
-	// add entity - companies
-	companyEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedCompaniesEntityName, "Companies", entity.CategoryData, entity.StateAccountLevel, CompanyFields(ownerEntity.ID, ownerEntity.Key("email")))
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Companies Entity Created")
 
 	// add entity - emails
 	emailsEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(emailConfigEntity.ID, emailConfigEntity.Key("email"), contactEntity.ID, companyEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email")))
@@ -199,7 +191,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-
 	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
 	if err != nil {
 		return err
@@ -225,19 +216,19 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
 	// add contact item - vijay (straight)
-	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, ContactVals("Bruce Wayne", "gaajidurden@gmail.com", statusItems[1].ID))
+	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("Bruce Wayne", "gaajidurden@gmail.com"))
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, ContactVals("George Kutty", "vijayasankarmobile@gmail.com", statusItems[2].ID))
+	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("George Kutty", "vijayasankarmobile@gmail.com"))
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAddGenie(ctx, companyEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
+	companyItem1, err := b.ItemAddGenie(ctx, companyEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -270,6 +261,16 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
 
+	_, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, taskEntity.ID)
+	if err != nil {
+		return err
+	}
+	_, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Workflows And Its Nodes Created")
+
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
 	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
 	if err != nil {
@@ -283,21 +284,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 
 	fmt.Println("\tCRM:SAMPLES Tickets Items Created")
-
-	// //Stream entity add sample item
-	// _, err = b.ItemAddGenie(ctx, streamEntity.ID, uuid.New().String(), b.UserID, dealItem1.ID, forms.StreamVals("Deal Closed", "Yahooo", ""))
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = b.ItemAddGenie(ctx, streamEntity.ID, uuid.New().String(), b.UserID, dealItem1.ID, forms.StreamVals("Deal Weekly Update", "Closing near the deal", ""))
-	// if err != nil {
-	// 	return err
-	// }
-	// _, err = b.ItemAddGenie(ctx, streamEntity.ID, uuid.New().String(), b.UserID, dealItem1.ID, forms.StreamVals("New task", "This task needs to be added", ""))
-	// if err != nil {
-	// 	return err
-	// }
-	// fmt.Println("\tCRM:SAMPLES Stream Items Created")
 
 	// add email-config & email-templates
 	err = b.AddEmails(ctx, contactEntity.ID, contactEntity.Key("email"), contactEntity.Key("nps_score"))
@@ -354,27 +340,27 @@ func AddCompanies(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Freshworks", "freshworks.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Freshworks", "freshworks.com"))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Acme Intl", "acme.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Acme Intl", "acme.com"))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Tesla Inc", "tesla.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Tesla Inc", "tesla.com"))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Cisco Inc", "cisco.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Cisco Inc", "cisco.com"))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, CompanyVals("Salesforce Inc", "salesforce.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Salesforce Inc", "salesforce.com"))
 	if err != nil {
 		return err
 	}

@@ -54,14 +54,14 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	return evItem, nil
 }
 
-func inviteUser(accountID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+func inviteUser(accountID, accountName, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, rp *redis.Pool) error {
 	ctx := context.Background()
 	err := notification.UserInvitation(ctx)
 	if err != nil {
 		return err
 	}
 
-	magicLink, err := auth.CreateMagicLink(accountID, usrEmail, rp)
+	magicLink, err := auth.CreateMagicLink(accountID, usrName, usrEmail, memberID, rp)
 	if err != nil {
 		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err

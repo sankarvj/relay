@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -127,21 +129,26 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if err != nil {
 		return errors.Wrap(err, "Bootstrap failed")
 	}
+
+	log.Println("Account successfully created!")
 	//this will take the user to the specific account even multiple accounts exists
 	tkn.Accounts = []string{nc.ID}
 
 	//update user with the account
 	user.UpdateAccounts(ctx, a.db, &usr, nc.ID, time.Now())
 
-	//TODO: boot crm for now. In future boot based on the launch account selection
-	err = bootstrap.BootCRM(accountID, a.db, a.rPool)
-	if err != nil {
-		return errors.Wrap(err, "Bootstrap CRM failed")
+	if util.Contains(draft.Teams, "crm") {
+		err = bootstrap.BootCRM(accountID, a.db, a.rPool)
+		if err != nil {
+			return errors.Wrap(err, "Bootstrap CRM failed")
+		}
 	}
 
-	err = bootstrap.BootCSM(accountID, a.db, a.rPool)
-	if err != nil {
-		return errors.Wrap(err, "Bootstrap CSM failed")
+	if util.Contains(draft.Teams, "csm") {
+		err = bootstrap.BootCSM(accountID, a.db, a.rPool)
+		if err != nil {
+			return errors.Wrap(err, "Bootstrap CSM failed")
+		}
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusCreated)

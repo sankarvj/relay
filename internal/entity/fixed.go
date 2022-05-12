@@ -27,6 +27,8 @@ const (
 )
 
 const (
+	FixedEntityContacts     = "contacts"
+	FixedEntityCompanies    = "companies"
 	FixedEntityOwner        = "owners"
 	FixedEntityEmailConfig  = "email_config"
 	FixedEntityCalendar     = "calendar"
@@ -157,8 +159,8 @@ func MakeJSONBody(valueAddedFields []Field) ([]byte, error) {
 	return jsonbody, nil
 }
 
-func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntity string) (Entity, error) {
-	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntity))
+func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntityName string) (Entity, error) {
+	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntityName))
 	defer span.End()
 
 	if teamID == "" {
@@ -167,12 +169,12 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 
 	var e Entity
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
-	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntity, teamID, StateAccountLevel); err != nil {
+	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName, teamID, StateAccountLevel); err != nil {
 		if err == sql.ErrNoRows {
 			log.Println("*********> debug internal.entity.fixed entity not found.")
 			return Entity{}, ErrFixedEntityNotFound
 		}
-		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntity)
+		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntityName)
 	}
 
 	return e, nil

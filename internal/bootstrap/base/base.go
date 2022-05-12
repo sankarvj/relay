@@ -100,13 +100,13 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 	return it, nil
 }
 
-func (b *Base) FlowAdd(ctx context.Context, flowID, entityID string, name string, mode, condition int, exp string) (flow.Flow, error) {
+func (b *Base) FlowAdd(ctx context.Context, flowID, entityID string, name string, mode, condition int, exp string, ftype int) (flow.Flow, error) {
 	nf := flow.NewFlow{
 		ID:         flowID,
 		AccountID:  b.AccountID,
 		EntityID:   entityID,
 		Mode:       mode,
-		Type:       flow.FlowTypeUnknown,
+		Type:       ftype,
 		Condition:  condition,
 		Expression: exp,
 		Name:       name,

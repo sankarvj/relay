@@ -113,6 +113,14 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
+	noti := Notification{
+		db:            db,
+		rPool:         redisPool,
+		authenticator: authenticator,
+	}
+	// Register teams management endpoints.
+	app.Handle("POST", "/v1/accounts/:account_id/notifications/registration", noti.Register, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
 	i := Item{
 		db:            db,
 		rPool:         redisPool,

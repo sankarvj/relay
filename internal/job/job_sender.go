@@ -19,9 +19,7 @@ func (j *Job) Stream(message *stream.Message) error {
 	build := expvar.Get("build")
 	log.Println("build -- ", build)
 	var err error
-	log.Println("build.String() --- ", build.String())
-	if build.String() == `"develop"` {
-		log.Println("Coming here ---11111 ")
+	if build == nil || build.String() == `"develop"` {
 		err = j.Post(message)
 	} else {
 		err = queueSQS(message)

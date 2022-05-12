@@ -318,4 +318,20 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     16,
+		Description: "Add clients",
+		Script: `
+		CREATE TABLE clients (
+			account_id      UUID REFERENCES accounts ON DELETE CASCADE,
+			user_id    		UUID REFERENCES users ON DELETE CASCADE,
+			device_token    TEXT,
+			device_type 	TEXT,
+			status          INTEGER DEFAULT 0,
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			UNIQUE (account_id, user_id, device_token)
+		);
+		`,
+	},
 }

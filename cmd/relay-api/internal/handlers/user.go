@@ -10,12 +10,17 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 	"google.golang.org/api/option"
+)
+
+const (
+	NoEntityID = "00000000-0000-0000-0000-000000000000"
 )
 
 // User represents the User API method handler set.
@@ -253,7 +258,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrap(err, "authrnticating token")
 	}
 
-	log.Println("userInfo--", userInfo)
+	log.Printf("userInfo--%+v", userInfo)
 
 	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
 	if err != nil && err == user.ErrNotFound {
@@ -272,10 +277,16 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		usr, err = user.Create(ctx, u.db, nu, time.Now())
 	} else {
 		userInfo.NewUser = false
-		user.UpdateAccounts(ctx, u.db, &usr, userInfo.AccountID, time.Now())
+		err = user.UpdateAccounts(ctx, u.db, &usr, userInfo.AccountID, time.Now())
 	}
 	if err != nil {
 		return errors.Wrap(err, "User creation failed")
+	}
+
+	//add newly created userID to the members
+	err = updateMemberUserID(ctx, userInfo.AccountID, userInfo.MemberID, usr.ID, u.db)
+	if err != nil {
+		return err
 	}
 
 	return web.Respond(ctx, w, userInfo, http.StatusOK)
@@ -291,8 +302,6 @@ func (u *User) Launch(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return errors.Wrap(err, "authrnticating token")
 	}
-
-	log.Println("userInfo--", userInfo)
 
 	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
 	if err != nil && err == user.ErrNotFound {
@@ -315,7 +324,32 @@ func (u *User) Launch(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "User creation failed")
 	}
 
+	//add newly created userID to the members
+	// err = updateMemberUserID(ctx, userInfo.AccountID, userInfo.TeamID, userInfo.MemberID, usr.ID, u.db)
+	// if err != nil {
+	// 	return err
+	// }
+
 	return web.Respond(ctx, w, userInfo, http.StatusOK)
+}
+
+func updateMemberUserID(ctx context.Context, accountID, memberID, userID string, db *sqlx.DB) error {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+	if err != nil {
+		return err
+	}
+	var userEntityItem entity.UserEntity
+	valueAddedFields, updateFunc, err := entity.RetrieveFixedItem(ctx, accountID, ownerEntity.ID, memberID, db)
+	if err != nil {
+		return err
+	}
+	err = entity.ParseFixedEntity(valueAddedFields, &userEntityItem)
+	if err != nil {
+		return err
+	}
+	userEntityItem.UserID = userID
+	//adding in the members items for reverse lookup of userID from memberID.
+	return updateFunc(ctx, userEntityItem, db)
 }
 
 func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, string, error) {

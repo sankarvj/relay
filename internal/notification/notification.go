@@ -30,7 +30,6 @@ func ItemUpdates(ctx context.Context, name string, accountID, teamID, entityID, 
 	var subject string
 	var body string
 	var formettedTime string
-	var assignee string
 	for _, f := range valueAddedFields {
 
 		if f.Value == nil {
@@ -47,15 +46,23 @@ func ItemUpdates(ctx context.Context, name string, accountID, teamID, entityID, 
 		}
 
 		if f.Who == entity.WhoAssignee {
-			assignee = f.Value.(string)
+			assignees := f.Value.([]interface{})
+			for _, assignee := range assignees {
+				fbNotif := FirebaseNotification{
+					AccountID: accountID,
+					MemberID:  assignee.(string),
+					Subject:   fmt.Sprintf("A %s is assigned to %s", name, assignee),
+					Body:      body,
+				}
+				fbNotif.Send(ctx, notificationType, db)
+			}
+
 		}
 	}
 
 	switch notificationType {
 	case TypeReminder:
 		subject = fmt.Sprintf("Your %s is due on %s", name, formettedTime)
-	case TypeAssigned:
-		subject = fmt.Sprintf("A %s is assigned to %s", name, assignee)
 	case TypeCreated:
 	case TypeUpdated:
 	}

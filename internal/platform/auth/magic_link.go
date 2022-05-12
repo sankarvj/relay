@@ -12,11 +12,13 @@ import (
 )
 
 type UserInfo struct {
+	Name        string `json:"name"`
 	Email       string `json:"email"`
 	AccountID   string `json:"account_id"`
 	AccountName string `json:"account_name"`
 	DraftID     string `json:"draft_id"`
 	NewUser     bool   `json:"new_user"`
+	MemberID    string `json:"member_id"`
 }
 
 func (usrInfo *UserInfo) encode() []byte {
@@ -50,16 +52,20 @@ func GenerateRandomToken(n int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-func CreateMagicLink(accountID, emailAddress string, rp *redis.Pool) (string, error) {
+func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
 	}
 
 	userInfo := UserInfo{
+		Name:      name,
 		AccountID: accountID,
 		Email:     emailAddress,
+		MemberID:  memId,
 	}
+
+	log.Printf("userInfo --- %+v", userInfo)
 
 	err = setToken(token, userInfo, rp)
 	if err != nil {

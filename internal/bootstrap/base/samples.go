@@ -17,7 +17,7 @@ import (
 func (b *Base) AddCRMPipelines(ctx context.Context, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
 	//add pipelines
 	exp := fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", contactEntityID, schema.SeedFieldFNameKey, contactEntityID, schema.SeedFieldNPSKey)
-	p, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry, exp)
+	p, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry, exp, flow.FlowTypeEventCreate)
 	if err != nil {
 		return "", "", err
 	}
@@ -37,10 +37,50 @@ func (b *Base) AddCRMPipelines(ctx context.Context, contactEntityID, webhookEnti
 	return p.ID, sno1.ID, nil
 }
 
+func (b *Base) AddCRMWorkflows1(ctx context.Context, contactEntityID, taskEntityID string) (string, string, error) {
+	//add pipelines
+	w, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "When contact created", flow.FlowModeWorkFlow, flow.FlowConditionEntry, "", flow.FlowTypeEventCreate)
+	if err != nil {
+		return "", "", err
+	}
+
+	dummyID := "00000000-0000-0000-0000-000000000000"
+
+	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, contactEntityID, node.Root, "Company1", node.Push, "", map[string]string{}, dummyID, "Company one")
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, sno1.ID, "Task1", node.Task, "", map[string]string{}, dummyID, "Task one")
+	if err != nil {
+		return "", "", err
+	}
+
+	return w.ID, sno1.ID, nil
+}
+
+func (b *Base) AddCRMWorkflows2(ctx context.Context, dealEntityID, taskEntityID string) (string, string, error) {
+	//add pipelines
+	exp := fmt.Sprintf("{{%s.%s}} gt {1000}", dealEntityID, "uuid-00-deal-amount")
+	w, err := b.FlowAdd(ctx, uuid.New().String(), dealEntityID, "When deal with hign ARR received", flow.FlowModeWorkFlow, flow.FlowConditionEntry, exp, flow.FlowTypeEventCreate)
+	if err != nil {
+		return "", "", err
+	}
+
+	dummyID := "00000000-0000-0000-0000-000000000000"
+
+	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, node.Root, "Task to contact him immediatly", node.Push, "", map[string]string{}, dummyID, "High revenue customer")
+	if err != nil {
+		return "", "", err
+	}
+
+	return w.ID, sno1.ID, nil
+}
+
 func (b *Base) AddCSMPipeline(ctx context.Context, projectEntityID string, pipeLineName, node1, node2, node3 string) error {
 	//add pipelines
 	exp := fmt.Sprintf("")
-	p, err := b.FlowAdd(ctx, uuid.New().String(), projectEntityID, pipeLineName, flow.FlowModePipeLine, flow.FlowConditionEntry, exp)
+	p, err := b.FlowAdd(ctx, uuid.New().String(), projectEntityID, pipeLineName, flow.FlowModePipeLine, flow.FlowConditionEntry, exp, flow.FlowTypeUnknown)
 	if err != nil {
 		return err
 	}
@@ -108,7 +148,7 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 }
 
 func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) error {
-	_, err := b.FlowAdd(ctx, uuid.New().String(), entityID, name, flow.FlowModeSegment, flow.FlowConditionNil, exp)
+	_, err := b.FlowAdd(ctx, uuid.New().String(), entityID, name, flow.FlowModeSegment, flow.FlowConditionNil, exp, flow.FlowTypeUnknown)
 	if err != nil {
 		return err
 	}

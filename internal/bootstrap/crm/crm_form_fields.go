@@ -7,7 +7,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 func FlowFields() []entity.Field {
@@ -38,7 +37,7 @@ func StatusFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         entity.VerbKey, // we use this value inside the code. don't change it
 		Name:        entity.Verb,
-		DisplayName: "Verb",
+		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -75,7 +74,7 @@ func TypeFields() []entity.Field {
 	verbField := entity.Field{
 		Key:         entity.VerbKey, // we use this value inside the code. don't change it
 		Name:        entity.Verb,
-		DisplayName: "Verb",
+		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
 	}
@@ -97,218 +96,6 @@ func TypeVals(verb, name string) map[string]interface{} {
 		"uuid-00-name": name,
 	}
 	return typeVals
-}
-
-func ContactFields(statusEntityID, ownerEntityID string, ownerEntityKey string) []entity.Field {
-	nameField := entity.Field{
-		Key:         schema.SeedFieldFNameKey,
-		Name:        "first_name",
-		DisplayName: "First Name",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyUnique: "true"},
-	}
-
-	emailField := entity.Field{
-		Key:         "uuid-00-email",
-		Name:        "email",
-		DisplayName: "Email",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
-	}
-
-	mobileField := entity.Field{
-		Key:         "uuid-00-mobile-numbers",
-		Name:        "mobile_numbers",
-		DisplayName: "Mobile Numbers",
-		DataType:    entity.TypeList,
-		DomType:     entity.DomMultiSelect,
-		Field: &entity.Field{
-			Key:      "element",
-			DataType: entity.TypeString,
-		},
-	}
-
-	avatarField := entity.Field{
-		Key:         "uuid-00-avatar",
-		Name:        "avatar",
-		DisplayName: "Avatar",
-		DataType:    entity.TypeString,
-		DomType:     entity.DomImage,
-		Who:         entity.WhoAvatar,
-	}
-
-	npsField := entity.Field{
-		Key:         schema.SeedFieldNPSKey,
-		Name:        "nps_score",
-		DisplayName: "NPS Score",
-		DataType:    entity.TypeNumber,
-		DomType:     entity.DomText,
-	}
-
-	lfStageField := entity.Field{
-		Key:         "uuid-00-lf-stage",
-		Name:        "lifecycle_stage",
-		DisplayName: "Lifecycle Stage",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeList,
-		Choices: []entity.Choice{
-			{
-				ID:           "1",
-				DisplayValue: "Lead",
-			},
-			{
-				ID:           "2",
-				DisplayValue: "Contact",
-			},
-		},
-		Field: &entity.Field{
-			Key:      "element",
-			DataType: entity.TypeString,
-		},
-	}
-
-	statusField := entity.Field{
-		Key:         "uuid-00-status",
-		Name:        "status",
-		DisplayName: "Status",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeReference,
-		RefID:       statusEntityID,
-		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
-		Who:         entity.WhoStatus,
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	ownerField := entity.Field{
-		Key:         "uuid-00-owner",
-		Name:        "owner",
-		DisplayName: "Owner",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       ownerEntityID,
-		RefType:     entity.RefTypeStraight,
-		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, statusField, avatarField, ownerField}
-}
-
-func ContactVals(name, email, statusID string) map[string]interface{} {
-	contactVals := map[string]interface{}{
-		schema.SeedFieldFNameKey: name,
-		"uuid-00-email":          email,
-		"uuid-00-mobile-numbers": []interface{}{"9944293499", "9940209164"},
-		schema.SeedFieldNPSKey:   100,
-		"uuid-00-lf-stage":       []interface{}{"1"},
-		"uuid-00-status":         []interface{}{statusID},
-		"uuid-00-owner":          []interface{}{},
-	}
-	return contactVals
-}
-
-func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
-	nameField := entity.Field{
-		Key:         "uuid-00-name",
-		Name:        "name",
-		DisplayName: "Name",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
-	}
-
-	websiteField := entity.Field{
-		Key:         "uuid-00-website",
-		Name:        "website",
-		DisplayName: "Domain",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	cityField := entity.Field{
-		Key:         "uuid-00-city",
-		Name:        "city",
-		DisplayName: "City",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	stateField := entity.Field{
-		Key:         "uuid-00-state",
-		Name:        "state",
-		DisplayName: "State",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	annualRevenueField := entity.Field{
-		Key:         "uuid-00-revenue",
-		Name:        "revenue",
-		DisplayName: "Annual Revenue",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	countryField := entity.Field{
-		Key:         "uuid-00-country",
-		Name:        "country",
-		DisplayName: "Country",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	employeesCountField := entity.Field{
-		Key:         "uuid-00-employees-count",
-		Name:        "employees_count",
-		DisplayName: "Employees Count",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	ownerField := entity.Field{
-		Key:         "uuid-00-owner",
-		Name:        "owner",
-		DisplayName: "Company Owner",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       ownerEntityID,
-		RefType:     entity.RefTypeStraight,
-		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
-	return []entity.Field{nameField, websiteField, cityField, stateField, ownerField, annualRevenueField, countryField, employeesCountField}
-}
-
-func CompanyVals(name, website string) map[string]interface{} {
-	companyVals := map[string]interface{}{
-		"uuid-00-name":            name,
-		"uuid-00-website":         website,
-		"uuid-00-city":            "san francisco",
-		"uuid-00-state":           "california",
-		"uuid-00-country":         "USA",
-		"uuid-00-employees-count": 1000,
-		"uuid-00-revenue":         "2000",
-		"uuid-00-owner":           []interface{}{},
-	}
-	return companyVals
 }
 
 func TicketFields(contactEntityID, companyEntityID, statusEntityID string) []entity.Field {

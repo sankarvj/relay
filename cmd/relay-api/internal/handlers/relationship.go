@@ -67,7 +67,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	//There are three ways to fetch the child ids
 	// 1. Fetch child item ids by querying the connections table.
 	// 2. Fetch child item ids by querying the graph db. tick
-	// 3. Fetch child item ids by querying the parent_item_id (formerly genie_id)
+	// 3. Fetch child item ids by querying the genie_id (formerly parent_item_id)
 	viewModelItems, fields, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.rPool)
 	if err != nil {
 		return err

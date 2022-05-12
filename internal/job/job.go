@@ -41,7 +41,6 @@ func NewJob(db *sqlx.DB, rp *redis.Pool) *Job {
 }
 
 func (j *Job) Post(msg *stream.Message) error {
-	log.Printf("Coming here %+v", msg)
 	switch msg.Type {
 	case stream.TypeItemCreate:
 		j.eventItemCreated(*msg)
@@ -93,6 +92,12 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 		return
 	}
 
+	//act on notifications
+	err = j.actOnNotifications(ctx, m.AccountID, e, m.ItemID, valueAddedFields, notification.TypeUpdated)
+	if err != nil {
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
+	}
+
 	//graph
 	err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
@@ -132,8 +137,8 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		return
 	}
 
-	//integrations
-	err = actOnIntegrations(ctx, m.AccountID, e, it, valueAddedFields, j.DB, j.Rpool)
+	//categories such as email,meeting,members
+	err = actOnCategories(ctx, m.AccountID, e, it, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 		return
@@ -144,6 +149,13 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 		return
+	}
+
+	//act on notifications
+	log.Println("coming here........... actOnNotifications")
+	err = j.actOnNotifications(ctx, m.AccountID, e, it.ID, valueAddedFields, notification.TypeCreated)
+	if err != nil {
+		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
 
 	//insertion in to redis graph DB
@@ -181,8 +193,8 @@ func (j *Job) eventItemReminded(m stream.Message) {
 	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
-	//save the notification to the notifications.
-	err = notification.ItemUpdates(ctx, e.Name, m.AccountID, e.TeamID, e.ID, it.ID, valueAddedFields, notification.TypeReminder, j.DB)
+	//act on notifications
+	err = j.actOnNotifications(ctx, m.AccountID, e, it.ID, valueAddedFields, notification.TypeReminder)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -463,7 +475,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 	return nil
 }
 
-func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
+func actOnCategories(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
 	var err error
 	switch e.Category {
 	case entity.CategoryEmail:
@@ -482,7 +494,7 @@ func actOnIntegrations(ctx context.Context, accountID string, e entity.Entity, i
 		var usr entity.UserEntity
 		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
 		json.Unmarshal(jsonbody, &usr)
-		err = inviteUser(accountID, "", "", usr.Name, usr.Email, db, rp)
+		err = inviteUser(accountID, "", "", usr.Name, usr.Email, it.ID, db, rp)
 	}
 	return err
 }
@@ -498,6 +510,11 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 		}
 	}
 	return nil
+}
+
+func (j Job) actOnNotifications(ctx context.Context, accountID string, e entity.Entity, itemID string, valueAddedFields []entity.Field, notificationType notification.NotificationType) error {
+	//save the notification to the notifications.
+	return notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, itemID, valueAddedFields, notificationType, j.DB)
 }
 
 func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {

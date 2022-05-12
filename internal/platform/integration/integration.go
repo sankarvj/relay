@@ -20,7 +20,8 @@ const (
 	TypeMailGun        = "mailgun"
 	TypeGoogleCalendar = "google_calendar"
 	//though the type is not integration. It is the by-product of integration
-	TypeMails = "mails"
+	TypeMails  = "mails"
+	TypeOwners = "owners"
 )
 
 //Integration Mail Domains

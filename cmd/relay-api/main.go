@@ -156,7 +156,7 @@ func run() error {
 		MaxActive:   50,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", cfg.SecDB.Host)
+			c, err := redis.Dial("tcp", cfg.SecDB.Host, redis.DialPassword(cfg.SecDB.Password))
 			if err != nil {
 				return nil, err
 			}
