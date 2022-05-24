@@ -86,3 +86,12 @@ deps-cleancache:
 
 build:
 	env GOOS=linux GOARCH=arm go build ./cmd/relay-api -o bin/application application.go
+
+deploy-api:
+	./deploy-api.sh
+
+deploy-worker:
+	./deploy-worker.sh
+	
+deploy-admin:
+	./deploy-admin.sh

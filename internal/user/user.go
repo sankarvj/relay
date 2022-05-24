@@ -184,6 +184,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 		Avatar:       n.Avatar,
 		Phone:        n.Phone,
 		Provider:     n.Provider,
+		Verified:     n.Verified,
 		IssuedAt:     now.UTC(),
 		Roles:        n.Roles,
 		PasswordHash: hash,
@@ -192,11 +193,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	}
 
 	const q = `INSERT INTO users
-		(user_id, account_ids, name, email, avatar, phone, provider, issued_at, password_hash, roles, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		(user_id, account_ids, name, email, avatar, phone, provider, verified, issued_at, password_hash, roles, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 	_, err = db.ExecContext(
 		ctx, q,
-		u.ID, u.AccountIDs, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.IssuedAt,
+		u.ID, u.AccountIDs, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.Verified, u.IssuedAt,
 		u.PasswordHash, u.Roles,
 		u.CreatedAt, u.UpdatedAt,
 	)
@@ -217,18 +218,26 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 		return err
 	}
 
-	if upd.AccountIDs != nil {
-		u.AccountIDs = upd.AccountIDs
-	}
+	// if upd.AccountIDs != nil {
+	// 	u.AccountIDs = upd.AccountIDs
+	// }
 	if upd.Name != nil {
 		u.Name = upd.Name
 	}
-	if upd.Email != nil {
-		u.Email = *upd.Email
+
+	if upd.Phone != nil {
+		u.Phone = upd.Phone
 	}
-	if upd.Roles != nil {
-		u.Roles = upd.Roles
+
+	if upd.Avatar != nil {
+		u.Avatar = upd.Avatar
 	}
+	// if upd.Email != nil {
+	// 	u.Email = *upd.Email
+	// }
+	// if upd.Roles != nil {
+	// 	u.Roles = upd.Roles
+	// }
 	if upd.Password != nil {
 		pw, err := bcrypt.GenerateFromPassword([]byte(*upd.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -245,11 +254,12 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 		"account_ids" = $4,
 		"roles" = $5,
 		"password_hash" = $6,
-		"updated_at" = $7
+		"updated_at" = $7,
+		"phone" = $8 
 		WHERE user_id = $1`
 	_, err = db.ExecContext(ctx, q, id,
 		u.Name, u.Email, u.AccountIDs, u.Roles,
-		u.PasswordHash, u.UpdatedAt,
+		u.PasswordHash, u.UpdatedAt, u.Phone,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating user")
@@ -281,7 +291,7 @@ func UpdatePassword(ctx context.Context, db *sqlx.DB, userID string, password st
 }
 
 func UpdateAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
+	ctx, span := trace.StartSpan(ctx, "internal.user.UpdateAccounts")
 	defer span.End()
 
 	u.AccountIDs = removeDuplicateValues(append(u.AccountIDs, accountID))
@@ -296,6 +306,62 @@ func UpdateAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating user with new account id")
+	}
+
+	return nil
+}
+
+func RemoveAssociatedAccount(ctx context.Context, accountID, userID string, now time.Time, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RemoveAccount")
+	defer span.End()
+
+	u, err := RetrieveUser(ctx, db, userID)
+	if err != nil {
+		return err
+	}
+
+	for index, accId := range u.AccountIDs {
+		if accId == accountID {
+			u.AccountIDs = append(u.AccountIDs[:index], u.AccountIDs[index+1:]...)
+			break
+		}
+	}
+	u.UpdatedAt = now.Unix()
+
+	const q = `UPDATE users SET
+		"account_ids" = $2,
+		"updated_at" = $3
+		WHERE user_id = $1`
+	_, err = db.ExecContext(ctx, q, u.ID,
+		u.AccountIDs, u.UpdatedAt,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating user's associated account")
+	}
+
+	return nil
+}
+
+func RemoveIndex(s pq.StringArray, index int) pq.StringArray {
+	return append(s[:index], s[index+1:]...)
+}
+
+func SetAsVerified(ctx context.Context, db *sqlx.DB, u *User, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.SetAsVerified")
+	defer span.End()
+
+	u.Verified = true
+	u.UpdatedAt = now.Unix()
+
+	const q = `UPDATE users SET
+		"verified" = $2,
+		"updated_at" = $3
+		WHERE user_id = $1`
+	_, err := db.ExecContext(ctx, q, u.ID,
+		u.Verified, u.UpdatedAt,
+	)
+	if err != nil {
+		return errors.Wrap(err, "setting the user as verified")
 	}
 
 	return nil
@@ -317,42 +383,6 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 	}
 
 	return nil
-}
-
-// Authenticate finds a user by their email and verifies their password. On
-// success it returns a Claims value representing this user. The claims can be
-// used to generate a token for future authentication.
-func Authenticate(ctx context.Context, db *sqlx.DB, now time.Time, email, password string) (User, auth.Claims, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.Authenticate")
-	defer span.End()
-
-	const q = `SELECT * FROM users WHERE email = $1`
-
-	var u User
-	if err := db.GetContext(ctx, &u, q, email); err != nil {
-
-		// Normally we would return ErrNotFound in this scenario but we do not want
-		// to leak to an unauthenticated user which emails are in the system.
-		if err == sql.ErrNoRows {
-			return u, auth.Claims{}, ErrAuthenticationFailure
-		}
-
-		return u, auth.Claims{}, errors.Wrap(err, "selecting single user")
-	}
-
-	// incoimgPhash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	// if err != nil {
-	// 	return u, auth.Claims{}, errors.Wrap(err, "generating hash from password")
-	// }
-
-	// log.Println("u.PasswordHash", u.PasswordHash)
-	// log.Println("incoimgPhash", incoimgPhash)
-	// res := bytes.Compare(u.PasswordHash, incoimgPhash)
-	// if res != 0 { //not equal
-	// 	return u, auth.Claims{}, ErrAuthenticationFailure
-	// }
-	return u, auth.NewClaims(u.ID, u.Roles, now, 96*time.Hour), nil //4 days expiry
-
 }
 
 func removeDuplicateValues(intSlice pq.StringArray) pq.StringArray {

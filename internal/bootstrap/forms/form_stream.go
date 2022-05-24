@@ -9,7 +9,7 @@ func StreamFields() []entity.Field {
 		DisplayName: "Title",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{"layout": "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	messageField := entity.Field{

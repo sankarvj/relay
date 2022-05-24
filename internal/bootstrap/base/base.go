@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -17,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 const (
@@ -24,21 +27,147 @@ const (
 )
 
 type Base struct {
-	AccountID string
-	TeamID    string
-	UserID    string
-	DB        *sqlx.DB
-	RP        *redis.Pool
+	AccountID       string
+	TeamID          string
+	UserID          string
+	DB              *sqlx.DB
+	RP              *redis.Pool
+	FirebaseSDKPath string
+	CoreEntity
+	CoreItem
 }
 
-func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool) *Base {
+// These entites must be created or loaded before adding a new product
+type CoreEntity struct {
+	ContactEntity     entity.Entity
+	CompanyEntity     entity.Entity
+	OwnerEntity       entity.Entity
+	EmailsEntity      entity.Entity
+	EmailConfigEntity entity.Entity
+	FlowEntity        entity.Entity
+	NodeEntity        entity.Entity
+	StatusEntity      entity.Entity
+	TypeEntity        entity.Entity
+}
+
+type CoreItem struct {
+	StatusItemOpened  item.Item
+	StatusItemClosed  item.Item
+	StatusItemOverDue item.Item
+	TypeItemEmail     item.Item
+	TypeItemTodo      item.Item
+}
+
+func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Base {
 	return &Base{
-		AccountID: accountID,
-		TeamID:    teamID,
-		UserID:    userID,
-		DB:        db,
-		RP:        rp,
+		AccountID:       accountID,
+		TeamID:          teamID,
+		UserID:          userID,
+		DB:              db,
+		RP:              rp,
+		FirebaseSDKPath: firebaseSDKPath,
 	}
+}
+
+func (b *Base) LoadFixedEntities(ctx context.Context) error {
+	var err error
+	//Retrive Owner Entity
+	b.OwnerEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityOwner)
+	if err != nil {
+		return err
+	}
+
+	// Retrive Contact Entity
+	b.ContactEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityContacts)
+	if err != nil {
+		return err
+	}
+
+	// Retrive Company Entity
+	b.CompanyEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
+	if err != nil {
+		return err
+	}
+
+	//Retrive Email Config entity
+	b.EmailConfigEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\tCRM:BOOT Retrived Owner,Contact,Company & EmailConfig")
+
+	// add entity - emails
+	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email")))
+	if err != nil {
+		return err
+	}
+
+	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
+	b.FlowEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, entity.StateTeamLevel, FlowFields())
+	if err != nil {
+		return err
+	}
+
+	// Node wrapper entity added to facilitate other entities(deals) to reference the stages(pipeline stage) as the reference fields
+	b.NodeEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNodeEntityName, "Node", entity.CategoryNode, entity.StateTeamLevel, NodeFields())
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Flow & Node Wrapper Entities Created")
+
+	// add entity - api-hook
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedWebHookEntityName, "WebHook", entity.CategoryAPI, entity.StateTeamLevel, APIFields())
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Delay & WebHook Entity Created")
+
+	// add entity - delay
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, entity.StateTeamLevel, DelayFields())
+	if err != nil {
+		return err
+	}
+
+	// add status entity
+	b.StatusEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedStatusEntityName, "Status", entity.CategoryChildUnit, entity.StateTeamLevel, StatusFields())
+	if err != nil {
+		return err
+	}
+	// add status item - open
+	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNone, "Open", "#fb667e"))
+	if err != nil {
+		return err
+	}
+	// add status item - closed
+	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
+	if err != nil {
+		return err
+	}
+	// add status item - overdue
+	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Status Entity With It's Three Statuses Items Created")
+
+	// add type entity
+	b.TypeEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTypeEntityName, "Type", entity.CategoryChildUnit, entity.StateTeamLevel, TypeFields())
+	if err != nil {
+		return err
+	}
+	// add type item - email
+	b.TypeItemEmail, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Email"))
+	if err != nil {
+		return err
+	}
+	// add type item - todo
+	b.TypeItemTodo, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Todo"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Type Entity With It's Three types Items Created")
+	return nil
 }
 
 func (b *Base) EntityFieldsUpdate(ctx context.Context, entityID string, fields []entity.Field) error {
@@ -94,7 +223,7 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 		return item.Item{}, err
 	}
 
-	job.NewJob(b.DB, b.RP).Stream(stream.NewCreteItemMessage(b.AccountID, userID, entityID, it.ID, ni.Source))
+	job.NewJob(b.DB, b.RP, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(b.AccountID, userID, entityID, it.ID, ni.Source))
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil

@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -28,10 +29,11 @@ import (
 
 // Check provides support for orchestration health checks.
 type Conversation struct {
-	db          *sqlx.DB
-	rPool       *redis.Pool
-	hub         *conversation.Hub
-	MessageChan chan conversation.Message // to receive message in the handler from the hub platform
+	db            *sqlx.DB
+	rPool         *redis.Pool
+	hub           *conversation.Hub
+	authenticator *auth.Authenticator
+	MessageChan   chan conversation.Message // to receive message in the handler from the hub platform
 }
 
 var upgrader = websocket.Upgrader{
@@ -60,7 +62,7 @@ func (cv *Conversation) List(ctx context.Context, w http.ResponseWriter, r *http
 func (cv *Conversation) SocketPreAuth(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
-		return web.NewShutdownError("auth claims missing from context")
+		return errors.Wrapf(err, "auth claims missing from context")
 	}
 
 	token := generateToken(currentUserID)
@@ -89,7 +91,7 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 
 	currentUserID, err := user.RetrieveWSCurrentUserID(ctx)
 	if err != nil {
-		return web.NewShutdownError("auth claims missing from context")
+		return errors.Wrapf(err, "auth claims missing from context")
 	}
 
 	cuser, err := user.RetrieveUser(ctx, cv.db, currentUserID)
@@ -136,7 +138,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	job.NewJob(cv.db, cv.rPool).Stream(stream.NewConversationMessage(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
+	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewConversationMessage(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }

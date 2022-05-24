@@ -24,6 +24,7 @@ func OwnerFields(teamID, userID, name, avatar, email string) ([]entity.Field, ma
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	avatarFieldID := uuid.New().String()

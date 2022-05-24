@@ -49,6 +49,13 @@ func run() error {
 			Host     string `conf:"default:127.0.0.1:6379"`
 			Name     string `conf:"default:relaydb"`
 		}
+		Auth struct {
+			KeyID              string `conf:"default:1"`
+			PrivateKeyFile     string `conf:"default:private.pem,env:AUTH_PRIVATE_KEY_FILE"`
+			Algorithm          string `conf:"default:RS256"`
+			GoogleKeyFile      string `conf:"default:config/dev/relay-70013-firebase-adminsdk-cfun3-58caec85f0.json,env:AUTH_GOOGLE_KEY_FILE"`
+			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
+		}
 		Args conf.Args
 	}
 
@@ -115,13 +122,13 @@ func run() error {
 	case "migrate":
 		err = migrate(dbConfig)
 	case "seed":
-		err = seed(db, rp)
+		err = seed(db, rp, cfg.Auth.GoogleKeyFile)
 	case "crmadd":
-		err = bootstrap.BootCRM(schema.SeedAccountID, db, rp)
+		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "csmadd":
-		err = bootstrap.BootCSM(schema.SeedAccountID, db, rp)
+		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "ctmadd":
-		err = bootstrap.BootCSM(schema.SeedAccountID, db, rp)
+		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "useradd":
 		err = useradd(db, schema.SeedAccountID, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -152,7 +159,7 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(db *sqlx.DB, rp *redis.Pool) error {
+func seed(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 
 	if err := schema.SeedUsers(db); err != nil {
 		return err
@@ -166,8 +173,15 @@ func seed(db *sqlx.DB, rp *redis.Pool) error {
 	nc := account.NewAccount{
 		ID:     schema.SeedAccountID,
 		Name:   "Wayplot",
-		Domain: "wayplot.com"}
-	err = account.Bootstrap(ctx, db, rp, cuser, nc, time.Now())
+		Domain: "wayplot.com",
+	}
+
+	a, err := account.Create(ctx, db, nc, time.Now())
+	if err != nil {
+		return err
+	}
+
+	err = bootstrap.Bootstrap(ctx, db, rp, fbSDKPath, a.ID, cuser)
 	if err != nil {
 		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
@@ -99,7 +100,7 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, currentUserID, ni, m.db, m.rPool)
+	it, err := createAndPublish(ctx, currentUserID, ni, m.db, m.rPool, m.authenticator.FireBaseAdminSDK)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &ni)
 	}
@@ -148,9 +149,37 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrapf(err, "Item Update: %+v", &it)
 	}
 	//stream
-	go job.NewJob(m.db, m.rPool).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+}
+
+func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	accountID, entityID, memberID := params["account_id"], params["entity_id"], params["member_id"]
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return errors.Wrap(err, "problem reteriving current user")
+	}
+
+	userItem, err := entity.RetriveUserItem(ctx, accountID, memberID, m.db)
+	if err != nil {
+		return errors.Wrap(err, "member id does not exist")
+	}
+
+	if currentUserID == userItem.UserID {
+		return errors.Wrap(err, "Operation not permitted. Please transfer the ownership of this account or delete the account itself")
+	}
+
+	err = user.RemoveAssociatedAccount(ctx, accountID, userItem.UserID, time.Now(), m.db)
+	if err != nil {
+		return errors.Wrap(err, "removing associated accounts from the user failed")
+	}
+
+	//stream
+	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, memberID))
+
+	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 
 func memberResponse(e entity.Entity, items []item.Item, teamMap map[string]team.Team) []ViewModelMember {

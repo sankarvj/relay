@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
@@ -16,12 +15,8 @@ import (
 )
 
 const (
-	AccessKey = "AKIATXI72V4SPCT335WD"
-	SecretKey = "Tk8mVp/lffXyb7b4y5smHkGbHn8w7x9gw+CCE5IH"
 	// Replace sender@example.com with your "From" address.
 	// This address must be verified with Amazon SES.
-	Sender = "contact@wayplot.com"
-
 	// Replace recipient@example.com with a "To" address. If your account
 	// is still in the sandbox, this address must be verified.
 	Recipient = "vijayasankarmail@gmail.com"
@@ -118,9 +113,11 @@ func send(fromEmail string, toEmails []*string, subject string, body string, rep
 	// Create a new session in the us-west-2 region.
 	// Replace us-west-2 with the AWS Region you're using for Amazon SES.
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewStaticCredentials(AccessKey, SecretKey, "")},
+		Region: aws.String("us-east-1")},
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create an SES session.
 	svc := ses.New(sess)

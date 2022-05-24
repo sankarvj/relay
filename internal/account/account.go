@@ -5,14 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
-	"gitlab.com/vjsideprojects/relay/internal/draft"
-	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
 
@@ -103,64 +98,4 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	}
 
 	return a, nil
-}
-
-func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, cuser *user.User, n NewAccount, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
-	defer span.End()
-	a, err := Create(ctx, db, n, now)
-	if err != nil {
-		return err
-	}
-
-	//deleting draft
-	if n.DraftID != "" {
-		err = draft.Delete(ctx, n.DraftID, db)
-		if err != nil {
-			return errors.Wrap(err, "draft delete failed")
-		}
-	}
-
-	//Setting the accountID as the teamID for the base team of an account
-	teamID := a.ID
-
-	//TODO: all bootsrapping should happen in a single transaction
-	err = user.UpdateAccounts(ctx, db, cuser, a.ID, time.Now())
-	if err != nil {
-		return errors.Wrap(err, "account inserted but user update failed")
-	}
-
-	err = bootstrap.BootstrapTeam(ctx, db, a.ID, teamID, "Base")
-	if err != nil {
-		return errors.Wrap(err, "account inserted but team bootstrap failed")
-	}
-
-	b := base.NewBase(a.ID, teamID, base.UUIDHolder, db, rp)
-
-	err = bootstrap.BootstrapOwnerEntity(ctx, cuser, b)
-	if err != nil {
-		return err
-	}
-
-	err = bootstrap.BootstrapNotificationEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "account inserted but notification bootstrap failed")
-	}
-
-	err = bootstrap.BootstrapEmailConfigEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "account inserted but email config bootstrap failed")
-	}
-
-	err = bootstrap.BootstrapCalendarEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "account inserted but calendar bootstrap failed")
-	}
-
-	err = bootstrap.BootstrapContactCompanyEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "account inserted but contacts/companies bootstrap failed")
-	}
-
-	return nil
 }

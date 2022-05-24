@@ -22,7 +22,7 @@ func TestEmail(t *testing.T) {
 			subject := "Hi"
 			body := "Hello"
 			e := email.FallbackMail{Domain: "", ReplyTo: ""}
-			_, err := e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
+			_, err := e.SendMail("", "support@workbaseone.com", "", util.ConvertSliceTypeRev(toField), subject, body)
 			if err != nil {
 				t.Fatalf("\tShould be able to send the email during signup - %s", err)
 			}

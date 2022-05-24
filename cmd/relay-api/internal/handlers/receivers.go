@@ -139,7 +139,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 ***/
 
-func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *redis.Pool) error {
+func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 	data, err := base64.StdEncoding.DecodeString(mb.Content)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 	fmt.Printf("\nIncomingMessage: %+v", emailEntityItem)
 
 	if len(references) == 0 { // save as the message
-		err = saveEmailPlusConnect(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, messageID, emailEntityItem, db, rp)
+		err = saveEmailPlusConnect(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, messageID, emailEntityItem, db, rp, fbSDKPath)
 		if err != nil {
 			return errors.Wrap(err, "unable to save the email received via SES for the discoveryID")
 		}
@@ -205,8 +205,8 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 	return nil
 }
 
-func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool) error {
-	contacts, err := createContactIfNotExist(ctx, accountID, teamID, emailEntityItem.RFrom[0], db, rp)
+func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
+	contacts, err := createContactIfNotExist(ctx, accountID, teamID, emailEntityItem.RFrom[0], db, rp, fbSDKPath)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID stri
 		return err
 	}
 	//stream/queue
-	go job.NewJob(db, rp).Stream(stream.NewCreteItemMessage(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
+	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
 	return nil
 }
 
@@ -239,7 +239,7 @@ func saveConversation(ctx context.Context, accountID, entityID, parentItemId str
 	return nil
 }
 
-func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB, rp *redis.Pool) ([]string, error) {
+func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) ([]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, schema.SeedContactsEntityName)
 	if err != nil {
 		return []string{}, err
@@ -273,7 +273,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 			Fields:    fields,
 		}
 
-		it, err := createAndPublish(ctx, currentUserID, ni, db, rp)
+		it, err := createAndPublish(ctx, currentUserID, ni, db, rp, fbSDKPath)
 		if err != nil {
 			return []string{}, err
 		}

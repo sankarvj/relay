@@ -262,7 +262,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//stream
-	go job.NewJob(i.db, i.rPool).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -293,7 +293,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.rPool)
+	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.rPool, i.authenticator.FireBaseAdminSDK)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
@@ -301,13 +301,13 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, rp *redis.Pool) (item.Item, error) {
+func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
 		return item.Item{}, err
 	}
 	//stream
-	go job.NewJob(db, rp).Stream(stream.NewCreteItemMessage(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
+	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
 	return it, err
 }
 
@@ -390,7 +390,7 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// }
 
 	//stream
-	go job.NewJob(i.db, i.rPool).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, itemID))
+	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, itemID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }

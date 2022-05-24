@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"expvar"
 	"fmt"
 	"log"
 	"net/http"
@@ -56,12 +57,20 @@ func run() error {
 			Host     string `conf:"default:127.0.0.1:6379"`
 			Name     string `conf:"default:relaydb"`
 		}
-		Args conf.Args
+		Auth struct {
+			KeyID              string `conf:"default:1"`
+			PrivateKeyFile     string `conf:"default:private.pem,env:AUTH_PRIVATE_KEY_FILE"`
+			Algorithm          string `conf:"default:RS256"`
+			GoogleKeyFile      string `conf:"default:config/dev/relay-70013-firebase-adminsdk-cfun3-58caec85f0.json,env:AUTH_GOOGLE_KEY_FILE"`
+			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
+		}
+		Args  conf.Args
+		Build string `conf:"default:dev,env:BUILD"`
 	}
 
-	if err := conf.Parse(os.Args[1:], "RELAY WORKER", &cfg); err != nil {
+	if err := conf.Parse(os.Args[1:], "WORKER", &cfg); err != nil {
 		if err == conf.ErrHelpWanted {
-			usage, err := conf.Usage("RELAY WORKER", &cfg)
+			usage, err := conf.Usage("WORKER", &cfg)
 			if err != nil {
 				return errors.Wrap(err, "generating usage")
 			}
@@ -70,6 +79,10 @@ func run() error {
 		}
 		return errors.Wrap(err, "error: parsing config")
 	}
+
+	expvar.NewString("build").Set(cfg.Build)
+	log.Printf("main : Started : Application initializing : version %q", cfg.Build)
+	defer log.Println("main : Completed")
 
 	// This is used for multiple commands below.
 	dbConfig := database.Config{
@@ -95,6 +108,10 @@ func run() error {
 		log.Printf("main : Primary Database Stopping : %s", cfg.DB.Host)
 		db.Close()
 	}()
+
+	path := listeners.Path{
+		FirebaseSDKPath: cfg.Auth.GoogleKeyFile,
+	}
 
 	rp := &redis.Pool{
 		MaxIdle:     50,
@@ -122,7 +139,7 @@ func run() error {
 	go func() {
 		log.Printf("main : Debug Running Job Listener")
 		l := job.Listener{}
-		l.RunReminderListener(db, rp)
+		l.RunReminderListener(db, rp, path.FirebaseSDKPath)
 	}()
 
 	// =========================================================================
@@ -143,7 +160,7 @@ func run() error {
 		AllowCredentials: true,
 	})
 
-	handler := c.Handler(listeners.API(shutdown, log, db, rp))
+	handler := c.Handler(listeners.API(shutdown, log, db, rp, path))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

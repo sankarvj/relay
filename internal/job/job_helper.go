@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"time"
 
@@ -14,11 +13,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
-	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-	eml "gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -54,54 +50,8 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	return evItem, nil
 }
 
-func inviteUser(accountID, accountName, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, rp *redis.Pool) error {
-	ctx := context.Background()
-	err := notification.UserInvitation(ctx)
-	if err != nil {
-		return err
-	}
-
-	magicLink, err := auth.CreateMagicLink(accountID, usrName, usrEmail, memberID, rp)
-	if err != nil {
-		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when creating the magic link. error:", err)
-		return err
-	}
-
-	toField := []interface{}{usrEmail}
-	subject := fmt.Sprintf("%s has invited you to join %s", requester, accountName)
-	body := fmt.Sprintf("Hi %s, You are invited to join %s. Please click this <a href='%s'>link</a> to get started", usrName, accountName, magicLink)
-	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
-	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
-	if err != nil {
-		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when user invited to join account. error:", err)
-		return err
-	}
-	return nil
-}
-
 func launchUser(draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
-	ctx := context.Background()
-	err := notification.UserInvitation(ctx)
-	if err != nil {
-		return err
-	}
-
-	magicLink, err := auth.CreateMagicLaunchLink(draftID, accountName, usrEmail, rp)
-	if err != nil {
-		log.Println("***>***> EventUserInvited: unexpected/unhandled error occurred when creating the magic link. error:", err)
-		return err
-	}
-
-	toField := []interface{}{usrEmail}
-	subject := fmt.Sprintf("%s is ready", accountName)
-	body := fmt.Sprintf("Hi, /n Your account is ready. Please click this <a href='%s'>magic link</a> to start", magicLink)
-	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
-	_, err = e.SendMail("", "contact@wayplot.com", "", util.ConvertSliceTypeRev(toField), subject, body)
-	if err != nil {
-		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred when user signedup. error:", err)
-	}
-
-	return nil
+	return notification.WelcomeInvitation(draftID, accountName, requester, usrName, usrEmail, db, rp)
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {

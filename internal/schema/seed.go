@@ -9,8 +9,8 @@ const (
 	SeedAccountID    = "3cf17266-3473-4006-984f-9325122678b7"
 	SeedTeamID       = "73d54431-318c-4b3b-ae73-82c75cd56dcb"
 	SeedSystemUserID = "00000000-0000-0000-0000-000000000000"
-	SeedUserID1      = "5cf37266-3473-4006-984f-9325122678b7"
-	SeedUserID2      = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+	SeedUserID1      = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
+	SeedUserID2      = "5cf37266-3473-4006-984f-9325122678b7"
 	SeedUserID3      = "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 	SeedUserID4      = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 

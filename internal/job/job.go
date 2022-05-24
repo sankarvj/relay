@@ -10,6 +10,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
@@ -26,18 +27,20 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 type Job struct {
-	baseItemID   string
-	baseEntityID string
-	DB           *sqlx.DB
-	Rpool        *redis.Pool
+	baseItemID      string
+	baseEntityID    string
+	DB              *sqlx.DB
+	Rpool           *redis.Pool
+	FirebaseSDKPath string
 }
 
-func NewJob(db *sqlx.DB, rp *redis.Pool) *Job {
-	return &Job{DB: db, Rpool: rp}
+func NewJob(db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Job {
+	return &Job{DB: db, Rpool: rp, FirebaseSDKPath: firebaseSDKPath}
 }
 
 func (j *Job) Post(msg *stream.Message) error {
@@ -69,6 +72,12 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 		return
 	}
 
+	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return
+	}
+
 	valueAddedFields := e.ValueAdd(m.NewFields)
 
 	//workflows
@@ -93,7 +102,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 	}
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, e, m.ItemID, valueAddedFields, notification.TypeUpdated)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, notification.TypeUpdated)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -138,7 +147,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	}
 
 	//categories such as email,meeting,members
-	err = actOnCategories(ctx, m.AccountID, e, it, valueAddedFields, j.DB, j.Rpool)
+	err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 		return
@@ -152,8 +161,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	}
 
 	//act on notifications
-	log.Println("coming here........... actOnNotifications")
-	err = j.actOnNotifications(ctx, m.AccountID, e, it.ID, valueAddedFields, notification.TypeCreated)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), notification.TypeCreated)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -194,7 +202,7 @@ func (j *Job) eventItemReminded(m stream.Message) {
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, e, it.ID, valueAddedFields, notification.TypeReminder)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), notification.TypeReminder)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -475,8 +483,19 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 	return nil
 }
 
-func actOnCategories(ctx context.Context, accountID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
-	var err error
+func actOnCategories(ctx context.Context, accountID, currentUserID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
+
+	//shall we move this to a common place
+	acc, err := account.Retrieve(ctx, db, accountID)
+	if err != nil {
+		return err
+	}
+
+	currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
+	if err != nil {
+		return err
+	}
+
 	switch e.Category {
 	case entity.CategoryEmail:
 		if it.Name == nil || *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
@@ -494,7 +513,7 @@ func actOnCategories(ctx context.Context, accountID string, e entity.Entity, it 
 		var usr entity.UserEntity
 		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
 		json.Unmarshal(jsonbody, &usr)
-		err = inviteUser(accountID, "", "", usr.Name, usr.Email, it.ID, db, rp)
+		err = notification.JoinInvitation(accountID, acc.Name, *currentUser.Name, usr.Name, usr.Email, it.ID, db, rp)
 	}
 	return err
 }
@@ -512,9 +531,12 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 	return nil
 }
 
-func (j Job) actOnNotifications(ctx context.Context, accountID string, e entity.Entity, itemID string, valueAddedFields []entity.Field, notificationType notification.NotificationType) error {
+func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, notificationType notification.NotificationType) error {
+
+	valueAddedFields := e.ValueAdd(newFields)
+	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	return notification.ItemUpdates(ctx, e.Name, accountID, e.TeamID, e.ID, itemID, valueAddedFields, notificationType, j.DB)
+	return notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, valueAddedFields, dirtyFields, notificationType, j.DB, j.FirebaseSDKPath)
 }
 
 func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {

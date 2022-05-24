@@ -25,9 +25,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 )
 
-// build is the git version of this program. It is set using build flags in the makefile.
-var build = "develop"
-
 func main() {
 	if err := run(); err != nil {
 		log.Println("main api error :", err)
@@ -81,6 +78,7 @@ func run() error {
 			ServiceName   string  `conf:"default:relay-api"`
 			Probability   float64 `conf:"default:0.05"`
 		}
+		Build string `conf:"default:dev,env:BUILD"`
 	}
 
 	if err := conf.Parse(os.Args[1:], "CRUD", &cfg); err != nil {
@@ -99,8 +97,8 @@ func run() error {
 	// App Starting
 
 	// Print the build version for our logs. Also expose it under /debug/vars.
-	expvar.NewString("build").Set(build)
-	log.Printf("main : Started : Application initializing : version %q", build)
+	expvar.NewString("build").Set(cfg.Build)
+	log.Printf("main : Started : Application initializing : version %q", cfg.Build)
 	defer log.Println("main : Completed")
 
 	out, err := conf.String(&cfg)

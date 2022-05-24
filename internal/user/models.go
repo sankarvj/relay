@@ -31,18 +31,18 @@ type NewUser struct {
 	Avatar          *string  `json:"avatar"`
 	Phone           *string  `json:"phone"`
 	Provider        *string  `json:"provider"`
+	Verified        bool     `json:"verified"`
 	Roles           []string `json:"roles" validate:"required"`
 	Password        string   `json:"password" validate:"required"`
 	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
 }
 
 type ViewModelUser struct {
-	Name      string   `json:"name"`
-	Avatar    string   `json:"avatar"`
-	Email     string   `json:"email"`
-	Phone     string   `json:"phone"`
-	Roles     []string `json:"roles"`
-	CreatedAt string   `json:"created_at"`
+	Name   string   `json:"name"`
+	Avatar string   `json:"avatar"`
+	Email  string   `json:"email"`
+	Phone  string   `json:"phone"`
+	Roles  []string `json:"roles"`
 }
 
 // UpdateUser defines what information may be provided to modify an existing
@@ -55,6 +55,8 @@ type UpdateUser struct {
 	AccountIDs      []string `json:"account_ids"`
 	Name            *string  `json:"name"`
 	Email           *string  `json:"email"`
+	Avatar          *string  `json:"avatar"`
+	Phone           *string  `json:"phone"`
 	Roles           []string `json:"roles"`
 	Password        *string  `json:"password"`
 	PasswordConfirm *string  `json:"password_confirm" validate:"omitempty,eqfield=Password"`

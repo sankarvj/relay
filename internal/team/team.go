@@ -91,3 +91,28 @@ func Retrieve(ctx context.Context, teamID int64, db *sqlx.DB) (Team, error) {
 
 	return t, nil
 }
+
+func CustomModules() []Module {
+	modules := make([]Module, 0)
+	for k, v := range modulesMap {
+		module := Module{
+			Key:  k,
+			Name: v,
+		}
+		modules = append(modules, module)
+	}
+	return modules
+}
+
+func CustomTemplates() []Template {
+	templates := make([]Template, 0)
+	for k, v := range templatesMap {
+		template := Template{
+			Key:         k,
+			Name:        v,
+			Description: templatesDescMap[k],
+		}
+		templates = append(templates, template)
+	}
+	return templates
+}

@@ -25,13 +25,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	app.Handle("GET", "/v1/health", check.Health)
 
-	workerD := Worker{
-		db:            db,
-		authenticator: authenticator,
-		rPool:         redisPool,
-	}
-	app.Handle("POST", "/v1/sqs/receiver", workerD.receiveSQSPayload)
-
 	// Register user management and authentication endpoints.
 	u := User{
 		db:            db,
@@ -43,14 +36,12 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/users/verify", u.Verfiy)
 	// users join token
 	app.Handle("GET", "/v1/users/join", u.Join)
-	// users launch token
-	app.Handle("GET", "/v1/users/launch", u.Launch)
 	// users creation
 	app.Handle("POST", "/v1/users", u.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/users", u.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	// users profile
-	app.Handle("PUT", "/v1/users/:id", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("DELETE", "/v1/users/:id", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("PUT", "/v1/accounts/users/current/profile", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("DELETE", "/v1/accounts/users/current/profile", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
 	// users invitation
 	app.Handle("POST", "/v1/accounts/:account_id/users/invite", u.Invite, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
@@ -63,7 +54,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	// Register accounts management endpoints.
 	app.Handle("POST", "/v1/accounts/drafts", a.Draft)
-	// app.Handle("GET", "/v1/accounts/drafts/:draft_id/identifier/:business_email", a.RetriveDraft)
 	app.Handle("POST", "/v1/accounts/launch/:draft_id", a.Launch)
 
 	app.Handle("GET", "/v1/accounts/availability", a.Availability)
@@ -85,10 +75,14 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	t := Team{
 		db:            db,
 		authenticator: authenticator,
+		rPool:         redisPool,
 	}
 	// Register teams management endpoints.
 	app.Handle("POST", "/v1/accounts/:account_id/teams", t.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams", t.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/templates", t.AddTemplates, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/templates", t.Templates, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/modules", t.Modules, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	m := Member{
 		db:            db,
@@ -99,6 +93,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members", m.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members/:member_id", m.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members", m.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("DELETE", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/members/:member_id", m.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 
 	e := Entity{
 		db:            db,
@@ -182,17 +177,19 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/relationships/:relationship_id", rs.ChildItems, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	ass := AwsSnsSubscription{
-		db:    db,
-		rPool: redisPool,
+		db:            db,
+		rPool:         redisPool,
+		authenticator: authenticator,
 	}
 	// Register sns subscription from aws for the product key.
 	app.Handle("POST", "/aws/sns/:accountkey/:productkey", ass.Create)
 
 	//TODO move this as a new service
 	cv := Conversation{
-		db:    db,
-		rPool: redisPool,
-		hub:   conversation.NewInstanceHub(),
+		db:            db,
+		rPool:         redisPool,
+		hub:           conversation.NewInstanceHub(),
+		authenticator: authenticator,
 	}
 	cv.Listen()
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))

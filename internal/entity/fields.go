@@ -21,7 +21,7 @@ type DType string
 //Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
 	TypeString    DType = "S"
-	TypeNumber          = "N"
+	TypeNumber    DType = "N"
 	TypeDateTime        = "T"
 	TypeList            = "L"
 	TypeReference       = "R"
@@ -33,7 +33,7 @@ type Dom string
 //const defines the types of visual representation dom
 const (
 	DomText          Dom = "TE"
-	DomTextArea          = "TA"
+	DomTextArea      Dom = "TA"
 	DomStatus            = "ST"
 	DomAutoSelect        = "AS" // same as select but with the twist for auto fill. refer status
 	DomAutoComplete      = "AC"
@@ -281,13 +281,6 @@ func (f *Field) SetEmailGex(key string) {
 	f.Meta[MetaKeyEmailGex] = key
 }
 
-func (f Field) isConfig() bool {
-	if val, ok := f.Meta[MetaKeyConfig]; ok && val == "true" {
-		return true
-	}
-	return false
-}
-
 func (f Field) IsFlow() bool {
 	if val, ok := f.Meta[MetaKeyFlow]; ok && val == "true" {
 		return true
@@ -310,38 +303,23 @@ func (f Field) ForceLoadChoices() bool {
 }
 
 func (f Field) IsReference() bool {
-	if f.DataType == TypeReference {
-		return true
-	}
-	return false
+	return f.DataType == TypeReference
 }
 
 func (f Field) IsDateTime() bool {
-	if f.DataType == TypeDateTime {
-		return true
-	}
-	return false
+	return f.DataType == TypeDateTime
 }
 
 func (f Field) IsList() bool {
-	if f.DataType == TypeList {
-		return true
-	}
-	return false
+	return f.DataType == TypeList
 }
 
 func (f Field) IsDependent() bool {
-	if f.Dependent != nil {
-		return true
-	}
-	return false
+	return f.Dependent != nil
 }
 
 func (f Field) IsNotApplicable() bool {
-	if f.DomType == DomNotApplicable {
-		return true
-	}
-	return false
+	return f.DomType == DomNotApplicable
 }
 
 func (f Field) SetMeta(key string) {
@@ -372,7 +350,7 @@ func (f Field) EmailGex() string {
 
 func (f Field) IsTitleLayout() bool {
 	if val, ok := f.Meta[MetaKeyLayout]; ok {
-		return val == "title"
+		return val == MetaLayoutTitle
 	}
 	return false
 }
@@ -440,10 +418,8 @@ func MetaFieldsObjMap(entityFields []Field) map[string]Field {
 
 func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
 	params := map[string]Field{}
-	if entityFields != nil { // does this check needed
-		for _, f := range entityFields {
-			params[f.Key] = f
-		}
+	for _, f := range entityFields {
+		params[f.Key] = f
 	}
 	return params
 }

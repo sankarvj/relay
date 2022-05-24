@@ -95,7 +95,8 @@ func HasRole(roles ...string) web.Middleware {
 
 			claims, ok := ctx.Value(auth.Key).(auth.Claims)
 			if !ok {
-				return errors.New("claims missing from context: HasRole called without/before Authenticate")
+				err := errors.New("claims missing from context: HasRole called without/before Authenticate")
+				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
 
 			if !claims.HasRole(roles...) {
@@ -130,7 +131,8 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 			userID := claims.Subject
 			existingAccountIDs, err := user.RetrieveCurrentAccountID(ctx, db, userID)
 			if err != nil || !isExist(existingAccountIDs, accountID) {
-				return errors.New("Account not associated with this user")
+				err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
+				return web.NewRequestError(err, http.StatusForbidden)
 			}
 
 			return after(ctx, w, r, params)

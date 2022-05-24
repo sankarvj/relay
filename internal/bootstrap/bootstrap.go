@@ -15,7 +15,56 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/user"
+	"go.opencensus.io/trace"
 )
+
+func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string, accountID string, cuser *user.User) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
+	defer span.End()
+
+	//Setting the accountID as the teamID for the base team of an account
+	teamID := accountID
+
+	//TODO: all bootsrapping should happen in a single transaction
+	err := user.UpdateAccounts(ctx, db, cuser, accountID, time.Now())
+	if err != nil {
+		return errors.Wrap(err, "account inserted but user update failed")
+	}
+
+	err = BootstrapTeam(ctx, db, accountID, teamID, "Base")
+	if err != nil {
+		return errors.Wrap(err, "account inserted but team bootstrap failed")
+	}
+
+	b := base.NewBase(accountID, teamID, cuser.ID, db, rp, firebaseSDKPath)
+
+	err = BootstrapOwnerEntity(ctx, cuser, b)
+	if err != nil {
+		return err
+	}
+
+	err = BootstrapNotificationEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but notification bootstrap failed")
+	}
+
+	err = BootstrapEmailConfigEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but email config bootstrap failed")
+	}
+
+	err = BootstrapCalendarEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but calendar bootstrap failed")
+	}
+
+	err = BootstrapContactCompanyEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "account inserted but contacts/companies bootstrap failed")
+	}
+
+	return nil
+}
 
 func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
 	const q = `INSERT INTO teams
@@ -92,9 +141,14 @@ func BootstrapContactCompanyEntity(ctx context.Context, b *base.Base) error {
 }
 
 func BootstrapNotificationEntity(ctx context.Context, b *base.Base) error {
-	fields := forms.NotificationFields()
+	coEntityID, _, err := currentOwner(ctx, b.DB, b.AccountID, b.TeamID)
+	if err != nil {
+		return err
+	}
+
+	fields := forms.NotificationFields(coEntityID)
 	// add entity - notifications
-	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNotification, "Notification", entity.CategoryNotification, entity.StateAccountLevel, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNotification, "Notification", entity.CategoryNotification, entity.StateAccountLevel, fields)
 	return err
 }
 
@@ -112,7 +166,7 @@ func currentOwner(ctx context.Context, db *sqlx.DB, accountID, teamID string) (s
 
 // THE TEAM SPECIFIC BOOTS
 
-func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
+func BootCRM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:CRM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -123,7 +177,7 @@ func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	}
 	fmt.Println("\t\t\tBootstrap:CRM `team` added")
 
-	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
+	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CRM `boot` functions started")
@@ -155,7 +209,7 @@ func BootCRM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	return nil
 }
 
-func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
+func BootCSM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:CSM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -166,7 +220,7 @@ func BootCSM(accountID string, db *sqlx.DB, rp *redis.Pool) error {
 	}
 	fmt.Println("\t\t\tBootstrap:CSM `team` added")
 
-	b := base.NewBase(accountID, teamID, base.UUIDHolder, db, rp)
+	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions started")

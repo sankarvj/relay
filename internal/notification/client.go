@@ -41,13 +41,30 @@ func CreateClient(ctx context.Context, db *sqlx.DB, cr ClientRegister, now time.
 	return cr, nil
 }
 
-func RetrieveClient(ctx context.Context, accountID, userID string, db *sqlx.DB) (ClientRegister, error) {
+func RetrieveClients(ctx context.Context, accountID, userID string, db *sqlx.DB) ([]ClientRegister, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.client.Retrieve")
+	defer span.End()
+
+	var cr []ClientRegister
+	const q = `SELECT * FROM clients WHERE account_id = $1 AND user_id = $2 LIMIT 100`
+	if err := db.SelectContext(ctx, &cr, q, accountID, userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+
+		return nil, errors.Wrapf(err, "selecting client for userID %q", userID)
+	}
+
+	return cr, nil
+}
+
+func RetrieveClient(ctx context.Context, accountID, userID, device_token string, db *sqlx.DB) (ClientRegister, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.client.Retrieve")
 	defer span.End()
 
 	var cr ClientRegister
-	const q = `SELECT * FROM clients WHERE account_id = $1 AND user_id = $2`
-	if err := db.GetContext(ctx, &cr, q, accountID, userID); err != nil {
+	const q = `SELECT * FROM clients WHERE account_id = $1 AND user_id = $2 AND device_token = $3`
+	if err := db.GetContext(ctx, &cr, q, accountID, userID, device_token); err != nil {
 		if err == sql.ErrNoRows {
 			return ClientRegister{}, ErrNotFound
 		}

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -34,13 +35,20 @@ func (n *Notification) Register(ctx context.Context, w http.ResponseWriter, r *h
 
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil {
-		return web.NewShutdownError("auth claims missing from context")
+		return errors.Wrapf(err, "auth claims missing from context")
 	}
 	cr.AccountID = accountID
 	cr.UserID = currentUserID
-	_, err = notification.CreateClient(ctx, n.db, cr, time.Now())
-	if err != nil {
-		return errors.Wrapf(err, "failure in saving the client token")
+
+	_, err = notification.RetrieveClient(ctx, cr.AccountID, cr.UserID, cr.DeviceToken, n.db)
+
+	if err == notification.ErrNotFound {
+		_, err = notification.CreateClient(ctx, n.db, cr, time.Now())
+		if err != nil {
+			return errors.Wrapf(err, "failure in saving the client token")
+		}
+	} else {
+		log.Println("Token already registered for this user")
 	}
 
 	return web.Respond(ctx, w, true, http.StatusOK)

@@ -14,6 +14,45 @@ type Team struct {
 
 // NewTeam contains information needed to create a new Team.
 type NewTeam struct {
-	AccountID string `json:"account_id"`
-	Name      string `json:"name" validate:"required"`
+	AccountID string   `json:"account_id"`
+	Name      string   `json:"name" validate:"required"`
+	Modules   []string `json:"modules"`
+}
+
+type Module struct {
+	Key     string `json:"key"`
+	Name    string `json:"name"`
+	Checked bool   `json:"checked"`
+}
+
+var modulesMap = map[string]string{
+	"deals":     "Deals",
+	"tasks":     "Tasks",
+	"meetings":  "Meetings",
+	"notes":     "Notes",
+	"items":     "Items",
+	"leads":     "Leads",
+	"employees": "Employees",
+}
+
+type Template struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+var templatesMap = map[string]string{
+	"crm":             "CRM",
+	"support":         "Support Desk",
+	"onboarding-emp":  "Employee Onboarding",
+	"onboarding-cust": "Customer Onboarding",
+	"project":         "Project Management",
+}
+
+var templatesDescMap = map[string]string{
+	"crm":             "Customer relationship management",
+	"support":         "Customer support desk",
+	"onboarding-emp":  "Onboard your employees with sequence of steps",
+	"onboarding-cust": "Onboard your customers with sequence of steps",
+	"project":         "Manage your project tasks",
 }

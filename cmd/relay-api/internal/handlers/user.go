@@ -177,12 +177,17 @@ func (u *User) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.New("claims missing from context")
 	}
 
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
 	var upd user.UpdateUser
 	if err := web.Decode(r, &upd); err != nil {
 		return errors.Wrap(err, "")
 	}
 
-	err := user.Update(ctx, claims, u.db, params["id"], upd, v.Now)
+	err = user.Update(ctx, claims, u.db, currentUserID, upd, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -228,18 +233,22 @@ func (u *User) Verfiy(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	defer span.End()
 
 	token := r.URL.Query().Get("token")
+	mltoken := r.URL.Query().Get("ml_token")
+	if mltoken != "" {
+		return u.MLVerify(ctx, w, r, params)
+	}
 
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return web.NewShutdownError("web value missing from context")
 	}
 
-	tokenUID, tokenEmail, err := verifyToken(ctx, u.authenticator.FireBaseAdminSDK, token)
+	_, tokenEmail, err := verifyToken(ctx, u.authenticator.FireBaseAdminSDK, token)
 	if err != nil {
 		return errors.Wrap(err, "verifying token with firebase")
 	}
 
-	tkn, err := authenticate(ctx, tokenEmail, v.Now, tokenUID, u.authenticator, u.db)
+	tkn, err := generateJWT(ctx, tokenEmail, v.Now, u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
@@ -247,90 +256,79 @@ func (u *User) Verfiy(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, tkn, http.StatusOK)
 }
 
+func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.User.MLTokenVerification")
+	defer span.End()
+
+	token := r.URL.Query().Get("ml_token")
+
+	userInfo, err := auth.AuthenticateToken(token, u.rPool)
+	if err != nil {
+		return errors.Wrap(err, "authenticating mlToken")
+	}
+	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
+	if err != nil {
+		userInfo.Verified = false
+	}
+	return web.Respond(ctx, w, userInfo, http.StatusOK)
+}
+
 func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.User.TokenLink")
 	defer span.End()
 
-	token := r.URL.Query().Get("token")
+	fbToken := r.URL.Query().Get("token")    // firebase token
+	mlToken := r.URL.Query().Get("ml_token") // magiclink token
 
-	userInfo, err := auth.AuthenticateToken(token, u.rPool)
+	_, tokenEmail, err := verifyToken(ctx, u.authenticator.FireBaseAdminSDK, fbToken)
 	if err != nil {
-		return errors.Wrap(err, "authrnticating token")
+		return errors.Wrap(err, "verifying fbToken")
 	}
 
-	log.Printf("userInfo--%+v", userInfo)
+	userInfo, err := auth.AuthenticateToken(mlToken, u.rPool)
+	if err != nil {
+		return errors.Wrap(err, "verifying mlToken")
+	}
 
-	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
-	if err != nil && err == user.ErrNotFound {
-		userInfo.NewUser = true
-		nu := user.NewUser{
-			Name:            util.NameInEmail(userInfo.Email),
-			Avatar:          util.String(""),
-			Email:           userInfo.Email,
-			Phone:           util.String(""),
-			Provider:        util.String("default"),
-			Password:        "",
-			PasswordConfirm: "",
-			AccountIDs:      []string{userInfo.AccountID},
-			Roles:           []string{auth.RoleUser},
+	if userInfo.Email != tokenEmail {
+		return errors.Wrap(err, "token mismatch detected")
+	}
+
+	// all authentication completed. Proceed with the next steps
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, tokenEmail, "")
+	if err == user.ErrNotFound {
+		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, u.db)
+		if err != nil {
+			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
 		}
-		usr, err = user.Create(ctx, u.db, nu, time.Now())
-	} else {
-		userInfo.NewUser = false
-		err = user.UpdateAccounts(ctx, u.db, &usr, userInfo.AccountID, time.Now())
+	} else if err != nil {
+		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
 	}
+
+	err = user.UpdateAccounts(ctx, u.db, &usr, userInfo.AccountID, time.Now())
 	if err != nil {
-		return errors.Wrap(err, "User creation failed")
+		return errors.Wrap(err, "adding accounts to user failed")
+	}
+
+	err = user.SetAsVerified(ctx, u.db, &usr, time.Now())
+	if err != nil {
+		return errors.Wrap(err, "setting user verified failed")
 	}
 
 	//add newly created userID to the members
 	err = updateMemberUserID(ctx, userInfo.AccountID, userInfo.MemberID, usr.ID, u.db)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "adding member record for this user failed")
 	}
 
-	return web.Respond(ctx, w, userInfo, http.StatusOK)
-}
-
-func (u *User) Launch(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.User.TokenLink")
-	defer span.End()
-
-	token := r.URL.Query().Get("token")
-
-	userInfo, err := auth.AuthenticateToken(token, u.rPool)
+	tkn, err := generateJWT(ctx, tokenEmail, time.Now(), u.authenticator, u.db)
 	if err != nil {
-		return errors.Wrap(err, "authrnticating token")
+		return errors.Wrap(err, "generating token")
 	}
+	//this will take the user in the frontend to the specific account even multiple accounts exists
+	tkn.Accounts = []string{userInfo.AccountID}
 
-	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
-	if err != nil && err == user.ErrNotFound {
-		userInfo.NewUser = true
-		nu := user.NewUser{
-			Name:            util.NameInEmail(userInfo.Email),
-			Avatar:          util.String(""),
-			Email:           userInfo.Email,
-			Phone:           util.String(""),
-			Provider:        util.String("default"),
-			Password:        "",
-			PasswordConfirm: "",
-			Roles:           []string{auth.RoleUser, auth.RoleAdmin},
-		}
-		_, err = user.Create(ctx, u.db, nu, time.Now())
-	} else {
-		userInfo.NewUser = false
-	}
-	if err != nil {
-		return errors.Wrap(err, "User creation failed")
-	}
-
-	//add newly created userID to the members
-	// err = updateMemberUserID(ctx, userInfo.AccountID, userInfo.TeamID, userInfo.MemberID, usr.ID, u.db)
-	// if err != nil {
-	// 	return err
-	// }
-
-	return web.Respond(ctx, w, userInfo, http.StatusOK)
+	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }
 
 func updateMemberUserID(ctx context.Context, accountID, memberID, userID string, db *sqlx.DB) error {
@@ -374,11 +372,12 @@ func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, 
 	return token.UID, token.Claims["email"].(string), nil
 }
 
-func authenticate(ctx context.Context, email string, now time.Time, uid string, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
-	log.Println("email", email)
-	log.Println("uid", uid)
-
-	dbUser, claims, err := user.Authenticate(ctx, db, now, email, uid)
+func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
+	dbUser, err := user.RetrieveUserByUniqIdentifier(ctx, db, email, "")
+	if err != nil {
+		errors.Wrap(err, "user does not exist in the DB. Cannot generate JWT token")
+	}
+	claims := auth.NewClaims(dbUser.ID, dbUser.Roles, now, 96*time.Hour)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:
@@ -399,12 +398,11 @@ func authenticate(ctx context.Context, email string, now time.Time, uid string, 
 
 func createViewModelUser(u user.User) user.ViewModelUser {
 	return user.ViewModelUser{
-		Name:      *u.Name,
-		Avatar:    *u.Avatar,
-		Email:     u.Email,
-		Phone:     *u.Phone,
-		Roles:     u.Roles,
-		CreatedAt: u.CreatedAt.String(),
+		Name:   *u.Name,
+		Avatar: *u.Avatar,
+		Email:  u.Email,
+		Phone:  *u.Phone,
+		Roles:  u.Roles,
 	}
 }
 

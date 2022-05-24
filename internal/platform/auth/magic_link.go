@@ -17,7 +17,7 @@ type UserInfo struct {
 	AccountID   string `json:"account_id"`
 	AccountName string `json:"account_name"`
 	DraftID     string `json:"draft_id"`
-	NewUser     bool   `json:"new_user"`
+	Verified    bool   `json:"verified"`
 	MemberID    string `json:"member_id"`
 }
 
@@ -65,14 +65,12 @@ func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool
 		MemberID:  memId,
 	}
 
-	log.Printf("userInfo --- %+v", userInfo)
-
 	err = setToken(token, userInfo, rp)
 	if err != nil {
 		return "", err
 	}
 
-	magicLink := fmt.Sprintf("https://baserelay.com/home/join?token=%v", token)
+	magicLink := fmt.Sprintf("https://workbaseone.com/home/join?token=%v", token)
 
 	log.Println("join magicLink-------> ", magicLink)
 
@@ -96,7 +94,7 @@ func CreateMagicLaunchLink(draftID, accountName, emailAddress string, rp *redis.
 		return "", err
 	}
 
-	magicLink := fmt.Sprintf("https://baserelay.com/home/launch?token=%v", token)
+	magicLink := fmt.Sprintf("https://workbaseone.com/home/launch?token=%v", token)
 
 	log.Println("launch magicLink-------> ", magicLink)
 
@@ -118,7 +116,7 @@ func AuthenticateToken(token string, rp *redis.Pool) (UserInfo, error) {
 	if err != nil {
 		return UserInfo{}, err
 	}
-	// Done! The user with username emailAddress is now authenticated!
+	// Done! The user with the emailAddress is now authenticated!
 	return usrInfo, nil
 }
 

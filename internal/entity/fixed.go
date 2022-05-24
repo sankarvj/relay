@@ -132,13 +132,18 @@ type FlowEntity struct {
 
 // NotificationEntityItem represents structural format of notification entity
 type NotificationEntityItem struct {
-	AccountID string `json:"account_id"`
-	EntityID  string `json:"entity_id"`
-	ItemID    string `json:"item_id"`
-	Subject   string `json:"subject"`
-	Body      string `json:"body"`
-	Type      int    `json:"type"`
-	CreatedAt string `json:"created_at"`
+	AccountID string   `json:"account_id"`
+	TeamID    string   `json:"team_id"`
+	EntityID  string   `json:"entity_id"`
+	UserID    string   `json:"user_id"`
+	UserName  string   `json:"user_name"`
+	ItemID    string   `json:"item_id"`
+	Subject   string   `json:"subject"`
+	Body      string   `json:"body"`
+	Followers []string `json:"followers"`
+	Assignees []string `json:"assignees"`
+	Type      int      `json:"type"`
+	CreatedAt string   `json:"created_at"`
 }
 
 //ParseFixedEntity creates the entity from the given value added fields
@@ -171,7 +176,7 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
 	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName, teamID, StateAccountLevel); err != nil {
 		if err == sql.ErrNoRows {
-			log.Println("*********> debug internal.entity.fixed entity not found.")
+			log.Printf("*********> debug internal.entity.fixed entity not found. %s", preDefinedEntityName)
 			return Entity{}, ErrFixedEntityNotFound
 		}
 		return Entity{}, errors.Wrapf(err, "selecting pre-defined entity %q", preDefinedEntityName)
@@ -271,6 +276,8 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 		return item.Item{}, err
 	}
 
+	//save to redis-graph
+
 	if discoveryID != "" {
 		ns := discovery.NewDiscovery{
 			ID:        discoveryID,
@@ -344,4 +351,26 @@ func namedFieldsMap(entityFields []Field) map[string]interface{} {
 		params[field.Name] = field.Value
 	}
 	return params
+}
+
+func RetriveUserItem(ctx context.Context, accountID, memberID string, db *sqlx.DB) (*UserEntity, error) {
+	if memberID == "" {
+		return nil, errors.New("memberID is empty. Cannot retrive user item")
+	}
+
+	ownerEntity, err := RetrieveFixedEntity(ctx, db, accountID, "", FixedEntityOwner)
+	if err != nil {
+		return nil, err
+	}
+
+	var userEntityItem UserEntity
+	valueAddedFields, _, err := RetrieveFixedItem(ctx, ownerEntity.AccountID, ownerEntity.ID, memberID, db)
+	if err != nil {
+		return nil, err
+	}
+	err = ParseFixedEntity(valueAddedFields, &userEntityItem)
+	if err != nil {
+		return nil, err
+	}
+	return &userEntityItem, nil
 }

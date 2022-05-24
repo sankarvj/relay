@@ -17,7 +17,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/database/databasetest"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
-	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 // Success and failure markers.
@@ -214,24 +213,6 @@ func (test *Test) Teardown() {
 }
 
 // Token generates an authenticated token for a user.
-func (test *Test) Token(email, pass string) string {
-	test.t.Helper()
-
-	_, claims, err := user.Authenticate(
-		context.Background(), test.DB, time.Now(),
-		email, pass,
-	)
-	if err != nil {
-		test.t.Fatal(err)
-	}
-
-	tkn, err := test.Authenticator.GenerateToken(claims)
-	if err != nil {
-		test.t.Fatal(err)
-	}
-
-	return tkn
-}
 
 // Context returns an app level context for testing.
 func Context() context.Context {

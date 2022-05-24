@@ -5,7 +5,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func NotificationFields() []entity.Field {
+func NotificationFields(ownerEntityID string) []entity.Field {
 	subjectFieldID := uuid.New().String()
 	subjectField := entity.Field{
 		Key:         subjectFieldID,
@@ -51,6 +51,33 @@ func NotificationFields() []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
+	teamID := uuid.New().String()
+	teamField := entity.Field{
+		Key:         teamID,
+		Name:        "team_id",
+		DisplayName: "Team",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	userFieldID := uuid.New().String()
+	userField := entity.Field{
+		Key:         userFieldID,
+		Name:        "user_id",
+		DisplayName: "User",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	userNameFieldID := uuid.New().String()
+	userNameField := entity.Field{
+		Key:         userNameFieldID,
+		Name:        "user_name",
+		DisplayName: "User Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
 	entityFieldID := uuid.New().String()
 	entityField := entity.Field{
 		Key:         entityFieldID,
@@ -69,14 +96,37 @@ func NotificationFields() []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
-	ownerFieldID := uuid.New().String()
-	ownerField := entity.Field{
-		Key:         ownerFieldID,
-		Name:        "assignee",
-		DisplayName: "Assignee",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+	followersFieldID := uuid.New().String()
+	followerField := entity.Field{
+		Key:         followersFieldID,
+		Name:        "followers",
+		DisplayName: "Followers",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoFollower,
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
 	}
 
-	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, entityField, itemField, ownerField}
+	ownersFieldID := uuid.New().String()
+	ownerField := entity.Field{
+		Key:         ownersFieldID,
+		Name:        "assignees",
+		DisplayName: "Assignees",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoAssignee,
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, itemField, followerField, ownerField}
 }

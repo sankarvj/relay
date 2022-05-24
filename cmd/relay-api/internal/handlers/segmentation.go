@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -92,7 +91,6 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, s.exp)
 
-	log.Println("filter ---------------------->", filter)
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
