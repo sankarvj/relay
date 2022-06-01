@@ -116,6 +116,7 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
+	gSegment.UseReturnNode = s.useReturn
 
 	return listWithCountAsync(rp, gSegment, s.page, s.sortby, s.direction, s.CountEnabled())
 }
@@ -186,6 +187,7 @@ type Segmenter struct {
 	page      int
 	doCount   bool
 	source    *graphdb.Field
+	useReturn bool //makes the get result in graphdb to use dst.alias instead of source.alias
 }
 
 func NewEmptySegmenter() *Segmenter {
@@ -209,6 +211,11 @@ func (s *Segmenter) AddExp(exp string) *Segmenter {
 
 func (s *Segmenter) AddPage(page int) *Segmenter {
 	s.page = page
+	return s
+}
+
+func (s *Segmenter) _useReturn() *Segmenter {
+	s.useReturn = true
 	return s
 }
 

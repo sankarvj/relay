@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -22,14 +24,13 @@ type AppNotification struct {
 	UserName  string
 	Followers []entity.UserEntity
 	Assignees []entity.UserEntity
+	Due       time.Time
 	Specifics
 }
 
 type Specifics struct {
-	Title          string
-	DueBy          string
-	Names          string
-	ModifiedFields []string
+	Title       string
+	DirtyFields map[string]string
 }
 
 func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, db *sqlx.DB) AppNotification {
@@ -40,6 +41,25 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		UserID:    userID,
 		EntityID:  entityID,
 		ItemID:    itemID,
+		Followers: make([]entity.UserEntity, 0),
+		Assignees: make([]entity.UserEntity, 0),
+	}
+	appNotif.DirtyFields = make(map[string]string, 0)
+
+	if itemCreatorID != nil {
+		creator, err := user.RetrieveUser(ctx, db, *itemCreatorID)
+		if err != nil {
+			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
+		} else {
+			if memberID, ok := creator.AccountsB()[accountID]; ok {
+				userItem, err := entity.RetriveUserItem(ctx, accountID, memberID.(string), db)
+				if err != nil {
+					log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
+				} else {
+					appNotif.Followers = append(appNotif.Followers, *userItem)
+				}
+			}
+		}
 	}
 
 	usr, err := user.RetrieveUser(ctx, db, userID)
@@ -47,14 +67,16 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		appNotif.UserName = *usr.Name
 	}
 
-	appNotif.Assignees = make([]entity.UserEntity, 0)
-	appNotif.Followers = make([]entity.UserEntity, 0)
 	//subject, body, userItem should be populated here
-	appNotif.ModifiedFields = []string{}
+	modifiedFields := make([]string, 0)
 	for _, f := range valueAddedFields {
 
 		if f.Value == nil {
 			continue
+		}
+
+		if _, ok := dirtyFields[f.Key]; ok {
+			modifiedFields = append(modifiedFields, f.DisplayName)
 		}
 
 		if f.IsTitleLayout() {
@@ -62,36 +84,35 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		}
 
 		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime {
+			when, _ := util.ParseTime(f.Value.(string))
+			appNotif.Due = when
 			if _, ok := dirtyFields[f.Key]; ok {
-				when, _ := util.ParseTime(f.Value.(string))
-				appNotif.DueBy = util.FormatTimeView(when)
+				appNotif.DirtyFields[entity.WhoDueBy] = util.FormatTimeView(when)
 			}
 		}
 
 		if f.Who == entity.WhoAssignee {
-			assignees := dirtyFields[f.Key].([]interface{})
-			names := []string{}
-			for _, assignee := range assignees {
+			for _, assignee := range f.Value.([]interface{}) {
 				userItem, err := entity.RetriveUserItem(ctx, accountID, assignee.(string), db)
 				if err != nil {
 					log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 					continue
 				}
 				appNotif.Assignees = append(appNotif.Assignees, *userItem)
-				names = append(names, userItem.Name)
 			}
-			appNotif.Names = strings.Join(names, ",")
+
+			if _, ok := dirtyFields[f.Key]; ok {
+				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
+			}
 		}
 
-		if _, ok := dirtyFields[f.Key]; ok {
-			appNotif.ModifiedFields = append(appNotif.ModifiedFields, f.DisplayName)
-		}
 	}
+	appNotif.DirtyFields["modified_fields"] = strings.Join(modifiedFields, ",")
 
 	return appNotif
 }
 
-func (appNotif AppNotification) Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error {
+func (appNotif AppNotification) Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) (*item.Item, error) {
 	notificationItem := entity.NotificationEntityItem{
 		AccountID: appNotif.AccountID,
 		TeamID:    appNotif.TeamID,
@@ -106,15 +127,23 @@ func (appNotif AppNotification) Send(ctx context.Context, notifType Notification
 		Type:      int(notifType),
 	}
 
-	_, err := entity.SaveFixedEntityItem(ctx, appNotif.AccountID, appNotif.TeamID, appNotif.UserID, entity.FixedEntityNotification, "Notification", "", "", util.ConvertInterfaceToMap(notificationItem), db)
+	it, err := entity.SaveFixedEntityItem(ctx, appNotif.AccountID, appNotif.TeamID, appNotif.UserID, entity.FixedEntityNotification, "Notification", "", "", util.ConvertInterfaceToMap(notificationItem), db)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &it, nil
 }
 
 func fetchMemberIDs(entities []entity.UserEntity) []string {
+	ids := make([]string, 0)
+	for _, e := range entities {
+		ids = append(ids, e.MemberID)
+	}
+	return ids
+}
+
+func fetchUserIDs(entities []entity.UserEntity) []string {
 	ids := make([]string, 0)
 	for _, e := range entities {
 		ids = append(ids, e.UserID)
@@ -122,10 +151,10 @@ func fetchMemberIDs(entities []entity.UserEntity) []string {
 	return ids
 }
 
-func fetchUserIDs(users []user.User) []string {
-	ids := make([]string, 0)
-	for _, u := range users {
-		ids = append(ids, u.ID)
+func (appNotif AppNotification) assigneeNames() string {
+	names := make([]string, 0)
+	for _, ass := range appNotif.Assignees {
+		names = append(names, ass.Name)
 	}
-	return ids
+	return strings.Join(names[:], ",")
 }

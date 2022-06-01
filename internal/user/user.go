@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -69,21 +72,16 @@ func RetrieveWSCurrentUserID(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-// RetrieveCurrentAccountID gets the current users account id.
-func RetrieveCurrentAccountID(ctx context.Context, db *sqlx.DB, id string) ([]string, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentAccountID")
+func RetrieveCurrentUserAccounts(ctx context.Context, db *sqlx.DB, userID string) ([]string, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentUserAccounts")
 	defer span.End()
 
-	var accountIDs []string
-	const q = `SELECT account_ids FROM users WHERE user_id = $1`
-	if err := db.GetContext(ctx, (*pq.StringArray)(&accountIDs), q, id); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, ErrNotFound
-		}
-		return nil, errors.Wrapf(err, "selecting account for user %q", id)
+	currentUser, err := RetrieveUser(ctx, db, userID)
+	if err != nil {
+		return nil, err
 	}
 
-	return accountIDs, nil
+	return currentUser.AccountIDs(), nil
 }
 
 // Retrieve gets the specified user from the database.
@@ -176,9 +174,14 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 		return User{}, errors.Wrap(err, "generating password hash")
 	}
 
+	accountBytes, err := json.Marshal(n.Accounts)
+	if err != nil {
+		return User{}, errors.Wrap(err, "encode accounts to bytes")
+	}
+
 	u := User{
 		ID:           uuid.New().String(),
-		AccountIDs:   n.AccountIDs,
+		Accounts:     util.String(string(accountBytes)),
 		Name:         &n.Name,
 		Email:        n.Email,
 		Avatar:       n.Avatar,
@@ -193,11 +196,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	}
 
 	const q = `INSERT INTO users
-		(user_id, account_ids, name, email, avatar, phone, provider, verified, issued_at, password_hash, roles, created_at, updated_at)
+		(user_id, accounts, name, email, avatar, phone, provider, verified, issued_at, password_hash, roles, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 	_, err = db.ExecContext(
 		ctx, q,
-		u.ID, u.AccountIDs, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.Verified, u.IssuedAt,
+		u.ID, u.Accounts, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.Verified, u.IssuedAt,
 		u.PasswordHash, u.Roles,
 		u.CreatedAt, u.UpdatedAt,
 	)
@@ -218,9 +221,6 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 		return err
 	}
 
-	// if upd.AccountIDs != nil {
-	// 	u.AccountIDs = upd.AccountIDs
-	// }
 	if upd.Name != nil {
 		u.Name = upd.Name
 	}
@@ -232,12 +232,7 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	if upd.Avatar != nil {
 		u.Avatar = upd.Avatar
 	}
-	// if upd.Email != nil {
-	// 	u.Email = *upd.Email
-	// }
-	// if upd.Roles != nil {
-	// 	u.Roles = upd.Roles
-	// }
+
 	if upd.Password != nil {
 		pw, err := bcrypt.GenerateFromPassword([]byte(*upd.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -251,14 +246,13 @@ func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd
 	const q = `UPDATE users SET
 		"name" = $2,
 		"email" = $3,
-		"account_ids" = $4,
-		"roles" = $5,
-		"password_hash" = $6,
-		"updated_at" = $7,
-		"phone" = $8 
+		"roles" = $4,
+		"password_hash" = $5,
+		"updated_at" = $6,
+		"phone" = $7 
 		WHERE user_id = $1`
 	_, err = db.ExecContext(ctx, q, id,
-		u.Name, u.Email, u.AccountIDs, u.Roles,
+		u.Name, u.Email, u.Roles,
 		u.PasswordHash, u.UpdatedAt, u.Phone,
 	)
 	if err != nil {
@@ -285,58 +279,6 @@ func UpdatePassword(ctx context.Context, db *sqlx.DB, userID string, password st
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating user password")
-	}
-
-	return nil
-}
-
-func UpdateAccounts(ctx context.Context, db *sqlx.DB, u *User, accountID string, now time.Time) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.UpdateAccounts")
-	defer span.End()
-
-	u.AccountIDs = removeDuplicateValues(append(u.AccountIDs, accountID))
-	u.UpdatedAt = now.Unix()
-
-	const q = `UPDATE users SET
-		"account_ids" = $2,
-		"updated_at" = $3
-		WHERE user_id = $1`
-	_, err := db.ExecContext(ctx, q, u.ID,
-		u.AccountIDs, u.UpdatedAt,
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating user with new account id")
-	}
-
-	return nil
-}
-
-func RemoveAssociatedAccount(ctx context.Context, accountID, userID string, now time.Time, db *sqlx.DB) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.RemoveAccount")
-	defer span.End()
-
-	u, err := RetrieveUser(ctx, db, userID)
-	if err != nil {
-		return err
-	}
-
-	for index, accId := range u.AccountIDs {
-		if accId == accountID {
-			u.AccountIDs = append(u.AccountIDs[:index], u.AccountIDs[index+1:]...)
-			break
-		}
-	}
-	u.UpdatedAt = now.Unix()
-
-	const q = `UPDATE users SET
-		"account_ids" = $2,
-		"updated_at" = $3
-		WHERE user_id = $1`
-	_, err = db.ExecContext(ctx, q, u.ID,
-		u.AccountIDs, u.UpdatedAt,
-	)
-	if err != nil {
-		return errors.Wrap(err, "updating user's associated account")
 	}
 
 	return nil
@@ -395,4 +337,56 @@ func removeDuplicateValues(intSlice pq.StringArray) pq.StringArray {
 		}
 	}
 	return list
+}
+
+func (u *User) UpdateAccounts(ctx context.Context, db *sqlx.DB, accounts map[string]interface{}) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.UpdateAccounts")
+	defer span.End()
+
+	input, err := json.Marshal(accounts)
+	if err != nil {
+		return errors.Wrap(err, "encode meta to input")
+	}
+	inputB := string(input)
+	u.Accounts = &inputB
+
+	const q = `UPDATE users SET
+		"accounts" = $2 
+		WHERE user_id = $1`
+	_, err = db.ExecContext(ctx, q, u.ID,
+		u.Accounts,
+	)
+	return err
+}
+
+func (u User) AccountsB() map[string]interface{} {
+	accounts := make(map[string]interface{}, 0)
+	if u.Accounts == nil || *u.Accounts == "" {
+		return accounts
+	}
+	if err := json.Unmarshal([]byte(*u.Accounts), &accounts); err != nil {
+		log.Printf("***> unexpected error occurred when unmarshalling user accounts error: %v\n", err)
+	}
+	return accounts
+}
+
+func (u User) RemoveAccount(accountID string) map[string]interface{} {
+	accounts := u.AccountsB()
+	delete(accounts, accountID)
+	return accounts
+}
+
+func (u User) AddAccount(accountID, memberID string) map[string]interface{} {
+	accounts := u.AccountsB()
+	accounts[accountID] = memberID
+	return accounts
+}
+
+func (u User) AccountIDs() []string {
+	accounts := u.AccountsB()
+	accoutIds := make([]string, 0)
+	for k := range accounts {
+		accoutIds = append(accoutIds, k)
+	}
+	return accoutIds
 }

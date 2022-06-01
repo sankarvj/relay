@@ -7,7 +7,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func OwnerFields(teamID, userID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
+func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
 	userIDFieldID := uuid.New().String()
 	userIDField := entity.Field{
 		Key:         userIDFieldID,
@@ -76,7 +76,7 @@ func OwnerFields(teamID, userID, name, avatar, email string) ([]entity.Field, ma
 	fieldsBytes, _ := json.Marshal(accessMap)
 
 	ownerVals := map[string]interface{}{
-		userIDFieldID: userID,
+		userIDFieldID: currentUserID,
 		nameFieldID:   name,
 		avatarFieldID: avatar,
 		emailFieldID:  email,

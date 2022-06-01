@@ -212,7 +212,7 @@ func useradd(db *sqlx.DB, accountID, email, password string) error {
 	ctx := context.Background()
 
 	nu := user.NewUser{
-		AccountIDs:      []string{accountID},
+		Accounts:        map[string]interface{}{accountID: ""},
 		Email:           email,
 		Password:        password,
 		PasswordConfirm: password,

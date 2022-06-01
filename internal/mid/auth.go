@@ -129,7 +129,7 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 
 			accountID := params["account_id"]
 			userID := claims.Subject
-			existingAccountIDs, err := user.RetrieveCurrentAccountID(ctx, db, userID)
+			existingAccountIDs, err := user.RetrieveCurrentUserAccounts(ctx, db, userID)
 			if err != nil || !isExist(existingAccountIDs, accountID) {
 				err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
 				return web.NewRequestError(err, http.StatusForbidden)

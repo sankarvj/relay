@@ -43,9 +43,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("PUT", "/v1/accounts/users/current/profile", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("DELETE", "/v1/accounts/users/current/profile", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
-	// users invitation
-	app.Handle("POST", "/v1/accounts/:account_id/users/invite", u.Invite, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/users/invite", u.Invite, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	a := Account{
 		db:            db,
@@ -115,6 +112,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	}
 	// Register teams management endpoints.
 	app.Handle("POST", "/v1/accounts/:account_id/notifications/registration", noti.Register, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/notifications", noti.Clear, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	i := Item{
 		db:            db,

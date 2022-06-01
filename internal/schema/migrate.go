@@ -55,7 +55,7 @@ var migrations = []darwin.Migration{
 		Script: `
 		CREATE TABLE users (
 			user_id       UUID,
-			account_ids   UUID[25],
+			accounts     JSONB,
 			name          TEXT,
 			avatar 		  TEXT,
 			email         TEXT,

@@ -247,6 +247,14 @@ func (e Entity) Key(name string) string {
 	return NamedKeysMap(fields)[name]
 }
 
+func (e Entity) Field(key string) Field {
+	fields, err := e.Fields()
+	if err != nil {
+		return Field{}
+	}
+	return KeyedFieldsObjMap(fields)[key]
+}
+
 func (e Entity) FlowField() *Field {
 	fields, _ := e.Fields()
 	for _, f := range fields {

@@ -52,6 +52,11 @@ func GenerateRandomToken(n int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
+func SimpleLink(accountID, teamID, entityID, itemID string) string {
+	magicLink := fmt.Sprintf("https://workbaseone.com/v1/accounts/%s/teams/%s/entities/%s/items/%s", accountID, teamID, entityID, itemID)
+	return magicLink
+}
+
 func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {

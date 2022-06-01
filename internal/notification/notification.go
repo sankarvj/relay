@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 )
 
@@ -65,46 +65,69 @@ func JoinInvitation(accountID, accountName, requester, usrName, usrEmail string,
 	return emailNotif.Send(ctx, TypeInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) error {
+func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
 	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, db)
 
 	switch notificationType {
 	case TypeReminder:
-		appNotif.Subject = fmt.Sprintf("Your `%s` is due on %s", entityName, appNotif.DueBy)
+		if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
+			appNotif.Subject = fmt.Sprintf("Your `%s` is due on %s", entityName, val)
+		}
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeCreated:
-		appNotif.Subject = fmt.Sprintf("A new `%s` created", entityName)
-		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
+		appNotif.Subject = fmt.Sprintf("An item created `%s` module", entityName)
+		appNotif.Body = fmt.Sprintf("A new %s `%s` added", entityName, appNotif.Title)
 	case TypeUpdated:
-		appNotif.Subject = fmt.Sprintf("A `%s` item has been updated", entityName)
+		appNotif.Subject = fmt.Sprintf("%s `%s` is updated", entityName, appNotif.Title)
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
-		if appNotif.Names != "" {
-			appNotif.Body = fmt.Sprintf("Module `%s` has been updated with assignee/s %s", appNotif.Title, appNotif.Names)
-		} else if appNotif.DueBy != "" {
-			appNotif.Body = fmt.Sprintf("Module `%s` due date has been modified %s", appNotif.Title, appNotif.DueBy)
-		} else {
-			appNotif.Body = fmt.Sprintf("Module `%s` has been updated following fields %s", appNotif.Title, strings.Join(appNotif.ModifiedFields, ","))
+		if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
+			appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", entityName, appNotif.Title, val)
+		} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
+			appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", entityName, appNotif.Title, val)
+		} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
+			appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", entityName, appNotif.Title, val)
 		}
 	}
+
+	log.Println("appNotif.Assignees ", appNotif.Assignees)
 
 	//Send email/firebase notification to assignees/followers/creators
 	for _, assignee := range appNotif.Assignees {
-		emailNotif := EmailNotification{
-			To:      []interface{}{assignee.Email},
-			Subject: appNotif.Subject,
-			Body:    appNotif.Body,
-		}
-		emailNotif.Send(ctx, notificationType, db)
+		sendEmailAndFBNotification(ctx, appNotif, assignee, notificationType, db, firebaseSDKPath)
+	}
 
-		fbNotif := FirebaseNotification{
-			AccountID: appNotif.AccountID,
-			UserID:    assignee.UserID,
-			Subject:   appNotif.Subject,
-			Body:      appNotif.Body,
-			SDKPath:   firebaseSDKPath,
+	if itemCreatorID != nil && *itemCreatorID != usrID {
+		for _, follower := range appNotif.Followers {
+			sendEmailAndFBNotification(ctx, appNotif, follower, notificationType, db, firebaseSDKPath)
 		}
-		fbNotif.Send(ctx, notificationType, db)
 	}
 
 	return appNotif.Send(ctx, notificationType, db)
+}
+
+func sendEmailAndFBNotification(ctx context.Context, appNotif AppNotification, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {
+
+	emailNotif := EmailNotification{
+		To:        []interface{}{assignee.Email},
+		Subject:   appNotif.Subject,
+		Body:      appNotif.Body,
+		MagicLink: auth.SimpleLink(appNotif.AccountID, appNotif.TeamID, appNotif.EntityID, appNotif.ItemID),
+	}
+	err1 := emailNotif.Send(ctx, notificationType, db)
+	if err1 != nil {
+		log.Println("***>***> emailNotif.Send. error:", err1)
+	}
+
+	fbNotif := FirebaseNotification{
+		AccountID: appNotif.AccountID,
+		UserID:    assignee.UserID,
+		Subject:   appNotif.Subject,
+		Body:      appNotif.Body,
+		SDKPath:   firebaseSDKPath,
+	}
+	err2 := fbNotif.Send(ctx, notificationType, db)
+	if err2 != nil {
+		log.Println("***>***> fbNotif.Send. error:", err2)
+	}
+	return err1, err2
 }

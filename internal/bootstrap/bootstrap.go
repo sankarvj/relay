@@ -26,7 +26,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 	teamID := accountID
 
 	//TODO: all bootsrapping should happen in a single transaction
-	err := user.UpdateAccounts(ctx, db, cuser, accountID, time.Now())
+	err := cuser.UpdateAccounts(ctx, db, map[string]interface{}{accountID: cuser.ID})
 	if err != nil {
 		return errors.Wrap(err, "account inserted but user update failed")
 	}
@@ -86,8 +86,7 @@ func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.B
 	if err != nil {
 		return err
 	}
-	// add owner item
-	// pass the currentUserID as the itemID. Is it okay to do like that? seems like a anti pattern.
+	//Adding currentUserID as the memberID for the first time
 	_, err = b.ItemAdd(ctx, ue.ID, currentUser.ID, currentUser.ID, itemVals)
 	if err != nil {
 		return err

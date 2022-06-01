@@ -52,3 +52,7 @@ func ConvertMillisToTime(millis string) time.Time {
 	millsL := ConvertStrToInt64(millis)
 	return time.Unix(0, millsL*int64(time.Millisecond))
 }
+
+func ConvertMilliToTime(millis int64) time.Time {
+	return time.Unix(0, millis*int64(time.Millisecond))
+}

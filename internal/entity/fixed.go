@@ -107,11 +107,12 @@ type WebHookEntity struct {
 
 // UserEntity represents structural format of user entity
 type UserEntity struct {
-	UserID string `json:"user_id"`
-	Name   string `json:"name"`
-	Avatar string `json:"avatar"`
-	Email  string `json:"email"`
-	Gtoken string `json:"gtoken"`
+	MemberID string `json:"member_id"`
+	UserID   string `json:"user_id"`
+	Name     string `json:"name"`
+	Avatar   string `json:"avatar"`
+	Email    string `json:"email"`
+	Gtoken   string `json:"gtoken"`
 }
 
 // FlowEntity represents structural format of flow entity
@@ -372,5 +373,6 @@ func RetriveUserItem(ctx context.Context, accountID, memberID string, db *sqlx.D
 	if err != nil {
 		return nil, err
 	}
+	userEntityItem.MemberID = memberID
 	return &userEntityItem, nil
 }

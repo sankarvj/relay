@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -13,6 +15,13 @@ import (
 
 func grapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, expression string) (interface{}, error) {
 	log.Println("rule.engine.grapher:  query: ", expression)
+	if expression == node.MeEntity { //just like making grapher smart
+		currentUserID, err := user.RetrieveCurrentUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return memberID(ctx, db, accountID, currentUserID)
+	}
 	elements := strings.Split(expression, ".")
 	return elements[1], nil
 }

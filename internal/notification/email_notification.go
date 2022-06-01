@@ -33,11 +33,13 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		AccountName string
 		MagicLink   string
 		Requester   string
+		Body        string
 	}{
 		Name:        emNotif.Name,
 		AccountName: emNotif.AccountName,
 		MagicLink:   emNotif.MagicLink,
 		Requester:   emNotif.Requester,
+		Body:        emNotif.Body,
 	}
 
 	template := "welcome.html"
@@ -46,6 +48,8 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		template = "welcome.html"
 	case TypeInvitation:
 		template = "invitation.html"
+	default:
+		template = "update.html"
 	}
 
 	_, b, _, _ := runtime.Caller(0)

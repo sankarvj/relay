@@ -27,13 +27,13 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	ctx, span := trace.StartSpan(ctx, "handlers.Account.List")
 	defer span.End()
 
-	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	currentUser, err := user.RetrieveCurrentUser(ctx, a.db)
 	if err != nil {
 		err := errors.New("auth_cliams_missing_from_context") // value used in the UI dont change the string message.
 		return web.NewRequestError(err, http.StatusForbidden)
 	}
 
-	accounts, err := account.List(ctx, currentUserID, a.db)
+	accounts, err := account.List(ctx, currentUser.AccountIDs(), a.db)
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,6 @@ import (
 
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
@@ -167,74 +166,6 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
-}
-
-// Search returns the items for the given term & key
-func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Item.Search")
-	defer span.End()
-
-	accountID, entityID, _ := takeAEI(ctx, params, i.db)
-	key := r.URL.Query().Get("k")
-	term := r.URL.Query().Get("t")
-	filterID := r.URL.Query().Get("fi")
-	// filterKey := r.URL.Query().Get("fk")
-
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
-	if err != nil {
-		return err
-	}
-	choices := make([]entity.Choice, 0)
-	// Its a fixed wrapper entity. Call the respective items
-	if e.Category == entity.CategoryFlow { // temp flow handler
-		flows, err := flow.SearchByKey(ctx, accountID, filterID, key, term, i.db)
-		if err != nil {
-			return err
-		}
-		for _, flow := range flows {
-			choice := entity.Choice{
-				ID:           flow.ID,
-				DisplayValue: flow.Name,
-			}
-			choices = append(choices, choice)
-		}
-	} else if e.Category == entity.CategoryNode { // temp flow handler
-		//here filterID is the flowID...
-		nodes, err := node.SearchByKey(ctx, accountID, filterID, key, term, i.db)
-		if err != nil {
-			return err
-		}
-		for _, node := range nodes {
-			choice := entity.Choice{
-				ID:           node.ID,
-				DisplayValue: node.Name,
-			}
-			choices = append(choices, choice)
-		}
-	} else if e.Category == entity.CategoryChildUnit || term == "" {
-		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
-		if err != nil {
-			return err
-		}
-		whoMap := e.WhoFields()
-		choices = choiceResponse(key, items, whoMap)
-	} else {
-		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
-		result, _, err := NewSegmenter(exp).
-			segment(ctx, accountID, e.ID, i.db, i.rPool)
-		if err != nil {
-			return err
-		}
-		whoMap := e.WhoFields()
-		items, err := itemsResp(ctx, i.db, accountID, result)
-		if err != nil {
-			return err
-		}
-		choices = choiceResponse(key, items, whoMap)
-
-	}
-
-	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
 //Update updates the item
@@ -397,13 +328,15 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 func createViewModelItem(i item.Item) ViewModelItem {
 	return ViewModelItem{
-		ID:       i.ID,
-		EntityID: i.EntityID,
-		StageID:  i.StageID,
-		Name:     i.Name,
-		Type:     i.Type,
-		State:    i.State,
-		Fields:   i.Fields(),
+		ID:        i.ID,
+		EntityID:  i.EntityID,
+		StageID:   i.StageID,
+		Name:      i.Name,
+		Type:      i.Type,
+		State:     i.State,
+		Fields:    i.Fields(),
+		CreatedAt: i.CreatedAt,
+		UpdatedAt: i.UpdatedAt,
 	}
 }
 
@@ -415,44 +348,18 @@ func itemResponse(items []item.Item) []ViewModelItem {
 	return viewModelItems
 }
 
-func choiceResponse(key string, items []item.Item, whoMap map[string]string) []entity.Choice {
-	choices := make([]entity.Choice, 0)
-	for _, item := range items {
-		//display
-		displayV := item.Fields()[key]
-		if displayV == nil {
-			displayV = item.Name
-		}
-
-		//avatar
-		var avatar string
-		if ava, ok := whoMap[entity.WhoAvatar]; ok {
-			if aval, ok := item.Fields()[ava]; ok {
-				avatar = aval.(string)
-			}
-
-		}
-
-		choice := entity.Choice{
-			ID:           item.ID,
-			DisplayValue: displayV,
-			Avatar:       avatar,
-		}
-		choices = append(choices, choice)
-	}
-	return choices
-}
-
 // ViewModelItem represents the view model of item
 // (i.e) it has fields instead of attributes
 type ViewModelItem struct {
-	ID       string                 `json:"id"`
-	EntityID string                 `json:"entity_id"`
-	StageID  *string                `json:"stage_id"`
-	Name     *string                `json:"name"`
-	Type     int                    `json:"type"`
-	State    int                    `json:"state"`
-	Fields   map[string]interface{} `json:"fields"`
+	ID        string                 `json:"id"`
+	EntityID  string                 `json:"entity_id"`
+	StageID   *string                `json:"stage_id"`
+	Name      *string                `json:"name"`
+	Type      int                    `json:"type"`
+	State     int                    `json:"state"`
+	Fields    map[string]interface{} `json:"fields"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt int64                  `json:"updated_at"`
 }
 
 // AEI accountID, entityID, itemID

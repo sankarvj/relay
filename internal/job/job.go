@@ -108,6 +108,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 	}
 
 	//graph
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), valueAddedFields)
 	err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -166,8 +167,10 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
 
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), valueAddedFields)
 	//insertion in to redis graph DB
 	if len(m.Source) == 0 {
+
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -345,6 +348,7 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 
 	}
+
 	err := graphdb.UpsertNode(rp, gpbNode)
 	if err != nil {
 		return errors.Wrap(err, "error: redisGrpah insertion job")
@@ -532,11 +536,29 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 }
 
 func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, notificationType notification.NotificationType) error {
-
-	valueAddedFields := e.ValueAdd(newFields)
+	if e.Category == entity.CategoryNotification {
+		return nil
+	}
+	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	return notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, valueAddedFields, dirtyFields, notificationType, j.DB, j.FirebaseSDKPath)
+	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, notificationType, j.DB, j.FirebaseSDKPath)
+	if err != nil {
+		return err
+	}
+
+	notifEntity, err := entity.Retrieve(ctx, notifItem.AccountID, notifItem.EntityID, j.DB)
+	if err != nil {
+		return err
+	}
+	valueAddedFields := notifEntity.ValueAdd(notifItem.Fields())
+
+	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), valueAddedFields)
+	err = j.actOnRedisGraph(ctx, notifItem.AccountID, notifItem.EntityID, notifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
@@ -593,4 +615,17 @@ func connectionType(baseEntityID, entityID string, relationShips []relationship.
 	}
 	log.Println("typeOfConnection ", typeOfConnection)
 	return typeOfConnection
+}
+
+func appendTimers(createdAt, updatedAt time.Time, valueAddedFields []entity.Field) []entity.Field {
+	createdAtField := entity.Field{
+		Key:   "system_created_at",
+		Value: util.GetMilliSecondsFloat(createdAt),
+	}
+	updatedAtField := entity.Field{
+		Key:   "system_updated_at",
+		Value: util.GetMilliSecondsFloat(updatedAt),
+	}
+	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField)
+	return valueAddedFields
 }

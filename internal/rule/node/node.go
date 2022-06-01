@@ -28,6 +28,7 @@ const (
 const (
 	SelfEntity         = "self"
 	SegmentEntity      = "segment"
+	MeEntity           = "me"
 	GlobalEntity       = "xyz"
 	GlobalEntityData   = "data"
 	GlobalEntityResult = "result"

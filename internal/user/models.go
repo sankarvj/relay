@@ -9,7 +9,7 @@ import (
 // User represents someone with access to our system.
 type User struct {
 	ID           string         `db:"user_id" json:"id"`
-	AccountIDs   pq.StringArray `db:"account_ids" json:"account_ids"`
+	Accounts     *string        `db:"accounts" json:"accounts"`
 	Name         *string        `db:"name" json:"name"`
 	Avatar       *string        `db:"avatar" json:"avatar"`
 	Email        string         `db:"email" json:"email"`
@@ -25,16 +25,16 @@ type User struct {
 
 // NewUser contains information needed to create a new User.
 type NewUser struct {
-	AccountIDs      []string `json:"account_ids" validate:"required"`
-	Name            string   `json:"name" validate:"required"`
-	Email           string   `json:"email" validate:"required"`
-	Avatar          *string  `json:"avatar"`
-	Phone           *string  `json:"phone"`
-	Provider        *string  `json:"provider"`
-	Verified        bool     `json:"verified"`
-	Roles           []string `json:"roles" validate:"required"`
-	Password        string   `json:"password" validate:"required"`
-	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
+	Accounts        map[string]interface{} `json:"accounts" validate:"required"`
+	Name            string                 `json:"name" validate:"required"`
+	Email           string                 `json:"email" validate:"required"`
+	Avatar          *string                `json:"avatar"`
+	Phone           *string                `json:"phone"`
+	Provider        *string                `json:"provider"`
+	Verified        bool                   `json:"verified"`
+	Roles           []string               `json:"roles" validate:"required"`
+	Password        string                 `json:"password" validate:"required"`
+	PasswordConfirm string                 `json:"password_confirm" validate:"eqfield=Password"`
 }
 
 type ViewModelUser struct {
@@ -52,7 +52,6 @@ type ViewModelUser struct {
 // we do not want to use pointers to basic types but we make exceptions around
 // marshalling/unmarshalling.
 type UpdateUser struct {
-	AccountIDs      []string `json:"account_ids"`
 	Name            *string  `json:"name"`
 	Email           *string  `json:"email"`
 	Avatar          *string  `json:"avatar"`

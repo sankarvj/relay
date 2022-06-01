@@ -32,16 +32,17 @@ func graph(graphName string, conn redis.Conn) rg.Graph {
 
 //GraphNode takes an item and build the bule print of the nodes and relationships
 type GraphNode struct {
-	GraphName    string
-	Label        string
-	RelationName string
-	ItemID       string
-	Fields       []Field
-	Relations    []GraphNode // list/map fields
-	SourceNode   *rg.Node    // not a good. used for count
-	ReturnNode   *rg.Node    // not a good. used for count
-	unlink       bool
-	isReverse    bool
+	GraphName     string
+	Label         string
+	RelationName  string
+	ItemID        string
+	Fields        []Field
+	Relations     []GraphNode // list/map fields
+	SourceNode    *rg.Node    // not a good. used for count
+	ReturnNode    *rg.Node    // not a good. used for count
+	UseReturnNode bool        // not a good idea. used to return dstnode on searcing list fields
+	unlink        bool
+	isReverse     bool
 }
 
 func BuildGNode(graphName, label string, unlink bool) GraphNode {
@@ -128,13 +129,19 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction string) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
+
 	graph := graph(gn.GraphName, conn)
 	q := makeQuery(rPool, &gn)
-	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", gn.SourceNode.Alias))
+
+	returnAlias := gn.SourceNode.Alias
+	if gn.UseReturnNode {
+		returnAlias = gn.ReturnNode.Alias
+	}
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN %s", returnAlias))
 
 	//sorting
 	if sortBy != "" && direction != "" {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("ORDER BY %s.`%s` %s", gn.SourceNode.Alias, sortBy, direction))
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("ORDER BY %s.`%s` %s", returnAlias, sortBy, direction))
 	}
 	skipCount := pageNo * util.PageLimt
 	//pagination
@@ -232,7 +239,7 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 
 			switch f.Expression {
 			case operatorMap[lexertoken.LikeSign]:
-				f.Value = strings.ToLower(f.Value.(string))
+				f.Value = strings.ToLower(fmt.Sprintf("%v", f.Value))
 				f.WithAlias = fmt.Sprintf("tolower(%s)", f.WithAlias)
 			case operatorMap[lexertoken.NotINSign]: //to support `WHERE NOT qvHZjOKbzM.`id` IN ["0ce398f5-8d85-4436-af0f-b884d18ecc5a"]`
 				f.Expression = lexertoken.INSign

@@ -333,7 +333,7 @@
     </style>
   </head>
   <body>
-    <span class="preheader">{{.Requester}} has invited you to join the {{.AccountName}} account</span>
+    <span class="preheader">There is an update in your workbaseONE</span>
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="body">
       <tr>
         <td>&nbsp;</td>
@@ -350,7 +350,7 @@
                     <tr>
                       <td>
                         <p>Hi {{.Name}},</p>
-                        <p>Welcome to workbaseONE. {{.Requester}} has invited you to join the {{.AccountName}} account. Please click the link below to sign-in.</p>
+                        <p>{{.Body}}</p>
                         <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                           <tbody>
                             <tr>
@@ -358,7 +358,7 @@
                                 <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                   <tbody>
                                     <tr>
-                                      <td> <a href="{{.MagicLink}}" target="_blank">Join {{.AccountName}}</a> </td>
+                                      <td> <a href="{{.MagicLink}}" target="_blank">Go to Account</a> </td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -366,11 +366,6 @@
                             </tr>
                           </tbody>
                         </table>
-                        <p>
-							If the above button doesn't work. Please copy and paste the URL in your browser
-							{{.MagicLink}}
-						</p>
-                        <p>Good luck!</p>
                       </td>
                     </tr>
                   </table>

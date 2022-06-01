@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -11,7 +10,10 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -69,64 +71,6 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	return web.Respond(ctx, w, createViewModelUser(*usr), http.StatusOK)
-}
-
-func (u *User) Invite(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.User.Invite")
-	defer span.End()
-
-	accountID := params["account_id"]
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
-	// acc, err := account.Retrieve(ctx, u.db, accountID)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// currentUser, err := user.RetrieveCurrentUser(ctx, u.db)
-	// if err != nil {
-	// 	return err
-	// }
-
-	var nusers []user.NewUser
-	if err := web.Decode(r, &nusers); err != nil {
-		return errors.Wrap(err, "")
-	}
-
-	//TODO add validation to restrict inviting users upto 100
-
-	var users []user.User
-	for _, nu := range nusers {
-		nu.Password = ""        //safty
-		nu.PasswordConfirm = "" //safty
-		nu.AccountIDs = []string{accountID}
-		usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
-		if err != nil {
-			if err == user.ErrNotFound {
-				usr, err = user.Create(ctx, u.db, nu, v.Now)
-				if err != nil {
-					log.Println("***> unexpected error when creating new users to the account. error: ", err)
-					usr.ID = "" //symbolically telling the UI that the invitation for the user is failed.
-				}
-			} else {
-				log.Println("***> unexpected error when retriving users when inviting. error: ", err)
-			}
-		} else { //TODO update account ID
-
-		}
-		users = append(users, usr)
-
-		if usr.ID != "" {
-			//TODO push this to stream/queue
-		}
-
-	}
-
-	return web.Respond(ctx, w, users, http.StatusCreated)
 }
 
 // Create inserts a new user into the system.
@@ -305,7 +249,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
 	}
 
-	err = user.UpdateAccounts(ctx, u.db, &usr, userInfo.AccountID, time.Now())
+	err = usr.UpdateAccounts(ctx, u.db, usr.AddAccount(userInfo.AccountID, userInfo.MemberID))
 	if err != nil {
 		return errors.Wrap(err, "adding accounts to user failed")
 	}
@@ -316,7 +260,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	//add newly created userID to the members
-	err = updateMemberUserID(ctx, userInfo.AccountID, userInfo.MemberID, usr.ID, u.db)
+	err = u.updateMemberUserID(ctx, userInfo.AccountID, userInfo.MemberID, usr.ID)
 	if err != nil {
 		return errors.Wrap(err, "adding member record for this user failed")
 	}
@@ -331,23 +275,36 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }
 
-func updateMemberUserID(ctx context.Context, accountID, memberID, userID string, db *sqlx.DB) error {
-	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, userID string) error {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, u.db, accountID, "", entity.FixedEntityOwner)
 	if err != nil {
 		return err
 	}
-	var userEntityItem entity.UserEntity
-	valueAddedFields, updateFunc, err := entity.RetrieveFixedItem(ctx, accountID, ownerEntity.ID, memberID, db)
+	existingItem, err := item.Retrieve(ctx, ownerEntity.ID, memberID, u.db)
 	if err != nil {
 		return err
 	}
-	err = entity.ParseFixedEntity(valueAddedFields, &userEntityItem)
+
+	existingFields := existingItem.Fields()
+	updatedFields := make(map[string]interface{}, 0)
+	namedKeys := entity.NamedKeysMap(ownerEntity.FieldsIgnoreError())
+	for name, k := range namedKeys {
+		updatedFields[k] = existingFields[k]
+		if name == "user_id" {
+			updatedFields[k] = userID
+		}
+	}
+
+	it, err := item.UpdateFields(ctx, u.db, ownerEntity.ID, existingItem.ID, updatedFields)
 	if err != nil {
 		return err
 	}
-	userEntityItem.UserID = userID
+
+	//stream
+	go job.NewJob(u.db, u.rPool, u.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, userID, ownerEntity.ID, existingItem.ID, it.Fields(), existingItem.Fields()))
+
 	//adding in the members items for reverse lookup of userID from memberID.
-	return updateFunc(ctx, userEntityItem, db)
+	return nil
 }
 
 func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, string, error) {
@@ -392,7 +349,7 @@ func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authe
 	if err != nil {
 		return nil, err
 	}
-	tkn.Accounts = dbUser.AccountIDs
+	tkn.Accounts = dbUser.AccountIDs()
 	return &tkn, nil
 }
 

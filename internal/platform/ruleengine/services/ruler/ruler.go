@@ -498,14 +498,6 @@ func newFalse() *bool {
 	return &b
 }
 
-func join(strs ...string) string {
-	var sb strings.Builder
-	for _, str := range strs {
-		sb.WriteString(str)
-	}
-	return sb.String()
-}
-
 func extract(value string) interface{} {
 	if v, err := strconv.Atoi(value); err == nil {
 		return v

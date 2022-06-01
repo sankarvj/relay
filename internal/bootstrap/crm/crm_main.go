@@ -171,14 +171,14 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
 
-	_, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, taskEntity.ID)
-	if err != nil {
-		return err
-	}
-	_, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
-	if err != nil {
-		return err
-	}
+	// _, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, taskEntity.ID)
+	// if err != nil {
+	// 	return err
+	// }
+	// _, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
+	// if err != nil {
+	// 	return err
+	// }
 	fmt.Println("\tCRM:SAMPLES Workflows And Its Nodes Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage

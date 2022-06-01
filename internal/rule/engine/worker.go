@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/net"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
@@ -22,6 +23,12 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 		return input, nil
 	} else if entityID == node.SelfEntity { //self entity stops here
 		return evaluate(expression, buildResultant(node.SelfEntity, input)), nil
+	} else if entityID == node.MeEntity { //replace with currentuser_id
+		currentUserID, err := user.RetrieveCurrentUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return memberID(ctx, db, accountID, currentUserID)
 	} else if entityID == node.SegmentEntity { // flow expression with enters/leaves segment
 		return ruler.FetchItemID(expression), nil
 	}
@@ -114,4 +121,15 @@ func evaluate(expression string, response map[string]interface{}) interface{} {
 		response = response[element].(map[string]interface{})
 	}
 	return realValue
+}
+
+func memberID(ctx context.Context, db *sqlx.DB, accountID, userID string) (string, error) {
+	creator, err := user.RetrieveUser(ctx, db, userID)
+	if err != nil {
+		return "", err
+	}
+	if memberID, ok := creator.AccountsB()[accountID]; ok {
+		return memberID.(string), nil
+	}
+	return "", errors.New("member not found")
 }

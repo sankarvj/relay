@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
@@ -142,11 +141,9 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	namedKeys := entity.NamedKeysMap(e.FieldsIgnoreError())
 
 	updatedFields := recreateFields(vm, namedKeys)
-	log.Printf("updatedFields %+v", updatedFields)
 	it, err := item.UpdateFields(ctx, m.db, entityID, memberID, updatedFields)
 	if err != nil {
-		log.Println("updatedFields err", err)
-		return errors.Wrapf(err, "Item Update: %+v", &it)
+		return errors.Wrapf(err, "member update: %+v", &it)
 	}
 	//stream
 	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
@@ -171,9 +168,14 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "Operation not permitted. Please transfer the ownership of this account or delete the account itself")
 	}
 
-	err = user.RemoveAssociatedAccount(ctx, accountID, userItem.UserID, time.Now(), m.db)
+	removableUser, err := user.RetrieveUser(ctx, m.db, userItem.UserID)
 	if err != nil {
-		return errors.Wrap(err, "removing associated accounts from the user failed")
+		return err
+	}
+
+	err = removableUser.UpdateAccounts(ctx, m.db, removableUser.RemoveAccount(accountID))
+	if err != nil {
+		return errors.Wrap(err, "removing accounts from the user failed")
 	}
 
 	//stream
@@ -204,6 +206,7 @@ func createViewModelMember(id string, fields map[string]entity.Field, teamMap ma
 func recreateFields(vm ViewModelMember, namedKeys map[string]string) map[string]interface{} {
 	itemFields := make(map[string]interface{}, 0)
 	itemFields[namedKeys["name"]] = vm.Name
+	itemFields[namedKeys["user_id"]] = vm.UserID
 	itemFields[namedKeys["email"]] = vm.Email
 	itemFields[namedKeys["avatar"]] = vm.Avatar
 	itemFields[namedKeys["team_ids"]] = stripeTeamIds(vm.Teams)
@@ -213,6 +216,7 @@ func recreateFields(vm ViewModelMember, namedKeys map[string]string) map[string]
 
 type ViewModelMember struct {
 	ID        string            `json:"id"`
+	UserID    string            `json:"user_id"`
 	Name      string            `json:"name"`
 	Email     string            `json:"email"`
 	Avatar    string            `json:"avatar"`
