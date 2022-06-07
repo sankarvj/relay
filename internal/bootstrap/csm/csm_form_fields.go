@@ -223,6 +223,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
 		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Who:         entity.WhoStatus,
 		Dependent: &entity.Dependent{
 			ParentKey:   dueByField.Key,
 			Expressions: []string{fmt.Sprintf("{{%s.%s}} in {%s}", "self", statusFieldKey, stItem2), fmt.Sprintf("{{%s.%s}} af {now}", "self", dueByField.Key), fmt.Sprintf("{{%s.%s}} bf {now}", "self", dueByField.Key)},

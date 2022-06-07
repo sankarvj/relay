@@ -81,10 +81,12 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 	valueAddedFields := e.ValueAdd(m.NewFields)
 
 	//workflows
-	err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-		return
+	if m.UserID != engine.UUID_SYSTEM_USER { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
+			return
+		}
 	}
 
 	//connections
@@ -102,7 +104,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 	}
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, notification.TypeUpdated)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -134,10 +136,12 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	//workflows
-	err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-		return
+	if m.UserID != engine.UUID_SYSTEM_USER { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
+			return
+		}
 	}
 
 	//connect
@@ -162,13 +166,14 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	}
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), notification.TypeCreated)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
 
 	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), valueAddedFields)
 	//insertion in to redis graph DB
+
 	if len(m.Source) == 0 {
 
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
@@ -205,7 +210,7 @@ func (j *Job) eventItemReminded(m stream.Message) {
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), notification.TypeReminder)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeReminder)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
@@ -419,7 +424,7 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 }
 
 // It connects the implicit relationships which as inferred by the field
-// Right now, the connection helps fetching the events and nothing else.
+// Right now, the connection helps fetching the events and nothing else. (check whether the flow/node gets added to redis because of this)
 func (j Job) actOnConnections(accountID, userID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
 	ctx := context.Background()
 	createEvent := oldFields == nil
@@ -495,9 +500,13 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		return err
 	}
 
-	currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
-	if err != nil {
-		return err
+	userName := "System User"
+	if currentUserID != engine.UUID_SYSTEM_USER {
+		currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
+		if err != nil {
+			return err
+		}
+		userName = *currentUser.Name
 	}
 
 	switch e.Category {
@@ -517,7 +526,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		var usr entity.UserEntity
 		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
 		json.Unmarshal(jsonbody, &usr)
-		err = notification.JoinInvitation(accountID, acc.Name, *currentUser.Name, usr.Name, usr.Email, it.ID, db, rp)
+		err = notification.JoinInvitation(accountID, acc.Name, userName, usr.Name, usr.Email, it.ID, db, rp)
 	}
 	return err
 }
@@ -535,14 +544,21 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 	return nil
 }
 
-func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, notificationType notification.NotificationType) error {
+func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string]string, notificationType notification.NotificationType) error {
+
+	baseIds := make([]string, 0)
+	for baseEntityID, baseItemID := range source {
+		baseID := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
+		baseIds = append(baseIds, baseID)
+	}
+
 	if e.Category == entity.CategoryNotification {
 		return nil
 	}
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, notificationType, j.DB, j.FirebaseSDKPath)
+	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}

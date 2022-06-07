@@ -29,6 +29,8 @@ type Dashboard struct {
 }
 
 type GridOne struct {
+	AvailableEntities  []entity.Entity      `json:"available_entities"`
+	SelectedEntity     entity.Entity        `json:"selected_entity"`
 	SelectedFlow       flow.ViewModelFlow   `json:"selected_flow"`
 	SelectedNode       node.ViewModelNode   `json:"selected_node"`
 	Flows              []flow.ViewModelFlow `json:"flows"`
@@ -38,8 +40,10 @@ type GridOne struct {
 }
 
 type GridTwo struct {
-	Name  string         `json:"name"`
-	Count map[string]int `json:"count"`
+	AvailableEntities []entity.Entity `json:"available_entities"`
+	SelectedEntity    entity.Entity   `json:"selected_entity"`
+	Name              string          `json:"name"`
+	Count             map[string]int  `json:"count"`
 }
 
 type GridThree struct {
@@ -47,12 +51,24 @@ type GridThree struct {
 }
 
 func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	gridOne := GridOne{}
-	err := gridOne.WidgetGridOne(ctx, params["account_id"], params["team_id"], d.db, d.rPool)
+	entities, err := entity.All(ctx, params["account_id"], []int{entity.CategoryData}, d.db)
 	if err != nil {
 		return err
 	}
-	gridTwo := GridTwo{}
+
+	availableEntities := make([]entity.Entity, 0)
+	for _, e := range entities {
+		if e.FlowField() != nil {
+			availableEntities = append(availableEntities, e)
+		}
+	}
+
+	gridOne := GridOne{AvailableEntities: availableEntities}
+	err = gridOne.WidgetGridOne(ctx, params["account_id"], params["team_id"], d.db, d.rPool)
+	if err != nil {
+		return err
+	}
+	gridTwo := GridTwo{AvailableEntities: availableEntities}
 	err = gridTwo.WidgetGridTwo(ctx, params["account_id"], params["team_id"], d.db, d.rPool)
 	if err != nil {
 		return err
@@ -77,15 +93,14 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 
 func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID string, db *sqlx.DB, rPool *redis.Pool) error {
 
+	if len(gOne.AvailableEntities) == 0 {
+		return nil
+	}
+	gOne.SelectedEntity = gOne.AvailableEntities[0]
 	conditionFields := make([]graphdb.Field, 0)
 
-	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, "deals")
-	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: entity retieve error")
-	}
-
-	if e.FlowField() != nil { //main stages. ex: deal stages
-		flows, err := flow.List(ctx, []string{e.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
+	if gOne.SelectedEntity.FlowField() != nil { //main stages. ex: deal stages
+		flows, err := flow.List(ctx, []string{gOne.SelectedEntity.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
 		if err != nil {
 			return err
 		}
@@ -105,12 +120,11 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID string
 				gOne.SelectedNode = gOne.Nodes[len(gOne.Nodes)-1]
 			}
 		}
-
 	}
 
-	fields, err := e.FilteredFields()
+	fields, err := gOne.SelectedEntity.FilteredFields()
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: fields retieve error")
+		return errors.Wrapf(err, "WidgetGridOne: fields retieve error")
 	}
 
 	for _, f := range fields {
@@ -122,8 +136,7 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID string
 		}
 	}
 
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(accountID, gOne.SelectedEntity.ID, false).MakeBaseGNode("", conditionFields)
 
 	result, err := graphdb.GetCount(rPool, gSegment, true)
 	if err != nil {
@@ -135,27 +148,33 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID string
 }
 
 func (gTwo *GridTwo) WidgetGridTwo(ctx context.Context, accountID, teamID string, db *sqlx.DB, rPool *redis.Pool) error {
+	if len(gTwo.AvailableEntities) == 0 {
+		return nil
+	}
+	gTwo.SelectedEntity = gTwo.AvailableEntities[0]
+
 	conditionFields := make([]graphdb.Field, 0)
 
-	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, "deals")
+	fields, err := gTwo.SelectedEntity.FilteredFields()
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: entity retieve error")
-	}
-
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: fields retieve error")
+		return errors.Wrapf(err, "WidgetGridTwo: fields retieve error")
 	}
 
 	namedKeyMap := entity.NamedKeysMap(fields)
-	dealAmountKey := namedKeyMap["deal_amount"]
+	var key string
+	if gTwo.SelectedEntity.Name == "deals" {
+		key = namedKeyMap["deal_amount"]
+	} else if gTwo.SelectedEntity.Name == "projects" {
+		key = namedKeyMap["uuid-00-status"]
+	} else {
+		return nil
+	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetSum(rPool, gSegment, dealAmountKey)
+	gSegment := graphdb.BuildGNode(accountID, gTwo.SelectedEntity.ID, false).MakeBaseGNode("", conditionFields)
+	result, err := graphdb.GetSum(rPool, gSegment, key)
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: get amount sum")
+		return errors.Wrapf(err, "WidgetGridTwo: get amount sum")
 	}
 	gTwo.gridResult(counts(result))
 	log.Printf("result %+v	", result)
@@ -166,12 +185,12 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	conditionFields := make([]graphdb.Field, 0)
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, "tasks")
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: entity retieve error")
+		return errors.Wrapf(err, "WidgetGridThree: entity retieve error")
 	}
 
 	fields, err := e.FilteredFields()
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: fields retieve error")
+		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
 	}
 
 	var statusField entity.Field
@@ -187,10 +206,10 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 
 	result, err := graphdb.GetCount(rPool, gSegment, true)
 	if err != nil {
-		return errors.Wrapf(err, "WidgetTasks: get status count")
+		return errors.Wrapf(err, "WidgetGridThree: get status count")
 	}
 	gThree.gridResult(ctx, accountID, teamID, statusField, counts(result), db)
-	log.Println("result", result)
+	log.Println("three result", result)
 	return nil
 }
 
@@ -213,7 +232,7 @@ func (d *Dashboard) Dashboard(ctx context.Context, w http.ResponseWriter, r *htt
 
 	for _, f := range fields {
 		if condition, ok := filter.Conditions[f.Key]; ok {
-			conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression))
+			conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
 		}
 	}
 
@@ -292,6 +311,14 @@ func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID strin
 				ID:           choicer[i].ID,
 				DisplayValue: choicer[i].Name,
 				Value:        val,
+				Verb:         util.ConvertIntfToStr(choicer[i].Verb),
+				Avatar:       choicer[i].Avatar,
+			})
+		} else {
+			gThree.Choices = append(gThree.Choices, entity.Choice{
+				ID:           choicer[i].ID,
+				DisplayValue: choicer[i].Name,
+				Value:        0,
 				Verb:         util.ConvertIntfToStr(choicer[i].Verb),
 				Avatar:       choicer[i].Avatar,
 			})

@@ -64,7 +64,7 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "selecting related connections")
 	}
 
-	if len(connections) == 2 {
+	if len(connections) == 15 {
 		next = connections[len(connections)-1].ConnectionID
 		log.Println("next ", next)
 	} else {
@@ -90,6 +90,7 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			Action:          c.Action,
 			Title:           c.Title,
 			Footer:          c.SubTitle,
+			Time:            c.CreatedAt,
 		}
 		viewModelEvents = append(viewModelEvents, viewModelEvent)
 	}
@@ -137,7 +138,7 @@ type ViewModelEvent struct {
 	Action          interface{} `json:"action"` //lable:action - created, clicked, viewed, updated, etc
 	Title           interface{} `json:"title"`  //lable:title  - task, deal, amazon.com
 	Footer          interface{} `json:"footer"` //lable:footer - 8 times
-	Time            string      `json:"time"`
+	Time            time.Time   `json:"time"`
 }
 
 func userkeys(oneMap map[string]bool) []string {

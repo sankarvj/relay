@@ -202,10 +202,10 @@ func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string
 }
 
 func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}) (item.Item, error) {
-	return b.ItemAddGenie(ctx, entityID, itemID, userID, UUIDHolder, fields, nil)
+	return b.ItemAddBase(ctx, entityID, itemID, userID, fields, nil)
 }
 
-func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genieID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
+func (b *Base) ItemAddBase(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
 	name := "System Generated"
 	ni := item.NewItem{
 		ID:        itemID,
@@ -213,7 +213,6 @@ func (b *Base) ItemAddGenie(ctx context.Context, entityID, itemID, userID, genie
 		AccountID: b.AccountID,
 		EntityID:  entityID,
 		UserID:    &userID,
-		GenieID:   &genieID,
 		Fields:    fields,
 		Source:    source,
 	}

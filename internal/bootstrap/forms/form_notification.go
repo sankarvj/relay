@@ -128,5 +128,18 @@ func NotificationFields(ownerEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, itemField, followerField, ownerField}
+	baseFieldID := uuid.New().String()
+	baseField := entity.Field{
+		Key:         baseFieldID,
+		Name:        "base_ids",
+		DisplayName: "Base Ids",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
+	}
+
+	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, itemField, followerField, ownerField, baseField}
 }

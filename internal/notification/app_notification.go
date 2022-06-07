@@ -10,6 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -24,6 +25,7 @@ type AppNotification struct {
 	UserName  string
 	Followers []entity.UserEntity
 	Assignees []entity.UserEntity
+	BaseIds   []string
 	Due       time.Time
 	Specifics
 }
@@ -33,7 +35,7 @@ type Specifics struct {
 	DirtyFields map[string]string
 }
 
-func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, db *sqlx.DB) AppNotification {
+func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, db *sqlx.DB) AppNotification {
 
 	appNotif := AppNotification{
 		AccountID: accountID,
@@ -43,10 +45,11 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		ItemID:    itemID,
 		Followers: make([]entity.UserEntity, 0),
 		Assignees: make([]entity.UserEntity, 0),
+		BaseIds:   baseIds,
 	}
 	appNotif.DirtyFields = make(map[string]string, 0)
 
-	if itemCreatorID != nil {
+	if itemCreatorID != nil && *itemCreatorID != engine.UUID_SYSTEM_USER {
 		creator, err := user.RetrieveUser(ctx, db, *itemCreatorID)
 		if err != nil {
 			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
@@ -124,6 +127,7 @@ func (appNotif AppNotification) Send(ctx context.Context, notifType Notification
 		Body:      appNotif.Body,
 		Followers: fetchMemberIDs(appNotif.Followers),
 		Assignees: fetchMemberIDs(appNotif.Assignees),
+		BaseIds:   appNotif.BaseIds,
 		Type:      int(notifType),
 	}
 

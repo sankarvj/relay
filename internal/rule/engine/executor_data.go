@@ -12,11 +12,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
 const (
-	UUID_SYSTEM_USER = "00000000-0000-0000-0000-000000000000"
+	UUID_SYSTEM_USER = "10000000-1000-1000-1000-100000000000"
 )
 
 func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
@@ -29,6 +30,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
+		UserID:    util.String(UUID_SYSTEM_USER),
 		AccountID: n.AccountID,
 		StageID:   &n.StageID,
 		EntityID:  n.ActorID,

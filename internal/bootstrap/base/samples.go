@@ -37,7 +37,7 @@ func (b *Base) AddCRMPipelines(ctx context.Context, contactEntityID, webhookEnti
 	return p.ID, sno1.ID, nil
 }
 
-func (b *Base) AddCRMWorkflows1(ctx context.Context, contactEntityID, taskEntityID string) (string, string, error) {
+func (b *Base) AddCRMWorkflows1(ctx context.Context, contactEntityID, companyEntityID, taskEntityID string) (string, string, error) {
 	//add pipelines
 	w, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "When contact created", flow.FlowModeWorkFlow, flow.FlowConditionEntry, "", flow.FlowTypeEventCreate)
 	if err != nil {
@@ -46,12 +46,12 @@ func (b *Base) AddCRMWorkflows1(ctx context.Context, contactEntityID, taskEntity
 
 	dummyID := "00000000-0000-0000-0000-000000000000"
 
-	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, contactEntityID, node.Root, "Company1", node.Push, "", map[string]string{}, dummyID, "Company one")
+	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, companyEntityID, node.Root, "Company1", node.Push, "", map[string]string{}, dummyID, "Company")
 	if err != nil {
 		return "", "", err
 	}
 
-	_, err = b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, sno1.ID, "Task1", node.Task, "", map[string]string{}, dummyID, "Task one")
+	_, err = b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, sno1.ID, "Task1", node.Task, "", map[string]string{}, dummyID, "Task")
 	if err != nil {
 		return "", "", err
 	}

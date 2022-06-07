@@ -104,7 +104,7 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 
 		for _, f := range fields {
 			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression))
+				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
 			}
 		}
 
@@ -167,6 +167,7 @@ func listWithCountAsync(rp *redis.Pool, gSegment graphdb.GraphNode, page int, so
 			fmt.Println(err)
 		}
 	}
+
 	return segmentResult, countResult, err
 }
 

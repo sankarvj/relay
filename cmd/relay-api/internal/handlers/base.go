@@ -114,7 +114,7 @@ func nodeStages(ctx context.Context, flowID string, db *sqlx.DB) ([]node.ViewMod
 	return viewModelNodes, nil
 }
 
-func makeGraphField(f *entity.Field, value interface{}, expression string) graphdb.Field {
+func makeGraphField(f *entity.Field, value interface{}, expression string, reverse bool) graphdb.Field {
 	if f.IsReference() {
 		dataType := graphdb.TypeString
 		if strings.EqualFold(lexertoken.INSign, expression) || strings.EqualFold(lexertoken.NotINSign, expression) {
@@ -130,7 +130,7 @@ func makeGraphField(f *entity.Field, value interface{}, expression string) graph
 			Value:     []interface{}{""},
 			DataType:  graphdb.TypeReference,
 			RefID:     f.RefID,
-			IsReverse: false,
+			IsReverse: reverse,
 			Field: &graphdb.Field{
 				Expression: graphdb.Operator(expression),
 				Key:        "id",
@@ -201,14 +201,17 @@ func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.Qu
 
 func itemIDs(result *rg.QueryResult) []interface{} {
 	itemIds := make([]interface{}, 0)
-	for result.Next() { // Next returns true until the iterator is depleted.
-		// Get the current Record.
-		r := result.Record()
+	if result != nil {
+		for result.Next() { // Next returns true until the iterator is depleted.
+			// Get the current Record.
+			r := result.Record()
 
-		// Entries in the Record can be accessed by index or key.
-		record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
-		itemIds = append(itemIds, record["id"])
+			// Entries in the Record can be accessed by index or key.
+			record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
+			itemIds = append(itemIds, record["id"])
+		}
 	}
+
 	return itemIds
 }
 

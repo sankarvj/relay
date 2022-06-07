@@ -65,8 +65,8 @@ func JoinInvitation(accountID, accountName, requester, usrName, usrEmail string,
 	return emailNotif.Send(ctx, TypeInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
-	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, db)
+func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
+	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, baseIds, db)
 
 	switch notificationType {
 	case TypeReminder:

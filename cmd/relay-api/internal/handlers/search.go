@@ -23,28 +23,22 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
-	filterID := r.URL.Query().Get("fi")
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err
 	}
-	choices := make([]entity.Choice, 0)
+	var choices []entity.Choice
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
-		flows, err := flow.SearchByKey(ctx, accountID, entityID, key, term, i.db)
+		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
+		choices, err = likeSearchFlows(ctx, accountID, e.ID, exp, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
-		for _, flow := range flows {
-			choice := entity.Choice{
-				ID:           flow.ID,
-				DisplayValue: flow.Name,
-			}
-			choices = append(choices, choice)
-		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
 		//here filterID is the flowID...
+		filterID := r.URL.Query().Get("fi")
 		nodes, err := node.SearchByKey(ctx, accountID, filterID, key, term, i.db)
 		if err != nil {
 			return err
@@ -110,6 +104,54 @@ func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db
 		choice := entity.Choice{
 			ID:           k,
 			DisplayValue: v,
+		}
+		choices = append(choices, choice)
+	}
+	return choices, nil
+}
+
+func likeSearchFlows(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+	choices := make([]entity.Choice, 0)
+	result, _, err := NewSegmenter(exp).
+		segment(ctx, accountID, entityID, db, rPool)
+	if err != nil {
+		return nil, err
+	}
+	flowIDs := itemIDs(result)
+
+	flows, err := flow.BulkRetrieve(ctx, accountID, flowIDs, db)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range flows {
+		choice := entity.Choice{
+			ID:           f.ID,
+			DisplayValue: f.Name,
+		}
+		choices = append(choices, choice)
+	}
+	return choices, nil
+}
+
+func likeSearchNodes(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+	choices := make([]entity.Choice, 0)
+	result, _, err := NewSegmenter(exp).
+		segment(ctx, accountID, entityID, db, rPool)
+	if err != nil {
+		return nil, err
+	}
+	nodeIDs := itemIDs(result)
+
+	nodes, err := node.BulkRetrieve(ctx, nodeIDs, db)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, n := range nodes {
+		choice := entity.Choice{
+			ID:           n.ID,
+			DisplayValue: n.Name,
 		}
 		choices = append(choices, choice)
 	}

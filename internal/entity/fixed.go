@@ -143,6 +143,7 @@ type NotificationEntityItem struct {
 	Body      string   `json:"body"`
 	Followers []string `json:"followers"`
 	Assignees []string `json:"assignees"`
+	BaseIds   []string `json:"base_ids"`
 	Type      int      `json:"type"`
 	CreatedAt string   `json:"created_at"`
 }

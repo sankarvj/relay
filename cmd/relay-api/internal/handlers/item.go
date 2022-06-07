@@ -293,6 +293,15 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	//update date and time fields with current time
+	if itemID == "undefined" { //create call
+		for i := 0; i < len(fields); i++ {
+			if fields[i].IsDateTime() {
+				fields[i].Value = time.Now()
+			}
+		}
+	}
+
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`
 		Item   ViewModelItem          `json:"item"`

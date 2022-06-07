@@ -138,7 +138,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAddGenie(ctx, companyEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
+	companyItem1, err := b.ItemAddBase(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -146,12 +146,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Companies Item Created")
 
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Todo Task", contactItem1.ID, typeItems[0].ID))
+	_, err = b.ItemAddBase(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Todo Task", contactItem1.ID, typeItems[0].ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Email Task", contactItem1.ID, typeItems[1].ID))
+	_, err = b.ItemAddBase(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Email Task", contactItem1.ID, typeItems[1].ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -171,14 +171,14 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
 
-	// _, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, taskEntity.ID)
-	// if err != nil {
-	// 	return err
-	// }
-	// _, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
-	// if err != nil {
-	// 	return err
-	// }
+	_, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, companyEntity.ID, taskEntity.ID)
+	if err != nil {
+		return err
+	}
+	_, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
+	if err != nil {
+		return err
+	}
 	fmt.Println("\tCRM:SAMPLES Workflows And Its Nodes Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
@@ -188,7 +188,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	ticketItem1, err := b.ItemAddGenie(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.UUIDHolder, base.TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
+	ticketItem1, err := b.ItemAddBase(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
 	if err != nil {
 		return err
 	}

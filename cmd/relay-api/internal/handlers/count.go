@@ -96,6 +96,9 @@ func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, coun
 
 func counts(result *rg.QueryResult) map[string]int {
 	responseArr := make(map[string]int, 0)
+	if result == nil {
+		return responseArr
+	}
 	for result.Next() { // Next returns true until the iterator is depleted.
 		// Get the current Record.
 

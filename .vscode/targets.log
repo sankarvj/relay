@@ -8,7 +8,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This program built for i386-apple-darwin11.3.0
  
 
-# Make data base, printed on Tue May 24 12:14:10 2022
+# Make data base, printed on Sun Jun  5 08:32:13 2022
 
 # Variables
 
@@ -26,6 +26,7 @@ VSCODE_LOG_NATIVE = false
 @F = $(notdir $@)
 # makefile
 CURDIR := /Users/vijayasankar/Work/relay
+ 
 # makefile (from `makefile', line 1)
 SHELL := /bin/bash
 # environment
@@ -41,7 +42,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 __CFBundleIdentifier = com.microsoft.VSCode
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /var/folders/r3/3kd_02bs2lz8x69kryggsnv80000gn/T/vscode-ipc-33a549a5-45c0-401e-9d07-20af796ed012.sock
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/r3/3kd_02bs2lz8x69kryggsnv80000gn/T/vscode-ipc-c573129d-c291-4dbb-a96a-c4dd327afaa6.sock
 # environment
 VSCODE_CWD = /
 # environment
@@ -53,13 +54,15 @@ PROJECT = relay-project
 # environment
 GOPATH = /Users/vijayasankar/go
 # environment
+LaunchInstanceID = A6ECC878-1725-4947-82A4-43468CFAFC50
+# environment
 VSCODE_LOG_STACK = false
 # environment
 ELECTRON_RUN_AS_NODE = 1
 # default
 .FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
 # environment
-SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.sFLpeOpvGc/Listeners
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.26cRDa9NhJ/Listeners
 # automatic
 %F = $(notdir $%)
 # environment
@@ -75,7 +78,7 @@ HOME = /Users/vijayasankar
 # default
 MAKEFILEPATH = $(shell /usr/bin/xcode-select -print-path 2>/dev/null || echo /Developer)/Makefiles
 # environment
-VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/da15b6fd3ef856477bf6f4fb29ba1b7af717770d
+VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/c3511e6c69bb39013c4a4b7b9566ec1ca73fc4d5
 # environment
 LOGNAME = vijayasankar
 # environment
@@ -109,7 +112,7 @@ TMPDIR = /var/folders/r3/3kd_02bs2lz8x69kryggsnv80000gn/T/
 # automatic
 *F = $(notdir $*)
 # environment
-VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.67.1-main.sock
+VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.67.2-main.sock
 # makefile
 MAKEFLAGS = Rrqp
 # environment
@@ -117,7 +120,7 @@ MFLAGS = -Rrqp
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
-XPC_SERVICE_NAME = application.com.microsoft.VSCode.12329519.12329525
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.13027776.13027782
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # automatic
@@ -132,6 +135,8 @@ MAKEFILES :=
 <F = $(notdir $<)
 # environment
 LC_ALL = C
+# environment
+SECURITYSESSIONID = 186a3
 # automatic
 ^F = $(notdir $^)
 # default
@@ -143,9 +148,9 @@ MAKELEVEL := 0
 # environment
 LANG = C
 # environment
-VSCODE_PID = 77687
+VSCODE_PID = 349
 # variable set hash-table stats:
-# Load=66/1024=6%, Rehash=0, Collisions=2/94=2%
+# Load=68/1024=7%, Rehash=0, Collisions=2/96=2%
 
 # Pattern-specific Variable Values
 
@@ -153,7 +158,7 @@ VSCODE_PID = 77687
 
 # Directories
 
-# . (device 16777224, inode 446596): 22 files, no impossibilities.
+# . (device 16777225, inode 446596): 22 files, no impossibilities.
 
 # 22 files, no impossibilities in 1 directories.
 
@@ -212,7 +217,6 @@ metrics:
 	
 
 up:
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -344,6 +348,7 @@ clean-test:
 #  Modification time never checked.
 #  File has not been updated.
 #  commands to execute (from `makefile', line 66):
+ 
 	go clean -testcache
 	
 
@@ -435,7 +440,6 @@ deps-upgrade:
 #  commands to execute (from `makefile', line 82):
 	go get $(go list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
 	
- 
 
 # files hash-table stats:
 # Load=30/1024=3%, Rehash=0, Collisions=1/47=2%
@@ -450,6 +454,6 @@ deps-upgrade:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Tue May 24 12:14:10 2022
+# Finished Make data base on Sun Jun  5 08:32:13 2022
 
  

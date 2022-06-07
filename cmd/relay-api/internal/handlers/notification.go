@@ -82,14 +82,9 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 
 	whoMap := e.WhoFields()
 
-	log.Println("existingFields--> ", updatedFields)
-
 	if memberID, ok := currentUser.AccountsB()[accountID]; ok {
-		log.Println("memberID--> ", memberID)
 		followerKey := whoMap[entity.WhoFollower]
 		followers := updatedFields[followerKey]
-		log.Println("followerKey--> ", followerKey)
-		log.Println("followers--> ", followers)
 		if followers != nil {
 			followers := followers.([]interface{})
 			for i, fID := range followers {
