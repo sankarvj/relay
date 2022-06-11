@@ -97,7 +97,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	webhookEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedWebHookEntityName)
+	_, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedWebHookEntityName)
 	if err != nil {
 		return err
 	}
@@ -126,19 +126,19 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
 	// add contact item - vijay (straight)
-	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("Bruce Wayne", "gaajidurden@gmail.com"))
+	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("Bruce Wayne", "gaajidurden@gmail.com"), nil)
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("George Kutty", "vijayasankarmobile@gmail.com"))
+	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("George Kutty", "vijayasankarmobile@gmail.com"), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAddBase(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
+	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -146,12 +146,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Companies Item Created")
 
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAddBase(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Todo Task", contactItem1.ID, typeItems[0].ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Todo Task", contactItem1.ID, typeItems[0].ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAddBase(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Email Task", contactItem1.ID, typeItems[1].ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Email Task", contactItem1.ID, typeItems[1].ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -159,36 +159,26 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Tasks Items Created")
 
 	// add delay item
-	delayItem, err := b.ItemAdd(ctx, delayEntity.ID, uuid.New().String(), b.UserID, base.DelayVals())
+	_, err = b.ItemAdd(ctx, delayEntity.ID, uuid.New().String(), b.UserID, base.DelayVals(), nil)
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Delay Item Created")
 
-	pID, _, err := b.AddCRMPipelines(ctx, dealEntity.ID, webhookEntity.ID, delayEntity.ID, delayItem.ID)
+	err = AddAutomation(ctx, b)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
-
-	_, _, err = b.AddCRMWorkflows1(ctx, contactEntity.ID, companyEntity.ID, taskEntity.ID)
-	if err != nil {
-		return err
-	}
-	_, _, err = b.AddCRMWorkflows2(ctx, dealEntity.ID, taskEntity.ID)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Workflows And Its Nodes Created")
+	fmt.Println("\tCRM:SAMPLES Automations Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, pID))
+	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, b.SalesPipelineFlowID), nil)
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	ticketItem1, err := b.ItemAddBase(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
+	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -230,6 +220,139 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
+func AddAutomation(ctx context.Context, b *base.Base) error {
+
+	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTasksEntityName)
+	if err != nil {
+		return err
+	}
+
+	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTicketsEntityName)
+	if err != nil {
+		return err
+	}
+
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedCompaniesEntityName)
+	if err != nil {
+		return err
+	}
+	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDealsEntityName)
+	if err != nil {
+		return err
+	}
+
+	taskTemplate, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates(dealEntity), nil)
+	if err != nil {
+		return err
+	}
+
+	ticketTemplate, err := b.TemplateAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, ticketTemplates(dealEntity), nil)
+	if err != nil {
+		return err
+	}
+
+	cp := &base.CoreWorkflow{
+		Name:    "Sales Pipeline",
+		ActorID: dealEntity.ID,
+		Exp:     "",
+		Nodes: []*base.CoreNode{
+			{
+				Name:      "Opportunity",
+				ActorID:   "00000000-0000-0000-0000-000000000000",
+				ActorName: "Opportunity Deals",
+				Nodes: []*base.CoreNode{
+					{
+						Name:       "Send a e-mail",
+						ActorID:    taskEntity.ID,
+						ActorName:  "Task",
+						TemplateID: taskTemplate.ID,
+					},
+				},
+			},
+			{
+				Name:      "Interested",
+				ActorID:   "00000000-0000-0000-0000-000000000000",
+				ActorName: "Opportunity Deals",
+				Nodes: []*base.CoreNode{
+					{
+						Name:       "Schedule a call",
+						ActorID:    taskEntity.ID,
+						ActorName:  "Task",
+						TemplateID: taskTemplate.ID,
+					},
+				},
+			},
+			{
+				Name:      "Qualified",
+				ActorID:   "00000000-0000-0000-0000-000000000000",
+				ActorName: "Opportunity Deals",
+				Nodes: []*base.CoreNode{
+					{
+						Name:       "Prepare for a demo",
+						ActorID:    taskEntity.ID,
+						ActorName:  "Task",
+						TemplateID: taskTemplate.ID,
+					},
+					{
+						Name:       "Create invoice ticket",
+						ActorID:    ticketEntity.ID,
+						ActorName:  "Task",
+						TemplateID: ticketTemplate.ID,
+					},
+				},
+			},
+			{
+				Name:      "Won",
+				ActorID:   "00000000-0000-0000-0000-000000000000",
+				ActorName: "Won Deals",
+				Nodes: []*base.CoreNode{
+					{
+						Name:       "Hand off to finance",
+						ActorID:    taskEntity.ID,
+						ActorName:  "Task",
+						TemplateID: taskTemplate.ID,
+					},
+				},
+			},
+		},
+	}
+
+	err = b.AddPipelines(ctx, cp)
+	if err != nil {
+		return err
+	}
+	b.SalesPipelineFlowID = cp.FlowID
+	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
+
+	// add deal template
+	dealTemplate, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(companyEntity, cp.FlowID), nil)
+	if err != nil {
+		return err
+	}
+
+	cf := &base.CoreWorkflow{
+		Name:    "When a new company added",
+		ActorID: companyEntity.ID,
+		Nodes: []*base.CoreNode{
+			{
+				Name:       "Basic deal",
+				ActorID:    dealEntity.ID,
+				ActorName:  "Deal",
+				TemplateID: dealTemplate.ID,
+			},
+		},
+	}
+
+	err = b.AddWorkflows(ctx, cf)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\tCRM:SAMPLES Workflows And Its Nodes Created")
+
+	return nil
+}
+
 func AddProps(ctx context.Context, b *base.Base) error {
 	_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, pageViewEventEntityFields())
 	if err != nil {
@@ -250,27 +373,27 @@ func AddCompanies(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Freshworks", "freshworks.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Freshworks", "freshworks.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Acme Intl", "acme.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Acme Intl", "acme.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Tesla Inc", "tesla.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Tesla Inc", "tesla.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Cisco Inc", "cisco.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Cisco Inc", "cisco.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Salesforce Inc", "salesforce.com"))
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Salesforce Inc", "salesforce.com"), nil)
 	if err != nil {
 		return err
 	}

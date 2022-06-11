@@ -58,9 +58,9 @@ func List(ctx context.Context, entityIDs []string, fm int, ft int, db *sqlx.DB) 
 		types = []int{FlowTypeUnknown, FlowTypeEntersSegment, FlowTypeLeavesSegment, FlowTypeEventCreate, FlowTypeEventUpdate}
 	}
 
-	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?) AND type IN (?);`, entityIDs, modes, types)
+	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?) AND type IN (?) LIMIT 100;`, entityIDs, modes, types)
 	if err != nil {
-		return nil, errors.Wrap(err, "selecting in query")
+		return nil, errors.Wrap(err, "selecting flows")
 	}
 	q = db.Rebind(q)
 	if err := db.SelectContext(ctx, &flows, q, args...); err != nil {
@@ -195,15 +195,26 @@ func Retrieve(ctx context.Context, id string, db *sqlx.DB) (Flow, error) {
 	return f, nil
 }
 
-func SearchByKey(ctx context.Context, accountID, entityID, key, term string, db *sqlx.DB) ([]Flow, error) {
+func SearchByKey(ctx context.Context, accountID, entityID, term string, db *sqlx.DB) ([]Flow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.flow.SearchByKey")
 	defer span.End()
 
 	flows := []Flow{}
-	const q = `SELECT * FROM flows where account_id = $1 AND entity_id = $2`
 
-	if err := db.SelectContext(ctx, &flows, q, accountID, entityID); err != nil {
-		return nil, errors.Wrap(err, "searching flows")
+	if term != "" {
+		var q = `SELECT * FROM flows where account_id = $1 AND entity_id = $2 AND mode = $3 AND name LIKE '%` + term + `%'`
+
+		if err := db.SelectContext(ctx, &flows, q, accountID, entityID, FlowModePipeLine); err != nil {
+			return nil, errors.Wrap(err, "searching flows with search key")
+		}
+	}
+
+	if len(flows) == 0 {
+		var q = `SELECT * FROM flows where account_id = $1 AND entity_id = $2 AND mode = $3 LIMIT 100`
+
+		if err := db.SelectContext(ctx, &flows, q, accountID, entityID, FlowModePipeLine); err != nil {
+			return nil, errors.Wrap(err, "searching flows without search key")
+		}
 	}
 
 	return flows, nil

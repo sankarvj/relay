@@ -87,7 +87,7 @@ func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.B
 		return err
 	}
 	//Adding currentUserID as the memberID for the first time
-	_, err = b.ItemAdd(ctx, ue.ID, currentUser.ID, currentUser.ID, itemVals)
+	_, err = b.ItemAdd(ctx, ue.ID, currentUser.ID, currentUser.ID, itemVals, nil)
 	if err != nil {
 		return err
 	}

@@ -62,29 +62,25 @@ func List(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
 }
 
 // Stages retrieves a list of existing stages for the flow.
-func Stages(ctx context.Context, flowID string, db *sqlx.DB) ([]Node, error) {
+func Stages(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB) ([]Node, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.node.Stages")
 	defer span.End()
 
 	nodes := []Node{}
-	const q = `SELECT * FROM nodes where flow_id = $1 AND type = $2`
+	if term != "" {
+		var q = `SELECT * FROM nodes where account_id = $1 AND flow_id = any($2) AND type = $3 AND name LIKE '%` + term + `'`
 
-	if err := db.SelectContext(ctx, &nodes, q, flowID, Stage); err != nil {
-		return nil, errors.Wrap(err, "selecting stages")
+		if err := db.SelectContext(ctx, &nodes, q, accountID, pq.Array(flowIDs), Stage); err != nil {
+			return nil, errors.Wrap(err, "selecting stages")
+		}
 	}
 
-	return nodes, nil
-}
+	if len(nodes) == 0 {
+		const q = `SELECT * FROM nodes where account_id = $1 AND flow_id = any($2) AND type = $3 LIMIT 100`
 
-func SearchByKey(ctx context.Context, accountID, flowID, key, term string, db *sqlx.DB) ([]Node, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.flow.SearchByKey")
-	defer span.End()
-
-	nodes := []Node{}
-	const q = `SELECT * FROM nodes where account_id = $1 AND flow_id = $2`
-
-	if err := db.SelectContext(ctx, &nodes, q, accountID, flowID); err != nil {
-		return nil, errors.Wrap(err, "searching nodes")
+		if err := db.SelectContext(ctx, &nodes, q, accountID, pq.Array(flowIDs), Stage); err != nil {
+			return nil, errors.Wrap(err, "selecting stages")
+		}
 	}
 
 	return nodes, nil

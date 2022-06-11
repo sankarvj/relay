@@ -75,7 +75,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 							case fmt.Sprintf("{{{%s.%s}}}", ActionView, ByShow):
 							case fmt.Sprintf("{{{%s.%s}}}", ActionView, ByHide):
 							case fmt.Sprintf("{{{%s.%s}}}", ActionFilter, ByFlow):
-								nodes, err := node.Stages(ctx, pv, db)
+								nodes, err := node.Stages(ctx, accountID, []string{pv}, "", db)
 								if err != nil {
 									log.Printf("***> unexpected error occurred. when retriving reference nodes for field unit entity. continuing... error: %v\n", err)
 									return

@@ -35,6 +35,7 @@ type Base struct {
 	FirebaseSDKPath string
 	CoreEntity
 	CoreItem
+	CoreAutomation
 }
 
 // These entites must be created or loaded before adding a new product
@@ -56,6 +57,28 @@ type CoreItem struct {
 	StatusItemOverDue item.Item
 	TypeItemEmail     item.Item
 	TypeItemTodo      item.Item
+}
+
+type CoreAutomation struct {
+	SalesPipelineFlowID string
+}
+
+type CoreWorkflow struct {
+	FlowID  string
+	ActorID string
+	Name    string
+	Exp     string
+	Nodes   []*CoreNode
+}
+
+type CoreNode struct {
+	NodeID     string
+	ActorID    string
+	ActorName  string
+	TemplateID string
+	Name       string
+	Exp        string
+	Nodes      []*CoreNode // nodes inside stages
 }
 
 func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Base {
@@ -135,17 +158,17 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 	// add status item - open
-	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNone, "Open", "#fb667e"))
+	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNone, "Open", "#fb667e"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpDone, "Closed", "#66fb99"))
+	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpDone, "Closed", "#66fb99"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"))
+	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"), nil)
 	if err != nil {
 		return err
 	}
@@ -157,15 +180,18 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 	// add type item - email
-	b.TypeItemEmail, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Email"))
+	b.TypeItemEmail, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Email"), nil)
 	if err != nil {
 		return err
 	}
 	// add type item - todo
-	b.TypeItemTodo, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Todo"))
+	b.TypeItemTodo, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Todo"), nil)
 	if err != nil {
 		return err
 	}
+
+	// add type template - project
+
 	fmt.Println("\tCRM:BOOT Type Entity With It's Three types Items Created")
 	return nil
 }
@@ -201,11 +227,7 @@ func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string
 	return e, nil
 }
 
-func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}) (item.Item, error) {
-	return b.ItemAddBase(ctx, entityID, itemID, userID, fields, nil)
-}
-
-func (b *Base) ItemAddBase(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
+func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
 	name := "System Generated"
 	ni := item.NewItem{
 		ID:        itemID,
@@ -225,6 +247,45 @@ func (b *Base) ItemAddBase(ctx context.Context, entityID, itemID, userID string,
 	job.NewJob(b.DB, b.RP, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(b.AccountID, userID, entityID, it.ID, ni.Source))
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
+	return it, nil
+}
+
+func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
+	ce, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	name := "System Generated"
+	ni := item.NewItem{
+		ID:        itemID,
+		Name:      &name,
+		AccountID: b.AccountID,
+		EntityID:  entityID,
+		UserID:    &userID,
+		State:     item.StateBluePrint,
+		Fields:    fields,
+		Source:    source,
+	}
+
+	valueAddedFields := ce.ValueAdd(ni.Fields)
+	for _, f := range valueAddedFields {
+		if f.IsTitleLayout() {
+			s := f.Value.(string)
+			ni.Name = &s
+		}
+
+		if f.IsDateTime() {
+			ni.Fields[f.Key] = fmt.Sprintf("<<%v>>", f.Value)
+		}
+	}
+
+	it, err := item.Create(ctx, b.DB, ni, time.Now())
+	if err != nil {
+		return item.Item{}, err
+	}
+
+	fmt.Printf("\t\tTemplate '%s' Bootstraped\n", *it.Name)
 	return it, nil
 }
 

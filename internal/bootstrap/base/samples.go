@@ -14,93 +14,70 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func (b *Base) AddCRMPipelines(ctx context.Context, contactEntityID, webhookEntityID, delayEntityID, delayItemID string) (string, string, error) {
-	//add pipelines
-	exp := fmt.Sprintf("{{%s.%s}} eq {Vijay} && {{%s.%s}} gt {98}", contactEntityID, schema.SeedFieldFNameKey, contactEntityID, schema.SeedFieldNPSKey)
-	p, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "Sales Pipeline", flow.FlowModePipeLine, flow.FlowConditionEntry, exp, flow.FlowTypeEventCreate)
+func (b *Base) AddPipelines(ctx context.Context, cwf *CoreWorkflow) error {
+	stageID := "00000000-0000-0000-0000-000000000000"
+
+	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModePipeLine, flow.FlowConditionEntry, cwf.Exp, flow.FlowTypeEventCreate)
 	if err != nil {
-		return "", "", err
+		return err
+	}
+	cwf.FlowID = f.ID
+
+	for i := 0; i < len(cwf.Nodes); i++ {
+		cn := cwf.Nodes[i]
+
+		parentNodeID := node.Root
+		if i > 0 {
+			pn := cwf.Nodes[i-1]
+			parentNodeID = pn.NodeID
+		}
+
+		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, node.Stage, cn.Exp, map[string]string{}, stageID, cn.ActorName)
+		if err != nil {
+			return err
+		}
+		cn.NodeID = n.ID
+
+		for j := 0; j < len(cn.Nodes); j++ {
+			nus := cn.Nodes[j] // node under the stage
+			parentNodeID := cn.NodeID
+			if j > 0 {
+				pn := cn.Nodes[j-1]
+				parentNodeID = pn.NodeID
+			}
+			nusn, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, nus.ActorID, parentNodeID, nus.Name, node.Push, nus.Exp, map[string]string{nus.ActorID: nus.TemplateID}, cn.NodeID, nus.ActorName)
+			if err != nil {
+				return err
+			}
+			nus.NodeID = nusn.ID
+		}
 	}
 
-	dummyID := "00000000-0000-0000-0000-000000000000"
-
-	sno1, err := b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, node.Root, "Opportunity", node.Stage, "", map[string]string{}, dummyID, " Opportunity Deals")
-	if err != nil {
-		return "", "", err
-	}
-
-	_, err = b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, sno1.ID, "Deal Won", node.Stage, "{Vijay} eq {Vijay}", map[string]string{}, dummyID, "Won Deals")
-	if err != nil {
-		return "", "", err
-	}
-
-	return p.ID, sno1.ID, nil
+	return nil
 }
 
-func (b *Base) AddCRMWorkflows1(ctx context.Context, contactEntityID, companyEntityID, taskEntityID string) (string, string, error) {
-	//add pipelines
-	w, err := b.FlowAdd(ctx, uuid.New().String(), contactEntityID, "When contact created", flow.FlowModeWorkFlow, flow.FlowConditionEntry, "", flow.FlowTypeEventCreate)
-	if err != nil {
-		return "", "", err
-	}
-
-	dummyID := "00000000-0000-0000-0000-000000000000"
-
-	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, companyEntityID, node.Root, "Company1", node.Push, "", map[string]string{}, dummyID, "Company")
-	if err != nil {
-		return "", "", err
-	}
-
-	_, err = b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, sno1.ID, "Task1", node.Task, "", map[string]string{}, dummyID, "Task")
-	if err != nil {
-		return "", "", err
-	}
-
-	return w.ID, sno1.ID, nil
-}
-
-func (b *Base) AddCRMWorkflows2(ctx context.Context, dealEntityID, taskEntityID string) (string, string, error) {
-	//add pipelines
-	exp := fmt.Sprintf("{{%s.%s}} gt {1000}", dealEntityID, "uuid-00-deal-amount")
-	w, err := b.FlowAdd(ctx, uuid.New().String(), dealEntityID, "When deal with hign ARR received", flow.FlowModeWorkFlow, flow.FlowConditionEntry, exp, flow.FlowTypeEventCreate)
-	if err != nil {
-		return "", "", err
-	}
-
-	dummyID := "00000000-0000-0000-0000-000000000000"
-
-	sno1, err := b.NodeAdd(ctx, uuid.New().String(), w.ID, taskEntityID, node.Root, "Task to contact him immediatly", node.Push, "", map[string]string{}, dummyID, "High revenue customer")
-	if err != nil {
-		return "", "", err
-	}
-
-	return w.ID, sno1.ID, nil
-}
-
-func (b *Base) AddCSMPipeline(ctx context.Context, projectEntityID string, pipeLineName, node1, node2, node3 string) error {
-	//add pipelines
-	exp := fmt.Sprintf("")
-	p, err := b.FlowAdd(ctx, uuid.New().String(), projectEntityID, pipeLineName, flow.FlowModePipeLine, flow.FlowConditionEntry, exp, flow.FlowTypeUnknown)
+func (b *Base) AddWorkflows(ctx context.Context, cwf *CoreWorkflow) error {
+	stageID := "00000000-0000-0000-0000-000000000000"
+	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModeWorkFlow, flow.FlowConditionEntry, "", flow.FlowTypeEventCreate)
 	if err != nil {
 		return err
 	}
+	cwf.FlowID = f.ID
 
-	dummyID := "00000000-0000-0000-0000-000000000000"
+	for i := 0; i < len(cwf.Nodes); i++ {
+		cn := cwf.Nodes[i]
 
-	sno1, err := b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, node.Root, node1, node.Stage, "", map[string]string{}, dummyID, node1)
-	if err != nil {
-		return err
-	}
+		parentNodeID := node.Root
+		if i > 0 {
+			pn := cwf.Nodes[i-1]
+			parentNodeID = pn.NodeID
+		}
 
-	//exp = fmt.Sprintf("{{%s.%s}} eq {paid}", projectEntityID, schema.SeedFieldPlanKey)
-	sno2, err := b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, sno1.ID, node2, node.Stage, exp, map[string]string{}, dummyID, node2)
-	if err != nil {
-		return err
-	}
-
-	_, err = b.NodeAdd(ctx, uuid.New().String(), p.ID, dummyID, sno2.ID, node3, node.Stage, "", map[string]string{}, dummyID, node3)
-	if err != nil {
-		return err
+		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, node.Push, "", map[string]string{cn.ActorID: cn.TemplateID}, stageID, cn.ActorName)
+		if err != nil {
+			return err
+		}
+		cn.NodeID = n.ID
 	}
 
 	return nil

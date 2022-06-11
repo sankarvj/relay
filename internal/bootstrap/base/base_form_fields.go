@@ -16,7 +16,15 @@ func FlowFields() []entity.Field {
 		DataType:    entity.TypeReference,
 	}
 
-	return []entity.Field{actualFlowID}
+	actualFlowName := entity.Field{
+		Key:         "uuid-00-flow-name",
+		Name:        "flow_name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	return []entity.Field{actualFlowID, actualFlowName}
 }
 
 func NodeFields() []entity.Field {

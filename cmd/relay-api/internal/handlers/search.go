@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -23,6 +24,8 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
+	fi := r.URL.Query().Get("fi")
+	log.Println("fi fi fi fi ", fi)
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
@@ -31,24 +34,22 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	var choices []entity.Choice
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
-		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
-		choices, err = likeSearchFlows(ctx, accountID, e.ID, exp, i.db, i.rPool)
+		// fi is the entityID here
+		choices, err = likeSearchFlows(ctx, accountID, fi, term, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
-		//here filterID is the flowID...
-		filterID := r.URL.Query().Get("fi")
-		nodes, err := node.SearchByKey(ctx, accountID, filterID, key, term, i.db)
+		// fi is the entityID here
+		flows, err := flow.List(ctx, []string{fi}, flow.FlowModePipeLine, flow.FlowTypeAll, i.db)
 		if err != nil {
 			return err
 		}
-		for _, node := range nodes {
-			choice := entity.Choice{
-				ID:           node.ID,
-				DisplayValue: node.Name,
-			}
-			choices = append(choices, choice)
+		flowIds := ids(flows)
+
+		choices, err = likeSearchNodes(ctx, accountID, flowIds, term, i.db, i.rPool)
+		if err != nil {
+			return err
 		}
 	} else if e.Category == entity.CategoryChildUnit || term == "" {
 		items, err := item.SearchByKey(ctx, e.ID, key, term, i.db)
@@ -110,51 +111,38 @@ func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db
 	return choices, nil
 }
 
-func likeSearchFlows(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func likeSearchFlows(ctx context.Context, accountID, entityID, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
-	result, _, err := NewSegmenter(exp).
-		segment(ctx, accountID, entityID, db, rPool)
+
+	flows, err := flow.SearchByKey(ctx, accountID, entityID, term, db)
 	if err != nil {
 		return nil, err
 	}
-	flowIDs := itemIDs(result)
-
-	flows, err := flow.BulkRetrieve(ctx, accountID, flowIDs, db)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, f := range flows {
+	for _, flow := range flows {
 		choice := entity.Choice{
-			ID:           f.ID,
-			DisplayValue: f.Name,
+			ID:           flow.ID,
+			DisplayValue: flow.Name,
 		}
 		choices = append(choices, choice)
 	}
+
 	return choices, nil
 }
 
-func likeSearchNodes(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func likeSearchNodes(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
-	result, _, err := NewSegmenter(exp).
-		segment(ctx, accountID, entityID, db, rPool)
+	nodes, err := node.Stages(ctx, accountID, flowIDs, term, db)
 	if err != nil {
 		return nil, err
 	}
-	nodeIDs := itemIDs(result)
-
-	nodes, err := node.BulkRetrieve(ctx, nodeIDs, db)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, n := range nodes {
+	for _, node := range nodes {
 		choice := entity.Choice{
-			ID:           n.ID,
-			DisplayValue: n.Name,
+			ID:           node.ID,
+			DisplayValue: node.Name,
 		}
 		choices = append(choices, choice)
 	}
+
 	return choices, nil
 }
 
@@ -184,4 +172,12 @@ func choiceResponse(key string, items []item.Item, whoMap map[string]string) []e
 		choices = append(choices, choice)
 	}
 	return choices
+}
+
+func ids(flows []flow.Flow) []string {
+	ids := make([]string, len(flows))
+	for i, flow := range flows {
+		ids[i] = flow.ID
+	}
+	return ids
 }

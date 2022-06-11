@@ -36,10 +36,10 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
+	ni.ID = uuid.New().String()
 	ni.AccountID = accountID
 	ni.EntityID = entityID
 	ni.UserID = &currentUserID
-	ni.ID = uuid.New().String()
 	ni.State = item.StateBluePrint
 	valueAddedFields := ce.ValueAdd(ni.Fields)
 

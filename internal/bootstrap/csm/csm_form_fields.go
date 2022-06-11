@@ -99,7 +99,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		DataType:    entity.TypeReference,
 		RefID:       flowEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyFlow: "true"},
+		Meta:        map[string]string{entity.MetaKeyFlow: "true", entity.MetaMultiChoice: "false"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -120,7 +120,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 			Expressions: []string{""}, // empty means positive
 			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
 		},
-		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", "node": "true"},
+		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaKeyNode: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      pipeField.Key,
