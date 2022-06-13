@@ -55,7 +55,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 	fields := e.FieldsIgnoreError()
 
-	if viewID != "" {
+	if !util.IsEmpty(viewID) {
 		fl, err := flow.Retrieve(ctx, viewID, i.db)
 		if err != nil {
 			return err

@@ -108,7 +108,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES All CRM Entities Retrived")
 
-	assID1, assID2, err := b.AddAssociations(ctx, contactEntity, companyEntity, dealEntity, ticketEntity, emailsEntity, streamEntity)
+	assID1, assID2, err := b.AddAssociations(ctx, contactEntity, companyEntity, dealEntity, ticketEntity, emailsEntity, streamEntity, taskEntity)
 	if err != nil {
 		return err
 	}

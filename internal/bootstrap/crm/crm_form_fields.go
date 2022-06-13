@@ -43,21 +43,6 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		},
 	}
 
-	dealField := entity.Field{
-		Key:         "uuid-00-deal",
-		Name:        "deal",
-		DisplayName: "Associated Deal",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       dealEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-deal-name"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
 	companyField := entity.Field{
 		Key:         "uuid-00-company",
 		Name:        "company",
@@ -156,7 +141,7 @@ func TaskFields(contactEntityID, companyEntityID, dealEntityID, statusEntityID, 
 		},
 	}
 
-	return []entity.Field{descField, statusField, contactField, dealField, companyField, dueByField, reminderField, stageField, typeField, emailTemplateField}
+	return []entity.Field{descField, statusField, contactField, companyField, dueByField, reminderField, stageField, typeField, emailTemplateField}
 }
 
 func TaskVals(desc, contactID string, typeID string) map[string]interface{} {
@@ -165,7 +150,6 @@ func TaskVals(desc, contactID string, typeID string) map[string]interface{} {
 		"uuid-00-contact":       []interface{}{contactID},
 		"uuid-00-status":        []interface{}{},
 		"uuid-00-company":       []interface{}{},
-		"uuid-00-deal":          []interface{}{},
 		"uuid-00-reminder":      util.FormatTimeGo(time.Now()),
 		"uuid-00-due-by":        util.FormatTimeGo(time.Now()),
 		"uuid-00-type":          []interface{}{typeID},

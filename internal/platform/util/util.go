@@ -192,3 +192,7 @@ func Differs(a, b []string) []string {
 func String(v string) *string {
 	return &v
 }
+
+func IsEmpty(v string) bool {
+	return v == "" || v == "undefined"
+}

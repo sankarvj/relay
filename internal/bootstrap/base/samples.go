@@ -132,7 +132,7 @@ func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) er
 	return nil
 }
 
-func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid, streamEID entity.Entity) (string, string, error) {
+func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid, streamEID, taskEID entity.Entity) (string, string, error) {
 	//contact company association
 	assID1, err := b.AssociationAdd(ctx, conEid.ID, comEid.ID)
 	if err != nil {
@@ -147,6 +147,12 @@ func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickE
 
 	//deal email association
 	_, err = b.AssociationAdd(ctx, deEid.ID, emailEid.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//deal task association
+	_, err = b.AssociationAdd(ctx, deEid.ID, taskEID.ID)
 	if err != nil {
 		return "", "", err
 	}
