@@ -22,6 +22,8 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, eng *Engine, n
 		err = eng.executeData(ctx, n, db, rp)
 	case node.Modify:
 		err = eng.executeData(ctx, n, db, rp)
+	case node.Invite:
+		err = eng.executeInvite(ctx, n, db, rp)
 	case node.Hook:
 		var result map[string]interface{}
 		result, err = executeHook(ctx, db, n)

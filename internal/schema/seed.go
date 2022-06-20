@@ -42,21 +42,22 @@ const (
 
 func IsEntitySeeded(entityName string) bool {
 	seededEntities := map[string]bool{
-		SeedFlowEntityName:             true,
-		SeedNodeEntityName:             true,
-		SeedContactsEntityName:         true,
-		SeedCompaniesEntityName:        true,
-		SeedTasksEntityName:            true,
-		SeedEmailEntityName:            true,
-		SeedNotesEntityName:            true,
-		SeedMeetingsEntityName:         true,
-		SeedTicketsEntityName:          true,
-		SeedDealsEntityName:            true,
-		SeedStatusEntityName:           true,
-		SeedTypeEntityName:             true,
-		entity.FixedEntityNotification: true,
-		entity.FixedEntityDelay:        true,
-		entity.FixedEntityOwner:        true,
+		SeedFlowEntityName:              true,
+		SeedNodeEntityName:              true,
+		SeedContactsEntityName:          true,
+		SeedCompaniesEntityName:         true,
+		SeedTasksEntityName:             true,
+		SeedNotesEntityName:             true,
+		SeedMeetingsEntityName:          true,
+		SeedTicketsEntityName:           true,
+		SeedDealsEntityName:             true,
+		SeedStatusEntityName:            true,
+		SeedTypeEntityName:              true,
+		entity.FixedEntityNotification:  true,
+		entity.FixedEntityDelay:         true,
+		entity.FixedEntityOwner:         true,
+		entity.FixedEntityEmails:        true,
+		entity.FixedEntityVisitorInvite: true,
 	}
 	return seededEntities[entityName]
 }

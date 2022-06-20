@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -115,7 +116,9 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 	for _, v := range modules {
 		switch v {
 		case "tasks":
-			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateTeamLevel, base.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID, b.NodeEntity.ID, b.StatusItemOpened.ID, b.StatusItemClosed.ID, b.StatusItemOverDue.ID, b.TypeEntity.ID, b.TypeItemEmail.ID, b.TypeItemTodo.ID, b.EmailsEntity.ID))
+			_, ownerSearchKey, _ := bootstrap.CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
+
+			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateTeamLevel, forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey))
 			if err != nil {
 				log.Println("***> unexpected error occurred. when creating custom entity:tasks:", err)
 			}

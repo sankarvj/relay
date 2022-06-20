@@ -22,13 +22,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
-	// add entity - task
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateTeamLevel, TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID, b.StatusEntity.ID, b.NodeEntity.ID, b.StatusItemOpened.ID, b.StatusItemClosed.ID, b.StatusItemOverDue.ID, b.TypeEntity.ID, b.TypeItemEmail.ID, b.TypeItemTodo.ID, b.EmailsEntity.ID))
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Tasks Entity Created")
-
 	// add entity - notes
 	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
 	if err != nil {
@@ -49,12 +42,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Tickets Entity Created")
-
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Streams Entity Created")
 
 	return nil
 }
@@ -89,10 +76,10 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	typeEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTypeEntityName)
-	if err != nil {
-		return err
-	}
+	// typeEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTypeEntityName)
+	// if err != nil {
+	// 	return err
+	// }
 	delayEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDelayEntityName)
 	if err != nil {
 		return err
@@ -108,7 +95,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES All CRM Entities Retrived")
 
-	assID1, assID2, err := b.AddAssociations(ctx, contactEntity, companyEntity, dealEntity, ticketEntity, emailsEntity, streamEntity, taskEntity)
+	assID1, assID2, err := AddAssociations(ctx, b, contactEntity, companyEntity, dealEntity, ticketEntity, emailsEntity, streamEntity, taskEntity)
 	if err != nil {
 		return err
 	}
@@ -118,10 +105,11 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	typeItems, err := item.List(ctx, typeEntity.ID, b.DB)
-	if err != nil {
-		return err
-	}
+
+	// typeItems, err := item.List(ctx, typeEntity.ID, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
 
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
@@ -146,12 +134,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Companies Item Created")
 
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Todo Task", contactItem1.ID, typeItems[0].ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(b.TaskEntity, "An Todo Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals("An Email Task", contactItem1.ID, typeItems[1].ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(b.TaskEntity, "An Email Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -241,12 +229,12 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	taskTemplate, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates(dealEntity), nil)
+	taskTemplate, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates(taskEntity, dealEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	ticketTemplate, err := b.TemplateAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, ticketTemplates(dealEntity), nil)
+	ticketTemplate, err := b.TemplateAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, ticketTemplates(ticketEntity, dealEntity), nil)
 	if err != nil {
 		return err
 	}
@@ -325,7 +313,7 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
 
 	// add deal template
-	dealTemplate, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(companyEntity, cp.FlowID), nil)
+	dealTemplate, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(dealEntity, companyEntity, cp.FlowID), nil)
 	if err != nil {
 		return err
 	}
@@ -399,4 +387,63 @@ func AddCompanies(ctx context.Context, b *base.Base) error {
 	}
 
 	return nil
+}
+
+func AddAssociations(ctx context.Context, b *base.Base, conEid, comEid, deEid, tickEid, emailEid, streamEID, taskEID entity.Entity) (string, string, error) {
+	//contact company association
+	assID1, err := b.AssociationAdd(ctx, conEid.ID, comEid.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//deal ticket  association
+	assID2, err := b.AssociationAdd(ctx, deEid.ID, tickEid.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//deal email association
+	_, err = b.AssociationAdd(ctx, deEid.ID, emailEid.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//deal task association
+	_, err = b.AssociationAdd(ctx, deEid.ID, taskEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//ticket email association
+	_, err = b.AssociationAdd(ctx, tickEid.ID, emailEid.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//ASSOCIATE STREAMS
+	//contact stream association
+	_, err = b.AssociationAdd(ctx, conEid.ID, streamEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//company stream association
+	_, err = b.AssociationAdd(ctx, comEid.ID, streamEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//deal stream association
+	_, err = b.AssociationAdd(ctx, deEid.ID, streamEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//ticket stream association
+	_, err = b.AssociationAdd(ctx, tickEid.ID, streamEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return assID1, assID2, nil
 }

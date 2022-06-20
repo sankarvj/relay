@@ -138,7 +138,7 @@ func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Ent
 	defer span.End()
 
 	if _, err := uuid.Parse(entityID); err != nil {
-		return Entity{}, ErrInvalidEntityID
+		return Entity{}, err
 	}
 
 	var e Entity

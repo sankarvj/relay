@@ -334,4 +334,22 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     17,
+		Description: "Add visitors",
+		Script: `
+		CREATE TABLE visitors (
+			visitor_id      UUID,
+			account_id      UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id         UUID REFERENCES teams ON DELETE CASCADE,
+			entity_id    	UUID REFERENCES entities ON DELETE CASCADE,
+			item_id 		UUID REFERENCES items ON DELETE CASCADE,
+			email 			TEXT,
+			token 			TEXT,
+			created_at    	TIMESTAMP,
+			updated_at    	BIGINT,
+			UNIQUE (account_id, team_id, entity_id, item_id)
+		);
+		`,
+	},
 }

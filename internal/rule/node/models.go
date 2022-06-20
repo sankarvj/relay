@@ -24,6 +24,7 @@ const (
 	Task    = 101
 	Meeting = 102
 	Email   = 103
+	Invite  = 104
 )
 
 //Node struct defines the structure of each node in the workflow
@@ -108,7 +109,7 @@ type NewNode struct {
 	FlowID       string                 `json:"flow_id"`
 	ActorID      string                 `json:"actor_id"`
 	StageID      string                 `json:"stage_id"`
-	Type         int                    `json:"type" validate:"required"`
+	Type         int                    `json:"type"`
 	Expression   string                 `json:"expression"`
 	Tokens       map[string]interface{} `json:"tokens"`
 	Actuals      map[string]string      `json:"actuals"`

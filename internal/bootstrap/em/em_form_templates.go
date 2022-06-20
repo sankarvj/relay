@@ -1,4 +1,4 @@
-package crm
+package em
 
 import (
 	"fmt"

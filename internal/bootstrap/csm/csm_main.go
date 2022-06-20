@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
@@ -19,14 +18,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCSM:BOOT Deals Entity Created")
-
-	// add entity - task
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateTeamLevel, TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, projectEntity.ID, b.StatusEntity.ID, b.NodeEntity.ID, b.StatusItemOpened.ID, b.StatusItemClosed.ID, b.StatusItemOverDue.ID, b.TypeEntity.ID, b.TypeItemEmail.ID, b.TypeItemTodo.ID, b.EmailsEntity.ID))
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCSM:BOOT Tasks Entity Created")
+	fmt.Println("\tCSM:BOOT Projects Entity Created")
 
 	// add entity - meetings
 	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, projectEntity.ID))
@@ -34,12 +26,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
-
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Streams Entity Created")
 
 	return nil
 

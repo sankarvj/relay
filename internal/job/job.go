@@ -110,7 +110,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 	}
 
 	//graph
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), valueAddedFields)
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
 	err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -171,7 +171,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 	}
 
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), valueAddedFields)
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 
 	if len(m.Source) == 0 {
@@ -569,7 +569,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	}
 	valueAddedFields := notifEntity.ValueAdd(notifItem.Fields())
 
-	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), valueAddedFields)
+	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), *notifItem.UserID, valueAddedFields)
 	err = j.actOnRedisGraph(ctx, notifItem.AccountID, notifItem.EntityID, notifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		return err
@@ -633,7 +633,7 @@ func connectionType(baseEntityID, entityID string, relationShips []relationship.
 	return typeOfConnection
 }
 
-func appendTimers(createdAt, updatedAt time.Time, valueAddedFields []entity.Field) []entity.Field {
+func appendTimers(createdAt, updatedAt time.Time, userID string, valueAddedFields []entity.Field) []entity.Field {
 	createdAtField := entity.Field{
 		Key:   "system_created_at",
 		Value: util.GetMilliSecondsFloat(createdAt),
@@ -642,6 +642,10 @@ func appendTimers(createdAt, updatedAt time.Time, valueAddedFields []entity.Fiel
 		Key:   "system_updated_at",
 		Value: util.GetMilliSecondsFloat(updatedAt),
 	}
-	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField)
+	createdByField := entity.Field{
+		Key:   "system_created_by",
+		Value: userID,
+	}
+	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField, createdByField)
 	return valueAddedFields
 }

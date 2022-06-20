@@ -7,9 +7,12 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
 
 type NotificationType int
@@ -19,8 +22,9 @@ const (
 	TypeAssigned
 	TypeCreated
 	TypeUpdated
-	TypeInvitation
+	TypeMemberInvitation
 	TypeWelcome
+	TypeVisitorInvitation
 )
 
 type Notification interface {
@@ -62,7 +66,43 @@ func JoinInvitation(accountID, accountName, requester, usrName, usrEmail string,
 		AccountName: accountName,
 		MagicLink:   magicLink,
 	}
-	return emailNotif.Send(ctx, TypeInvitation, db)
+	return emailNotif.Send(ctx, TypeMemberInvitation, db)
+}
+
+func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error {
+	ctx := context.Background()
+
+	a, err := account.Retrieve(ctx, db, accountID)
+	if err != nil {
+		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when retriving account. error:", err)
+		return err
+	}
+
+	v, err := visitor.Retrieve(ctx, accountID, visitorID, db)
+	if err != nil {
+		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when retriving visitor. error:", err)
+		return err
+	}
+
+	usrName := util.NameInEmail(v.Email)
+	magicLink, err := auth.CreateVisitorMagicLink(accountID, usrName, v.Email, visitorID, v.Token, rp)
+	if err != nil {
+		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
+		return err
+	}
+
+	log.Println("body---> ", body)
+
+	emailNotif := EmailNotification{
+		To:          []interface{}{v.Email},
+		Subject:     fmt.Sprintf("Invitation to visit %s account", a.Name),
+		Name:        usrName,
+		Requester:   fmt.Sprintf("Admin of %s account", a.Name),
+		AccountName: a.Name,
+		MagicLink:   magicLink,
+		Body:        body,
+	}
+	return emailNotif.Send(ctx, TypeVisitorInvitation, db)
 }
 
 func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {

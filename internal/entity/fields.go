@@ -97,12 +97,15 @@ const (
 
 //traits of the field
 const (
-	WhoStatus   = "status"
-	WhoReminder = "reminder"
-	WhoDueBy    = "dueby"
-	WhoAssignee = "assignee"
-	WhoFollower = "follower"
-	WhoAvatar   = "avatar"
+	WhoStatus        = "status"
+	WhoReminder      = "reminder"
+	WhoDueBy         = "dueby"
+	WhoAssignee      = "assignee"
+	WhoFollower      = "follower"
+	WhoAvatar        = "avatar"
+	WhoImage         = "image"
+	WhoEmail         = "email"
+	WhoAssetCategory = "asset_category"
 )
 
 // Field represents structural format of attributes in entity
@@ -275,6 +278,20 @@ func (e Entity) NodeField() *Field {
 	return nil
 }
 
+func (e Entity) EmailField() *Field {
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.IsEmail() {
+			return &f
+		}
+	}
+	return nil
+}
+
+func (e Entity) NamedKeys() map[string]string {
+	return NamedKeysMap(e.FieldsIgnoreError())
+}
+
 func (f *Field) SetDisplayGex(key string) {
 	if f.Meta == nil {
 		f.Meta = make(map[string]string, 0)
@@ -301,6 +318,10 @@ func (f Field) IsNode() bool {
 		return true
 	}
 	return false
+}
+
+func (f Field) IsEmail() bool {
+	return f.Who == WhoEmail
 }
 
 func (f Field) ForceLoadChoices() bool {
@@ -462,4 +483,13 @@ func refFields(fields []Field) map[string]relationship.Relatable {
 		}
 	}
 	return referenceFieldsMap
+}
+
+func TitleField(fields []Field) Field {
+	for _, f := range fields {
+		if f.IsTitleLayout() {
+			return f
+		}
+	}
+	return Field{}
 }

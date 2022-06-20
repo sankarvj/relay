@@ -10,8 +10,9 @@ import (
 
 // These are the expected values for Claims.Roles.
 const (
-	RoleAdmin = "ADMIN"
-	RoleUser  = "USER"
+	RoleAdmin   = "ADMIN"
+	RoleUser    = "USER"
+	RoleVisitor = "VISITOR"
 )
 
 // ctxKey represents the type of value for the context key.
@@ -47,7 +48,7 @@ func NewClaims(subject string, roles []string, now time.Time, expires time.Durat
 func (c Claims) Valid() error {
 	for _, r := range c.Roles {
 		switch r {
-		case RoleAdmin, RoleUser: // Role is valid.
+		case RoleAdmin, RoleUser, RoleVisitor: // Role is valid.
 		default:
 			return fmt.Errorf("invalid role %q", r)
 		}

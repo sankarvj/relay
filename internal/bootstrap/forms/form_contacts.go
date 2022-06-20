@@ -21,6 +21,7 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		DisplayName: "Email",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Who:         entity.WhoEmail,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 

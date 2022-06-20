@@ -7,6 +7,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
@@ -81,6 +82,12 @@ func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.
 	}
 
 	return zadd(conn, reminders, whenMilli, string(raw))
+}
+
+func (J *Job) AddVisitor(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error {
+	log.Println("*> Reached addvisitor on job")
+	err := notification.VisitorInvitation(accountID, visitorID, body, db, rp)
+	return err
 }
 
 func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) {

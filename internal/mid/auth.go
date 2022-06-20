@@ -3,6 +3,7 @@ package mid
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
+	"gitlab.com/vjsideprojects/relay/internal/visitor"
 	"go.opencensus.io/trace"
 )
 
@@ -42,6 +44,7 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 
 			claims, err := authenticator.ParseClaims(parts[1])
 			if err != nil {
+				log.Println("here coming...")
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
 			// Add claims to the context so they can be retrieved later.
@@ -129,10 +132,40 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 
 			accountID := params["account_id"]
 			userID := claims.Subject
-			existingAccountIDs, err := user.RetrieveCurrentUserAccounts(ctx, db, userID)
-			if err != nil || !isExist(existingAccountIDs, accountID) {
+			usr, err := user.RetrieveUser(ctx, db, userID)
+			if err != nil {
 				err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
 				return web.NewRequestError(err, http.StatusForbidden)
+			}
+
+			if hasRoleAdmin(usr.Roles) || hasRoleUser(usr.Roles) {
+				if !isExist(usr.AccountIDs(), accountID) {
+					err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
+					return web.NewRequestError(err, http.StatusForbidden)
+				}
+			} else if hasRoleVisitor(usr.Roles) {
+				entityID := params["entity_id"]
+				itemID := params["item_id"]
+				vl, err := visitor.List(ctx, accountID, usr.Email, db)
+				if err != nil {
+					err := errors.New("account_not_associated_with_this_visitor") // value used in the UI dont change the string message.
+					return web.NewRequestError(err, http.StatusForbidden)
+				}
+				hasAccess := false
+				for _, vi := range vl {
+					if vi.AccountID == accountID && vi.EntityID == entityID && vi.ItemID == itemID {
+						hasAccess = true
+						break
+					}
+				}
+				if !hasAccess {
+					err := errors.New("module_not_associated_with_this_visitor") // value used in the UI dont change the string message.
+					return web.NewRequestError(err, http.StatusForbidden)
+				}
+
+				log.Println("VISITOR LOGGED IN")
+				log.Println("Check for access ", entityID)
+				log.Println("Check for access ", itemID)
 			}
 
 			return after(ctx, w, r, params)
@@ -142,6 +175,33 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 	}
 
 	return f
+}
+
+func hasRoleAdmin(roles []string) bool {
+	for _, r := range roles {
+		if r == auth.RoleAdmin {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRoleUser(roles []string) bool {
+	for _, r := range roles {
+		if r == auth.RoleUser {
+			return true
+		}
+	}
+	return false
+}
+
+func hasRoleVisitor(roles []string) bool {
+	for _, r := range roles {
+		if r == auth.RoleUser {
+			return true
+		}
+	}
+	return false
 }
 
 func isExist(accountIDs []string, accountIDInReqParam string) bool {

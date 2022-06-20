@@ -132,65 +132,6 @@ func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) er
 	return nil
 }
 
-func (b *Base) AddAssociations(ctx context.Context, conEid, comEid, deEid, tickEid, emailEid, streamEID, taskEID entity.Entity) (string, string, error) {
-	//contact company association
-	assID1, err := b.AssociationAdd(ctx, conEid.ID, comEid.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//deal ticket  association
-	assID2, err := b.AssociationAdd(ctx, deEid.ID, tickEid.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//deal email association
-	_, err = b.AssociationAdd(ctx, deEid.ID, emailEid.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//deal task association
-	_, err = b.AssociationAdd(ctx, deEid.ID, taskEID.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//ticket email association
-	_, err = b.AssociationAdd(ctx, tickEid.ID, emailEid.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//ASSOCIATE STREAMS
-	//contact stream association
-	_, err = b.AssociationAdd(ctx, conEid.ID, streamEID.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//company stream association
-	_, err = b.AssociationAdd(ctx, comEid.ID, streamEID.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//deal stream association
-	_, err = b.AssociationAdd(ctx, deEid.ID, streamEID.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	//ticket stream association
-	_, err = b.AssociationAdd(ctx, tickEid.ID, streamEID.ID)
-	if err != nil {
-		return "", "", err
-	}
-
-	return assID1, assID2, nil
-}
-
 func (b *Base) AddConnections(ctx context.Context, associationID1, associationID2 string, conEid, comEid, deEid, tickEid entity.Entity, conID, comID, dealID, ticketID item.Item) error {
 	//contact company association
 	// err := b.ConnectionAdd(ctx, associationID1, "Contact", conEid.ID, comEid.ID, conID.ID, comID.ID, comEid.ValueAdd(comID.Fields()), "Created")

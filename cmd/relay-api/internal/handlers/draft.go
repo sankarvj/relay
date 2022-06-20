@@ -76,7 +76,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	// all authentication completed. Proceed with the next steps
 	usr, err := user.RetrieveUserByUniqIdentifier(ctx, a.db, tokenEmail, "")
 	if err == user.ErrNotFound {
-		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, a.db)
+		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, a.db)
 		if err != nil {
 			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
 		}
@@ -132,7 +132,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }
 
-func createNewVerifiedUser(ctx context.Context, name, email string, db *sqlx.DB) (user.User, error) {
+func createNewVerifiedUser(ctx context.Context, name, email string, roles []string, db *sqlx.DB) (user.User, error) {
 	nu := user.NewUser{
 		Name:            name,
 		Avatar:          util.String(""),
@@ -142,7 +142,7 @@ func createNewVerifiedUser(ctx context.Context, name, email string, db *sqlx.DB)
 		Password:        "",
 		PasswordConfirm: "",
 		Verified:        true,
-		Roles:           []string{auth.RoleUser, auth.RoleAdmin},
+		Roles:           roles,
 	}
 	u, err := user.Create(ctx, db, nu, time.Now())
 	return u, err

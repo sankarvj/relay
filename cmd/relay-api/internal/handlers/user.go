@@ -17,6 +17,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
+	"gitlab.com/vjsideprojects/relay/internal/visitor"
 	"go.opencensus.io/trace"
 	"google.golang.org/api/option"
 )
@@ -241,7 +242,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	// all authentication completed. Proceed with the next steps
 	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, tokenEmail, "")
 	if err == user.ErrNotFound {
-		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, u.db)
+		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, u.db)
 		if err != nil {
 			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
 		}
@@ -271,6 +272,49 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
 	tkn.Accounts = []string{userInfo.AccountID}
+
+	return web.Respond(ctx, w, tkn, http.StatusCreated)
+}
+
+func (u *User) Visit(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.User.Visit")
+	defer span.End()
+
+	mlToken := r.URL.Query().Get("ml_token") // magiclink token
+
+	userInfo, err := auth.AuthenticateToken(mlToken, u.rPool)
+	if err != nil {
+		return errors.Wrap(err, "verifying mlToken")
+	}
+
+	vis, err := visitor.Retrieve(ctx, userInfo.AccountID, userInfo.MemberID, u.db)
+	if err != nil {
+		return err
+	}
+
+	if vis.Token != mlToken {
+		return errors.Wrap(err, "token mismatch detected")
+	}
+
+	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, vis.Email, "")
+	if err == user.ErrNotFound {
+		_, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleVisitor}, u.db)
+		if err != nil {
+			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
+		}
+	} else if err != nil {
+		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
+	}
+
+	tkn, err := generateJWT(ctx, vis.Email, time.Now(), u.authenticator, u.db)
+	if err != nil {
+		return errors.Wrap(err, "generating token")
+	}
+	//this will take the user in the frontend to the specific account even multiple accounts exists
+	tkn.Accounts = []string{vis.AccountID}
+	tkn.Team = vis.TeamID
+	tkn.Entity = vis.EntityID
+	tkn.Item = vis.ItemID
 
 	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }
@@ -366,4 +410,7 @@ func createViewModelUser(u user.User) user.ViewModelUser {
 type UserToken struct {
 	Token    string   `json:"token"`
 	Accounts []string `json:"accounts"`
+	Team     string   `json:"team"`
+	Entity   string   `json:"entity"`
+	Item     string   `json:"item"`
 }

@@ -82,6 +82,27 @@ func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool
 	return magicLink, nil
 }
 
+func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token string, rp *redis.Pool) (string, error) {
+
+	userInfo := UserInfo{
+		Name:      name,
+		AccountID: accountID,
+		Email:     emailAddress,
+		MemberID:  visitorID,
+	}
+
+	err := setToken(token, userInfo, rp)
+	if err != nil {
+		return "", err
+	}
+
+	magicLink := fmt.Sprintf("https://workbaseone.com/home/visit?token=%v", token)
+
+	log.Println("join magicLink-------> ", magicLink)
+
+	return magicLink, nil
+}
+
 func CreateMagicLaunchLink(draftID, accountName, emailAddress string, rp *redis.Pool) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
@@ -142,5 +163,8 @@ func getUserInfo(key string, rp *redis.Pool) (UserInfo, error) {
 
 	userInfo := &UserInfo{}
 	userInfo.UnmarshalJSON([]byte(msgStr))
+
+	//TODO delete token from redis after the first time retrival
+
 	return *userInfo, nil
 }

@@ -129,6 +129,8 @@ func run() error {
 		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "ctmadd":
 		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+	case "emadd":
+		err = bootstrap.BootEM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "useradd":
 		err = useradd(db, schema.SeedAccountID, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":

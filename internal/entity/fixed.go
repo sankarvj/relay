@@ -36,9 +36,20 @@ const (
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
 	//not fixed yet known entities
-	FixedEntityTask  = "tasks"
-	FixedEntityNode  = "nodes"
-	FixedEntityDelay = "delay"
+	FixedEntityTask            = "tasks"
+	FixedEntityFlow            = "flows"
+	FixedEntityNode            = "nodes"
+	FixedEntityDelay           = "delay"
+	FixedEntityStatus          = "status"
+	FixedEntityVisitorInvite   = "visitor_invite"
+	FixedEntityEmployee        = "employee"
+	FixedEntityAssets          = "assets"
+	FixedEntityAssetCatagory   = "asset_catagory"
+	FixedEntityAssetRequest    = "asset_request"
+	FixedEntityRoles           = "roles"
+	FixedEntityServices        = "services"
+	FixedEntityServiceCatagory = "service_catagory"
+	FixedEntityServiceRequest  = "service_request"
 )
 
 var (

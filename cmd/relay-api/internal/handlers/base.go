@@ -92,6 +92,8 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 		}
 	}
 
+	log.Println("viewModelNodes ", viewModelNodes)
+
 	p.Flows = viewModelFlows
 	p.Nodes = viewModelNodes
 	p.Items = make(map[string][]ViewModelItem, 0)

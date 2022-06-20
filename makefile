@@ -31,8 +31,8 @@ csm:
 ctm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 ctmadd
 
-hr:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 hradd
+em:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 emadd
 
 relay-api:
 	docker build \

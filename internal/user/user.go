@@ -72,18 +72,6 @@ func RetrieveWSCurrentUserID(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-func RetrieveCurrentUserAccounts(ctx context.Context, db *sqlx.DB, userID string) ([]string, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentUserAccounts")
-	defer span.End()
-
-	currentUser, err := RetrieveUser(ctx, db, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return currentUser.AccountIDs(), nil
-}
-
 // Retrieve gets the specified user from the database.
 func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")

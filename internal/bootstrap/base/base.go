@@ -49,6 +49,7 @@ type CoreEntity struct {
 	NodeEntity        entity.Entity
 	StatusEntity      entity.Entity
 	TypeEntity        entity.Entity
+	TaskEntity        entity.Entity
 }
 
 type CoreItem struct {
@@ -94,26 +95,50 @@ func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, fire
 
 func (b *Base) LoadFixedEntities(ctx context.Context) error {
 	var err error
-	//Retrive Owner Entity
+	// retrive Owner Entity
 	b.OwnerEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityOwner)
 	if err != nil {
 		return err
 	}
 
-	// Retrive Contact Entity
+	// retrive Contact Entity
 	b.ContactEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityContacts)
 	if err != nil {
 		return err
 	}
 
-	// Retrive Company Entity
+	// retrive Company Entity
 	b.CompanyEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
 	if err != nil {
 		return err
 	}
 
-	//Retrive Email Config entity
+	// retrive Email Config entity
 	b.EmailConfigEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
+	if err != nil {
+		return err
+	}
+
+	// retrive Flow entity
+	b.FlowEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityFlow)
+	if err != nil {
+		return err
+	}
+
+	// retrive Flow entity
+	b.NodeEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityNode)
+	if err != nil {
+		return err
+	}
+
+	// retrive Status entity
+	b.StatusEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
+	if err != nil {
+		return err
+	}
+
+	// retrive Task entity
+	b.TaskEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
 	if err != nil {
 		return err
 	}
@@ -126,73 +151,18 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
-	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
-	b.FlowEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedFlowEntityName, "Flow", entity.CategoryFlow, entity.StateTeamLevel, FlowFields())
-	if err != nil {
-		return err
-	}
-
-	// Node wrapper entity added to facilitate other entities(deals) to reference the stages(pipeline stage) as the reference fields
-	b.NodeEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNodeEntityName, "Node", entity.CategoryNode, entity.StateTeamLevel, NodeFields())
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Flow & Node Wrapper Entities Created")
-
-	// add entity - api-hook
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedWebHookEntityName, "WebHook", entity.CategoryAPI, entity.StateTeamLevel, APIFields())
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Delay & WebHook Entity Created")
-
 	// add entity - delay
 	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, entity.StateTeamLevel, DelayFields())
 	if err != nil {
 		return err
 	}
 
-	// add status entity
-	b.StatusEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedStatusEntityName, "Status", entity.CategoryChildUnit, entity.StateTeamLevel, StatusFields())
-	if err != nil {
-		return err
-	}
-	// add status item - open
-	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNone, "Open", "#fb667e"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - closed
-	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpDone, "Closed", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - overdue
-	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Status Entity With It's Three Statuses Items Created")
-
-	// add type entity
-	b.TypeEntity, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTypeEntityName, "Type", entity.CategoryChildUnit, entity.StateTeamLevel, TypeFields())
-	if err != nil {
-		return err
-	}
-	// add type item - email
-	b.TypeItemEmail, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Email"), nil)
-	if err != nil {
-		return err
-	}
-	// add type item - todo
-	b.TypeItemTodo, err = b.ItemAdd(ctx, b.TypeEntity.ID, uuid.New().String(), b.UserID, TypeVals(entity.FuExpNone, "Todo"), nil)
+	// add entity - stream
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
 	if err != nil {
 		return err
 	}
 
-	// add type template - project
-
-	fmt.Println("\tCRM:BOOT Type Entity With It's Three types Items Created")
 	return nil
 }
 

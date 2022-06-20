@@ -46,8 +46,10 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 	switch notifType {
 	case TypeWelcome:
 		template = "welcome.html"
-	case TypeInvitation:
+	case TypeMemberInvitation:
 		template = "invitation.html"
+	case TypeVisitorInvitation:
+		template = "visitor_invitation.html"
 	default:
 		template = "update.html"
 	}
