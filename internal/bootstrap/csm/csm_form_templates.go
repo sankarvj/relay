@@ -8,25 +8,35 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
-func taskTemplates(actorEntity entity.Entity) map[string]interface{} {
-	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
+	taskVals := make(map[string]interface{}, 0)
+	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+
+	for name, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
-			titleKey = f.Key
+			taskVals[f.Key] = fmt.Sprintf("%s", desc)
+		}
+		switch name {
+		case "reminder", "due_by":
+			taskVals[f.Key] = util.FormatTimeGo(time.Now())
 		}
 	}
 
-	taskVals := map[string]interface{}{
-		"uuid-00-desc":          fmt.Sprintf("Schedule a call for {{%s.%s}}", actorEntity.ID, titleKey),
-		"uuid-00-contact":       []interface{}{},
-		"uuid-00-status":        []interface{}{},
-		"uuid-00-company":       []interface{}{},
-		"uuid-00-project":       []interface{}{fmt.Sprintf("{{%s.%s}}", actorEntity.ID, "id")},
-		"uuid-00-reminder":      util.FormatTimeGo(time.Now()),
-		"uuid-00-due-by":        util.FormatTimeGo(time.Now()),
-		"uuid-00-type":          []interface{}{},
-		"uuid-00-mail-template": []interface{}{},
-		"uuid-00-pipe-stage":    []interface{}{},
-	}
 	return taskVals
+}
+
+func inviteTemplates(desc string, thisEntity entity.Entity) map[string]interface{} {
+	inviteVals := make(map[string]interface{}, 0)
+	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+
+	for name, f := range namedFieldsMap {
+
+		switch name {
+		case "role":
+			inviteVals[f.Key] = []interface{}{"VISITOR"}
+		case "body":
+			inviteVals[f.Key] = desc
+		}
+	}
+	return inviteVals
 }

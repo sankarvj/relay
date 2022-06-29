@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -194,12 +192,12 @@ func memberResponse(e entity.Entity, items []item.Item, teamMap map[string]team.
 
 func createViewModelMember(id string, fields map[string]entity.Field, teamMap map[string]team.Team) ViewModelMember {
 	return ViewModelMember{
-		ID:        id,
-		Name:      fields["name"].Value.(string),
-		Email:     fields["email"].Value.(string),
-		Avatar:    fields["avatar"].Value.(string),
-		Teams:     populateTeams(fields["team_ids"].Value, teamMap),
-		AccessMap: decodeAccessCypher(fields["access_map"].Value),
+		ID:     id,
+		Name:   fields["name"].Value.(string),
+		Email:  fields["email"].Value.(string),
+		Avatar: fields["avatar"].Value.(string),
+		Teams:  populateTeams(fields["team_ids"].Value, teamMap),
+		Role:   fields["role"].Value.([]interface{}),
 	}
 }
 
@@ -210,18 +208,18 @@ func recreateFields(vm ViewModelMember, namedKeys map[string]string) map[string]
 	itemFields[namedKeys["email"]] = vm.Email
 	itemFields[namedKeys["avatar"]] = vm.Avatar
 	itemFields[namedKeys["team_ids"]] = stripeTeamIds(vm.Teams)
-	itemFields[namedKeys["access_map"]] = marshalAccessMap(vm.AccessMap)
+	itemFields[namedKeys["role"]] = vm.Role
 	return itemFields
 }
 
 type ViewModelMember struct {
-	ID        string            `json:"id"`
-	UserID    string            `json:"user_id"`
-	Name      string            `json:"name"`
-	Email     string            `json:"email"`
-	Avatar    string            `json:"avatar"`
-	Teams     []ViewTeam        `json:"teams"`
-	AccessMap map[string]Cypher `json:"access_map"`
+	ID     string        `json:"id"`
+	UserID string        `json:"user_id"`
+	Name   string        `json:"name"`
+	Email  string        `json:"email"`
+	Avatar string        `json:"avatar"`
+	Teams  []ViewTeam    `json:"teams"`
+	Role   []interface{} `json:"role"`
 }
 
 type ViewTeam struct {
@@ -246,63 +244,6 @@ func populateTeams(teamIds interface{}, teamMap map[string]team.Team) []ViewTeam
 		}
 	}
 	return vteams
-}
-
-func decodeAccessCypher(accessCypherStr interface{}) map[string]Cypher {
-	accessCypher := make(map[string]Cypher, 0)
-	log.Println("accessCypherStr ", accessCypherStr)
-	if accessCypherStr == nil || accessCypherStr == "" || accessCypherStr == "{}" {
-		accessCypher["A"] = Cypher{
-			View:   true,
-			Edit:   true,
-			Create: true,
-		}
-		accessCypher["W"] = Cypher{
-			View:   true,
-			Edit:   true,
-			Create: true,
-		}
-		log.Println("accessCypher ", accessCypher)
-		return accessCypher
-	}
-	accessMap := unmarshalAccessStr(accessCypherStr.(string))
-	// for module, cypherStr := range accessMap {
-	// 	c := Cypher{
-	// 		View:   false,
-	// 		Edit:   false,
-	// 		Create: false,
-	// 	}
-	// 	parts := strings.Split(cypherStr, "_")
-	// 	for _, p := range parts {
-	// 		switch p {
-	// 		case "V":
-	// 			c.View = true
-	// 		case "E":
-	// 			c.Edit = true
-	// 		case "C":
-	// 			c.Create = true
-	// 		}
-	// 	}
-	// 	accessCypher[module] = c
-	// }
-	return accessMap
-}
-
-func unmarshalAccessStr(accessMapStr string) map[string]Cypher {
-	var accessMap map[string]Cypher
-	if err := json.Unmarshal([]byte(accessMapStr), &accessMap); err != nil {
-		log.Println("***> unexpected error when unmarshaling the access map ", err)
-		return make(map[string]Cypher, 0)
-	}
-	return accessMap
-}
-
-func marshalAccessMap(cypherMap map[string]Cypher) string {
-	fieldsBytes, err := json.Marshal(cypherMap)
-	if err != nil {
-		return ""
-	}
-	return string(fieldsBytes)
 }
 
 func stripeTeamIds(teams []ViewTeam) []interface{} {

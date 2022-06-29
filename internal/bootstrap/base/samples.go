@@ -32,7 +32,7 @@ func (b *Base) AddPipelines(ctx context.Context, cwf *CoreWorkflow) error {
 			parentNodeID = pn.NodeID
 		}
 
-		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, node.Stage, cn.Exp, map[string]string{}, stageID, cn.ActorName)
+		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, node.Stage, cn.Exp, map[string]string{}, cn.Tokens, stageID, cn.ActorName)
 		if err != nil {
 			return err
 		}
@@ -45,7 +45,8 @@ func (b *Base) AddPipelines(ctx context.Context, cwf *CoreWorkflow) error {
 				pn := cn.Nodes[j-1]
 				parentNodeID = pn.NodeID
 			}
-			nusn, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, nus.ActorID, parentNodeID, nus.Name, node.Push, nus.Exp, map[string]string{nus.ActorID: nus.TemplateID}, cn.NodeID, nus.ActorName)
+
+			nusn, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, nus.ActorID, parentNodeID, nus.Name, node.Push, nus.Exp, map[string]string{nus.ActorID: nus.TemplateID}, nus.Tokens, cn.NodeID, nus.ActorName)
 			if err != nil {
 				return err
 			}
@@ -73,7 +74,7 @@ func (b *Base) AddWorkflows(ctx context.Context, cwf *CoreWorkflow) error {
 			parentNodeID = pn.NodeID
 		}
 
-		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, node.Push, "", map[string]string{cn.ActorID: cn.TemplateID}, stageID, cn.ActorName)
+		n, err := b.NodeAdd(ctx, uuid.New().String(), cwf.FlowID, cn.ActorID, parentNodeID, cn.Name, cn.Type, "", map[string]string{cn.ActorID: cn.TemplateID}, cn.Tokens, stageID, cn.ActorName)
 		if err != nil {
 			return err
 		}

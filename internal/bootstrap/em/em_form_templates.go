@@ -36,7 +36,7 @@ func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID s
 	return dealVals
 }
 
-func taskTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
+func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
 
@@ -49,7 +49,7 @@ func taskTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[stri
 
 	for name, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
-			taskVals[f.Key] = fmt.Sprintf("Schedule a call for {{%s.%s}}", actorEntity.ID, titleKey)
+			taskVals[f.Key] = fmt.Sprintf("%s {{%s.%s}}", desc, actorEntity.ID, titleKey)
 		}
 		switch name {
 		case "reminder", "due_by":
@@ -60,22 +60,61 @@ func taskTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[stri
 	return taskVals
 }
 
-func ticketTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
-	ticketVals := make(map[string]interface{}, 0)
+func assetRequestTemplates(desc, assetID, statusID string, thisEntity entity.Entity) map[string]interface{} {
+	arVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
 
-	var titleKey string
+	for name, f := range namedFieldsMap {
+		switch name {
+		case "comments":
+			arVals[f.Key] = fmt.Sprintf("%s", desc)
+		case "asset":
+			arVals[f.Key] = []interface{}{assetID}
+		case "request_status":
+			arVals[f.Key] = []interface{}{statusID}
+		}
+	}
+	return arVals
+}
+
+func serviceRequestTemplates(desc, serviceID, statusID string, thisEntity entity.Entity) map[string]interface{} {
+	arVals := make(map[string]interface{}, 0)
+	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+
+	for name, f := range namedFieldsMap {
+		switch name {
+		case "desc":
+			arVals[f.Key] = fmt.Sprintf("%s", desc)
+		case "service":
+			arVals[f.Key] = []interface{}{serviceID}
+		case "request_status":
+			arVals[f.Key] = []interface{}{statusID}
+		}
+	}
+	return arVals
+}
+
+func inviteTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
+	inviteVals := make(map[string]interface{}, 0)
+	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+
+	var emailKey string
 	for _, f := range actorEntity.FieldsIgnoreError() {
-		if f.IsTitleLayout() {
-			titleKey = f.Key
+		if f.IsEmail() {
+			emailKey = f.Key
 		}
 	}
 
-	for _, f := range namedFieldsMap {
-		if f.IsTitleLayout() {
-			ticketVals[f.Key] = fmt.Sprintf("Please prepare the invoice for the deal {{%s.%s}}", actorEntity.ID, titleKey)
+	for name, f := range namedFieldsMap {
+
+		switch name {
+		case "email":
+			inviteVals[f.Key] = fmt.Sprintf("{{%s.%s}}", actorEntity.ID, emailKey)
+		case "role":
+			inviteVals[f.Key] = []interface{}{"USER"}
+		case "body":
+			inviteVals[f.Key] = desc
 		}
 	}
-
-	return ticketVals
+	return inviteVals
 }

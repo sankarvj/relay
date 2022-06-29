@@ -13,4 +13,5 @@ type Jobber interface {
 	AddReminder(accountID, userID, entityID, itemID string, when time.Time, rp *redis.Pool) error
 	AddDelay(accountID, userID, entityID, itemID string, meta map[string]interface{}, when time.Time, rp *redis.Pool) error
 	AddVisitor(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error
+	AddMember(accountID, memberID, userName, userEmail, body string, db *sqlx.DB, rp *redis.Pool) error
 }

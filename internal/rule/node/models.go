@@ -171,3 +171,7 @@ func (n Node) ActualsMap() map[string]string {
 func (n Node) ActualsItemID() string {
 	return n.ActualsMap()[n.ActorID]
 }
+
+func (n Node) NodeOnStage() bool {
+	return n.StageID != "0000-0000-0000-0000-000000000000" || n.StageID != ""
+}

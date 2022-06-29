@@ -158,9 +158,13 @@ func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng e
 		//TODO push this to DL queue
 		return err
 	}
-	if !ruleResult.Executed {
-		return ErrCannotExecuteNode
+
+	if !n.NodeOnStage() { // Don't stop the flow if not executed for pipeline nodes
+		if !ruleResult.Executed {
+			return ErrCannotExecuteNode
+		}
 	}
+
 	if ruleResult.Pause { // the flow should be re-started from the delay listener.
 		return ErrPauseExecuteNode
 	}

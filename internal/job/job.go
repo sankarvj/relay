@@ -387,6 +387,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 				errs = flow.Trigger(ctx, db, rp, itemID, dirtyFlows, eng)
 			}
 		case flow.FlowTypeEventCreate:
+			log.Println("Coming here -- FlowTypeEventCreate ")
 			errs = flow.Trigger(ctx, db, rp, itemID, flows, eng)
 		}
 	}

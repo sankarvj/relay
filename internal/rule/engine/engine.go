@@ -26,6 +26,7 @@ type RuleResult struct {
 func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) (*RuleResult, error) {
 	var err error
 	signalsChan := make(chan ruler.Work)
+	log.Println("n.Expression ", n.Expression)
 	go ruler.Run(n.Expression, ruler.Execute, signalsChan)
 	ruleResult := &RuleResult{}
 	//signalsChan wait to receive evaluation work and final execution

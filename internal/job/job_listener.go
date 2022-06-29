@@ -1,12 +1,15 @@
 package job
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -87,6 +90,19 @@ func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.
 func (J *Job) AddVisitor(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error {
 	log.Println("*> Reached addvisitor on job")
 	err := notification.VisitorInvitation(accountID, visitorID, body, db, rp)
+	return err
+}
+
+func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, db *sqlx.DB, rp *redis.Pool) error {
+	ctx := context.Background()
+	log.Println("*> Reached addmember on job")
+	a, err := account.Retrieve(ctx, db, accountID)
+	if err != nil {
+		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when retriving account. error:", err)
+		return err
+	}
+	requester := fmt.Sprintf("Admin from %s", a.Name)
+	err = notification.JoinInvitation(accountID, a.Name, requester, userName, userEmail, memberID, db, rp)
 	return err
 }
 

@@ -33,6 +33,11 @@ func (J Jab) AddVisitor(accountID, visitorID, body string, db *sqlx.DB, rp *redi
 	return nil
 }
 
+func (J Jab) AddMember(accountID, memberID, userName, userEmail, body string, db *sqlx.DB, rp *redis.Pool) error {
+	log.Println("*> expected error occurred. dead AddMember at jab")
+	return nil
+}
+
 func NewJabEngine() *engine.Engine {
 	return &engine.Engine{
 		Job: Jab{},

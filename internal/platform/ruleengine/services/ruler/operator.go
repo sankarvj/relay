@@ -190,12 +190,22 @@ func notin(left, right Operand) bool { // assumption: left is a interface list &
 		log.Println("***> unexpected error occurred when comparing operands for operator: not in and error:", c.err)
 		return false
 	}
+
+	log.Println("c.leftDataType ", c.leftDataType)
+	log.Println("c.rightDataType ", c.rightDataType)
+	log.Println("c.left ", left)
+	log.Println("right ", right)
+
 	switch c.leftDataType {
 	case ListDT:
 		for _, v := range c.leftInterfaceList {
-			if compare(v, right) {
-				return false
+			listOfRights := strings.Split(right.(string), ",")
+			for i := 0; i < len(listOfRights); i++ {
+				if compare(v, listOfRights[i]) {
+					return false
+				}
 			}
+
 		}
 	}
 	return true

@@ -50,6 +50,7 @@ type CoreEntity struct {
 	StatusEntity      entity.Entity
 	TypeEntity        entity.Entity
 	TaskEntity        entity.Entity
+	InviteEntity      entity.Entity
 }
 
 type CoreItem struct {
@@ -79,7 +80,9 @@ type CoreNode struct {
 	TemplateID string
 	Name       string
 	Exp        string
+	Type       int
 	Nodes      []*CoreNode // nodes inside stages
+	Tokens     map[string]interface{}
 }
 
 func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Base {
@@ -139,6 +142,12 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 
 	// retrive Task entity
 	b.TaskEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
+	if err != nil {
+		return err
+	}
+
+	// retrive Invite entity
+	b.InviteEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityVisitorInvite)
 	if err != nil {
 		return err
 	}
@@ -280,7 +289,7 @@ func (b *Base) FlowAdd(ctx context.Context, flowID, entityID string, name string
 	return f, nil
 }
 
-func (b *Base) NodeAdd(ctx context.Context, nodeID, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string, stageID, description string) (node.Node, error) {
+func (b *Base) NodeAdd(ctx context.Context, nodeID, flowID, actorID string, pnodeID string, name string, typ int, exp string, actuals map[string]string, tokens map[string]interface{}, stageID, description string) (node.Node, error) {
 	nn := node.NewNode{
 		ID:           nodeID,
 		AccountID:    b.AccountID,
@@ -293,6 +302,7 @@ func (b *Base) NodeAdd(ctx context.Context, nodeID, flowID, actorID string, pnod
 		Type:         typ,
 		Expression:   exp,
 		Actuals:      actuals,
+		Tokens:       tokens,
 	}
 
 	n, err := node.Create(ctx, b.DB, nn, time.Now())

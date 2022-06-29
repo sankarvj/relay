@@ -48,6 +48,7 @@ const (
 	DomOwnCon            = "OC" //type which as avatar,name,email and id + two entities clubed
 	DomNotApplicable     = "NA" // the dom for the reference field with no UI needed
 	DomImage             = "IM"
+	DomEmailSelector     = "DEMS"
 )
 
 const (
@@ -278,14 +279,15 @@ func (e Entity) NodeField() *Field {
 	return nil
 }
 
-func (e Entity) EmailField() *Field {
+func (e Entity) EmailFields() []*Field {
+	emailFields := make([]*Field, 0)
 	fields, _ := e.Fields()
 	for _, f := range fields {
 		if f.IsEmail() {
-			return &f
+			emailFields = append(emailFields, &f)
 		}
 	}
-	return nil
+	return emailFields
 }
 
 func (e Entity) NamedKeys() map[string]string {

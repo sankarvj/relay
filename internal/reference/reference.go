@@ -115,22 +115,6 @@ func populateExistingItemIds(items []item.Item, fields []entity.Field) map[strin
 	return referenceIds
 }
 
-// // TODO not understandable. please update the readme
-// func evaluateChoices(ctx context.Context, db *sqlx.DB, accountID string, f *entity.Field, items []item.ViewModelItem, eng *engine.Engine) []interface{} {
-// 	refIDs := make([]interface{}, 0)
-// 	for i := 0; i < len(items); i++ {
-// 		if len(items[i].Fields[f.Key].([]interface{})) > 0 { // Don't execute the choice expressions and set the value if it is already set. for more details go to README
-// 			continue
-// 		}
-// 		for _, choice := range f.Choices {
-// 			//items[i].Fields[f.Key] = []interface{}{choice.ID}
-// 			refIDs = append(refIDs, choice.ID)
-// 			//result := eng.RunExpEvaluator(ctx, db, nil, accountID, choice.Expression, items[i].Fields)
-// 		}
-// 	}
-// 	return refIDs
-// }
-
 //updateChoices simply update single value to the choice if that itemID if populated already.
 //updateChoices won't pull all the choices available to that reference entity in the list view.
 //updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
@@ -143,7 +127,16 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			log.Printf("***> unexpected error occurred when retriving entity inside updating choices error: %v.\n continuing...", err)
 			return
 		}
-		if e.Category == entity.CategoryChildUnit {
+		if e.Category == entity.CategoryFlow { // temp flow handler
+			// fi is the entityID here
+			flows, err := flow.SearchByKey(ctx, accountID, entityID, "", db)
+			if err != nil {
+				log.Printf("***> unexpected error occurred when retriving reference items for flows inside updating choices error: %v.\n continuing...", err)
+			}
+			choicesMaker(f, "", flowChoices(flows))
+		} else if e.Category == entity.CategoryNode { // temp flow handler
+
+		} else if e.Category == entity.CategoryChildUnit {
 			refItems, err := item.EntityItems(ctx, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
@@ -163,22 +156,6 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			}
 
 			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
-		}
-
-		//RETHINK
-		if e.Category == entity.CategoryFlow { //  flow handler
-			var flows []flow.Flow
-			var err error
-			if len(refIDs) == 0 { // create or edit case.
-				flows, err = flow.List(ctx, []string{entityID}, flow.FlowModeAll, flow.FlowTypeUnknown, db)
-			} else { // view case
-				flows, err = flow.BulkRetrieve(ctx, accountID, removeDuplicateValues(refIDs), db) // though the name bulk retrive is misleading this fetches only the flow which is selected
-			}
-			if err != nil {
-				log.Printf("***> unexpected error occurred when retriving flows inside updating choices error: %v.\n continuing...", err)
-				return
-			}
-			choicesMaker(f, "", flowChoices(flows))
 		}
 	}
 

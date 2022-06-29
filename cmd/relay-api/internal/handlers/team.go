@@ -129,12 +129,12 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 			}
 		case "meetings":
 			// add entity - meetings
-			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, base.MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID))
+			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, forms.MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID))
 			if err != nil {
 				log.Println("***> unexpected error occurred. when creating custom entity:meetings:", err)
 			}
 		case "notes":
-			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, base.NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID))
+			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, forms.NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID))
 			if err != nil {
 				log.Println("***> unexpected error occurred. when creating custom entity:notes:", err)
 			}
@@ -143,7 +143,7 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 		case "employees":
 		case "tickets":
 			// add entity - tickets
-			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, base.TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+			_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, forms.TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
 			if err != nil {
 				log.Println("***> unexpected error occurred. when creating custom entity:tickets:", err)
 			}

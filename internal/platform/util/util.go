@@ -113,7 +113,10 @@ func SubDomainInEmail(email string) string {
 
 func NameInEmail(email string) string {
 	at := strings.LastIndex(email, "@")
-	return email[:at]
+	if at >= 0 {
+		return email[:at]
+	}
+	return ""
 }
 
 func MainMailRefernce(reference string) string {

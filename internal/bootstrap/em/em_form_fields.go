@@ -1,8 +1,11 @@
 package em
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
 
 func RoleFields() []entity.Field {
@@ -26,7 +29,7 @@ func RoleVals(namekey, name string) map[string]interface{} {
 	return statusVals
 }
 
-func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEntityKey string) []entity.Field {
+func EmployeeFields(flowEntityID, nodeEntityID, ownerEntityID, ownerEntityKey string, roleEntityID, roleEntityKey string) []entity.Field {
 	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
 		Key:         nameFieldID,
@@ -34,7 +37,7 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyUnique: "true"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	personalEmailFieldID := uuid.New().String()
@@ -45,7 +48,7 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 		Who:         entity.WhoEmail,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyUnique: "true"},
 	}
 
 	mobileFieldID := uuid.New().String()
@@ -79,33 +82,45 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 		Who:         entity.WhoEmail,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyUnique: "true"},
 	}
 
-	lfStageFieldID := uuid.New().String()
-	lfStageField := entity.Field{
-		Key:         lfStageFieldID,
-		Name:        "state",
-		DisplayName: "State",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeList,
-		Choices: []entity.Choice{
-			{
-				ID:           "0",
-				DisplayValue: "Onboarding",
-			},
-			{
-				ID:           "1",
-				DisplayValue: "Active",
-			},
-			{
-				ID:           "2",
-				DisplayValue: "Quit",
-			},
-		},
+	lifecyleFieldID := uuid.New().String()
+	lifecyleField := entity.Field{
+		Key:         lifecyleFieldID,
+		Name:        "lifecyle",
+		DisplayName: "Lifecycle",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       flowEntityID,
+		RefType:     entity.RefTypeStraight,
+		Meta:        map[string]string{entity.MetaKeyFlow: "true", entity.MetaMultiChoice: "false", entity.MetaKeyRequired: "true"},
 		Field: &entity.Field{
-			Key:      "element",
 			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	lifecyleStageFieldID := uuid.New().String()
+	lifecyleStageField := entity.Field{
+		Key:         lifecyleStageFieldID,
+		Name:        "lifecyle_stage",
+		DisplayName: "Lifecyle Stage",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       nodeEntityID,
+		RefType:     entity.RefTypeStraight,
+		Dependent: &entity.Dependent{
+			ParentKey:   lifecyleField.Key,
+			Expressions: []string{""}, // empty means positive
+			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
+		},
+		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaKeyNode: "true", entity.MetaKeyRequired: "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      lifecyleField.Key,
+			Value:    "--",
 		},
 	}
 
@@ -131,7 +146,7 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 	managerField := entity.Field{
 		Key:         managerFieldID,
 		Name:        "manager",
-		DisplayName: "Manager",
+		DisplayName: "Reporting to",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       ownerEntityID,
@@ -154,7 +169,7 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 		DataType:    entity.TypeReference,
 		RefID:       roleEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: roleEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: roleEntityKey, entity.MetaKeyRequired: "true"},
 		Who:         entity.WhoStatus,
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -163,7 +178,105 @@ func EmployeeFields(ownerEntityID, ownerEntityKey string, roleEntityID, roleEnti
 		},
 	}
 
-	return []entity.Field{nameField, personalEmailField, mobileField, officeEmailField, lfStageField, avatarField, ownerField, managerField, roleField}
+	joiningDateFieldID := uuid.New().String()
+	joiningDateField := entity.Field{
+		Key:         joiningDateFieldID,
+		Name:        "joining_date",
+		DisplayName: "Joining Date",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+	}
+
+	return []entity.Field{nameField, personalEmailField, mobileField, officeEmailField, lifecyleField, lifecyleStageField, avatarField, ownerField, managerField, roleField, joiningDateField}
+}
+
+func PayrollFields() []entity.Field {
+	bankNameFieldID := uuid.New().String()
+	bankNameField := entity.Field{
+		Key:         bankNameFieldID,
+		Name:        "bank_name",
+		DisplayName: "Bank Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+	}
+
+	accNoFieldID := uuid.New().String()
+	accNoField := entity.Field{
+		Key:         accNoFieldID,
+		Name:        "account",
+		DisplayName: "Account Number",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+	}
+
+	accountTypeFieldID := uuid.New().String()
+	accountTypeField := entity.Field{
+		Key:         accountTypeFieldID,
+		Name:        "account_type",
+		DisplayName: "Account Type",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeList,
+		Choices: []entity.Choice{
+			{
+				ID:           "1",
+				DisplayValue: "Savings",
+			},
+			{
+				ID:           "2",
+				DisplayValue: "Current",
+			},
+		},
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
+	}
+
+	return []entity.Field{bankNameField, accNoField, accountTypeField}
+}
+
+func SalaryFields() []entity.Field {
+	baseSalaryFieldID := uuid.New().String()
+	baseSalaryField := entity.Field{
+		Key:         baseSalaryFieldID,
+		Name:        "base_salary",
+		DisplayName: "Base Salary",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+	}
+
+	grossSalaryID := uuid.New().String()
+	grossSalaryField := entity.Field{
+		Key:         grossSalaryID,
+		Name:        "gross_salary",
+		DisplayName: "Gross Salary",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+	}
+
+	netTaxFieldID := uuid.New().String()
+	netTaxField := entity.Field{
+		Key:         netTaxFieldID,
+		Name:        "net_tax",
+		DisplayName: "Net Tax",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+	}
+
+	onFieldID := uuid.New().String()
+	onField := entity.Field{
+		Key:         onFieldID,
+		Name:        "month",
+		DisplayName: "Month",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+	}
+
+	return []entity.Field{baseSalaryField, grossSalaryField, netTaxField, onField}
 }
 
 func AssetStatusFields() []entity.Field {
@@ -219,10 +332,10 @@ func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatus
 	commentsField := entity.Field{
 		Key:         commentsFieldID,
 		Name:        "comments",
-		DisplayName: "Comments",
+		DisplayName: "Desc",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyHTML: "true"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyHTML: "true"},
 	}
 
 	statusFieldID := uuid.New().String()

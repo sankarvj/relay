@@ -420,7 +420,7 @@ func (r *Ruler) addQuery(q string) {
 func (r *Ruler) execute() error {
 	r.constructRuleItem()
 	//DEBUG LOGS
-	//log.Printf("*********> debug: internal.platform.ruleengine.services.ruler : `execute:` left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	log.Printf("*********> debug: internal.platform.ruleengine.services.ruler : `execute:` left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	var opResult bool
 	if r.RuleItem.left == "nil" && r.RuleItem.right == "nil" {

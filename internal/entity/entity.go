@@ -154,6 +154,23 @@ func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Ent
 	return e, nil
 }
 
+func RetrieveByName(ctx context.Context, accountID, entityName string, db *sqlx.DB) (Entity, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.RetrieveByName")
+	defer span.End()
+
+	var e Entity
+	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2`
+	if err := db.GetContext(ctx, &e, q, accountID, entityName); err != nil {
+		if err == sql.ErrNoRows {
+			return Entity{}, ErrEntityNotFound
+		}
+
+		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityName)
+	}
+
+	return e, nil
+}
+
 func BulkRetrieve(ctx context.Context, ids []string, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.BulkRetrieve")
 	defer span.End()

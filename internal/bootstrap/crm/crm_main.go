@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
@@ -37,7 +38,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - tickets
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, base.TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, base.TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
+	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
 	if err != nil {
 		return err
 	}
@@ -224,6 +225,7 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
+
 	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDealsEntityName)
 	if err != nil {
 		return err
@@ -327,6 +329,7 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 				ActorID:    dealEntity.ID,
 				ActorName:  "Deal",
 				TemplateID: dealTemplate.ID,
+				Type:       node.Push,
 			},
 		},
 	}

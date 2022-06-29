@@ -11,6 +11,7 @@ import (
 // These are the expected values for Claims.Roles.
 const (
 	RoleAdmin   = "ADMIN"
+	RoleMember  = "MEMBER" // not yet implemented
 	RoleUser    = "USER"
 	RoleVisitor = "VISITOR"
 )

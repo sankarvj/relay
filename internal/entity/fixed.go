@@ -43,6 +43,8 @@ const (
 	FixedEntityStatus          = "status"
 	FixedEntityVisitorInvite   = "visitor_invite"
 	FixedEntityEmployee        = "employee"
+	FixedEntityPayroll         = "payroll"
+	FixedEntitySalary          = "salary"
 	FixedEntityAssets          = "assets"
 	FixedEntityAssetCatagory   = "asset_catagory"
 	FixedEntityAssetRequest    = "asset_request"

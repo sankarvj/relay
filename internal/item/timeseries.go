@@ -52,11 +52,17 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 
 	items := []Item{}
 	if len(ids) == 0 {
+		const q = `SELECT * FROM items where entity_id = $1 LIMIT 50`
+		if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+			if err == sql.ErrNoRows {
+				return items, ErrItemsEmpty
+			}
+			return items, errors.Wrap(err, "selecting bulk items using only entity id")
+		}
 		return items, nil
 	}
 
 	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2) LIMIT 100`
-
 	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
 		if err == sql.ErrNoRows {
 			return items, ErrItemsEmpty

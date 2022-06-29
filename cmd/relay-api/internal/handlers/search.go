@@ -31,23 +31,17 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
+
 	var choices []entity.Choice
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
 		// fi is the entityID here
-		choices, err = likeSearchFlows(ctx, accountID, fi, term, i.db, i.rPool)
+		choices, err = LikeSearchFlows(ctx, accountID, fi, term, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
-		// fi is the entityID here
-		flows, err := flow.List(ctx, []string{fi}, flow.FlowModePipeLine, flow.FlowTypeAll, i.db)
-		if err != nil {
-			return err
-		}
-		flowIds := ids(flows)
-
-		choices, err = likeSearchNodes(ctx, accountID, flowIds, term, i.db, i.rPool)
+		choices, err = LikeSearchNodes(ctx, accountID, []string{fi}, term, i.db, i.rPool)
 		if err != nil {
 			return err
 		}
@@ -111,7 +105,7 @@ func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db
 	return choices, nil
 }
 
-func likeSearchFlows(ctx context.Context, accountID, entityID, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func LikeSearchFlows(ctx context.Context, accountID, entityID, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
 
 	flows, err := flow.SearchByKey(ctx, accountID, entityID, term, db)
@@ -129,7 +123,7 @@ func likeSearchFlows(ctx context.Context, accountID, entityID, term string, db *
 	return choices, nil
 }
 
-func likeSearchNodes(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
 	nodes, err := node.Stages(ctx, accountID, flowIDs, term, db)
 	if err != nil {

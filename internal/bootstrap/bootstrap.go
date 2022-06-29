@@ -358,14 +358,6 @@ func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 	}
 	fmt.Println("\t\t\tBootstrap:EM `boot` functions completed successfully")
 
-	//samples
-	fmt.Println("Bootstrap:EM `samples` functions started")
-	err = em.AddSamples(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "\t\t\tBootstrap:EM `samples` functions failed")
-	}
-	fmt.Println("\t\t\tBootstrap:EM `samples` functions completed successfully")
-
 	//all done
 	fmt.Printf("\nBootstrap:EM ENDED successfully for the accountID: %s\n", accountID)
 
