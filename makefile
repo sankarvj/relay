@@ -28,8 +28,8 @@ crm:
 csm:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 csmadd
 
-ctm:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 ctmadd
+pm:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 pmadd
 
 em:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 emadd

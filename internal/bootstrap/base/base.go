@@ -155,19 +155,19 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 	fmt.Println("\tCRM:BOOT Retrived Owner,Contact,Company & EmailConfig")
 
 	// add entity - emails
-	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email")))
+	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email")))
 	if err != nil {
 		return err
 	}
 
 	// add entity - delay
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, entity.StateTeamLevel, DelayFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, entity.StateTeamLevel, false, false, false, DelayFields())
 	if err != nil {
 		return err
 	}
 
 	// add entity - stream
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, forms.StreamFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, false, false, false, forms.StreamFields())
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (b *Base) EntityFieldsUpdate(ctx context.Context, entityID string, fields [
 	return entity.Update(ctx, b.DB, b.AccountID, entityID, string(input), time.Now())
 }
 
-func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string, category, state int, fields []entity.Field) (entity.Entity, error) {
+func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string, category, state int, public, core, shared bool, fields []entity.Field) (entity.Entity, error) {
 	ne := entity.NewEntity{
 		ID:          entityID,
 		AccountID:   b.AccountID,
@@ -195,6 +195,9 @@ func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string
 		DisplayName: displayName,
 		State:       state,
 		Fields:      fields,
+		IsPublic:    public,
+		IsCore:      core,
+		IsShared:    shared,
 	}
 
 	e, err := entity.Create(ctx, b.DB, ne, time.Now())

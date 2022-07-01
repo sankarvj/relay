@@ -52,6 +52,8 @@ const (
 	FixedEntityServices        = "services"
 	FixedEntityServiceCatagory = "service_catagory"
 	FixedEntityServiceRequest  = "service_request"
+	FixedEntityAgileTask       = "agile_task"
+	FixedEntityAgileSubTask    = "agile_sub_task"
 )
 
 var (

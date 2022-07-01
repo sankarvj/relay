@@ -279,15 +279,25 @@ func (e Entity) NodeField() *Field {
 	return nil
 }
 
-func (e Entity) EmailFields() []*Field {
-	emailFields := make([]*Field, 0)
+func (e Entity) EmailFields() []Field {
+	emailFields := make([]Field, 0)
 	fields, _ := e.Fields()
 	for _, f := range fields {
-		if f.IsEmail() {
-			emailFields = append(emailFields, &f)
+		if f.Who == WhoEmail {
+			emailFields = append(emailFields, f)
 		}
 	}
 	return emailFields
+}
+
+func (e Entity) FieldByKey(key string) Field {
+	fields, _ := e.Fields()
+	for _, f := range fields {
+		if f.Key == key {
+			return f
+		}
+	}
+	return Field{}
 }
 
 func (e Entity) NamedKeys() map[string]string {
@@ -322,7 +332,7 @@ func (f Field) IsNode() bool {
 	return false
 }
 
-func (f Field) IsEmail() bool {
+func (f *Field) IsEmail() bool {
 	return f.Who == WhoEmail
 }
 

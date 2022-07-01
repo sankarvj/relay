@@ -127,8 +127,8 @@ func run() error {
 		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "csmadd":
 		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
-	case "ctmadd":
-		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+	case "pmadd":
+		err = bootstrap.BootPM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "emadd":
 		err = bootstrap.BootEM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
 	case "useradd":

@@ -20,7 +20,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	itemIDMap := make(map[string]string, 0)
 
 	// add entity - roles
-	rolesEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityRoles, "Roles", entity.CategoryChildUnit, entity.StateTeamLevel, RoleFields())
+	rolesEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityRoles, "Roles", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, RoleFields())
 	if err != nil {
 		return err
 	}
@@ -80,32 +80,32 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Roles Created")
 
 	// add entity - payroll
-	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategorySubData, entity.StateTeamLevel, PayrollFields())
+	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategorySubData, entity.StateTeamLevel, false, false, false, PayrollFields())
 	if err != nil {
 		return err
 	}
 
 	// add entity - salary
-	salaryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySalary, "Salary", entity.CategorySubData, entity.StateTeamLevel, SalaryFields())
+	salaryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySalary, "Salary", entity.CategorySubData, entity.StateTeamLevel, false, false, false, SalaryFields())
 	if err != nil {
 		return err
 	}
 
 	// add entity - employees
-	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.OwnerEntity.ID, ownerKey, rolesEntity.ID, roleEntityKey))
+	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, false, true, false, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.OwnerEntity.ID, ownerKey, rolesEntity.ID, roleEntityKey))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Employee Entity Created")
 	// add entity - asset-catagory
-	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategorySubData, entity.StateTeamLevel, forms.AssetCategory())
+	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.AssetCategory())
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Asset Catagory Entity Created")
 	// add entity - assets
 	assetCatagoryTitleField := entity.TitleField(assetCatagoryEntity.FieldsIgnoreError())
-	assetEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssets, "Assets", entity.CategoryChildUnit, entity.StateTeamLevel, forms.AssetFields(assetCatagoryEntity.ID, assetCatagoryTitleField.Key))
+	assetEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssets, "Assets", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, forms.AssetFields(assetCatagoryEntity.ID, assetCatagoryTitleField.Key))
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Assets Created")
 
 	// add entity - asset status
-	assetStatusEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Asset Status", entity.CategoryChildUnit, entity.StateTeamLevel, AssetStatusFields())
+	assetStatusEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Asset Status", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, AssetStatusFields())
 	if err != nil {
 		return err
 	}
@@ -180,21 +180,21 @@ func Boot(ctx context.Context, b *base.Base) error {
 	// add entity - asset request
 	assetStatusTitleField := entity.TitleField(assetStatusEntity.FieldsIgnoreError())
 	assetTitleField := entity.TitleField(assetEntity.FieldsIgnoreError())
-	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
+	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Asset Request Entity Created")
 
 	// add entity - service-catagory
-	serviceCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceCatagory, "Service Category", entity.CategorySubData, entity.StateTeamLevel, forms.ServiceCategory())
+	serviceCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceCatagory, "Service Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.ServiceCategory())
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Service Catagory Entity Created")
 	// add entity - services
 	serviceCatagoryTitleField := entity.TitleField(serviceCatagoryEntity.FieldsIgnoreError())
-	serviceEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServices, "Services", entity.CategoryChildUnit, entity.StateTeamLevel, forms.ServiceFields(serviceCatagoryEntity.ID, serviceCatagoryTitleField.Key))
+	serviceEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServices, "Services", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, forms.ServiceFields(serviceCatagoryEntity.ID, serviceCatagoryTitleField.Key))
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Services Created")
 	// add entity - service request
 	serviceTitleField := entity.TitleField(serviceEntity.FieldsIgnoreError())
-	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
+	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
 	if err != nil {
 		return err
 	}

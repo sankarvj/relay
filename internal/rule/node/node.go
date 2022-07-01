@@ -29,6 +29,7 @@ const (
 	SelfEntity         = "self"
 	SegmentEntity      = "segment"
 	MeEntity           = "me"
+	EmailEntityData    = "email"
 	GlobalEntity       = "xyz"
 	GlobalEntityData   = "data"
 	GlobalEntityResult = "result"

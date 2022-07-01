@@ -14,6 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/csm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/pm"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -104,7 +105,7 @@ func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.B
 	var err error
 	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
-	b.OwnerEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, entity.StateAccountLevel, fields)
+	b.OwnerEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}
@@ -123,7 +124,7 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 	}
 	fields := forms.EmailConfigFields(coEntityID, coEmail)
 	// add entity - email- configs
-	b.EmailConfigEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, fields)
+	b.EmailConfigEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, false, false, true, fields)
 	return err
 }
 
@@ -134,7 +135,7 @@ func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	}
 	fields := forms.CalendarFields(coEntityID, coEmail)
 	// add entity - calendar
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCalendar, "Calendar", entity.CategoryCalendar, entity.StateAccountLevel, false, false, true, fields)
 	return err
 }
 
@@ -146,14 +147,14 @@ func BootstrapContactCompanyEntity(ctx context.Context, b *base.Base) error {
 
 	// add entity - contacts
 	conForms := forms.ContactFields(coEntityID, coEmail)
-	b.ContactEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateAccountLevel, conForms)
+	b.ContactEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateAccountLevel, false, true, true, conForms)
 	if err != nil {
 		return err
 	}
 
 	// add entity - companies
 	comForms := forms.CompanyFields(coEntityID, coEmail)
-	b.CompanyEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateAccountLevel, comForms)
+	b.CompanyEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateAccountLevel, false, true, true, comForms)
 	if err != nil {
 		return err
 	}
@@ -168,20 +169,20 @@ func BootstrapNotificationEntity(ctx context.Context, b *base.Base) error {
 
 	fields := forms.NotificationFields(coEntityID)
 	// add entity - notifications
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNotification, "Notification", entity.CategoryNotification, entity.StateAccountLevel, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNotification, "Notification", entity.CategoryNotification, entity.StateAccountLevel, false, false, true, fields)
 	return err
 }
 
 func BootstrapFlowAndNodeEntity(ctx context.Context, b *base.Base) error {
 	var err error
 	// Flow wrapper entity added to facilitate other entities(deals) to reference the flows(pipeline) as the reference fields
-	b.FlowEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityFlow, "Flow", entity.CategoryFlow, entity.StateAccountLevel, forms.FlowFields())
+	b.FlowEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityFlow, "Flow", entity.CategoryFlow, entity.StateAccountLevel, false, false, true, forms.FlowFields())
 	if err != nil {
 		return err
 	}
 
 	// Node wrapper entity added to facilitate other entities(deals) to reference the stages(pipeline stage) as the reference fields
-	b.NodeEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNode, "Node", entity.CategoryNode, entity.StateAccountLevel, forms.NodeFields())
+	b.NodeEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNode, "Node", entity.CategoryNode, entity.StateAccountLevel, false, false, true, forms.NodeFields())
 	if err != nil {
 		return err
 	}
@@ -194,7 +195,7 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 	var err error
 	// add entity - status
 	fields := forms.StatusFields()
-	b.StatusEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Status", entity.CategoryChildUnit, entity.StateAccountLevel, fields)
+	b.StatusEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Status", entity.CategoryChildUnit, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}
@@ -226,7 +227,7 @@ func BootstrapTaskEntity(ctx context.Context, b *base.Base) error {
 	}
 	// add entity - task
 	fields := forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey)
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateAccountLevel, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}
@@ -237,7 +238,7 @@ func BootstrapTaskEntity(ctx context.Context, b *base.Base) error {
 func BootstrapVisitorInviteEntity(ctx context.Context, b *base.Base) error {
 	// add entity - task
 	fields := forms.VisitorInvitationFields()
-	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityVisitorInvite, "VisitorsForm", entity.CategoryVisitorsInvitation, entity.StateAccountLevel, fields)
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityVisitorInvite, "VisitorsForm", entity.CategoryVisitorsInvitation, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}
@@ -360,6 +361,41 @@ func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 
 	//all done
 	fmt.Printf("\nBootstrap:EM ENDED successfully for the accountID: %s\n", accountID)
+
+	return nil
+}
+
+func BootPM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
+	fmt.Printf("\nBootstrap:PM STARTED for the accountID %s\n", accountID)
+
+	ctx := context.Background()
+	teamID := uuid.New().String()
+	err := BootstrapTeam(ctx, db, accountID, teamID, "PM")
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:PM `team` insertion failed")
+	}
+	fmt.Println("\t\t\tBootstrap:PM `team` added")
+
+	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
+
+	//boot
+	fmt.Println("\t\t\tBootstrap:PM `boot` functions started")
+	err = pm.Boot(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:PM `boot` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:PM `boot` functions completed successfully")
+
+	//samples
+	fmt.Println("Bootstrap:PM `samples` functions started")
+	err = pm.AddSamples(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:PM `samples` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:PM `samples` functions completed successfully")
+
+	//all done
+	fmt.Printf("\nBootstrap:PM ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/mail"
 	"strconv"
 	"strings"
 )
@@ -198,4 +199,9 @@ func String(v string) *string {
 
 func IsEmpty(v string) bool {
 	return v == "" || v == "undefined"
+}
+
+func IsValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }

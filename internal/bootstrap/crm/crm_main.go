@@ -17,28 +17,28 @@ func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, entity.StateTeamLevel, DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
 	// add entity - notes
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Notes Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - tickets
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -345,12 +345,12 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 }
 
 func AddProps(ctx context.Context, b *base.Base) error {
-	_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, pageViewEventEntityFields())
+	_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, pageViewEventEntityFields())
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedActivityEventEntityName, "Activity View", entity.CategoryEvent, entity.StateTeamLevel, activityEventEntityFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedActivityEventEntityName, "Activity View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, activityEventEntityFields())
 	if err != nil {
 		return err
 	}

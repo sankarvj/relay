@@ -20,6 +20,9 @@ type Entity struct {
 	Fieldsb     string         `db:"fieldsb" json:"fieldsb"`
 	Metab       *string        `db:"metab" json:"metab"`
 	Tags        pq.StringArray `db:"tags" json:"tags"`
+	IsPublic    bool           `db:"is_public" json:"is_public"`
+	IsCore      bool           `db:"is_core" json:"is_core"`
+	IsShared    bool           `db:"is_shared" json:"is_shared"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
 	UpdatedAt   int64          `db:"updated_at" json:"updated_at"`
 }
@@ -36,6 +39,9 @@ type ViewModelEntity struct {
 	Status      int       `json:"status"`
 	Fields      []Field   `json:"fields"`
 	Tags        []string  `json:"tags"`
+	IsPublic    bool      `json:"is_public"`
+	IsCore      bool      `json:"is_core"`
+	IsShared    bool      `json:"is_shared"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   int64     `json:"updated_at"`
 }
@@ -50,6 +56,9 @@ type NewEntity struct {
 	Fields      []Field `json:"fields" validate:"required"`
 	Category    int     `json:"category"`
 	State       int     `json:"state"`
+	IsPublic    bool    `json:"is_public"`
+	IsCore      bool    `json:"is_core"`
+	IsShared    bool    `json:"is_shared"`
 }
 
 //State for the entity specifies the current state of the entity

@@ -41,6 +41,17 @@ func List(ctx context.Context, accountID, teamID string, categoryIds []int, db *
 	return entities, nil
 }
 
+func Core(ctx context.Context, accountID string, db *sqlx.DB) ([]Entity, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
+	defer span.End()
+	entities := []Entity{}
+	const q = `SELECT * FROM entities where account_id = $1 AND is_core = $2`
+	if err := db.SelectContext(ctx, &entities, q, accountID, true); err != nil {
+		return nil, errors.Wrap(err, "selecting entities for category")
+	}
+	return entities, nil
+}
+
 func All(ctx context.Context, accountID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
 	defer span.End()
@@ -78,18 +89,21 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 		Category:    n.Category,
 		State:       n.State,
 		Tags:        []string{},
+		IsPublic:    n.IsPublic,
+		IsCore:      n.IsCore,
+		IsShared:    n.IsShared,
 		Fieldsb:     string(fieldsBytes),
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO entities
-		(entity_id, account_id, team_id, name, display_name, category, state, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		(entity_id, account_id, team_id, name, display_name, category, state, is_public, is_core, is_shared, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		e.ID, e.AccountID, e.TeamID, e.Name, e.DisplayName, e.Category, e.State, e.Fieldsb,
+		e.ID, e.AccountID, e.TeamID, e.Name, e.DisplayName, e.Category, e.State, e.IsPublic, e.IsCore, e.IsShared, e.Fieldsb,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {

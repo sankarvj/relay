@@ -15,14 +15,14 @@ func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 
 	// add entity - project
-	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedProjectsEntityName, "Projects", entity.CategoryData, entity.StateTeamLevel, ProjectFields(b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedProjectsEntityName, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCSM:BOOT Projects Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, projectEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, projectEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCSM:SAMPLES Pipeline And Its Nodes Created")
 
-	inviteTemplate, err := b.TemplateAdd(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity), nil)
+	inviteTemplate, err := b.TemplateAdd(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}

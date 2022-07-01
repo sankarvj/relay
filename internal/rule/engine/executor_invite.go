@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -31,39 +32,32 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 		return err
 	}
 
-	efs := e.FieldsIgnoreError()
+	visitorInvitationFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+	if err != nil {
+		return err
+	}
+	namedFieldsObj := entity.NamedFieldsObjMap(visitorInvitationFields)
+	body := namedFieldsObj["body"].Value.(string)
+	role := namedFieldsObj["role"].Value.([]interface{})
+	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, n.VariablesMap())
+	email := namedFieldsObj["email"].Value.(string)
+	email = eng.RunExpRenderer(ctx, db, n.AccountID, email, n.VariablesMap())
+	log.Println("newEmail--> ", email)
 
-	for _, ef := range efs {
-
-		if !ef.IsEmail() {
-			continue
-		}
-
-		email := i.Fields()[ef.Key]
-		if email != nil {
+	emails := strings.Split(email, ",")
+	for _, email := range emails {
+		if email != "" && util.IsValidEmail(email) {
 			token, _ := auth.GenerateRandomToken(32)
 			if err != nil {
 				return err
 			}
-
-			visitorInvitationFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
-			if err != nil {
-				return err
-			}
-			namedFieldsObj := entity.NamedFieldsObjMap(visitorInvitationFields)
-			newEmail := namedFieldsObj["email"].Value.(string)
-			body := namedFieldsObj["body"].Value.(string)
-			role := namedFieldsObj["role"].Value.([]interface{})
-			body = eng.RunExpRenderer(ctx, db, n.AccountID, body, n.VariablesMap())
-
-			log.Println("newEmail--> ", newEmail)
 
 			nv := visitor.NewVisitor{
 				AccountID: e.AccountID,
 				TeamID:    e.TeamID,
 				EntityID:  e.ID,
 				ItemID:    i.ID,
-				Email:     email.(string),
+				Email:     email,
 				Token:     token,
 			}
 

@@ -559,7 +559,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Name, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
+	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}

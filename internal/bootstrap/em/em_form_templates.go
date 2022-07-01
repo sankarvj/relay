@@ -106,7 +106,6 @@ func inviteTemplates(desc string, thisEntity entity.Entity, actorEntity entity.E
 	}
 
 	for name, f := range namedFieldsMap {
-
 		switch name {
 		case "email":
 			inviteVals[f.Key] = fmt.Sprintf("{{%s.%s}}", actorEntity.ID, emailKey)

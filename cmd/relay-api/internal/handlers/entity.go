@@ -45,10 +45,15 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	entities, err := entity.All(ctx, params["account_id"], categories(r.URL.Query().Get("category_id")), e.db)
+	entities, err := entity.Core(ctx, params["account_id"], e.db)
 	if err != nil {
 		return err
 	}
+
+	// entities, err := entity.All(ctx, params["account_id"], categories(r.URL.Query().Get("category_id")), e.db)
+	// if err != nil {
+	// 	return err
+	// }
 
 	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
 	for i, entt := range entities {
@@ -160,6 +165,9 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		State:       e.State,
 		Fields:      e.FieldsIgnoreError(),
 		Tags:        e.Tags,
+		IsPublic:    e.IsPublic,
+		IsCore:      e.IsCore,
+		IsShared:    e.IsShared,
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 	}

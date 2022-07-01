@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 
@@ -22,7 +23,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
 	} else if entityID == node.SelfEntity { //self entity stops here
-		return evaluate(expression, buildResultant(node.SelfEntity, input)), nil
+		return evaluate(ctx, db, accountID, expression, buildResultant(node.SelfEntity, input)), nil
 	} else if entityID == node.MeEntity { //replace with currentuser_id
 		currentUserID, err := user.RetrieveCurrentUserID(ctx)
 		if err != nil {
@@ -56,7 +57,8 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 	if err != nil {
 		result = map[string]interface{}{"error": err}
 	}
-	finalResult := evaluate(expression, buildResultant(e.ID, result))
+
+	finalResult := evaluate(ctx, db, accountID, expression, buildResultant(e.ID, result))
 	return finalResult, nil
 }
 
@@ -106,21 +108,91 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 }
 
 //Evaluate evaluates the expression with the coresponding map
-func evaluate(expression string, response map[string]interface{}) interface{} {
+func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, response map[string]interface{}) interface{} {
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
+
+	entityID := ""
+	fieldKey := ""
+	superBug := "" // It is the temp concept used in the invite visitors template to get email-ids from the associated elements
+	if len(elements) > 2 {
+		entityID = elements[0]
+		fieldKey = elements[1]
+		superBug = elements[2]
+	}
+
 	lenOfElements := len(elements)
 	for index, element := range elements {
 		if index == (lenOfElements - 1) {
 			realValue = response[element]
 			break
 		}
+
 		if response[element] == nil {
 			break
 		}
-		response = response[element].(map[string]interface{})
+
+		switch t := response[element].(type) {
+		case []interface{}:
+			realValue = superBugger(ctx, db, accountID, entityID, fieldKey, response[element], superBug)
+			response[superBug] = realValue
+		case map[string]interface{}:
+			response = t
+		}
 	}
+	log.Println("realValue ", realValue)
 	return realValue
+}
+
+//Not so useful as of now
+func superBugger(ctx context.Context, db *sqlx.DB, accountID, entityID, fieldKey string, response interface{}, suberBug string) string {
+	log.Println("internal.rule.engine.worker running superBugger ", response)
+	output := ""
+	switch t := response.(type) {
+	case []interface{}:
+		e, err := entity.Retrieve(ctx, accountID, entityID, db)
+		if err != nil {
+			log.Printf("***> unexpected error occurred on superBugger when retriving entity  - error: %v ", err)
+			return ""
+		}
+
+		f := e.FieldByKey(fieldKey)
+
+		itemIds := make([]interface{}, 0)
+		if suberBug == node.EmailEntityData {
+			itemIds = append(itemIds, t...)
+		}
+
+		if len(itemIds) > 0 {
+			e, err = entity.Retrieve(ctx, accountID, f.RefID, db)
+			if err != nil {
+				log.Printf("***> unexpected error occurred on superBugger when retriving entity  - error: %v ", err)
+				return ""
+			}
+			items, err := item.BulkRetrieve(ctx, f.RefID, itemIds, db)
+			if err != nil {
+				log.Printf("***> unexpected error occurred on superBugger when retriving items  - error: %v ", err)
+				return ""
+			}
+
+			emailFields := e.EmailFields()
+			for _, it := range items {
+				for _, ef := range emailFields {
+					email := it.Fields()[ef.Key]
+					if output == "" {
+						output = email.(string)
+					} else {
+						output = fmt.Sprintf("%s, %s", output, email)
+					}
+				}
+
+			}
+		}
+
+	default:
+		output = t.(string)
+	}
+	return output
 }
 
 func memberID(ctx context.Context, db *sqlx.DB, accountID, userID string) (string, error) {
