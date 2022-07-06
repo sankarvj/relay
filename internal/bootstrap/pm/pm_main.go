@@ -107,7 +107,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tPM:BOOT Agile Type Items Created")
 
 	// add entity - agile task
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAgileTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, true, false, AgileTaskFields(agileStatusEntity.ID, agileStatusEntity.Key("name"), agilePriorityEntity.ID, agilePriorityEntity.Key("name"), agileTypeEntity.ID, agileTypeEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("email")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAgileTask, "Agile Tasks", entity.CategoryTask, entity.StateTeamLevel, false, true, false, AgileTaskFields(agileStatusEntity.ID, agileStatusEntity.Key("name"), agilePriorityEntity.ID, agilePriorityEntity.Key("name"), agileTypeEntity.ID, agileTypeEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("email")))
 	if err != nil {
 		return err
 	}

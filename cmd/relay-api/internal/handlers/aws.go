@@ -14,6 +14,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/aws"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
+	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+)
+
+var ErrForbidden = web.NewRequestError(
+	errors.New("AWS SNS not authorized with valid keys"),
+	http.StatusForbidden,
 )
 
 // AwsSnsSubscription provides support for subscribtion/message .
@@ -31,6 +37,11 @@ const deliveryType = "Delivery"
 func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accountkey := params["accountkey"]
 	productkey := params["productkey"]
+
+	//TODO: Need to remove the hardcoded keys from here.
+	if accountkey != "8ojTPK9k1b" && productkey != "3cxGvqPwfT" {
+		return ErrForbidden
+	}
 
 	body, err := getBody(r.Body)
 	if err != nil {

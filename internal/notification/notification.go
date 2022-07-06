@@ -113,8 +113,8 @@ func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID
 		}
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeCreated:
-		appNotif.Subject = fmt.Sprintf("An item created in `%s`", entityName)
-		appNotif.Body = fmt.Sprintf("A new %s `%s` added", entityName, appNotif.Title)
+		appNotif.Subject = fmt.Sprintf("An item created in %s", entityName)
+		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeUpdated:
 		appNotif.Subject = fmt.Sprintf("%s `%s` is updated", entityName, appNotif.Title)
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)

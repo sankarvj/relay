@@ -207,6 +207,20 @@ func GetSum(rPool *redis.Pool, gn GraphNode, sumKey string) (*rg.QueryResult, er
 	return result, err
 }
 
+func Delete(rPool *redis.Pool, graphName, label, itemID string) error {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(graphName, conn)
+
+	query := fmt.Sprintf(`MATCH (i:%s) where i.id = "%s" DELETE i`, quote(label), itemID)
+	_, err := graph.Query(query)
+	if err != nil {
+		return errors.Wrap(err, "deleting nodes")
+	}
+
+	return nil
+}
+
 func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
 	srcNode := gn.justNode()
 	gn.SourceNode = srcNode

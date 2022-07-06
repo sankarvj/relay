@@ -64,6 +64,7 @@ func (j *Job) Post(msg *stream.Message) error {
 // events
 
 func (j *Job) eventItemUpdated(m stream.Message) {
+	log.Println("***>***> Reached EventItemUpdated ***<***<")
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
@@ -119,6 +120,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 }
 
 func (j *Job) eventItemCreated(m stream.Message) {
+	log.Println("***>***> Reached EventItemCreated ***<***<")
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
@@ -175,7 +177,6 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	//insertion in to redis graph DB
 
 	if len(m.Source) == 0 {
-
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -183,6 +184,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		}
 	} else {
 		for j.baseEntityID, j.baseItemID = range m.Source {
+			if j.baseEntityID == "" {
+				continue
+			}
 			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 			if err != nil {
 				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -217,6 +221,7 @@ func (j *Job) eventItemReminded(m stream.Message) {
 }
 
 func (j *Job) eventItemDeleted(m stream.Message) {
+	log.Println("***>***> Reached EventItemDeleted ***<***<")
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
@@ -242,6 +247,13 @@ func (j *Job) eventItemDeleted(m stream.Message) {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete main item. error: ", err)
 		return
 	}
+
+	err = graphdb.Delete(j.Rpool, m.AccountID, m.EntityID, m.ItemID)
+	if err != nil {
+		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete redisgraph item. error: ", err)
+		return
+	}
+	log.Println("***>***> Finished EventItemDeleted ***<***<")
 }
 
 func (j *Job) eventConvAdded(m stream.Message) {
@@ -293,6 +305,13 @@ func (j *Job) eventDelayExhausted(m stream.Message) {
 	triggerItemID := m.Meta["trigger_item_id"].(string)
 	triggerFlowType := int(m.Meta["trigger_flow_type"].(float64))
 
+	//removing it because its get added in the source inside the flow.
+	delete(m.Meta, "trigger_flow_id")
+	delete(m.Meta, "trigger_node_id")
+	delete(m.Meta, "trigger_entity_id")
+	delete(m.Meta, "trigger_item_id")
+	delete(m.Meta, "trigger_flow_type")
+
 	n, err := node.Retrieve(ctx, m.AccountID, triggerFlowID, triggerNodeID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventDelayExhausted: unexpected error occurred on node retrive. error: ", err)
@@ -341,7 +360,6 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		log.Printf("ParentEdge------------> baseEntityID ---> %+v baseItemID --> %v", j.baseEntityID, j.baseItemID)
 
 		connType := connectionType(j.baseEntityID, entityID, relationShips)
-		log.Println("connType ------ ", connType)
 		switch connType {
 		case 1: // one way reverse
 			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, false) // contact creates companies : company has contacts

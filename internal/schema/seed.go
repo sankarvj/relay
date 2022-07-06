@@ -15,21 +15,6 @@ const (
 	SeedUserID4      = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 
 	//not only used in testing also used inside the projects
-	SeedFlowEntityName      = "flows"
-	SeedNodeEntityName      = "nodes"
-	SeedStatusEntityName    = "status"
-	SeedTypeEntityName      = "types"
-	SeedContactsEntityName  = "contacts"
-	SeedCompaniesEntityName = "companies"
-	SeedTasksEntityName     = "tasks"
-	SeedEmailEntityName     = "emails"
-	SeedNotesEntityName     = "notes"
-	SeedMeetingsEntityName  = "meetings"
-	SeedTicketsEntityName   = "tickets"
-	SeedDealsEntityName     = "deals"
-	SeedWebHookEntityName   = "hooks"
-	SeedDelayEntityName     = "delay"
-	SeedProjectsEntityName  = "projects"
 
 	SeedPageViewEventEntityName = "page-view-event"
 	SeedActivityEventEntityName = "activity-event"
@@ -42,17 +27,17 @@ const (
 
 func IsEntitySeeded(entityName string) bool {
 	seededEntities := map[string]bool{
-		SeedFlowEntityName:              true,
-		SeedNodeEntityName:              true,
-		SeedContactsEntityName:          true,
-		SeedCompaniesEntityName:         true,
-		SeedTasksEntityName:             true,
-		SeedNotesEntityName:             true,
-		SeedMeetingsEntityName:          true,
-		SeedTicketsEntityName:           true,
-		SeedDealsEntityName:             true,
-		SeedStatusEntityName:            true,
-		SeedTypeEntityName:              true,
+		entity.FixedEntityFlow:          true,
+		entity.FixedEntityNode:          true,
+		entity.FixedEntityContacts:      true,
+		entity.FixedEntityCompanies:     true,
+		entity.FixedEntityTask:          true,
+		entity.FixedEntityNote:          true,
+		entity.FixedEntityMeetings:      true,
+		entity.FixedEntityTickets:       true,
+		entity.FixedEntityDeals:         true,
+		entity.FixedEntityStatus:        true,
+		entity.FixedEntityType:          true,
 		entity.FixedEntityNotification:  true,
 		entity.FixedEntityDelay:         true,
 		entity.FixedEntityOwner:         true,

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"log"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -57,8 +58,9 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
 	dir := path.Join(path.Dir(basepath), "..")
+	log.Println("dir ", dir)
 
-	err := emNotif.ParseTemplate(fmt.Sprintf("%s/templates/%s", dir, template), templateData)
+	err := emNotif.ParseTemplate(fmt.Sprintf("templates/%s", template), templateData)
 	if err != nil {
 		return err
 	}

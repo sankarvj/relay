@@ -37,10 +37,16 @@ const (
 	FixedEntityNotification = "notification"
 	//not fixed yet known entities
 	FixedEntityTask            = "tasks"
+	FixedEntityNote            = "notes"
+	FixedEntityMeetings        = "meetings"
+	FixedEntityTickets         = "tickets"
+	FixedEntityDeals           = "deals"
+	FixedEntityProjects        = "projects"
 	FixedEntityFlow            = "flows"
 	FixedEntityNode            = "nodes"
 	FixedEntityDelay           = "delay"
 	FixedEntityStatus          = "status"
+	FixedEntityType            = "type"
 	FixedEntityVisitorInvite   = "visitor_invite"
 	FixedEntityEmployee        = "employee"
 	FixedEntityPayroll         = "payroll"
@@ -108,8 +114,8 @@ type CaldendarEntity struct {
 
 //DelayEntity represents the structural format of delay entity
 type DelayEntity struct {
-	DelayBy int    `json:"delay_by"` // in hours
-	Repeat  string `json:"repeat"`
+	Title   string `json:"title"`
+	DelayBy int    `json:"delay_by"` // in mins
 }
 
 // WebHookEntity represents structural format of webhook entity

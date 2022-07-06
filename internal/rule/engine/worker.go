@@ -140,7 +140,6 @@ func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, re
 			response = t
 		}
 	}
-	log.Println("realValue ", realValue)
 	return realValue
 }
 

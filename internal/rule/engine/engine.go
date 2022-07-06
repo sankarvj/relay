@@ -68,7 +68,12 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp
 				work.InboundRespCh <- result
 			}
 		case ruler.Parser: //output:executes this when it finds EOF/Response
-			lexedContent = work.OutboundResp.(string)
+			if work.OutboundResp != nil {
+				lexedContent = work.OutboundResp.(string)
+			} else {
+				lexedContent = ""
+			}
+
 		}
 	}
 	return lexedContent

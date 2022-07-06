@@ -17,28 +17,28 @@ func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedDealsEntityName, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
 	// add entity - notes
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedNotesEntityName, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Notes Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedMeetingsEntityName, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - tickets
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTicketsEntityName, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -53,42 +53,31 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	contactEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedContactsEntityName)
+	contactEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityContacts)
 	if err != nil {
 		return err
 	}
-	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedCompaniesEntityName)
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
 	if err != nil {
 		return err
 	}
-	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDealsEntityName)
+	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityDeals)
 	if err != nil {
 		return err
 	}
-	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTasksEntityName)
+	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
 	if err != nil {
 		return err
 	}
-	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTicketsEntityName)
+	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTickets)
 	if err != nil {
 		return err
 	}
-	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedStatusEntityName)
+	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
 	if err != nil {
 		return err
 	}
-	// typeEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTypeEntityName)
-	// if err != nil {
-	// 	return err
-	// }
-	delayEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDelayEntityName)
-	if err != nil {
-		return err
-	}
-	_, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedWebHookEntityName)
-	if err != nil {
-		return err
-	}
+
 	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
 	if err != nil {
 		return err
@@ -106,12 +95,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-
-	// typeItems, err := item.List(ctx, typeEntity.ID, b.DB)
-	// if err != nil {
-	// 	return err
-	// }
-
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
 	// add contact item - vijay (straight)
@@ -147,13 +130,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES Tasks Items Created")
 
-	// add delay item
-	_, err = b.ItemAdd(ctx, delayEntity.ID, uuid.New().String(), b.UserID, base.DelayVals(), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Delay Item Created")
-
 	err = AddAutomation(ctx, b)
 	if err != nil {
 		return err
@@ -171,7 +147,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-
 	fmt.Println("\tCRM:SAMPLES Tickets Items Created")
 
 	// add email-config & email-templates
@@ -211,22 +186,22 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 func AddAutomation(ctx context.Context, b *base.Base) error {
 
-	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTasksEntityName)
+	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
 	if err != nil {
 		return err
 	}
 
-	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedTicketsEntityName)
+	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTickets)
 	if err != nil {
 		return err
 	}
 
-	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedCompaniesEntityName)
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
 	if err != nil {
 		return err
 	}
 
-	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedDealsEntityName)
+	dealEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityDeals)
 	if err != nil {
 		return err
 	}
@@ -359,7 +334,7 @@ func AddProps(ctx context.Context, b *base.Base) error {
 
 func AddCompanies(ctx context.Context, b *base.Base) error {
 
-	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, schema.SeedCompaniesEntityName)
+	companyEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
 	if err != nil {
 		return err
 	}

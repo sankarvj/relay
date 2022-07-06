@@ -16,6 +16,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/pm"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -86,6 +88,11 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 		return errors.Wrap(err, "visitor bootstrap failed")
 	}
 
+	err = BootstrapDelayEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "delay bootstrap failed")
+	}
+
 	return nil
 }
 
@@ -125,6 +132,21 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 	fields := forms.EmailConfigFields(coEntityID, coEmail)
 	// add entity - email- configs
 	b.EmailConfigEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmailConfig, "Email Integrations", entity.CategoryEmailConfig, entity.StateAccountLevel, false, false, true, fields)
+	if err != nil {
+		return err
+	}
+
+	uniqueDiscoveryID := uuid.New().String()
+	emailConfigInboxEntityItem := entity.EmailConfigEntity{
+		AccountID: b.AccountID,
+		TeamID:    b.TeamID,
+		APIKey:    uniqueDiscoveryID,
+		Domain:    integration.DomainBaseInbox,
+		Email:     fmt.Sprintf("support@%s.workbaseone.com", uniqueDiscoveryID),
+		Common:    "true",
+		Owner:     []string{b.UserID},
+	}
+	_, err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedSystemUserID, entity.FixedEntityEmailConfig, "Base Inbox Integration", uniqueDiscoveryID, integration.TypeBaseInbox, util.ConvertInterfaceToMap(emailConfigInboxEntityItem), b.DB)
 	return err
 }
 
@@ -227,7 +249,7 @@ func BootstrapTaskEntity(ctx context.Context, b *base.Base) error {
 	}
 	// add entity - task
 	fields := forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey)
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedTasksEntityName, "Tasks", entity.CategoryTask, entity.StateAccountLevel, false, false, true, fields)
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}
@@ -243,6 +265,12 @@ func BootstrapVisitorInviteEntity(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT VisitorInvitaiton Entity Created")
+	return err
+}
+
+func BootstrapDelayEntity(ctx context.Context, b *base.Base) error {
+	// add entity - delay
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDelay, "Delay Timer", entity.CategoryDelay, entity.StateAccountLevel, false, false, true, forms.DelayFields())
 	return err
 }
 

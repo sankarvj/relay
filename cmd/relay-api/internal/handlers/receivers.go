@@ -240,7 +240,7 @@ func saveConversation(ctx context.Context, accountID, entityID, parentItemId str
 }
 
 func createContactIfNotExist(ctx context.Context, accountID, teamID, value string, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) ([]string, error) {
-	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, schema.SeedContactsEntityName)
+	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityContacts)
 	if err != nil {
 		return []string{}, err
 	}

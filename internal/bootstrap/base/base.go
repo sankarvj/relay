@@ -19,7 +19,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 const (
@@ -156,12 +155,6 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 
 	// add entity - emails
 	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email")))
-	if err != nil {
-		return err
-	}
-
-	// add entity - delay
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedDelayEntityName, "Delay Timer", entity.CategoryDelay, entity.StateTeamLevel, false, false, false, DelayFields())
 	if err != nil {
 		return err
 	}

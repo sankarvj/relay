@@ -120,6 +120,11 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp s
 
 func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp string, db *sqlx.DB, rPool *redis.Pool) error {
 	conditionFields := make([]graphdb.Field, 0)
+
+	if gOne == nil || gOne.SelectedEntity == nil {
+		return nil
+	}
+
 	fields, err := gOne.SelectedEntity.FilteredFields()
 	if err != nil {
 		return errors.Wrapf(err, "WidgetGridOne: fields retieve error")
@@ -150,7 +155,6 @@ func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp str
 		return errors.Wrapf(err, "WidgetGridOne: get stage count")
 	}
 	gOne.gridResult(ctx, counts(result), db)
-	log.Printf("stage result %+v	", result)
 	return nil
 }
 

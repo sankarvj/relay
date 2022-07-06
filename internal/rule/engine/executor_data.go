@@ -39,7 +39,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 
 	switch n.Type {
 	case node.Push, node.Task, node.Meeting, node.Email:
-		log.Printf("internal.rule.engine.executor_data create new node %+v\n", ni)
+		log.Printf("internal.rule.engine.executor_data create item %+v\n", ni)
 		it, err := item.Create(ctx, db, ni, time.Now())
 		if err != nil {
 			return err

@@ -20,7 +20,7 @@ import (
 // ErrForbidden is returned when an authenticated user does not have a
 // sufficient role for an action.
 var ErrForbidden = web.NewRequestError(
-	errors.New("you are not authorized for that action"),
+	errors.New("you are not authorized for doing that action"),
 	http.StatusForbidden,
 )
 

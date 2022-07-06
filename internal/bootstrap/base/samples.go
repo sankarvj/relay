@@ -90,7 +90,7 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 		return err
 	}
 
-	if e.Name == schema.SeedContactsEntityName {
+	if e.Name == entity.FixedEntityContacts {
 		err = addSegmentFlow(ctx, entityID, "All Contacts", "", b)
 		if err != nil {
 			return err
@@ -105,17 +105,17 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 				}
 			}
 		}
-	} else if e.Name == schema.SeedCompaniesEntityName {
+	} else if e.Name == entity.FixedEntityCompanies {
 		err = addSegmentFlow(ctx, entityID, "All Companies", "", b)
 		if err != nil {
 			return err
 		}
-	} else if e.Name == schema.SeedDealsEntityName {
+	} else if e.Name == entity.FixedEntityDeals {
 		err = addSegmentFlow(ctx, entityID, "All Deals", "", b)
 		if err != nil {
 			return err
 		}
-	} else if e.Name == schema.SeedProjectsEntityName {
+	} else if e.Name == entity.FixedEntityProjects {
 		err = addSegmentFlow(ctx, entityID, "All Projects", "", b)
 		if err != nil {
 			return err
@@ -159,21 +159,6 @@ func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEnt
 		Owner:     []string{schema.SeedUserID1},
 	}
 	_, err := entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmailConfig, "Mail Gun Integration", "vijayasankar.jothi@wayplot.com", integration.TypeMailGun, util.ConvertInterfaceToMap(emailConfigEntityItem), b.DB)
-	if err != nil {
-		return err
-	}
-
-	uniqueDiscoveryID := uuid.New().String()
-	emailConfigInboxEntityItem := entity.EmailConfigEntity{
-		AccountID: b.AccountID,
-		TeamID:    b.TeamID,
-		APIKey:    uniqueDiscoveryID,
-		Domain:    integration.DomainBaseInbox,
-		Email:     fmt.Sprintf("support@%s.wayplot.com", uniqueDiscoveryID),
-		Common:    "true",
-		Owner:     []string{schema.SeedSystemUserID},
-	}
-	_, err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedSystemUserID, entity.FixedEntityEmailConfig, "Base Inbox Integration", uniqueDiscoveryID, integration.TypeBaseInbox, util.ConvertInterfaceToMap(emailConfigInboxEntityItem), b.DB)
 	if err != nil {
 		return err
 	}

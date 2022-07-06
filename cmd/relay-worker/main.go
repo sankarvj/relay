@@ -38,24 +38,24 @@ func run() error {
 
 	var cfg struct {
 		Web struct {
-			APIHost         string        `conf:"default:0.0.0.0:3001"`
-			DebugHost       string        `conf:"default:0.0.0.0:4001"`
+			APIHost         string        `conf:"default:0.0.0.0:3001,env:WEB_API_HOST""`
+			DebugHost       string        `conf:"default:0.0.0.0:4001,env:WEB_DEBUG_HOST"`
 			ReadTimeout     time.Duration `conf:"default:5s"`
 			WriteTimeout    time.Duration `conf:"default:5s"`
 			ShutdownTimeout time.Duration `conf:"default:5s"`
 		}
 		DB struct {
-			User       string `conf:"default:postgres"`
-			Password   string `conf:"default:postgres,noprint"`
-			Host       string `conf:"default:0.0.0.0"`
-			Name       string `conf:"default:relaydb"`
+			User       string `conf:"default:postgres,env:DB_USER"`
+			Password   string `conf:"default:postgres,noprint,env:DB_PASSWORD"`
+			Host       string `conf:"default:0.0.0.0,env:DB_HOST"`
+			Name       string `conf:"default:relaydb,env:DB_NAME"`
 			DisableTLS bool   `conf:"default:true"`
 		}
 		SecDB struct {
-			User     string `conf:"default:redisgraph"`
-			Password string `conf:"default:redis,noprint"`
-			Host     string `conf:"default:127.0.0.1:6379"`
-			Name     string `conf:"default:relaydb"`
+			User     string `conf:"default:redisgraph,env:SEC_DB_USER"`
+			Password string `conf:"default:redis,noprint,env:SEC_DB_PASSWORD"`
+			Host     string `conf:"default:127.0.0.1:6379,env:SEC_DB_HOST"`
+			Name     string `conf:"default:relaydb,env:SEC_DB_NAME"`
 		}
 		Auth struct {
 			KeyID              string `conf:"default:1"`
