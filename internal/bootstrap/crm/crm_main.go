@@ -3,6 +3,7 @@ package crm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
@@ -13,32 +14,96 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
+func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.Entity, *entity.Entity, *entity.Entity, error) {
+
+	contactEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityContacts)
+	if err == entity.ErrFixedEntityNotFound {
+		// add entity - contacts
+		conForms := forms.ContactFields(b.OwnerEntity.ID, b.OwnerEntity.Key("email"))
+		contactEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateTeamLevel, false, true, true, conForms)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	} else if err == nil {
+		// update entity - contacts with crm team-id
+		contactEntity.SharedTeamIds = append(contactEntity.SharedTeamIds, b.TeamID)
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, contactEntity.ID, contactEntity.SharedTeamIds, time.Now())
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	companyEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityCompanies)
+	if err == entity.ErrFixedEntityNotFound {
+		// add entity - companies
+		comForms := forms.CompanyFields(b.OwnerEntity.ID, b.OwnerEntity.Key("email"))
+		companyEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateTeamLevel, false, true, true, comForms)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	} else if err == nil {
+		// update entity - companies with crm team-id
+		companyEntity.SharedTeamIds = append(companyEntity.SharedTeamIds, b.TeamID)
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, companyEntity.ID, companyEntity.SharedTeamIds, time.Now())
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	taskEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityTask)
+	if err == entity.ErrFixedEntityNotFound {
+		// add entity - task
+		fields := forms.TaskFields(contactEntity.ID, companyEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"))
+		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Client Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+	} else if err == nil {
+		// update entity - tasks with crm team-id
+		taskEntity.SharedTeamIds = append(taskEntity.SharedTeamIds, b.TeamID)
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, taskEntity.ID, taskEntity.SharedTeamIds, time.Now())
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	fmt.Println("\tCRM:BOOT Contacts/Companies/Task Entity Created/Update")
+
+	return &contactEntity, &companyEntity, &taskEntity, nil
+}
+
 func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 
+	conE, comE, _, err := CreateContactCompanyTaskEntity(ctx, b)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
+
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, comE.ID, b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
 	// add entity - notes
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(conE.ID, comE.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Notes Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(conE.ID, comE.ID, dealEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - tickets
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(conE.ID, comE.ID, b.StatusEntity.ID))
 	if err != nil {
 		return err
 	}
@@ -118,12 +183,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Companies Item Created")
 
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(b.TaskEntity, "An Todo Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Todo Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(b.TaskEntity, "An Email Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Email Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
 	if err != nil {
 		return err
 	}

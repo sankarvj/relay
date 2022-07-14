@@ -109,7 +109,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID
 	switch notificationType {
 	case TypeReminder:
 		if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-			appNotif.Subject = fmt.Sprintf("Your `%s` is due on %s", entityName, val)
+			appNotif.Subject = fmt.Sprintf("Your %s is due on %s", entityName, val)
 		}
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeCreated:

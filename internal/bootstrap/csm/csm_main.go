@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
@@ -13,15 +14,21 @@ import (
 func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 
+	conE, comE, _, err := crm.CreateContactCompanyTaskEntity(ctx, b)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
+
 	// add entity - project
-	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"), conE.ID, comE.ID, b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCSM:BOOT Projects Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, projectEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(conE.ID, comE.ID, projectEntity.ID))
 	if err != nil {
 		return err
 	}

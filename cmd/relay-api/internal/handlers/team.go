@@ -7,14 +7,10 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
@@ -115,37 +111,37 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 	for _, v := range modules {
 		switch v {
 		case "tasks":
-			_, ownerSearchKey, _ := bootstrap.CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
+			// _, ownerSearchKey, _ := bootstrap.CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 
-			_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, false, forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey))
-			if err != nil {
-				log.Println("***> unexpected error occurred. when creating custom entity:tasks:", err)
-			}
+			// _, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, false, forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey))
+			// if err != nil {
+			// 	log.Println("***> unexpected error occurred. when creating custom entity:tasks:", err)
+			// }
 		case "deals":
-			_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, crm.DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
-			if err != nil {
-				log.Println("***> unexpected error occurred. when creating custom entity:deals:", err)
-			}
+			// _, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, crm.DealFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+			// if err != nil {
+			// 	log.Println("***> unexpected error occurred. when creating custom entity:deals:", err)
+			// }
 		case "meetings":
 			// add entity - meetings
-			_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, forms.MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID))
-			if err != nil {
-				log.Println("***> unexpected error occurred. when creating custom entity:meetings:", err)
-			}
+			// _, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, forms.MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID))
+			// if err != nil {
+			// 	log.Println("***> unexpected error occurred. when creating custom entity:meetings:", err)
+			// }
 		case "notes":
-			_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, forms.NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID))
-			if err != nil {
-				log.Println("***> unexpected error occurred. when creating custom entity:notes:", err)
-			}
+			// _, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, forms.NoteFields(b.ContactEntity.ID, b.CompanyEntity.ID))
+			// if err != nil {
+			// 	log.Println("***> unexpected error occurred. when creating custom entity:notes:", err)
+			// }
 		case "items":
 		case "leads":
 		case "employees":
 		case "tickets":
 			// add entity - tickets
-			_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, forms.TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
-			if err != nil {
-				log.Println("***> unexpected error occurred. when creating custom entity:tickets:", err)
-			}
+			// _, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, forms.TicketFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.StatusEntity.ID))
+			// if err != nil {
+			// 	log.Println("***> unexpected error occurred. when creating custom entity:tickets:", err)
+			// }
 		}
 	}
 

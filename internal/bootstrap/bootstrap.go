@@ -63,11 +63,6 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 		return errors.Wrap(err, "calendar bootstrap failed")
 	}
 
-	err = BootstrapContactCompanyEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "contacts/companies bootstrap failed")
-	}
-
 	err = BootstrapFlowAndNodeEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "flow/node bootstrap failed")
@@ -76,11 +71,6 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 	err = BootstrapStatusEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "status bootstrap failed")
-	}
-
-	err = BootstrapTaskEntity(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "task bootstrap failed")
 	}
 
 	err = BootstrapVisitorInviteEntity(ctx, b)
@@ -161,28 +151,6 @@ func BootstrapCalendarEntity(ctx context.Context, b *base.Base) error {
 	return err
 }
 
-func BootstrapContactCompanyEntity(ctx context.Context, b *base.Base) error {
-	coEntityID, coEmail, err := CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
-	if err != nil {
-		return err
-	}
-
-	// add entity - contacts
-	conForms := forms.ContactFields(coEntityID, coEmail)
-	b.ContactEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateAccountLevel, false, true, true, conForms)
-	if err != nil {
-		return err
-	}
-
-	// add entity - companies
-	comForms := forms.CompanyFields(coEntityID, coEmail)
-	b.CompanyEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateAccountLevel, false, true, true, comForms)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func BootstrapNotificationEntity(ctx context.Context, b *base.Base) error {
 	coEntityID, _, err := CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 	if err != nil {
@@ -242,25 +210,10 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
-func BootstrapTaskEntity(ctx context.Context, b *base.Base) error {
-	_, ownerSearchKey, err := CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
-	if err != nil {
-		return err
-	}
-	// add entity - task
-	fields := forms.TaskFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.OwnerEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, ownerSearchKey)
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateAccountLevel, false, false, true, fields)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:BOOT Tasks Entity Created")
-	return err
-}
-
 func BootstrapVisitorInviteEntity(ctx context.Context, b *base.Base) error {
 	// add entity - task
 	fields := forms.VisitorInvitationFields()
-	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityVisitorInvite, "VisitorsForm", entity.CategoryVisitorsInvitation, entity.StateAccountLevel, false, false, true, fields)
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityVisitorInvite, "Visitors", entity.CategoryVisitorsInvitation, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
 		return err
 	}

@@ -255,10 +255,12 @@ func selectedTeam(ctx context.Context, accountID, teamID string, db *sqlx.DB) ([
 		if t.ID == teamID {
 			oldTeamID = t.ID
 		}
-		seletedTeamID = t.ID
+		if t.ID != t.AccountID {
+			seletedTeamID = t.ID
+		}
 	}
 	if oldTeamID != "" {
-		return teams, oldTeamID, nil
+		seletedTeamID = oldTeamID
 	}
 	return teams, seletedTeamID, nil
 }

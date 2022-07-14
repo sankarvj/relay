@@ -23,6 +23,30 @@ type User struct {
 	UpdatedAt    int64          `db:"updated_at" json:"updated_at"`
 }
 
+type UserSetting struct {
+	AccountID           string `db:"account_id" json:"account_id"`
+	UserID              string `db:"user_id" json:"user_id"`
+	LayoutStyle         string `db:"layout_style" json:"layout_style"`
+	SelectedTeam        string `db:"selected_team" json:"selected_team"`
+	NotificationSetting string `db:"notification_setting" json:"notification_setting"`
+}
+
+type NewUserSetting struct {
+	AccountID           string            `json:"account_id"`
+	UserID              string            `json:"user_id"`
+	LayoutStyle         string            `json:"layout_style"`
+	SelectedTeam        string            `json:"selected_team"`
+	NotificationSetting map[string]string `json:"notification_setting"`
+}
+
+type ViewModelUserSetting struct {
+	AccountID           string            `json:"account_id"`
+	UserID              string            `json:"user_id"`
+	LayoutStyle         string            `json:"layout_style"`
+	SelectedTeam        string            `json:"selected_team"`
+	NotificationSetting map[string]string `json:"notification_setting"`
+}
+
 // NewUser contains information needed to create a new User.
 type NewUser struct {
 	Accounts        map[string]interface{} `json:"accounts" validate:"required"`

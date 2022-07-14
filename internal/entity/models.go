@@ -8,42 +8,44 @@ import (
 
 // Entity represents the building block of all the tasks
 type Entity struct {
-	ID          string         `db:"entity_id" json:"id"`
-	AccountID   string         `db:"account_id" json:"account_id"`
-	TeamID      string         `db:"team_id" json:"team_id"`
-	Name        string         `db:"name" json:"name"`
-	DisplayName string         `db:"display_name" json:"display_name"`
-	Category    int            `db:"category" json:"category"`
-	State       int            `db:"state" json:"state"`
-	Status      int            `db:"status" json:"status"`
-	Retry       int            `db:"retry" json:"retry"`
-	Fieldsb     string         `db:"fieldsb" json:"fieldsb"`
-	Metab       *string        `db:"metab" json:"metab"`
-	Tags        pq.StringArray `db:"tags" json:"tags"`
-	IsPublic    bool           `db:"is_public" json:"is_public"`
-	IsCore      bool           `db:"is_core" json:"is_core"`
-	IsShared    bool           `db:"is_shared" json:"is_shared"`
-	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt   int64          `db:"updated_at" json:"updated_at"`
+	ID            string         `db:"entity_id" json:"id"`
+	AccountID     string         `db:"account_id" json:"account_id"`
+	TeamID        string         `db:"team_id" json:"team_id"`
+	Name          string         `db:"name" json:"name"`
+	DisplayName   string         `db:"display_name" json:"display_name"`
+	Category      int            `db:"category" json:"category"`
+	State         int            `db:"state" json:"state"`
+	Status        int            `db:"status" json:"status"`
+	Retry         int            `db:"retry" json:"retry"`
+	Fieldsb       string         `db:"fieldsb" json:"fieldsb"`
+	Metab         *string        `db:"metab" json:"metab"`
+	Tags          pq.StringArray `db:"tags" json:"tags"`
+	IsPublic      bool           `db:"is_public" json:"is_public"`
+	IsCore        bool           `db:"is_core" json:"is_core"`
+	IsShared      bool           `db:"is_shared" json:"is_shared"`
+	SharedTeamIds pq.StringArray `db:"shared_team_ids" json:"shared_team_ids"`
+	CreatedAt     time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt     int64          `db:"updated_at" json:"updated_at"`
 }
 
 // ViewModelEntity represents the view model of entity
 // (i.e) it has fields instead of attributes
 type ViewModelEntity struct {
-	ID          string    `json:"id"`
-	TeamID      string    `json:"team_id"`
-	Name        string    `json:"name"`
-	DisplayName string    `json:"display_name"`
-	Category    int       `json:"category"`
-	State       int       `json:"state"`
-	Status      int       `json:"status"`
-	Fields      []Field   `json:"fields"`
-	Tags        []string  `json:"tags"`
-	IsPublic    bool      `json:"is_public"`
-	IsCore      bool      `json:"is_core"`
-	IsShared    bool      `json:"is_shared"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   int64     `json:"updated_at"`
+	ID            string    `json:"id"`
+	TeamID        string    `json:"team_id"`
+	Name          string    `json:"name"`
+	DisplayName   string    `json:"display_name"`
+	Category      int       `json:"category"`
+	State         int       `json:"state"`
+	Status        int       `json:"status"`
+	Fields        []Field   `json:"fields"`
+	Tags          []string  `json:"tags"`
+	IsPublic      bool      `json:"is_public"`
+	IsCore        bool      `json:"is_core"`
+	IsShared      bool      `json:"is_shared"`
+	SharedTeamIds []string  `json:"shared_team_ids"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     int64     `json:"updated_at"`
 }
 
 // NewEntity has information needed to creat new entity

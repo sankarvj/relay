@@ -58,7 +58,7 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 
 	gridOne := GridOne{AvailableEntities: make([]entity.Entity, 0)}
 	if entityID == "" {
-		entities, err := entity.All(ctx, accountID, []int{entity.CategoryData}, d.db)
+		entities, err := entity.AccountEntities(ctx, accountID, []int{entity.CategoryData}, d.db)
 		if err != nil {
 			return err
 		}

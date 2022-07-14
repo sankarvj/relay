@@ -96,7 +96,7 @@ func EmailConfigFields(ownerEntityID string, ownerEmailFieldKey string) []entity
 	return []entity.Field{accountField, teamField, domainField, apiKeyField, emailField, commanField, ownerField, historyField}
 }
 
-func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, contactEntityID, companyEntityID string, nameFieldKey, emailFieldKey string) []entity.Field {
+func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []entity.Field {
 
 	messageFieldID := uuid.New().String()
 	messageField := entity.Field{
@@ -129,7 +129,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		Name:        "rfrom",
 		DisplayName: "Receving From",
 		DataType:    entity.TypeList,
-		DomType:     entity.DomMultiSelect,
+		DomType:     entity.DomNotApplicable,
 		Field: &entity.Field{
 			Key:      "element",
 			DataType: entity.TypeString,
@@ -154,14 +154,11 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		Key:         ccFieldID,
 		Name:        "cc",
 		DisplayName: "Cc",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: nameFieldKey, entity.MetaKeyEmailGex: emailFieldKey},
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
+			Key:      "element",
 			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
 		},
 	}
 
@@ -170,14 +167,11 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		Key:         bccFieldID,
 		Name:        "bcc",
 		DisplayName: "Bcc",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: nameFieldKey, entity.MetaKeyEmailGex: emailFieldKey},
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
+			Key:      "element",
 			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
 		},
 	}
 
@@ -201,37 +195,38 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string, co
 		Meta:        map[string]string{entity.MetaKeyHTML: "true"},
 	}
 
-	contactFieldID := uuid.New().String()
-	contactField := entity.Field{
-		Key:         contactFieldID,
-		Name:        "contacts",
-		DisplayName: "Associated Contacts",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
+	// params: b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.Key("name")
+	// contactFieldID := uuid.New().String()
+	// contactField := entity.Field{
+	// 	Key:         contactFieldID,
+	// 	Name:        "contacts",
+	// 	DisplayName: "Associated Contacts",
+	// 	DomType:     entity.DomAutoComplete,
+	// 	DataType:    entity.TypeReference,
+	// 	RefID:       contactEntityID,
+	// 	Meta:        map[string]string{entity.MetaKeyDisplayGex: contactNameKey},
+	// 	Field: &entity.Field{
+	// 		DataType: entity.TypeString,
+	// 		Key:      "id",
+	// 		Value:    "--",
+	// 	},
+	// }
 
-	companyFieldID := uuid.New().String()
-	companyField := entity.Field{
-		Key:         companyFieldID,
-		Name:        "companies",
-		DisplayName: "Associated Companies",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
+	// companyFieldID := uuid.New().String()
+	// companyField := entity.Field{
+	// 	Key:         companyFieldID,
+	// 	Name:        "companies",
+	// 	DisplayName: "Associated Companies",
+	// 	DomType:     entity.DomAutoComplete,
+	// 	DataType:    entity.TypeReference,
+	// 	RefID:       companyEntityID,
+	// 	Meta:        map[string]string{entity.MetaKeyDisplayGex: companyNameKey},
+	// 	Field: &entity.Field{
+	// 		DataType: entity.TypeString,
+	// 		Key:      "id",
+	// 		Value:    "--",
+	// 	},
+	// }
 
-	return []entity.Field{messageField, receivingfromField, fromField, toField, ccField, bccField, subjectField, bodyField, contactField, companyField}
+	return []entity.Field{messageField, receivingfromField, fromField, toField, ccField, bccField, subjectField, bodyField}
 }

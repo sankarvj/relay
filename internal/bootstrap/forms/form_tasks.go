@@ -5,7 +5,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func TaskFields(contactEntityID, companyEntityID, ownerEntityID, nodeEntityID, statusEntityID string, ownerEntitySearchKey string) []entity.Field {
+func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 
 	descFieldID := uuid.New().String()
 	descField := entity.Field{

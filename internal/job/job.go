@@ -175,7 +175,8 @@ func (j *Job) eventItemCreated(m stream.Message) {
 
 	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
-
+	//safely deleting the empty string...
+	delete(m.Source, "")
 	if len(m.Source) == 0 {
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 		if err != nil {
@@ -183,8 +184,11 @@ func (j *Job) eventItemCreated(m stream.Message) {
 			return
 		}
 	} else {
+		log.Printf("m.Source %+v", m.Source)
 		for j.baseEntityID, j.baseItemID = range m.Source {
+
 			if j.baseEntityID == "" {
+				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
 				continue
 			}
 			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
@@ -194,6 +198,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 			}
 		}
 	}
+	log.Println("***>***> Completed EventItemCreated ***<***<")
 }
 
 func (j *Job) eventItemReminded(m stream.Message) {
@@ -331,7 +336,7 @@ func (j *Job) eventDelayExhausted(m stream.Message) {
 //act ons
 
 func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
-
+	log.Println("*********> debug internal.job actOnRedisGraph kicked in")
 	if oldFields != nil { //use only during the update
 		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
 
@@ -356,8 +361,6 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		if err != nil {
 			return errors.Wrap(err, "***> EventItemCreated: unexpected/unhandled error occurred when retriving relationships on job. error:")
 		}
-
-		log.Printf("ParentEdge------------> baseEntityID ---> %+v baseItemID --> %v", j.baseEntityID, j.baseItemID)
 
 		connType := connectionType(j.baseEntityID, entityID, relationShips)
 		switch connType {
@@ -405,7 +408,6 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 				errs = flow.Trigger(ctx, db, rp, itemID, dirtyFlows, eng)
 			}
 		case flow.FlowTypeEventCreate:
-			log.Println("Coming here -- FlowTypeEventCreate ")
 			errs = flow.Trigger(ctx, db, rp, itemID, flows, eng)
 		}
 	}
@@ -428,6 +430,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 
 //actOnPipelines -  not a generic way. the way we use dependent is muddy
 func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
+	log.Println("*********> debug internal.job actOnPipelines kicked in")
 	for _, fi := range e.FieldsIgnoreError() {
 
 		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
@@ -445,6 +448,7 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 // It connects the implicit relationships which as inferred by the field
 // Right now, the connection helps fetching the events and nothing else. (check whether the flow/node gets added to redis because of this)
 func (j Job) actOnConnections(accountID, userID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
+	log.Println("*********> debug internal.job actOnConnections kicked in")
 	ctx := context.Background()
 	createEvent := oldFields == nil
 	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
@@ -512,7 +516,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 }
 
 func actOnCategories(ctx context.Context, accountID, currentUserID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
-
+	log.Println("*********> debug internal.job actOnCategories kicked in")
 	//shall we move this to a common place
 	acc, err := account.Retrieve(ctx, db, accountID)
 	if err != nil {
@@ -564,7 +568,7 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 }
 
 func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string]string, notificationType notification.NotificationType) error {
-
+	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	baseIds := make([]string, 0)
 	for baseEntityID, baseItemID := range source {
 		baseID := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
@@ -574,7 +578,6 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	if e.Category == entity.CategoryNotification {
 		return nil
 	}
-	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
 	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)

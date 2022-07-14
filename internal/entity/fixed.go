@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -187,6 +188,23 @@ func MakeJSONBody(valueAddedFields []Field) ([]byte, error) {
 	return jsonbody, nil
 }
 
+func RetrieveFixedEntityAccountLevel(ctx context.Context, db *sqlx.DB, accountID string, preDefinedEntityName string) (Entity, error) {
+	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntityName))
+	defer span.End()
+
+	var e Entity
+	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 LIMIT 1`
+	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName); err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("*********> debug internal.entity.fixed entity not found. %s", preDefinedEntityName)
+			return Entity{}, ErrFixedEntityNotFound
+		}
+		return Entity{}, errors.Wrapf(err, "selecting pre-defined  entity %q in account level ", preDefinedEntityName)
+	}
+
+	return e, nil
+}
+
 func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID string, preDefinedEntityName string) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, fmt.Sprintf("internal.predefined.RetrieveFixedEntity %s", preDefinedEntityName))
 	defer span.End()
@@ -196,8 +214,9 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	}
 
 	var e Entity
-	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4) LIMIT 1`
-	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName, teamID, StateAccountLevel); err != nil {
+	const q = "SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4 OR shared_team_ids @> $5) LIMIT 1"
+
+	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName, teamID, StateAccountLevel, pq.Array([]string{teamID})); err != nil {
 		if err == sql.ErrNoRows {
 			log.Printf("*********> debug internal.entity.fixed entity not found. %s", preDefinedEntityName)
 			return Entity{}, ErrFixedEntityNotFound

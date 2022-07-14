@@ -108,22 +108,23 @@ var migrations = []darwin.Migration{
 		Description: "Add entities",
 		Script: `
 		CREATE TABLE entities (
-			entity_id     UUID,
-			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
-			team_id       UUID REFERENCES teams ON DELETE CASCADE,
-			name          TEXT,
-			display_name  TEXT,
-			category      INTEGER DEFAULT 0,
-			state         INTEGER DEFAULT 0,
-			status        INTEGER DEFAULT 0,
-			fieldsb       JSONB,
-			metab         JSONB,
-			tags          TEXT[],
-			is_public	  BOOLEAN DEFAULT FALSE,
-			is_core	      BOOLEAN DEFAULT FALSE,
-			is_shared	  BOOLEAN DEFAULT FALSE,
-			created_at    TIMESTAMP,
-			updated_at    BIGINT,
+			entity_id     		UUID,
+			account_id    		UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id       		UUID REFERENCES teams ON DELETE CASCADE,
+			name          		TEXT,
+			display_name  		TEXT,
+			category      		INTEGER DEFAULT 0,
+			state         		INTEGER DEFAULT 0,
+			status        		INTEGER DEFAULT 0,
+			fieldsb       		JSONB,
+			metab         		JSONB,
+			tags          		TEXT[],
+			is_public	  		BOOLEAN DEFAULT FALSE,
+			is_core	      		BOOLEAN DEFAULT FALSE,
+			is_shared	  		BOOLEAN DEFAULT FALSE,
+			shared_team_ids  	TEXT[],
+			created_at    		TIMESTAMP,
+			updated_at    		BIGINT,
 			PRIMARY KEY (entity_id),
 			UNIQUE (team_id,display_name)
 		);
@@ -352,6 +353,20 @@ var migrations = []darwin.Migration{
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
 			UNIQUE (account_id, team_id, entity_id, item_id)
+		);
+		`,
+	},
+	{
+		Version:     18,
+		Description: "Add user settings",
+		Script: `
+		CREATE TABLE user_settings (
+			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			user_id    				UUID REFERENCES users ON DELETE CASCADE,
+			layout_style    		TEXT,
+			selected_team 			TEXT,
+			notification_setting    JSONB,
+			UNIQUE (account_id, user_id)
 		);
 		`,
 	},

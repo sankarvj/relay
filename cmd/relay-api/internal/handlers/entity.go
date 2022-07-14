@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -35,7 +36,17 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Home")
 	defer span.End()
 
+	acc, err := account.Retrieve(ctx, e.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
 	cu, err := user.RetrieveCurrentUser(ctx, e.db)
+	if err != nil {
+		return err
+	}
+
+	cus, err := user.UserSettingRetrieve(ctx, params["account_id"], cu.ID, e.db)
 	if err != nil {
 		return err
 	}
@@ -45,15 +56,10 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	entities, err := entity.Core(ctx, params["account_id"], e.db)
+	entities, err := entity.AccountCoreEntities(ctx, acc.ID, e.db)
 	if err != nil {
 		return err
 	}
-
-	// entities, err := entity.All(ctx, params["account_id"], categories(r.URL.Query().Get("category_id")), e.db)
-	// if err != nil {
-	// 	return err
-	// }
 
 	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
 	for i, entt := range entities {
@@ -61,15 +67,19 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	homeDetail := struct {
-		SelectedTeamID string                   `json:"selected_product_id"`
-		Teams          []team.Team              `json:"products"`
-		Entities       []entity.ViewModelEntity `json:"entities"`
-		User           user.ViewModelUser       `json:"user"`
+		AccountName    string                    `json:"account_name"`
+		SelectedTeamID string                    `json:"selected_product_id"`
+		Teams          []team.Team               `json:"products"`
+		Entities       []entity.ViewModelEntity  `json:"entities"`
+		User           user.ViewModelUser        `json:"user"`
+		UserSetting    user.ViewModelUserSetting `json:"user_setting"`
 	}{
+		acc.Name,
 		teamID,
 		teams,
 		viewModelEntities,
 		createViewModelUser(*cu),
+		createViewModelUS(cus),
 	}
 
 	return web.Respond(ctx, w, homeDetail, http.StatusOK)
@@ -155,21 +165,33 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, ve, http.StatusOK)
 }
 
+func (e *Entity) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	accountID, entityID, _ := takeAEI(ctx, params, e.db)
+
+	err := entity.Delete(ctx, e.db, accountID, entityID)
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
+}
+
 func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 	return entity.ViewModelEntity{
-		ID:          e.ID,
-		TeamID:      e.TeamID,
-		Name:        e.Name,
-		DisplayName: e.DisplayName,
-		Category:    e.Category,
-		State:       e.State,
-		Fields:      e.FieldsIgnoreError(),
-		Tags:        e.Tags,
-		IsPublic:    e.IsPublic,
-		IsCore:      e.IsCore,
-		IsShared:    e.IsShared,
-		CreatedAt:   e.CreatedAt,
-		UpdatedAt:   e.UpdatedAt,
+		ID:            e.ID,
+		TeamID:        e.TeamID,
+		Name:          e.Name,
+		DisplayName:   e.DisplayName,
+		Category:      e.Category,
+		State:         e.State,
+		Fields:        e.FieldsIgnoreError(),
+		Tags:          e.Tags,
+		IsPublic:      e.IsPublic,
+		IsCore:        e.IsCore,
+		IsShared:      e.IsShared,
+		SharedTeamIds: e.SharedTeamIds,
+		CreatedAt:     e.CreatedAt,
+		UpdatedAt:     e.UpdatedAt,
 	}
 }
 

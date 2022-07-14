@@ -9,6 +9,7 @@ func StatusFields() []entity.Field {
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "verb"},
 	}
 
 	nameField := entity.Field{
@@ -17,6 +18,7 @@ func StatusFields() []entity.Field {
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
 	colorField := entity.Field{
@@ -25,6 +27,7 @@ func StatusFields() []entity.Field {
 		DisplayName: "Color",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "color"},
 	}
 
 	return []entity.Field{verbField, nameField, colorField}

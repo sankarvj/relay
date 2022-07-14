@@ -28,20 +28,20 @@ func List(ctx context.Context, accountID, teamID string, categoryIds []int, db *
 	defer span.End()
 	entities := []Entity{}
 	if len(categoryIds) == 0 {
-		const q = `SELECT * FROM entities where account_id = $1 AND (team_id = $2 OR state = $3)`
-		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, StateAccountLevel); err != nil {
+		const q = `SELECT * FROM entities where account_id = $1 AND (team_id = $2 OR state = $3 OR shared_team_ids @> $4)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, StateAccountLevel, pq.Array([]string{teamID})); err != nil {
 			return nil, errors.Wrap(err, "selecting entities for all category")
 		}
 	} else {
-		const q = `SELECT * FROM entities where account_id = $1 AND (team_id = $2 OR state = $3) AND category = any($4)`
-		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, StateAccountLevel, pq.Array(categoryIds)); err != nil {
+		const q = `SELECT * FROM entities where account_id = $1 AND category = any($2) AND (team_id = $3 OR state = $4  OR shared_team_ids @> $5)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, pq.Array(categoryIds), teamID, StateAccountLevel, pq.Array([]string{teamID})); err != nil {
 			return nil, errors.Wrap(err, "selecting entities for category")
 		}
 	}
 	return entities, nil
 }
 
-func Core(ctx context.Context, accountID string, db *sqlx.DB) ([]Entity, error) {
+func AccountCoreEntities(ctx context.Context, accountID string, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
 	defer span.End()
 	entities := []Entity{}
@@ -52,7 +52,7 @@ func Core(ctx context.Context, accountID string, db *sqlx.DB) ([]Entity, error) 
 	return entities, nil
 }
 
-func All(ctx context.Context, accountID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
+func AccountEntities(ctx context.Context, accountID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.List")
 	defer span.End()
 	entities := []Entity{}
@@ -70,6 +70,17 @@ func All(ctx context.Context, accountID string, categoryIds []int, db *sqlx.DB) 
 	return entities, nil
 }
 
+func TeamEntities(ctx context.Context, accountID string, teamID string, db *sqlx.DB) ([]Entity, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.TeamEntities")
+	defer span.End()
+	entities := []Entity{}
+	const q = `SELECT * FROM entities where account_id = $1 AND team_id = $2`
+	if err := db.SelectContext(ctx, &entities, q, accountID, teamID); err != nil {
+		return nil, errors.Wrap(err, "selecting entities for category")
+	}
+	return entities, nil
+}
+
 // Create inserts a new user into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Create")
@@ -81,29 +92,30 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 	}
 
 	e := Entity{
-		ID:          n.ID,
-		AccountID:   n.AccountID,
-		TeamID:      n.TeamID,
-		Name:        n.Name,
-		DisplayName: n.DisplayName,
-		Category:    n.Category,
-		State:       n.State,
-		Tags:        []string{},
-		IsPublic:    n.IsPublic,
-		IsCore:      n.IsCore,
-		IsShared:    n.IsShared,
-		Fieldsb:     string(fieldsBytes),
-		CreatedAt:   now.UTC(),
-		UpdatedAt:   now.UTC().Unix(),
+		ID:            n.ID,
+		AccountID:     n.AccountID,
+		TeamID:        n.TeamID,
+		Name:          n.Name,
+		DisplayName:   n.DisplayName,
+		Category:      n.Category,
+		State:         n.State,
+		Tags:          []string{},
+		IsPublic:      n.IsPublic,
+		IsCore:        n.IsCore,
+		IsShared:      n.IsShared,
+		SharedTeamIds: []string{},
+		Fieldsb:       string(fieldsBytes),
+		CreatedAt:     now.UTC(),
+		UpdatedAt:     now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO entities
-		(entity_id, account_id, team_id, name, display_name, category, state, is_public, is_core, is_shared, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+		(entity_id, account_id, team_id, name, display_name, category, state, tags, is_public, is_core, is_shared, shared_team_ids, fieldsb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		e.ID, e.AccountID, e.TeamID, e.Name, e.DisplayName, e.Category, e.State, e.IsPublic, e.IsCore, e.IsShared, e.Fieldsb,
+		e.ID, e.AccountID, e.TeamID, e.Name, e.DisplayName, e.Category, e.State, e.Tags, e.IsPublic, e.IsCore, e.IsShared, e.SharedTeamIds, e.Fieldsb,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {
@@ -127,10 +139,10 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 	defer span.End()
 
 	const q = `UPDATE entities SET
-		"fieldsb" = $2,
-		"updated_at" = $3
-		WHERE entity_id = $1`
-	_, err := db.ExecContext(ctx, q, entityID,
+		"fieldsb" = $3,
+		"updated_at" = $4
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err := db.ExecContext(ctx, q, accountID, entityID,
 		fieldsB, now.Unix(),
 	)
 	if err != nil {
@@ -144,6 +156,38 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 
 	//TODO: do it in the same transaction.
 	return relationship.ReBonding(ctx, db, accountID, entityID, refFields(updatedFields))
+}
+
+func UpdateSharedTeam(ctx context.Context, db *sqlx.DB, aID, eID string, teamIds pq.StringArray, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateSharedTeam")
+	defer span.End()
+
+	const q = `UPDATE entities SET
+		"shared_team_ids" = $3,
+		"updated_at" = $4 
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err := db.ExecContext(ctx, q, aID, eID,
+		teamIds, now.Unix(),
+	)
+
+	return err
+}
+
+func UpdateMarkers(ctx context.Context, db *sqlx.DB, aID, eID string, isPublic, isCore, isShared bool, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateMarkers")
+	defer span.End()
+
+	const q = `UPDATE entities SET
+		"is_public" = $3,
+		"is_core" = $4,
+		"is_shared" = $5,
+		"updated_at" = $6 
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err := db.ExecContext(ctx, q, aID, eID,
+		isPublic, isCore, isShared, now.Unix(),
+	)
+
+	return err
 }
 
 // Retrieve gets the specified entity from the database.
@@ -199,10 +243,27 @@ func BulkRetrieve(ctx context.Context, ids []string, db *sqlx.DB) ([]Entity, err
 	return entities, nil
 }
 
+func Delete(ctx context.Context, db *sqlx.DB, accountID, entityID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM entities WHERE account_id = $1 and entity_id = $2`
+
+	if _, err := db.ExecContext(ctx, q, accountID, entityID); err != nil {
+		return errors.Wrapf(err, "deleting entity %s", entityID)
+	}
+
+	return nil
+}
+
 func FetchIDs(entities []Entity) []string {
 	ids := make([]string, 0)
 	for _, e := range entities {
 		ids = append(ids, e.ID)
 	}
 	return ids
+}
+
+func removeIndex(s []interface{}, index int) []interface{} {
+	return append(s[:index], s[index+1:]...)
 }

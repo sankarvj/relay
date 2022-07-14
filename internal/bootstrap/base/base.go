@@ -39,8 +39,6 @@ type Base struct {
 
 // These entites must be created or loaded before adding a new product
 type CoreEntity struct {
-	ContactEntity     entity.Entity
-	CompanyEntity     entity.Entity
 	OwnerEntity       entity.Entity
 	EmailsEntity      entity.Entity
 	EmailConfigEntity entity.Entity
@@ -48,7 +46,6 @@ type CoreEntity struct {
 	NodeEntity        entity.Entity
 	StatusEntity      entity.Entity
 	TypeEntity        entity.Entity
-	TaskEntity        entity.Entity
 	InviteEntity      entity.Entity
 }
 
@@ -103,18 +100,6 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
-	// retrive Contact Entity
-	b.ContactEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityContacts)
-	if err != nil {
-		return err
-	}
-
-	// retrive Company Entity
-	b.CompanyEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityCompanies)
-	if err != nil {
-		return err
-	}
-
 	// retrive Email Config entity
 	b.EmailConfigEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmailConfig)
 	if err != nil {
@@ -139,12 +124,6 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
-	// retrive Task entity
-	b.TaskEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
-	if err != nil {
-		return err
-	}
-
 	// retrive Invite entity
 	b.InviteEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityVisitorInvite)
 	if err != nil {
@@ -154,7 +133,7 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 	fmt.Println("\tCRM:BOOT Retrived Owner,Contact,Company & EmailConfig")
 
 	// add entity - emails
-	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email"), b.ContactEntity.ID, b.CompanyEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email")))
+	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email")))
 	if err != nil {
 		return err
 	}
