@@ -101,6 +101,8 @@ const (
 	WhoStatus        = "status"
 	WhoReminder      = "reminder"
 	WhoDueBy         = "dueby"
+	WhoStartTime     = "start_time"
+	WhoEndTime       = "end_time"
 	WhoAssignee      = "assignee"
 	WhoFollower      = "follower"
 	WhoAvatar        = "avatar"
@@ -166,6 +168,18 @@ func (e Entity) FieldsIgnoreError() []Field {
 		log.Println("***> unexpected/unhandled error occurred. internal.entity.fields")
 	}
 	return fields
+}
+
+func (e Entity) DomFields() []Field {
+	fields := e.FieldsIgnoreError()
+	domFields := make([]Field, 0)
+	for _, f := range fields {
+		if f.DomType != DomNotApplicable {
+			domFields = append(domFields, f)
+		}
+	}
+
+	return domFields
 }
 
 func (e Entity) ValueAdd(itemFields map[string]interface{}) []Field {

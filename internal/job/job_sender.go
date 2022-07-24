@@ -17,7 +17,6 @@ const (
 
 func (j *Job) Stream(message *stream.Message) error {
 	build := expvar.Get("build")
-	log.Println("build -- ", build)
 	var err error
 	if build == nil || build.String() == `"dev"` {
 		err = j.Post(message)

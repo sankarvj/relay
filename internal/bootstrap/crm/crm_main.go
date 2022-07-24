@@ -52,7 +52,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 	taskEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityTask)
 	if err == entity.ErrFixedEntityNotFound {
 		// add entity - task
-		fields := forms.TaskFields(contactEntity.ID, companyEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"))
+		fields := forms.TaskFields(contactEntity.ID, companyEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("name"))
 		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Client Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
 		if err != nil {
 			return nil, nil, nil, err
@@ -96,7 +96,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Notes Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(conE.ID, comE.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(conE.ID, comE.ID, dealEntity.ID, conE.Key("email"), conE.Key("first_name"), comE.Key("name"), dealEntity.Key("deal_name")))
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Pipeline And Its Nodes Created")
 
 	// add deal template
-	dealTemplate, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(dealEntity, companyEntity, cp.FlowID), nil)
+	dealTemplate, err := b.TemplateAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(dealEntity, companyEntity, cp.FlowID), nil)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,7 @@ package forms
 
 import "gitlab.com/vjsideprojects/relay/internal/entity"
 
-func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
+func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, contactEntityFirstNameFieldID, companyEntityNameFieldID string) []entity.Field {
 
 	titleField := entity.Field{
 		Key:         "uuid-00-cal-title",
@@ -10,7 +10,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DisplayName: "Title",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	summaryField := entity.Field{
@@ -19,6 +19,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DisplayName: "Summary",
 		DomType:     entity.DomTextArea,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
 	attendessField := entity.Field{
@@ -28,7 +29,8 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-email"},
+		Who:         entity.WhoAssignee,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityEmailFieldID, entity.MetaKeyLayout: entity.MetaLayoutUsers},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -42,6 +44,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DisplayName: "Start Time",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoStartTime,
 	}
 
 	endTimeField := entity.Field{
@@ -50,6 +53,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DisplayName: "End Time",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoEndTime,
 		Meta:        map[string]string{entity.MetaKeyRow: "true"},
 	}
 
@@ -87,7 +91,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityFirstNameFieldID},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -102,7 +106,7 @@ func MeetingFields(contactEntityID, companyEntityID string) []entity.Field {
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name", entity.MetaKeyRow: "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityNameFieldID, entity.MetaKeyRow: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

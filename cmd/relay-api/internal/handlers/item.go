@@ -46,6 +46,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	exp := r.URL.Query().Get("exp")
 	ls := r.URL.Query().Get("ls")
 	sortby := r.URL.Query().Get("sortby")
+	groupby := r.URL.Query().Get("groupby")
 	direction := r.URL.Query().Get("direction")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
@@ -60,6 +61,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		if err != nil {
 			return err
 		}
+		exp = ""
 		exp = util.AddExpression(exp, fl.Expression)
 	}
 
@@ -70,19 +72,49 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
 	piper := Piper{Viable: e.FlowField() != nil}
-	if ls == entity.MetaRenderPipe && page == 0 {
+	if groupby != "" && page == 0 {
+		piper.Group = true
+		piper.Items = make(map[string][]ViewModelItem, 0)
+		piper.Tokens = make(map[string]string, 0)
+		piper.Exps = make(map[string]string, 0)
+		piper.CountMap = make(map[string]map[string]int, 0)
+		choicers, err := groupBy(ctx, groupby, e, i.db)
+		if err != nil {
+			return err
+		}
+		for _, choicer := range choicers {
+			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, groupby, choicer.ID)
+			if choicer.ID == "" { // get none values
+				newExp = fmt.Sprintf("{{%s.%s}} !in {%s}", e.ID, groupby, choicer.Value)
+			}
+			finalExp := util.AddExpression(exp, newExp)
+			vitems, countMap, err := NewSegmenter(finalExp).
+				AddPage(page).
+				AddSortLogic(sortby, direction).
+				AddCount().
+				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
+			if err != nil {
+				return err
+			}
+			piper.CountMap[choicer.ID] = countMap
+			piper.Items[choicer.ID] = vitems
+			piper.Tokens[choicer.ID] = choicer.Name
+			piper.Exps[choicer.ID] = newExp
+		}
+	} else if ls == entity.MetaRenderPipe && page == 0 {
 		err := pipeKanban(ctx, accountID, e, &piper, i.db)
 		if err != nil {
 			return err
 		}
 		piper.Viable = true
 		piper.Pipe = true
+		piper.Group = false
 
 		for _, node := range piper.Nodes {
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
-			exp = util.AddExpression(exp, newExp)
-			vitems, _, err := NewSegmenter(exp).
+			finalExp := util.AddExpression(exp, newExp)
+			vitems, _, err := NewSegmenter(finalExp).
 				AddPage(page).
 				AddSortLogic(sortby, direction).
 				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
@@ -193,7 +225,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item Update: %+v", &ni)
 	}
 	//stream
-	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -238,7 +270,7 @@ func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *s
 		return item.Item{}, err
 	}
 	//stream
-	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
+	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
 	return it, err
 }
 
@@ -330,7 +362,7 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// }
 
 	//stream
-	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, itemID))
+	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, i.db, accountID, currentUserID, entityID, itemID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }

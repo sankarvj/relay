@@ -144,7 +144,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrapf(err, "member update: %+v", &it)
 	}
 	//stream
-	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -177,7 +177,7 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	//stream
-	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(accountID, currentUserID, entityID, memberID))
+	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }

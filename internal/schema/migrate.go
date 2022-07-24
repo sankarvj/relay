@@ -370,4 +370,18 @@ var migrations = []darwin.Migration{
 		);
 		`,
 	},
+	{
+		Version:     19,
+		Description: "Add log_streams",
+		Script: `
+		CREATE TABLE log_streams (
+			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			log_id      		    TEXT,
+			comment      		    TEXT,
+			state    		        INTEGER DEFAULT 0,
+			created_at    	        TIMESTAMP,
+			UNIQUE (account_id, log_id)
+		);
+		`,
+	},
 }

@@ -113,7 +113,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 		return errors.Wrapf(err, "Notification clear")
 	}
 	//stream
-	go job.NewJob(n.db, n.rPool, n.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, currentUser.ID, entityID, it.ID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(n.db, n.rPool, n.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, n.db, accountID, currentUser.ID, entityID, it.ID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }

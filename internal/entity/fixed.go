@@ -77,16 +77,17 @@ type UpdaterFunc func(ctx context.Context, updatedItem interface{}, db *sqlx.DB)
 
 // EmailEntity represents structural format of email entity
 type EmailEntity struct {
-	MessageID string   `json:"message_id"`
-	From      []string `json:"from"`
-	RFrom     []string `json:"rfrom"`
-	To        []string `json:"to"`
-	Cc        []string `json:"cc"`
-	Bcc       []string `json:"bcc"`
-	Subject   string   `json:"subject"`
-	Body      string   `json:"body"`
-	Contacts  []string `json:"contacts"`
-	Companies []string `json:"companies"`
+	MessageID   string   `json:"message_id"`
+	MessageSent string   `json:"message_sent"`
+	From        []string `json:"from"`
+	RFrom       []string `json:"rfrom"`
+	To          []string `json:"to"`
+	Cc          []string `json:"cc"`
+	Bcc         []string `json:"bcc"`
+	Subject     string   `json:"subject"`
+	Body        string   `json:"body"`
+	Contacts    []string `json:"contacts"`
+	Companies   []string `json:"companies"`
 }
 
 // EmailConfigEntity represents structural format of email config entity

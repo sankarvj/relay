@@ -345,7 +345,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 	}
 
 	//stream
-	go job.NewJob(u.db, u.rPool, u.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(accountID, userID, ownerEntity.ID, existingItem.ID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(u.db, u.rPool, u.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, u.db, accountID, userID, ownerEntity.ID, existingItem.ID, it.Fields(), existingItem.Fields()))
 
 	//adding in the members items for reverse lookup of userID from memberID.
 	return nil

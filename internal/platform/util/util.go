@@ -134,6 +134,9 @@ func AddExpression(exTexp string, newExp string) string {
 	if exTexp == "" {
 		return newExp
 	}
+	if newExp == "" {
+		return exTexp
+	}
 	return fmt.Sprintf("%s && %s", exTexp, newExp)
 }
 

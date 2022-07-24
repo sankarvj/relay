@@ -68,7 +68,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	// 1. Fetch child item ids by querying the connections table.
 	// 2. Fetch child item ids by querying the graph db. tick
 	// 3. Fetch child item ids by querying the genie_id (formerly parent_item_id)
-	viewModelItems, fields, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.rPool)
+	viewModelItems, fields, countMap, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.rPool)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,13 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 				piper.Items[*vmi.StageID] = append(piper.Items[*vmi.StageID], vmi)
 			}
 		}
+	}
 
+	domFields := make([]entity.Field, 0)
+	for _, f := range fields {
+		if f.DomType != entity.DomNotApplicable {
+			domFields = append(domFields, f)
+		}
 	}
 
 	response := struct {
@@ -101,26 +107,29 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		Fields   []entity.Field         `json:"fields"`
 		Entity   entity.ViewModelEntity `json:"entity"`
 		Piper    Piper                  `json:"piper"`
+		CountMap map[string]int         `json:"count_map"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
-		Fields:   fields,
+		Fields:   domFields,
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
+		CountMap: countMap,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, db *sqlx.DB, rPool *redis.Pool) ([]ViewModelItem, []entity.Field, error) {
+func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, db *sqlx.DB, rPool *redis.Pool) ([]ViewModelItem, []entity.Field, map[string]int, error) {
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 
 	fields := e.FieldsIgnoreError()
 	var err error
 	var viewModelItems []ViewModelItem
+	var countMap map[string]int
 	if relation.FieldID == relationship.FieldAssociationKey { //explicit
-		viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+		viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 			AddCount().
 			AddSourceCondition(sourceEntityID, sourceItemID).
 			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
@@ -128,18 +137,18 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 		if isFieldKeyExist(relation.FieldID, entity.FieldsMap(fields)) {
 			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)
 			exp = util.AddExpression(exp, newExp)
-			viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+			viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 				AddCount().
 				filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
 		} else { // implicit reverse. contacts are the child of deals because deals has a contact field
 			var it item.Item
 			it, err = item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			ids := it.Fields()[relation.FieldID]
 			if ids != nil {
-				viewModelItems, _, err = NewSegmenter(exp).AddPage(page).
+				viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 					AddCount().
 					AddSourceIDCondition(util.ConvertSliceTypeRev(ids.([]interface{}))).
 					filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
@@ -147,7 +156,7 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 		}
 	}
 
-	return viewModelItems, fields, err
+	return viewModelItems, fields, countMap, err
 }
 
 func isFieldKeyExist(fieldID string, fields map[string]interface{}) bool {

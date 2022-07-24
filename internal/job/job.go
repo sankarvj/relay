@@ -81,42 +81,65 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 
 	valueAddedFields := e.ValueAdd(m.NewFields)
 
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
 	//workflows
-	if m.UserID != engine.UUID_SYSTEM_USER { // for now, preventing loops in workflows by this check!
+	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
 		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Workflow", stream.StateWorkflow)
 		}
 	}
 
 	//connections
-	err = j.actOnConnections(m.AccountID, m.UserID, map[string]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
-		return
+	if m.State < stream.StateConnection {
+		err = j.actOnConnections(m.AccountID, m.UserID, map[string]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Connection", stream.StateConnection)
+		}
 	}
 
 	//who
-	err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
-		return
+	if m.State < stream.StateWho {
+		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Who", stream.StateWho)
+		}
 	}
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
+	if m.State < stream.StateNotification {
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Notification", stream.StateNotification)
+		}
 	}
 
 	//graph
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
-	err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-		return
+	if m.State < stream.StateRedis {
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
+		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
+		}
 	}
+	//TODO delete the log stream.
 }
 
 func (j *Job) eventItemCreated(m stream.Message) {
@@ -137,67 +160,95 @@ func (j *Job) eventItemCreated(m stream.Message) {
 	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
 	//workflows
-	if m.UserID != engine.UUID_SYSTEM_USER { // for now, preventing loops in workflows by this check!
+	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
 		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Workflow", stream.StateWorkflow)
 		}
 	}
 
 	//connect
-	err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, "created", j.DB)
-	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
-		return
+	if m.State < stream.StateConnection {
+		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, "created", j.DB)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Connection", stream.StateConnection)
+		}
 	}
 
 	//categories such as email,meeting,members
-	err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
-		return
+	if m.State < stream.StateCategory {
+		err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Category", stream.StateCategory)
+		}
 	}
 
 	//who
-	err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
-	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
-		return
+	if m.State < stream.StateWho {
+		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Who", stream.StateWho)
+		}
 	}
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
-	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
+	if m.State < stream.StateNotification {
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Notification", stream.StateNotification)
+		}
 	}
 
 	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 	//safely deleting the empty string...
 	delete(m.Source, "")
-	if len(m.Source) == 0 {
-		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
-		if err != nil {
-			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-			return
-		}
-	} else {
-		log.Printf("m.Source %+v", m.Source)
-		for j.baseEntityID, j.baseItemID = range m.Source {
-
-			if j.baseEntityID == "" {
-				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
-				continue
-			}
+	if m.State < stream.StateRedis {
+		if len(m.Source) == 0 {
 			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 			if err != nil {
 				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 				return
+			} else {
+				stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
 			}
+		} else {
+			log.Printf("m.Source %+v", m.Source)
+			for j.baseEntityID, j.baseItemID = range m.Source {
+
+				if j.baseEntityID == "" {
+					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
+					continue
+				}
+				err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
+				if err != nil {
+					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
+					return
+				}
+			}
+			stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
 		}
 	}
+	//TODO delete the log stream.
 	log.Println("***>***> Completed EventItemCreated ***<***<")
 }
 
@@ -241,22 +292,32 @@ func (j *Job) eventItemDeleted(m stream.Message) {
 		return
 	}
 
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
 	err = destructOnIntegrations(ctx, m.AccountID, e, it, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on destructOnIntegrations. error: ", err)
-		return
 	}
 
-	err = item.Delete(ctx, j.DB, m.AccountID, m.EntityID, m.ItemID)
-	if err != nil {
-		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete main item. error: ", err)
-		return
+	if m.State < stream.StatePrimaryDBDelete {
+		err = item.Delete(ctx, j.DB, m.AccountID, m.EntityID, m.ItemID)
+		if err != nil {
+			log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete main item. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Primary DB Delete", stream.StatePrimaryDBDelete)
+		}
 	}
 
-	err = graphdb.Delete(j.Rpool, m.AccountID, m.EntityID, m.ItemID)
-	if err != nil {
-		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete redisgraph item. error: ", err)
-		return
+	if m.State < stream.StateSecDBDelete {
+		err = graphdb.Delete(j.Rpool, m.AccountID, m.EntityID, m.ItemID)
+		if err != nil {
+			log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete redisgraph item. error: ", err)
+			return
+		} else {
+			stream.Update(ctx, j.DB, &m, "Secondary DB Delete", stream.StateSecDBDelete)
+		}
 	}
 	log.Println("***>***> Finished EventItemDeleted ***<***<")
 }
@@ -343,11 +404,12 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		//unlink
 		for i := 0; i < len(valueAddedFields); i++ {
 			f := &valueAddedFields[i]
-			if _, ok := dirtyFields[f.Key]; ok {
-				if old, ok := oldFields[f.Key]; ok && f.Value != nil && (f.IsReference() || f.IsList()) {
-					if len(old.([]interface{})) > 0 {
+			if newList, ok := dirtyFields[f.Key]; ok {
+				if oldList, ok := oldFields[f.Key]; ok && f.Value != nil && (f.IsReference() || f.IsList()) {
+					if len(oldList.([]interface{})) > 0 {
+						delList := deletedList(newList, oldList)
 						f.UnlinkOffset = len(f.Value.([]interface{})) + 1
-						f.Value = append(f.Value.(([]interface{})), old.([]interface{})...)
+						f.Value = append(f.Value.(([]interface{})), delList...)
 					}
 				}
 			}
@@ -545,6 +607,9 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		}
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
+		if err == entity.ErrIntegNotFound {
+			return nil
+		}
 	case entity.CategoryUsers:
 		var usr entity.UserEntity
 		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
@@ -622,12 +687,15 @@ func saveMsgID(ctx context.Context, accountID, entityID, itemID, msgID string, d
 	if err != nil {
 		return err
 	}
+
 	var emailItem entity.EmailEntity
-	upFunc, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, emailItem, db)
+	upFunc, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &emailItem, db)
 	if err != nil {
 		return err
 	}
+
 	emailItem.MessageID = msgID
+	emailItem.MessageSent = "true"
 	return upFunc(ctx, emailItem, db)
 }
 
@@ -670,4 +738,21 @@ func appendTimers(createdAt, updatedAt time.Time, userID string, valueAddedField
 	}
 	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField, createdByField)
 	return valueAddedFields
+}
+
+func deletedList(newList, oldList interface{}) []interface{} {
+	newMap := make(map[string]bool, 0)
+	for _, n := range newList.([]interface{}) {
+		newMap[n.(string)] = true
+	}
+
+	deletedList := make([]interface{}, 0)
+	//deletedList = append(deletedList, "--") //TODO: hacky-none-fix
+	for i := 0; i < len(oldList.([]interface{})); i++ {
+		o := oldList.([]interface{})[i]
+		if _, ok := newMap[o.(string)]; !ok {
+			deletedList = append(deletedList, o)
+		}
+	}
+	return deletedList
 }

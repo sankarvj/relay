@@ -31,7 +31,7 @@ func (wrk *Worker) receiveSQSPayload(ctx context.Context, w http.ResponseWriter,
 		return errors.Wrap(err, "")
 	}
 
-	log.Println("Received Message ---> ", message)
+	log.Printf("Received SQS Message ---> %+v", message)
 	err := job.NewJob(wrk.db, wrk.rPool, wrk.firebaseAdminSDKPath).Post(&message)
 	if err != nil {
 		log.Println("***> unexpected error in the worker", err)

@@ -21,7 +21,7 @@ func UserSettingRetrieve(ctx context.Context, accountID, userID string, db *sqlx
 			return UserSetting{
 				AccountID:           accountID,
 				UserID:              userID,
-				LayoutStyle:         "inline",
+				LayoutStyle:         "menu",
 				SelectedTeam:        "",
 				NotificationSetting: "{}",
 			}, nil

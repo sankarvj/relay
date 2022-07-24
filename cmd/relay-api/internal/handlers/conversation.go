@@ -138,7 +138,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewConversationMessage(params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
+	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewConversationMessage(ctx, cv.db, params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }

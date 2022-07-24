@@ -21,10 +21,14 @@ import (
 type Piper struct {
 	Viable         bool                       `json:"viable"`
 	Pipe           bool                       `json:"pipe"`
+	Group          bool                       `json:"group"`
 	NodeKey        string                     `json:"node_key"`
 	Flows          []flow.ViewModelFlow       `json:"flows"`
 	Nodes          []node.ViewModelNode       `json:"nodes"`
 	Items          map[string][]ViewModelItem `json:"items"`
+	Tokens         map[string]string          `json:"tokens"`
+	Exps           map[string]string          `json:"exps"`
+	CountMap       map[string]map[string]int  `json:"count_map"`
 	sourceEntityID string
 	sourceItemID   string
 }
@@ -210,7 +214,10 @@ func itemIDs(result *rg.QueryResult) []interface{} {
 
 			// Entries in the Record can be accessed by index or key.
 			record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
+			//if record["id"] != "--" { //TODO: hacky-none-fix
 			itemIds = append(itemIds, record["id"])
+			//}
+
 		}
 	}
 

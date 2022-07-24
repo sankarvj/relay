@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -106,6 +107,8 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis
 func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
 	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, baseIds, db)
 
+	entityName = strings.ToLower(entityName)
+
 	switch notificationType {
 	case TypeReminder:
 		if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
@@ -113,7 +116,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID
 		}
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeCreated:
-		appNotif.Subject = fmt.Sprintf("An item created in %s", entityName)
+		appNotif.Subject = fmt.Sprintf("Item created in %s", entityName)
 		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
 	case TypeUpdated:
 		appNotif.Subject = fmt.Sprintf("%s `%s` is updated", entityName, appNotif.Title)

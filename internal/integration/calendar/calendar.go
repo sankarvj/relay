@@ -50,8 +50,8 @@ func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemI
 	meetingID := uuid.New().String()
 	meeting := &integration.Meeting{
 		ID:          meetingID,
-		Summary:     entityFieldVal(namedFieldsObj["summary"]),
-		Description: entityFieldVal(namedFieldsObj["start_time"]),
+		Summary:     entityFieldVal(namedFieldsObj["cal_title"]),
+		Description: entityFieldVal(namedFieldsObj["summary"]),
 		StartTime:   entityFieldVal(namedFieldsObj["start_time"]),
 		EndTime:     entityFieldVal(namedFieldsObj["end_time"]),
 		Attendees:   namedFieldsObj["attendess"].ChoicesValues(),

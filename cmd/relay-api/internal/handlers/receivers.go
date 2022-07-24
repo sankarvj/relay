@@ -218,7 +218,7 @@ func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID stri
 		return err
 	}
 	//stream/queue
-	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
+	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
 	return nil
 }
 

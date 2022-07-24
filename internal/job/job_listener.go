@@ -107,6 +107,7 @@ func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, d
 }
 
 func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) {
+	ctx := context.Background()
 	conn := rp.Get()
 	defer conn.Close()
 
@@ -120,9 +121,9 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool, fbSDKPath str
 		if redisJob.State == JobStateRiped {
 			switch redisJob.Type {
 			case JobTypeReminder:
-				go NewJob(db, rp, fbSDKPath).Stream(stream.NewReminderMessage(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID))
+				go NewJob(db, rp, fbSDKPath).Stream(stream.NewReminderMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID))
 			case JobTypeDelay:
-				go NewJob(db, rp, fbSDKPath).Stream(stream.NewDelayMessage(redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta))
+				go NewJob(db, rp, fbSDKPath).Stream(stream.NewDelayMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta))
 			}
 		}
 		time.Sleep(3 * time.Second) //reduce this time when more requests received

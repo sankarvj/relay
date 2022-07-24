@@ -74,7 +74,7 @@ func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID s
 		Key:         statusFieldID,
 		Name:        "status",
 		DisplayName: "Status",
-		DomType:     entity.DomAutoSelect,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,

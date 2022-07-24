@@ -43,6 +43,65 @@ func ListFilterByState(ctx context.Context, entityID string, state int, db *sqlx
 	return items, nil
 }
 
+func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2)`
+
+	if err := db.SelectContext(ctx, &items, q, accountID, pq.Array(ids)); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for selected item ids")
+	}
+
+	return items, nil
+}
+
+func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 LIMIT 50`
+
+	if entityID != "" {
+		if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+			return items, errors.Wrap(err, "selecting bulk items for entity id")
+		}
+	}
+
+	return items, nil
+}
+
+func UserEntityItems(ctx context.Context, entityID, userID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.UserEntityItems")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = $1 AND user_id = $2 LIMIT 20`
+
+	if err := db.SelectContext(ctx, &items, q, entityID, userID); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for entity id with user")
+	}
+
+	return items, nil
+}
+
+//TODO add pagination
+func GenieEntityItems(ctx context.Context, entityIDs []string, genieID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.GenieEntityItems")
+	defer span.End()
+
+	items := []Item{}
+	const q = `SELECT * FROM items where entity_id = any($1) AND genie_id = $2 LIMIT 20`
+
+	if err := db.SelectContext(ctx, &items, q, pq.Array(entityIDs), genieID); err != nil {
+		return items, errors.Wrap(err, "selecting bulk items for entity id with genie")
+	}
+
+	return items, nil
+}
+
 // Create inserts a new item into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Create")
@@ -157,65 +216,6 @@ func Retrieve(ctx context.Context, entityID, itemID string, db *sqlx.DB) (Item, 
 	}
 
 	return i, nil
-}
-
-func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.BulkRetrieve")
-	defer span.End()
-
-	items := []Item{}
-	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2)`
-
-	if err := db.SelectContext(ctx, &items, q, accountID, pq.Array(ids)); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for selected item ids")
-	}
-
-	return items, nil
-}
-
-func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
-	defer span.End()
-
-	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 LIMIT 20`
-
-	if entityID != "" {
-		if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
-			return items, errors.Wrap(err, "selecting bulk items for entity id")
-		}
-	}
-
-	return items, nil
-}
-
-func UserEntityItems(ctx context.Context, entityID, userID string, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.UserEntityItems")
-	defer span.End()
-
-	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND user_id = $2 LIMIT 20`
-
-	if err := db.SelectContext(ctx, &items, q, entityID, userID); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for entity id with user")
-	}
-
-	return items, nil
-}
-
-//TODO add pagination
-func GenieEntityItems(ctx context.Context, entityIDs []string, genieID string, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.GenieEntityItems")
-	defer span.End()
-
-	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = any($1) AND genie_id = $2 LIMIT 20`
-
-	if err := db.SelectContext(ctx, &items, q, pq.Array(entityIDs), genieID); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for entity id with genie")
-	}
-
-	return items, nil
 }
 
 func Delete(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) error {

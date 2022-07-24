@@ -143,5 +143,10 @@ Filter the contacts which have deal.amount>1000 where the deal has contacts and 
 - calendar reminder
 
 
+## Hacky
+
+The references/lists are linked in the redis graph between two nodes only if the value is not empty in the reference/list fields. In those cases the link itself is missing for those two nodes. So, in those cases it is impossible to get those nodes for the condition "NONE OF". To avoid that, I have added an empty relation when upserting a node and unlinking it when the relation added. To check those places find by `hacky-none-fix`
+
+
 
 ---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------xxxxxxxxx---------------

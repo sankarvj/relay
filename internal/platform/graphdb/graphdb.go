@@ -38,11 +38,12 @@ type GraphNode struct {
 	ItemID        string
 	Fields        []Field
 	Relations     []GraphNode // list/map fields
-	SourceNode    *rg.Node    // not a good. used for count
-	ReturnNode    *rg.Node    // not a good. used for count
+	SourceNode    *rg.Node    // not a good idea. used for count
+	ReturnNode    *rg.Node    // not a good idea. used for count
 	UseReturnNode bool        // not a good idea. used to return dstnode on searcing list fields
 	unlink        bool
 	isReverse     bool
+	Optional      bool
 }
 
 func BuildGNode(graphName, label string, unlink bool) GraphNode {
@@ -83,6 +84,13 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
 				gn.Relations = append(gn.Relations, rn)
 			}
+
+			// if len(f.Value.([]interface{})) == 0 { //TODO: hacky-none-fix block
+			// 	rEntityID := f.RefID
+			// 	rn := BuildGNode(gn.GraphName, rEntityID, false).MakeBaseGNode("", []Field{*f.Field}).relateRefs(f.IsReverse)
+			// 	gn.Relations = append(gn.Relations, rn)
+			// }
+
 		case TypeDateTime: // converts the time to timestamp during upsert for easy filtering.
 			if f.Value != nil && f.Value != "" {
 				t, err := util.ParseTime(f.Value.(string))
@@ -148,13 +156,13 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("SKIP %d LIMIT %d", skipCount, util.PageLimt))
 
 	result, err := graph.Query(q)
-	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
-	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 		return result, err
 	}
-	result.PrettyPrint()
+	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+	//result.PrettyPrint()
 	return result, err
 }
 
@@ -174,14 +182,13 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 
 	result, err := graph.Query(q)
 	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s - err:%v\n", q, err)
 		return result, err
 	}
 	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
-	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
-
-	result.PrettyPrint()
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	//result.PrettyPrint()
 	return result, err
 }
 
@@ -197,11 +204,11 @@ func GetSum(rPool *redis.Pool, gn GraphNode, sumKey string) (*rg.QueryResult, er
 	result, err := graph.Query(q)
 	if err != nil {
 		//DEBUG LOG
-		log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - sum query: %s - err:%v\n", q, err)
 		return result, err
 	}
 	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 
 	result.PrettyPrint()
 	return result, err
@@ -225,7 +232,7 @@ func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
 	srcNode := gn.justNode()
 	gn.SourceNode = srcNode
 	s := matchNode(srcNode)
-	wi, wh := where(*gn, srcNode.Alias, srcNode.Alias)
+	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
 	s = append(s, wi...)
 	if len(wh) > 0 {
 		s = append(s, "WHERE")
@@ -237,7 +244,7 @@ func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
 	return q
 }
 
-func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
+func where(gn *GraphNode, alias, srcAlias string) ([]string, []string) {
 	wi := make([]string, 0)
 	wh := make([]string, 0, len(gn.Fields))
 	if len(gn.Fields) > 0 {
@@ -258,6 +265,7 @@ func where(gn GraphNode, alias, srcAlias string) ([]string, []string) {
 			case operatorMap[lexertoken.NotINSign]: //to support `WHERE NOT qvHZjOKbzM.`id` IN ["0ce398f5-8d85-4436-af0f-b884d18ecc5a"]`
 				f.Expression = lexertoken.INSign
 				f.WithAlias = fmt.Sprintf("NOT %s", f.WithAlias)
+				gn.Optional = true
 			}
 
 			switch f.DataType {
@@ -294,9 +302,16 @@ func chainRelations(gn *GraphNode, srcNode *rg.Node, s []string) []string {
 			edge = rg.EdgeNew(rn.RelationName, dstNode, srcNode, nil)
 		}
 
+		wi, wh := where(&rn, dstNode.Alias, srcNode.Alias)
+
+		//hacky-fix-none
 		s = append(s, matchNode(dstNode)...)
-		s = append(s, matchEdge(edge)...)
-		wi, wh := where(rn, dstNode.Alias, srcNode.Alias)
+		if rn.Optional {
+			s = append(s, optionalMatchEdge(edge)...)
+		} else {
+			s = append(s, matchEdge(edge)...)
+		}
+
 		s = append(s, wi...)
 		if len(wh) > 0 {
 			s = append(s, "WHERE")
@@ -448,6 +463,13 @@ func matchNode(n *rg.Node) []string {
 func mergeNode(n *rg.Node) []string {
 	s := []string{"MERGE"}
 	s = append(s, n.Encode())
+	return s
+}
+
+func optionalMatchEdge(e *rg.Edge) []string {
+	s := []string{"OPTIONAL MATCH"}
+	s = append(s, e.Encode())
+	s = append(s, fmt.Sprintf("WITH %s ", e.Source.Alias))
 	return s
 }
 

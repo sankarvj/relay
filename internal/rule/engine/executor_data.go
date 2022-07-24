@@ -44,7 +44,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.Stream(stream.NewCreteItemMessage(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
+		eng.Job.Stream(stream.NewCreteItemMessage(ctx, db, n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
@@ -60,7 +60,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.Stream(stream.NewUpdateItemMessage(n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
+		eng.Job.Stream(stream.NewUpdateItemMessage(ctx, db, n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
 	}
 
 	return err

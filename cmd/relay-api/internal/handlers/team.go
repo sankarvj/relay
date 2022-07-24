@@ -35,7 +35,14 @@ func (t *Team) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return err
 	}
 
-	return web.Respond(ctx, w, teams, http.StatusOK)
+	filteredTeams := make([]team.Team, 0)
+	for _, t := range teams {
+		if t.ID != t.AccountID { // filteting base team
+			filteredTeams = append(filteredTeams, t)
+		}
+	}
+
+	return web.Respond(ctx, w, filteredTeams, http.StatusOK)
 }
 
 func (t *Team) AddTemplates(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

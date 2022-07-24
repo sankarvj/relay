@@ -28,7 +28,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCSM:BOOT Projects Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(conE.ID, comE.ID, projectEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(conE.ID, comE.ID, projectEntity.ID, conE.Key("email"), conE.Key("first_name"), comE.Key("name"), projectEntity.Key("project_name")))
 	if err != nil {
 		return err
 	}

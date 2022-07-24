@@ -52,8 +52,8 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 
 	items := []Item{}
 	if len(ids) == 0 {
-		const q = `SELECT * FROM items where entity_id = $1 LIMIT 50`
-		if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
+		const q = `SELECT * FROM items where entity_id = $1 AND state = $2 LIMIT 50`
+		if err := db.SelectContext(ctx, &items, q, entityID, StateDefault); err != nil {
 			if err == sql.ErrNoRows {
 				return items, ErrItemsEmpty
 			}
@@ -62,8 +62,8 @@ func BulkRetrieve(ctx context.Context, entityID string, ids []interface{}, db *s
 		return items, nil
 	}
 
-	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2) LIMIT 100`
-	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids)); err != nil {
+	const q = `SELECT * FROM items where entity_id = $1 AND item_id = any($2) AND state = $3 LIMIT 100`
+	if err := db.SelectContext(ctx, &items, q, entityID, pq.Array(ids), StateDefault); err != nil {
 		if err == sql.ErrNoRows {
 			return items, ErrItemsEmpty
 		}

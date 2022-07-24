@@ -198,7 +198,7 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 		return item.Item{}, err
 	}
 
-	job.NewJob(b.DB, b.RP, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(b.AccountID, userID, entityID, it.ID, ni.Source))
+	job.NewJob(b.DB, b.RP, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(ctx, b.DB, b.AccountID, userID, entityID, it.ID, ni.Source))
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil
