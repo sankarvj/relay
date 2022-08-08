@@ -23,6 +23,7 @@ const (
 	TypeString    DType = "S"
 	TypeNumber    DType = "N"
 	TypeDateTime        = "T"
+	TypeDate            = "D"
 	TypeList            = "L"
 	TypeReference       = "R"
 )
@@ -35,13 +36,9 @@ const (
 	DomText          Dom = "TE"
 	DomTextArea      Dom = "TA"
 	DomStatus            = "ST"
-	DomAutoSelect        = "AS" // same as select but with the twist for auto fill. refer status
 	DomAutoComplete      = "AC"
 	DomSelect            = "SE" // the default dom for the reference field units. This type mandates the choices limit to 20
 	DomMultiSelect       = "MS"
-	DomDate              = "DA"
-	DomTime              = "TI"
-	DomMinute            = "MI"
 	DomReminder          = "RE"
 	DomDueBy             = "DB"
 	DomContact           = "CO" //type which as avatar,name,email and id

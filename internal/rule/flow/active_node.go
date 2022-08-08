@@ -156,6 +156,7 @@ func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng e
 	ruleResult, err := eng.RunRuleEngine(ctx, db, rp, n)
 	if err != nil {
 		//TODO push this to DL queue
+		log.Println("***> unexpected error occurred in runJob. when executing the engine...", err)
 		return err
 	}
 

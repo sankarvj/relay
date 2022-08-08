@@ -46,6 +46,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("DELETE", "/v1/accounts/users/current/profile", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("PUT", "/v1/accounts/:account_id/users/current/setting", u.UpdateUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
+	app.Handle("GET", "/v1/accounts/:account_id/users/current/setting", u.RetriveUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
 
 	a := Account{
 		db:            db,
@@ -59,6 +60,19 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("GET", "/v1/accounts/availability", a.Availability)
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
 	// app.Handle("POST", "/v1/accounts", a.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+
+	v := Visitor{
+		db:            db,
+		rPool:         redisPool,
+		authenticator: authenticator,
+	}
+	// Register accounts management endpoints.
+	app.Handle("GET", "/v1/accounts/:account_id/visitors", v.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
+	app.Handle("GET", "/v1/accounts/:account_id/visitors/:visitor_id", v.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser))
+	app.Handle("POST", "/v1/accounts/:account_id/visitors", v.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/toggle_active", v.ToggleActive, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/resend", v.Resend, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("DELETE", "/v1/accounts/:account_id/visitors/:visitor_id", v.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	integ := Integration{
 		db:            db,

@@ -10,6 +10,23 @@ import (
 	"go.opencensus.io/trace"
 )
 
+func (u *User) RetriveUserSetting(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.UserSetting.Retrive")
+	defer span.End()
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	cus, err := user.UserSettingRetrieve(ctx, params["account_id"], currentUserID, u.db)
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, createViewModelUS(cus), http.StatusOK)
+}
+
 // Update updates the specified user in the system.
 func (u *User) UpdateUserSetting(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.UserSetting.UpdateUserSetting")

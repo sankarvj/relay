@@ -18,12 +18,13 @@ func UserSettingRetrieve(ctx context.Context, accountID, userID string, db *sqlx
 	const q = `SELECT * FROM user_settings WHERE account_id = $1 AND user_id = $2`
 	if err := db.GetContext(ctx, &us, q, accountID, userID); err != nil {
 		if err == sql.ErrNoRows {
+			notificationSettingBytes, _ := json.Marshal(defaultNotificationSettings())
 			return UserSetting{
 				AccountID:           accountID,
 				UserID:              userID,
 				LayoutStyle:         "menu",
 				SelectedTeam:        "",
-				NotificationSetting: "{}",
+				NotificationSetting: string(notificationSettingBytes),
 			}, nil
 		}
 
@@ -105,4 +106,12 @@ func UnmarshalNotificationSettings(notificationSettingsB string) map[string]stri
 		return notificationSettingsMap
 	}
 	return notificationSettingsMap
+}
+
+func defaultNotificationSettings() map[string]string {
+	nSettings := make(map[string]string, 0)
+	nSettings["updated"] = "true"
+	nSettings["created"] = "true"
+	nSettings["assigned"] = "true"
+	return nSettings
 }

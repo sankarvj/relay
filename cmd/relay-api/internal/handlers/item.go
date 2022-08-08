@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -65,15 +66,19 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		exp = util.AddExpression(exp, fl.Expression)
 	}
 
+	piper := Piper{Viable: e.FlowField() != nil}
 	if page == 0 {
-		ls = setRenderer(ctx, ls, e, i.db)
+		log.Println("ls--- ", ls)
+		piper.LS = setRenderer(ctx, ls, e, i.db)
 	}
+
+	log.Println("piper.LS--- ", piper.LS)
 
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
-	piper := Piper{Viable: e.FlowField() != nil}
+
 	if groupby != "" && page == 0 {
-		piper.Group = true
+		piper.LS = entity.MetaRenderGroup
 		piper.Items = make(map[string][]ViewModelItem, 0)
 		piper.Tokens = make(map[string]string, 0)
 		piper.Exps = make(map[string]string, 0)
@@ -101,14 +106,12 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			piper.Tokens[choicer.ID] = choicer.Name
 			piper.Exps[choicer.ID] = newExp
 		}
-	} else if ls == entity.MetaRenderPipe && page == 0 {
+	} else if piper.LS == entity.MetaRenderPipe && page == 0 {
+		piper.Viable = true
 		err := pipeKanban(ctx, accountID, e, &piper, i.db)
 		if err != nil {
 			return err
 		}
-		piper.Viable = true
-		piper.Pipe = true
-		piper.Group = false
 
 		for _, node := range piper.Nodes {
 			piper.NodeKey = e.NodeField().Key

@@ -197,7 +197,7 @@ func DealFields(contactEntityID, companyEntityID string, flowEntityID, nodeEntit
 		Name:        "close_date",
 		DisplayName: "Close date",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeDateTime,
+		DataType:    entity.TypeDate,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutDate},
 	}
 

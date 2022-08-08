@@ -45,7 +45,7 @@ func AssetFields(assetCatagoryEntityID, assetCatagoryDisplayKey string) []entity
 		Key:         assetCategoryFieldID,
 		Name:        "catagory",
 		DisplayName: "Catagory",
-		DomType:     entity.DomAutoSelect,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       assetCatagoryEntityID,
 		RefType:     entity.RefTypeStraight,

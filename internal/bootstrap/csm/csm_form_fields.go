@@ -30,7 +30,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		Key:         "uuid-00-status",
 		Name:        "status",
 		DisplayName: "Status",
-		DomType:     entity.DomAutoSelect,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,

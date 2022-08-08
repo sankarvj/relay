@@ -54,11 +54,11 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		DataType:    entity.TypeList,
 		Choices: []entity.Choice{
 			{
-				ID:           "1",
+				ID:           "ADMIN",
 				DisplayValue: "ADMIN",
 			},
 			{
-				ID:           "2",
+				ID:           "USER",
 				DisplayValue: "USER",
 			},
 		},
@@ -88,7 +88,7 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		avatarFieldID: avatar,
 		emailFieldID:  email,
 		teamFieldID:   []interface{}{teamID},
-		roleFieldID:   []interface{}{"1"},
+		roleFieldID:   []interface{}{"ADMIN"},
 	}
 
 	return []entity.Field{userIDField, nameField, avatarField, emailField, roleField, teamListField}, ownerVals

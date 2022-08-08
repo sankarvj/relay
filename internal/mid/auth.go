@@ -146,7 +146,7 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 			} else if hasRoleVisitor(usr.Roles) {
 				entityID := params["entity_id"]
 				itemID := params["item_id"]
-				vl, err := visitor.List(ctx, accountID, usr.Email, db)
+				vl, err := visitor.ListByEmail(ctx, accountID, usr.Email, db)
 				if err != nil {
 					err := errors.New("account_not_associated_with_this_visitor") // value used in the UI dont change the string message.
 					return web.NewRequestError(err, http.StatusForbidden)

@@ -81,7 +81,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 			return err
 		}
 		piper.Viable = true
-		piper.Pipe = true
+		piper.LS = entity.MetaRenderPipe
 
 		piper.Items = make(map[string][]ViewModelItem, 0)
 		for _, vmi := range viewModelItems {

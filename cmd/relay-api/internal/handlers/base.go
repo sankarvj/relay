@@ -20,8 +20,8 @@ import (
 
 type Piper struct {
 	Viable         bool                       `json:"viable"`
-	Pipe           bool                       `json:"pipe"`
 	Group          bool                       `json:"group"`
+	LS             string                     `json:"layout_style"`
 	NodeKey        string                     `json:"node_key"`
 	Flows          []flow.ViewModelFlow       `json:"flows"`
 	Nodes          []node.ViewModelNode       `json:"nodes"`
@@ -34,13 +34,17 @@ type Piper struct {
 }
 
 func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) string {
-	if ls == entity.MetaRenderPipe {
-		if !e.IsPipeLayout() { //update pipe in entity
-			e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderPipe})
+	if ls == entity.MetaRenderPipe && !e.IsPipeLayout() {
+		log.Println("***> ***> ***>Set renderer1")
+		err := e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderPipe})
+		if err != nil {
+			log.Println("***> unexpected error occurred in internal.handlers.item. when setting pipe renderer", err)
 		}
-	} else if ls == entity.MetaRenderList {
-		if e.IsPipeLayout() { //update pipe in entity
-			e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderList})
+	} else if ls == entity.MetaRenderList && e.IsPipeLayout() {
+		log.Println("***> ***> ***>Set renderer2")
+		err := e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderList})
+		if err != nil {
+			log.Println("***> unexpected error occurred in internal.handlers.item. when setting list renderer", err)
 		}
 	} else {
 		if e.IsPipeLayout() {

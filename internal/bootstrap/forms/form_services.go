@@ -45,7 +45,7 @@ func ServiceFields(serviceCatagoryEntityID, serviceCatagoryDisplayKey string) []
 		Key:         serviceCategoryFieldID,
 		Name:        "catagory",
 		DisplayName: "Catagory",
-		DomType:     entity.DomAutoSelect,
+		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       serviceCatagoryEntityID,
 		RefType:     entity.RefTypeStraight,

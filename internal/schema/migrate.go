@@ -348,8 +348,12 @@ var migrations = []darwin.Migration{
 			team_id         UUID REFERENCES teams ON DELETE CASCADE,
 			entity_id    	UUID REFERENCES entities ON DELETE CASCADE,
 			item_id 		UUID REFERENCES items ON DELETE CASCADE,
+			name 			TEXT,
 			email 			TEXT,
 			token 			TEXT,
+			active		    BOOLEAN DEFAULT TRUE,
+			signed_in		BOOLEAN DEFAULT FALSE,
+			expire_at       TIMESTAMP,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
 			UNIQUE (account_id, team_id, entity_id, item_id)

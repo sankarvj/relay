@@ -15,8 +15,9 @@ const (
 )
 
 const (
-	MetaRenderPipe = "pipe" // pipe/list
-	MetaRenderList = "list" // pipe/list
+	MetaRenderPipe  = "pipe"  // pipe/list/group
+	MetaRenderList  = "list"  // pipe/list/group
+	MetaRenderGroup = "group" // pipe/list/group
 )
 
 //UpdateMeta patches the meta data right now it is used to save the UI render info (pipe/list)

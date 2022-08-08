@@ -24,25 +24,28 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 	log.Println("Reached executeInvite ")
 	e, err := entity.Retrieve(ctx, n.AccountID, n.Meta.EntityID, db)
 	if err != nil {
+		log.Println("Reached executeInvite item entity", err)
 		return err
 	}
 
 	i, err := item.Retrieve(ctx, n.Meta.EntityID, n.Meta.ItemID, db)
 	if err != nil {
+		log.Println("Reached executeInvite item err", err)
 		return err
 	}
 
 	visitorInvitationFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
+		log.Println("Reached executeInvite visitorInvitationFields err", err)
 		return err
 	}
+
 	namedFieldsObj := entity.NamedFieldsObjMap(visitorInvitationFields)
 	body := namedFieldsObj["body"].Value.(string)
 	role := namedFieldsObj["role"].Value.([]interface{})
 	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, n.VariablesMap())
 	email := namedFieldsObj["email"].Value.(string)
 	email = eng.RunExpRenderer(ctx, db, n.AccountID, email, n.VariablesMap())
-	log.Println("newEmail--> ", email)
 
 	emails := strings.Split(email, ",")
 	for _, email := range emails {
@@ -57,6 +60,7 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 				TeamID:    e.TeamID,
 				EntityID:  e.ID,
 				ItemID:    i.ID,
+				Name:      util.NameInEmail(email),
 				Email:     email,
 				Token:     token,
 			}
