@@ -3,6 +3,7 @@ package base
 import (
 	"context"
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"time"
 
@@ -27,11 +28,14 @@ const (
 
 type Base struct {
 	AccountID       string
+	AccountName     string
 	TeamID          string
 	UserID          string
+	Local           bool
 	DB              *sqlx.DB
 	RP              *redis.Pool
 	FirebaseSDKPath string
+
 	CoreEntity
 	CoreItem
 	CoreAutomation
@@ -82,12 +86,14 @@ type CoreNode struct {
 }
 
 func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Base {
+	build := expvar.Get("build")
 	return &Base{
 		AccountID:       accountID,
 		TeamID:          teamID,
 		UserID:          userID,
 		DB:              db,
 		RP:              rp,
+		Local:           (build == nil || build.String() == `"dev"`),
 		FirebaseSDKPath: firebaseSDKPath,
 	}
 }
@@ -229,7 +235,7 @@ func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string,
 			ni.Name = &s
 		}
 
-		if f.IsDateTime() {
+		if f.IsDateOrTime() {
 			ni.Fields[f.Key] = fmt.Sprintf("<<%v>>", f.Value)
 		}
 	}

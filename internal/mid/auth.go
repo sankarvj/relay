@@ -1,11 +1,20 @@
 package mid
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -177,6 +186,79 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 	return f
 }
 
+func HasSlackAccess(authenticator *auth.Authenticator) web.Middleware {
+	// This is the actual middleware function to be executed.
+	f := func(after web.Handler) web.Handler {
+
+		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+			ctx, span := trace.StartSpan(ctx, "internal.mid.HasSlackAccess")
+			defer span.End()
+
+			type Payload struct {
+				Token     string `json:"token"`
+				Type      string `json:"type"`
+				Challenge string `json:"challenge"`
+			}
+
+			var sp Payload
+			b, err := ioutil.ReadAll(r.Body)
+			r.Body = ioutil.NopCloser(bytes.NewReader(b))
+			//fmt.Println("SLACK BODY RAW : ", string(b))
+			if err != nil {
+				err := errors.New("brain middleware unable to read slack event body") // value used in the UI dont change the string message.
+				return web.NewRequestError(err, http.StatusBadRequest)
+			}
+			err = json.Unmarshal(b, &sp)
+			if err != nil {
+				err := errors.New("brain middleware unable to unmarshal slack event body") // value used in the UI dont change the string message.
+				return web.NewRequestError(err, http.StatusBadRequest)
+			}
+
+			//challenge from slack should stop here to respond.
+			if sp.Challenge != "" {
+				var slackChallengeRes struct {
+					Challenge string `json:"challenge"`
+				}
+				slackChallengeRes.Challenge = sp.Challenge
+				return web.Respond(ctx, w, slackChallengeRes, http.StatusOK)
+			}
+
+			// continue with slack auth checks here....
+
+			if hasValidSlackSigningSecret(r, authenticator.SlackSignature, string(b)) != nil {
+				return web.NewRequestError(err, http.StatusForbidden)
+			}
+
+			return after(ctx, w, r, params)
+		}
+
+		return h
+	}
+
+	return f
+}
+
+func hasValidSlackSigningSecret(r *http.Request, slackSignature, body string) error {
+	hasedSlackSignature := r.Header.Get("X-Slack-Signature")
+	slackReqTs, err := strconv.ParseInt(r.Header.Get("X-Slack-Request-Timestamp"), 10, 64)
+	if err != nil {
+		return err
+	}
+	if time.Now().UTC().Unix()-slackReqTs > 60*5 {
+		//It could be a replay attack, so let's ignore it.
+		return errors.New("slack ts not recent")
+	}
+
+	sigBasestring := fmt.Sprintf("%s:%d:%s", "v0", slackReqTs, body)
+	mySignature := fmt.Sprintf("%s:%s", "v0=", hmac256(slackSignature, sigBasestring))
+
+	if mySignature == hasedSlackSignature {
+		return errors.New("signature mismatch")
+	}
+
+	return nil
+}
+
 func hasRoleAdmin(roles []string) bool {
 	for _, r := range roles {
 		if r == auth.RoleAdmin {
@@ -211,4 +293,13 @@ func isExist(accountIDs []string, accountIDInReqParam string) bool {
 		}
 	}
 	return false
+}
+
+func hmac256(secret, data string) string {
+	h := hmac.New(sha256.New, []byte(secret))
+	// Write Data to it
+	h.Write([]byte(data))
+	// Get result and encode as hexadecimal string
+	return hex.EncodeToString(h.Sum(nil))
+
 }

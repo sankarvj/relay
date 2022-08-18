@@ -64,8 +64,8 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 	if err != nil {
 		return err
 	}
-	e := eml.FallbackMail{Domain: "", ReplyTo: ""}
-	_, err = e.SendMail("WorkbaseONE", "assist@workbaseone.com", "", util.ConvertSliceTypeRev(emNotif.To), emNotif.Subject, emNotif.Body)
+	e := eml.SESMail{Domain: "", ReplyTo: ""}
+	_, err = e.SendMail("WorkbaseONE", "WorkbaseONE <no-reply@workbaseone.com>", "", util.ConvertSliceTypeRev(emNotif.To), emNotif.Subject, emNotif.Body)
 	return err
 }
 

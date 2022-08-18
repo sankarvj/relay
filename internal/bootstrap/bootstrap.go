@@ -23,15 +23,17 @@ import (
 	"go.opencensus.io/trace"
 )
 
-func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string, accountID string, cuser *user.User) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string, accountID, accountName string, cuser *user.User) error {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
 	defer span.End()
 
 	//Setting the accountID as the teamID for the base team of an account
 	teamID := accountID
+	memberID := uuid.New().String()
 
 	//TODO: all bootsrapping should happen in a single transaction
-	err := cuser.UpdateAccounts(ctx, db, map[string]interface{}{accountID: cuser.ID})
+
+	err := cuser.UpdateAccounts(ctx, db, cuser.AddAccount(accountID, memberID))
 	if err != nil {
 		return errors.Wrap(err, "user update with accounts failed")
 	}
@@ -42,8 +44,9 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 	}
 
 	b := base.NewBase(accountID, teamID, cuser.ID, db, rp, firebaseSDKPath)
+	b.AccountName = accountName
 
-	err = BootstrapOwnerEntity(ctx, cuser, b)
+	err = BootstrapOwnerEntity(ctx, memberID, cuser, b)
 	if err != nil {
 		return err
 	}
@@ -98,7 +101,7 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 	return err
 }
 
-func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.Base) error {
+func BootstrapOwnerEntity(ctx context.Context, memberID string, currentUser *user.User, b *base.Base) error {
 	var err error
 	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
 	// add entity - owners
@@ -107,7 +110,7 @@ func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.B
 		return err
 	}
 	//Adding currentUserID as the memberID for the first time
-	_, err = b.ItemAdd(ctx, b.OwnerEntity.ID, currentUser.ID, currentUser.ID, itemVals, nil)
+	_, err = b.ItemAdd(ctx, b.OwnerEntity.ID, memberID, currentUser.ID, itemVals, nil)
 	if err != nil {
 		return err
 	}
@@ -115,6 +118,7 @@ func BootstrapOwnerEntity(ctx context.Context, currentUser *user.User, b *base.B
 }
 
 func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
+
 	coEntityID, coEmail, err := CurrentOwner(ctx, b.DB, b.AccountID, b.TeamID)
 	if err != nil {
 		return err
@@ -126,13 +130,19 @@ func BootstrapEmailConfigEntity(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
+	baseMailUsername := "support"
+	if b.AccountName != "" {
+		baseMailUsername = b.AccountName
+	}
 	uniqueDiscoveryID := uuid.New().String()
+	baseEmail := fmt.Sprintf("%s@%s.workbaseone.com", baseMailUsername, uniqueDiscoveryID)
+
 	emailConfigInboxEntityItem := entity.EmailConfigEntity{
 		AccountID: b.AccountID,
 		TeamID:    b.TeamID,
 		APIKey:    uniqueDiscoveryID,
 		Domain:    integration.DomainBaseInbox,
-		Email:     fmt.Sprintf("support@%s.workbaseone.com", uniqueDiscoveryID),
+		Email:     baseEmail,
 		Common:    "true",
 		Owner:     []string{b.UserID},
 	}
@@ -205,7 +215,7 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:BOOT Status Entity With It's Three Statuses Items Created")
+	fmt.Println("\tBOOT Status Entity With It's Three Statuses Items Created")
 
 	return nil
 }
@@ -217,7 +227,7 @@ func BootstrapVisitorInviteEntity(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:BOOT VisitorInvitaiton Entity Created")
+	fmt.Println("\tBOOT VisitorInvitaiton Entity Created")
 	return err
 }
 

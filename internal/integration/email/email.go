@@ -74,7 +74,7 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 	} else if emailConfigEntityItem.Domain == "google.com" {
 		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey, ReplyTo: replyToID}
 	} else if emailConfigEntityItem.Domain == "base_inbox.com" {
-		e = email.FallbackMail{Domain: "", ReplyTo: replyToID}
+		e = email.SESMail{Domain: "", ReplyTo: replyToID}
 	}
 
 	messageID, err := e.SendMail("", emailConfigEntityItem.Email, "", util.ConvertSliceTypeRev(toField.Value.([]interface{})), subject, body)
@@ -99,7 +99,7 @@ func Destruct(ctx context.Context, accountID, entityID, itemID string, db *sqlx.
 	} else if emailConfigEntityItem.Domain == "google.com" {
 		e = email.Gmail{OAuthFile: "config/dev/google-apps-client-secret.json", TokenJson: emailConfigEntityItem.APIKey}
 	} else if emailConfigEntityItem.Domain == "base_inbox.com" {
-		e = email.FallbackMail{Domain: ""}
+		e = email.SESMail{Domain: ""}
 	}
 	return e.Stop("me")
 }

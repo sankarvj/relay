@@ -13,6 +13,9 @@ worker:
 admin:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 useradd admin@example.com gophers
 
+brain: 
+	go run ./cmd/relay-slack-brain/main.go
+
 keys:
 	go run ./cmd/relay-admin/main.go keygen private.pem
 
@@ -95,3 +98,12 @@ deploy-worker:
 	
 deploy-admin:
 	./deploy-admin.sh
+
+ngrok:
+	../ngrok http 3000
+
+relayrok:
+	../ngrok http -hostname=relay.ngrok.io 3000
+
+brainrok:
+	../ngrok http 3002

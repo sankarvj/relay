@@ -42,6 +42,8 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
 
+	//tracker.TestChan().Log("Item Loaded", "Items loaded")
+
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	viewID := r.URL.Query().Get("view_id")
 	exp := r.URL.Query().Get("exp")
@@ -66,13 +68,12 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		exp = util.AddExpression(exp, fl.Expression)
 	}
 
+	log.Println("exp ", exp)
+
 	piper := Piper{Viable: e.FlowField() != nil}
 	if page == 0 {
-		log.Println("ls--- ", ls)
 		piper.LS = setRenderer(ctx, ls, e, i.db)
 	}
-
-	log.Println("piper.LS--- ", piper.LS)
 
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
@@ -331,7 +332,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	//update date and time fields with current time
 	if itemID == "undefined" { //create call
 		for i := 0; i < len(fields); i++ {
-			if fields[i].IsDateTime() {
+			if fields[i].IsDateOrTime() {
 				fields[i].Value = time.Now()
 			}
 		}

@@ -43,6 +43,8 @@ type Authenticator struct {
 	parser             *jwt.Parser
 	FireBaseAdminSDK   string
 	GoogleClientSecret string
+	SlackSignature     string
+	SlackBotToken      string
 }
 
 // NewAuthenticator creates an *Authenticator for use. It will error if:
@@ -79,6 +81,42 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, firebaseAdminSDKPath, clientSe
 		parser:             &parser,
 		FireBaseAdminSDK:   firebaseAdminSDKPath,
 		GoogleClientSecret: clientSecret,
+	}
+
+	return &a, nil
+}
+
+func NewSlackAuthenticator(privateKey *rsa.PrivateKey, firebaseAdminSDKPath, clientSecret string, activeKID, algorithm string, publicKeyLookupFunc KeyLookupFunc, slackSignature, slackBotToken string) (*Authenticator, error) {
+	if privateKey == nil {
+		return nil, errors.New("private key cannot be nil")
+	}
+	if activeKID == "" {
+		return nil, errors.New("active kid cannot be blank")
+	}
+	if jwt.GetSigningMethod(algorithm) == nil {
+		return nil, errors.Errorf("unknown algorithm %v", algorithm)
+	}
+	if publicKeyLookupFunc == nil {
+		return nil, errors.New("public key function cannot be nil")
+	}
+
+	// Create the token parser to use. The algorithm used to sign the JWT must be
+	// validated to avoid a critical vulnerability:
+	// https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+	parser := jwt.Parser{
+		ValidMethods: []string{algorithm},
+	}
+
+	a := Authenticator{
+		privateKey:         privateKey,
+		activeKID:          activeKID,
+		algorithm:          algorithm,
+		pubKeyLookupFunc:   publicKeyLookupFunc,
+		parser:             &parser,
+		FireBaseAdminSDK:   firebaseAdminSDKPath,
+		GoogleClientSecret: clientSecret,
+		SlackSignature:     slackSignature,
+		SlackBotToken:      slackBotToken,
 	}
 
 	return &a, nil

@@ -107,7 +107,6 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
 			}
 		}
-
 	}
 
 	if s.source != nil {

@@ -165,6 +165,5 @@ func getUserInfo(key string, rp *redis.Pool) (UserInfo, error) {
 	userInfo.UnmarshalJSON([]byte(msgStr))
 
 	//TODO delete token from redis after the first time retrival
-
 	return *userInfo, nil
 }

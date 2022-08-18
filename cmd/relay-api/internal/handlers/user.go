@@ -26,6 +26,11 @@ const (
 	NoEntityID = "00000000-0000-0000-0000-000000000000"
 )
 
+var ErrForbiddenMLToken = web.NewRequestError(
+	errors.New("Magic link token expired or not found. Please ask your admin to reinvite"),
+	http.StatusForbidden,
+)
+
 // User represents the User API method handler set.
 type User struct {
 	db            *sqlx.DB
@@ -195,7 +200,7 @@ func (u *User) Verfiy(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	tkn, err := generateJWT(ctx, tokenEmail, v.Now, u.authenticator, u.db)
 	if err != nil {
-		return errors.Wrap(err, "generating token")
+		return web.NewRequestError(err, http.StatusUnauthorized)
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
@@ -209,7 +214,7 @@ func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	userInfo, err := auth.AuthenticateToken(token, u.rPool)
 	if err != nil {
-		return errors.Wrap(err, "authenticating mlToken")
+		return ErrForbiddenMLToken
 	}
 	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
 	if err != nil {
@@ -232,11 +237,11 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	userInfo, err := auth.AuthenticateToken(mlToken, u.rPool)
 	if err != nil {
-		return errors.Wrap(err, "verifying mlToken")
+		return web.NewRequestError(errors.New("User doest not exist. Please create a account first"), http.StatusUnauthorized)
 	}
 
 	if userInfo.Email != tokenEmail {
-		return errors.Wrap(err, "token mismatch detected")
+		return web.NewRequestError(errors.Wrap(err, "token mismatch detected"), http.StatusUnauthorized)
 	}
 
 	// all authentication completed. Proceed with the next steps
@@ -377,6 +382,7 @@ func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authe
 	dbUser, err := user.RetrieveUserByUniqIdentifier(ctx, db, email, "")
 	if err != nil {
 		errors.Wrap(err, "user does not exist in the DB. Cannot generate JWT token")
+		return nil, web.NewRequestError(err, http.StatusUnauthorized)
 	}
 	claims := auth.NewClaims(dbUser.ID, dbUser.Roles, now, 96*time.Hour)
 	if err != nil {
@@ -384,7 +390,7 @@ func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authe
 		case user.ErrAuthenticationFailure:
 			return nil, web.NewRequestError(err, http.StatusUnauthorized)
 		default:
-			return nil, errors.Wrap(err, "authenticating")
+			return nil, web.NewRequestError(err, http.StatusUnauthorized)
 		}
 	}
 

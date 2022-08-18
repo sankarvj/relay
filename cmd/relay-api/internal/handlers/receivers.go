@@ -26,6 +26,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
+	"gitlab.com/vjsideprojects/relay/internal/platform/tracker"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
@@ -172,13 +173,12 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		To:        []string{to},
 		Cc:        []string{},
 		Bcc:       []string{},
-		Contacts:  []string{},
-		Companies: []string{},
 		Subject:   subject,
 		Body:      email.HTMLBody,
 	}
 
-	fmt.Printf("\nIncomingMessage: %+v", emailEntityItem)
+	fmt.Printf("\nIncomingMessage: %+v \n", emailEntityItem)
+	tracker.EmailChan().Log("Email Received", fmt.Sprintf("Received email from domain %s", emailConfigEntityItem.Domain))
 
 	if len(references) == 0 { // save as the message
 		err = saveEmailPlusConnect(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, messageID, emailEntityItem, db, rp, fbSDKPath)
@@ -208,15 +208,17 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 func saveEmailPlusConnect(ctx context.Context, accountID, teamID, messageID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 	contacts, err := createContactIfNotExist(ctx, accountID, teamID, emailEntityItem.RFrom[0], db, rp, fbSDKPath)
 	if err != nil {
+		tracker.ErrorChan().Log("Bug Found", fmt.Sprintf("Could not find contacts entity on account `%s`", accountID))
 		return err
 	}
 	//associating the contact. TODO Shall we move this to the workflow?? It is the vision
-	emailEntityItem.Contacts = contacts
+	//emailEntityItem.Contacts = contacts
 	//using the account and team of the emailConfig we are saving the emails inside the same acc/team
 	it, err := entity.SaveFixedEntityItem(ctx, accountID, teamID, schema.SeedSystemUserID, entity.FixedEntityEmails, "received", messageID, integration.TypeMails, util.ConvertInterfaceToMap(emailEntityItem), db)
 	if err != nil {
 		return err
 	}
+	log.Println("contacts ", contacts)
 	//stream/queue
 	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, map[string]string{}))
 	return nil
@@ -246,8 +248,10 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 	}
 
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
-	if err != nil {
+	if err != nil && err != user.ErrNotFound {
 		return []string{}, err
+	} else if err == user.ErrNotFound {
+		currentUserID = schema.SeedSystemUserID
 	}
 
 	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
@@ -269,6 +273,7 @@ func createContactIfNotExist(ctx context.Context, accountID, teamID, value strin
 			ID:        uuid.New().String(),
 			Name:      &name,
 			AccountID: accountID,
+			UserID:    &currentUserID,
 			EntityID:  e.ID,
 			Fields:    fields,
 		}

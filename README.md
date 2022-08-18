@@ -46,6 +46,8 @@ go test ./...
 [analytics](TBD.md)
 ### Integrations
 [integrations](internal/platform/integration/README.md)
+### Email Reception Using SNS
+[sns](internal/aws/README.md)
 
 ## Functions
 

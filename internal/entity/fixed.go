@@ -86,8 +86,8 @@ type EmailEntity struct {
 	Bcc         []string `json:"bcc"`
 	Subject     string   `json:"subject"`
 	Body        string   `json:"body"`
-	Contacts    []string `json:"contacts"`
-	Companies   []string `json:"companies"`
+	// Contacts    []string `json:"contacts"`
+	// Companies   []string `json:"companies"`
 }
 
 // EmailConfigEntity represents structural format of email config entity
@@ -215,7 +215,7 @@ func RetrieveFixedEntity(ctx context.Context, db *sqlx.DB, accountID, teamID str
 	}
 
 	var e Entity
-	const q = "SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (team_id = $3 OR state = $4 OR shared_team_ids @> $5) LIMIT 1"
+	const q = "SELECT * FROM entities WHERE account_id = $1 AND name = $2 AND (account_id = $3 OR team_id = $3 OR state = $4 OR shared_team_ids @> $5) LIMIT 1"
 
 	if err := db.GetContext(ctx, &e, q, accountID, preDefinedEntityName, teamID, StateAccountLevel, pq.Array([]string{teamID})); err != nil {
 		if err == sql.ErrNoRows {

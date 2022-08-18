@@ -21,7 +21,7 @@ const usersCollection = "users"
 
 var (
 	// ErrNotFound is used when a specific User is requested but does not exist.
-	ErrNotFound = errors.New("User not found")
+	ErrNotFound = errors.New("User not found. Please create a account first")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidID = errors.New("ID is not in its proper form")

@@ -43,6 +43,8 @@ func Retrieve(ctx context.Context, draftID string, db *sqlx.DB) (*Draft, error) 
 
 // Create inserts a new user into the database. Call AccountBootstrap instead
 func Create(ctx context.Context, nd NewDraft, now time.Time, db *sqlx.DB) (Draft, error) {
+	//adding base
+	nd.Teams = append(nd.Teams, "base")
 	d := Draft{
 		ID:            uuid.New().String(),
 		AccountName:   nd.AccountName,

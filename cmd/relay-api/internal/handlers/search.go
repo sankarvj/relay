@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gomodule/redigo/redis"
@@ -25,7 +24,6 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	key := r.URL.Query().Get("k")
 	term := r.URL.Query().Get("t")
 	fi := r.URL.Query().Get("fi")
-	log.Println("fi fi fi fi ", fi)
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {

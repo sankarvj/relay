@@ -53,7 +53,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 	if err == entity.ErrFixedEntityNotFound {
 		// add entity - task
 		fields := forms.TaskFields(contactEntity.ID, companyEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("name"))
-		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Client Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
+		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -453,6 +453,12 @@ func AddAssociations(ctx context.Context, b *base.Base, conEid, comEid, deEid, t
 
 	//deal task association
 	_, err = b.AssociationAdd(ctx, deEid.ID, taskEID.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	//contact email association
+	_, err = b.AssociationAdd(ctx, conEid.ID, emailEid.ID)
 	if err != nil {
 		return "", "", err
 	}

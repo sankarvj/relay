@@ -23,6 +23,7 @@ const (
 	VersionDT
 	ListDT
 	TimeDT
+	DateDT
 )
 
 type caster struct {
@@ -266,7 +267,7 @@ func notsame(leftList, rightList []interface{}) bool {
 }
 
 func cast(left, right Operand, checkEquality bool) caster {
-	log.Printf("internal.platform.ruleengine.services.ruler.operator : compare left: %v (%T) vs right: %v (%T)\n", left, left, right, right)
+	//log.Printf("internal.platform.ruleengine.services.ruler.operator : compare left: %v (%T) vs right: %v (%T)\n", left, left, right, right)
 	c := caster{}
 	if left == nil || right == nil || left == "nil" || right == "nil" {
 		c.err = errors.New("any one or both the operands are null")

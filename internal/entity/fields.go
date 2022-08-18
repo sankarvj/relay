@@ -362,6 +362,14 @@ func (f Field) IsDateTime() bool {
 	return f.DataType == TypeDateTime
 }
 
+func (f Field) IsDate() bool {
+	return f.DataType == TypeDate
+}
+
+func (f Field) IsDateOrTime() bool {
+	return f.IsDate() || f.IsDateTime()
+}
+
 func (f Field) IsList() bool {
 	return f.DataType == TypeList
 }

@@ -49,7 +49,7 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 			ni.Name = &s
 		}
 
-		if f.IsDateTime() {
+		if f.IsDateOrTime() {
 			ni.Fields[f.Key] = fmt.Sprintf("<<%v>>", f.Value)
 		}
 	}

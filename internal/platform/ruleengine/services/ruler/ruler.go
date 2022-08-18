@@ -101,7 +101,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 	defer close(workChan)
 
 	if strings.TrimSpace(rule) == "" {
-		log.Println("internal.platform.ruleengine.services.ruler : encountered empty expression, sending positive response")
+		//log.Println("internal.platform.ruleengine.services.ruler : encountered empty expression, sending positive response")
 		// By default, the empty rule is considered as the positive expression.
 		// stand taken since the default nodes don't possess expressions
 		workChan <- Work{PosExecutor, "", nil, nil}
@@ -114,7 +114,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 
 	switch eFeedback {
 	case Execute:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `execute`  expression: %s\n", rule)
+		//log.Printf("internal.platform.ruleengine.services.ruler case: `execute`  expression: %s\n", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
 			workChan <- Work{PosExecutor, r.trigger, nil, nil}
@@ -122,16 +122,16 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 			workChan <- Work{NegExecutor, r.trigger, nil, nil}
 		}
 	case Parse:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `parse` expression: %s\n", rule)
+		//log.Printf("internal.platform.ruleengine.services.ruler case: `parse` expression: %s\n", rule)
 		r = r.startParsingLexer(rule)
 		//CHECK: This might cause adverse effects in the html contents. Take note
 		workChan <- Work{Parser, "", r.content, nil}
 	case Compute:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `compute` expression: %s\n", rule)
+		//log.Printf("internal.platform.ruleengine.services.ruler case: `compute` expression: %s\n", rule)
 		r = r.startComputingLexer(rule)
 		workChan <- Work{Computer, "", r.content, nil}
 	case Graph:
-		log.Printf("internal.platform.ruleengine.services.ruler case: `graph` expression: %s\n", rule)
+		//log.Printf("internal.platform.ruleengine.services.ruler case: `graph` expression: %s\n", rule)
 		r = r.startGraphingLexer(rule)
 		workChan <- Work{Grapher, "", r.filter, nil}
 	}
@@ -443,7 +443,7 @@ func (r *Ruler) makeGraph() error {
 		}
 	}
 	r.constructRuleItem()
-	log.Printf("internal.platform.ruleengine.services.ruler : `query:` execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
+	//log.Printf("internal.platform.ruleengine.services.ruler : `query:` execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
 		condition := Condition{

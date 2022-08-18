@@ -13,5 +13,7 @@
             "env": {},
             "args": []
         }
-    ]
+    ],
+    "go.testFlags": ["-v"]
 }
+

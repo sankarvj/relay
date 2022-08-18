@@ -210,7 +210,7 @@ var migrations = []darwin.Migration{
 			node_id    	UUID,
 		    life 	   	INTEGER DEFAULT 0,
 			is_active	BOOLEAN DEFAULT FALSE,
-			UNIQUE (flow_id,item_id)
+			UNIQUE (flow_id, item_id)
 		);
 		`,
 	},

@@ -183,7 +183,7 @@ func seed(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 		return err
 	}
 
-	err = bootstrap.Bootstrap(ctx, db, rp, fbSDKPath, a.ID, cuser)
+	err = bootstrap.Bootstrap(ctx, db, rp, fbSDKPath, a.ID, a.Name, cuser)
 	if err != nil {
 		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err

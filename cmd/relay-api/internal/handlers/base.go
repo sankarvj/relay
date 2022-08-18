@@ -159,7 +159,7 @@ func makeGraphField(f *entity.Field, value interface{}, expression string, rever
 				DataType:   graphdb.DType(f.Field.DataType),
 			},
 		}
-	} else if f.IsDateTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis
+	} else if f.IsDateOrTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis
 		var min string
 		var max string
 		dataType := graphdb.DType(f.DataType)
@@ -167,7 +167,7 @@ func makeGraphField(f *entity.Field, value interface{}, expression string, rever
 		case string:
 			if value == "now" {
 				dataType = graphdb.TypeDateTimeMillis
-				value = util.GetMilliSecondsStr(time.Now())
+				value = util.GetMilliSecondsStr(time.Now().UTC())
 			} else {
 				parts := strings.Split(v, "-")
 				if len(parts) == 2 { // date range

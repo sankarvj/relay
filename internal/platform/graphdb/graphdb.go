@@ -187,8 +187,9 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 		return result, err
 	}
 	//DEBUG LOG
-	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
-	//result.PrettyPrint()
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	result.PrettyPrint()
 	return result, err
 }
 

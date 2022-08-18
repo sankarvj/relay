@@ -27,6 +27,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -130,7 +131,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 
 	//graph
 	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -156,6 +157,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return
 	}
+	log.Println("***>***> Reaced FOR ITEM ***<***<", it.ID)
 
 	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
@@ -218,7 +220,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		}
 	}
 
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), *it.UserID, valueAddedFields)
+	log.Printf("it.UserID----- %+v", it)
+
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 	//safely deleting the empty string...
 	delete(m.Source, "")
@@ -586,7 +590,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 	}
 
 	userName := "System User"
-	if currentUserID != engine.UUID_SYSTEM_USER {
+	if currentUserID != engine.UUID_SYSTEM_USER && currentUserID != schema.SeedSystemUserID {
 		currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
 		if err != nil {
 			return err
@@ -656,7 +660,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	}
 	valueAddedFields := notifEntity.ValueAdd(notifItem.Fields())
 
-	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), *notifItem.UserID, valueAddedFields)
+	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), notifItem.UserID, valueAddedFields)
 	err = j.actOnRedisGraph(ctx, notifItem.AccountID, notifItem.EntityID, notifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		return err
@@ -723,7 +727,8 @@ func connectionType(baseEntityID, entityID string, relationShips []relationship.
 	return typeOfConnection
 }
 
-func appendTimers(createdAt, updatedAt time.Time, userID string, valueAddedFields []entity.Field) []entity.Field {
+func appendTimers(createdAt, updatedAt time.Time, userID *string, valueAddedFields []entity.Field) []entity.Field {
+
 	createdAtField := entity.Field{
 		Key:   "system_created_at",
 		Value: util.GetMilliSecondsFloat(createdAt),
@@ -732,11 +737,15 @@ func appendTimers(createdAt, updatedAt time.Time, userID string, valueAddedField
 		Key:   "system_updated_at",
 		Value: util.GetMilliSecondsFloat(updatedAt),
 	}
-	createdByField := entity.Field{
-		Key:   "system_created_by",
-		Value: userID,
+	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField)
+	if userID != nil {
+		createdByField := entity.Field{
+			Key:   "system_created_by",
+			Value: *userID,
+		}
+		valueAddedFields = append(valueAddedFields, createdByField)
 	}
-	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField, createdByField)
+
 	return valueAddedFields
 }
 

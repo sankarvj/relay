@@ -85,3 +85,42 @@ func Decode(r *http.Request, val interface{}) error {
 
 	return nil
 }
+
+func DecodeAllowUnknown(r *http.Request, val interface{}) error {
+	decoder := json.NewDecoder(r.Body)
+	//decoder.DisallowUnknownFields()
+	if err := decoder.Decode(val); err != nil {
+		return NewRequestError(err, http.StatusBadRequest)
+	}
+
+	if err := validate.Struct(val); err != nil {
+		// Use a type assertion to get the real error value.
+		verrors, ok := err.(validator.ValidationErrors)
+		if !ok {
+			return err
+		}
+
+		// lang controls the language of the error messages. You could look at the
+		// Accept-Language header if you intend to support multiple languages.
+		lang, _ := translator.GetTranslator("en")
+
+		var fields []FieldError
+		for _, verror := range verrors {
+			field := FieldError{
+				Field: verror.Field(),
+				Error: verror.Translate(lang),
+			}
+			fields = append(fields, field)
+		}
+
+		log.Println("internal.platform.web fields responsible for err ", fields)
+
+		return &Error{
+			Err:    errors.New("field validation error"),
+			Status: http.StatusBadRequest,
+			Fields: fields,
+		}
+	}
+
+	return nil
+}

@@ -61,16 +61,17 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	_, tokenEmail, err := verifyToken(ctx, a.authenticator.FireBaseAdminSDK, fbToken)
 	if err != nil {
-		return errors.Wrap(err, "verifying fbToken")
+		return web.NewRequestError(errors.New("User firebase token mismatch"), http.StatusUnauthorized)
 	}
 
 	userInfo, err := auth.AuthenticateToken(mlToken, a.rPool)
 	if err != nil {
-		return errors.Wrap(err, "verifying mlToken")
+		return web.NewRequestError(errors.New("User magic link token mismatch"), http.StatusUnauthorized)
 	}
 
 	if userInfo.Email != tokenEmail {
-		return errors.Wrap(err, "token mismatch detected")
+		//TODO: it seems the token is compromised. Remove the token
+		return web.NewRequestError(errors.New("User magiclink token mismatch. Token invalidated"), http.StatusUnauthorized)
 	}
 
 	// all authentication completed. Proceed with the next steps
@@ -78,15 +79,15 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if err == user.ErrNotFound {
 		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, a.db)
 		if err != nil {
-			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
+			return web.NewRequestError(errors.Wrap(err, "creating new user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
 		}
 	} else if err != nil {
-		return errors.Wrapf(err, "retrival of user failed")
+		return web.NewRequestError(errors.Wrap(err, "retrival of user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
 	}
 
 	dft, err := draft.Retrieve(ctx, draftID, a.db)
 	if err != nil {
-		return errors.Wrapf(err, "retrival of draft failed")
+		return web.NewRequestError(errors.Wrap(err, "Draft not found"), http.StatusInternalServerError)
 	}
 
 	accountID := uuid.New().String()
@@ -98,32 +99,46 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	acc, err := account.Create(ctx, a.db, nc, time.Now())
 	if err != nil {
-		return err
+		return web.NewRequestError(errors.Wrap(err, "Account creation failed"), http.StatusInternalServerError)
 	}
 
 	tkn, err := generateJWT(ctx, tokenEmail, time.Now(), a.authenticator, a.db)
 	if err != nil {
-		return errors.Wrap(err, "generating token")
+		return web.NewRequestError(errors.Wrap(err, "JWT creation failed"), http.StatusInternalServerError)
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
 	tkn.Accounts = []string{nc.ID}
 
-	err = bootstrap.Bootstrap(ctx, a.db, a.rPool, a.authenticator.FireBaseAdminSDK, acc.ID, &usr)
+	err = bootstrap.Bootstrap(ctx, a.db, a.rPool, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
 	if err != nil {
-		return errors.Wrap(err, "core bootstrap failed")
+		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
 	if util.Contains(dft.Teams, "crm") {
 		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
-			return errors.Wrap(err, "CRM bootstrap  failed")
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
 
 	if util.Contains(dft.Teams, "csm") {
 		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
-			return errors.Wrap(err, "CSM bootstrap failed")
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+
+	if util.Contains(dft.Teams, "em") {
+		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+
+	if util.Contains(dft.Teams, "pm") {
+		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
 
