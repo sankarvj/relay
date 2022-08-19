@@ -33,7 +33,7 @@ import (
 
 //func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 type Job struct {
-	baseItemID      string
+	baseItemIDs     []string
 	baseEntityID    string
 	DB              *sqlx.DB
 	Rpool           *redis.Pool
@@ -98,7 +98,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 
 	//connections
 	if m.State < stream.StateConnection {
-		err = j.actOnConnections(m.AccountID, m.UserID, map[string]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
+		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 			return
@@ -237,7 +237,7 @@ func (j *Job) eventItemCreated(m stream.Message) {
 			}
 		} else {
 			log.Printf("m.Source %+v", m.Source)
-			for j.baseEntityID, j.baseItemID = range m.Source {
+			for j.baseEntityID, j.baseItemIDs = range m.Source {
 
 				if j.baseEntityID == "" {
 					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
@@ -421,7 +421,7 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 	}
 
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
-	if j.baseEntityID != "" && j.baseItemID != "" {
+	if j.baseEntityID != "" && len(j.baseItemIDs) > 0 {
 
 		relationShips, err := relationship.RetionshipType(ctx, db, accountID, j.baseEntityID, entityID)
 		if err != nil {
@@ -429,16 +429,18 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 
 		connType := connectionType(j.baseEntityID, entityID, relationShips)
-		switch connType {
-		case 1: // one way reverse
-			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, false) // contact creates companies : company has contacts
-		case 2: // one way straight
-			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, true) // contact creates companies : contact has companies
-		case 3: // two way
-			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, true)
-			gpbNode = gpbNode.ParentEdge(j.baseEntityID, j.baseItemID, false)
-		}
 
+		for _, baseItemID := range j.baseItemIDs {
+			switch connType {
+			case 1: // one way reverse
+				gpbNode = gpbNode.ParentEdge(j.baseEntityID, baseItemID, false) // contact creates companies : company has contacts
+			case 2: // one way straight
+				gpbNode = gpbNode.ParentEdge(j.baseEntityID, baseItemID, true) // contact creates companies : contact has companies
+			case 3: // two way
+				gpbNode = gpbNode.ParentEdge(j.baseEntityID, baseItemID, true)
+				gpbNode = gpbNode.ParentEdge(j.baseEntityID, baseItemID, false)
+			}
+		}
 	}
 
 	err := graphdb.UpsertNode(rp, gpbNode)
@@ -513,7 +515,7 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 
 // It connects the implicit relationships which as inferred by the field
 // Right now, the connection helps fetching the events and nothing else. (check whether the flow/node gets added to redis because of this)
-func (j Job) actOnConnections(accountID, userID string, base map[string]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
+func (j Job) actOnConnections(accountID, userID string, base map[string][]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
 	log.Println("*********> debug internal.job actOnConnections kicked in")
 	ctx := context.Background()
 	createEvent := oldFields == nil
@@ -529,10 +531,12 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 		//The user can only delete that association and he couldn't update it becasue there is no
 		//reference exists between the two entities implicitly.
 		if r.FieldID == relationship.FieldAssociationKey && createEvent {
-			if baseItemID, ok := base[r.DstEntityID]; ok { // same logic added to redis also
-				err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
-				if err != nil {
-					return errors.Wrap(err, "error: querying association")
+			if baseItemIDs, ok := base[r.DstEntityID]; ok { // same logic added to redis also
+				for _, baseItemID := range baseItemIDs {
+					err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
+					if err != nil {
+						return errors.Wrap(err, "error: querying association")
+					}
 				}
 			}
 		} else {
@@ -553,25 +557,27 @@ func (j Job) actOnConnections(accountID, userID string, base map[string]string, 
 				}
 			} else { //Implicit connection with reverse reference. When creating the contact inside a deal base
 				//log.Println("internal.job implicit connection with reverse reference handled")
-				if baseItemID, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
-					err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
-					if err != nil {
-						log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when adding connections. error: ", err)
-					}
-					baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
-					if err != nil {
-						return errors.Wrap(err, "error: implicit connection with reverse reference failed")
-					}
-					itemFieldsMap := baseItem.Fields()
-					log.Println("*********> debug internal.job BF itemFieldsMap ", itemFieldsMap)
-					if vals, ok := itemFieldsMap[r.FieldID]; ok { // little complex
-						exisitingVals := vals.([]interface{})
-						exisitingVals = append(exisitingVals, itemID)
-						itemFieldsMap[r.FieldID] = exisitingVals
-						log.Println("*********> debug internal.job AF itemFieldsMap ", itemFieldsMap)
-						_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
+				if baseItemIDs, ok := base[r.DstEntityID]; ok && createEvent { //This won't happen during the update
+					for _, baseItemID := range baseItemIDs {
+						err = connection.Associate(ctx, db, accountID, userID, r.RelationshipID, entityName, entityID, r.DstEntityID, itemID, baseItemID, newFields, action)
+						if err != nil {
+							log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when adding connections. error: ", err)
+						}
+						baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
 						if err != nil {
 							return errors.Wrap(err, "error: implicit connection with reverse reference failed")
+						}
+						itemFieldsMap := baseItem.Fields()
+						log.Println("*********> debug internal.job BF itemFieldsMap ", itemFieldsMap)
+						if vals, ok := itemFieldsMap[r.FieldID]; ok { // little complex
+							exisitingVals := vals.([]interface{})
+							exisitingVals = append(exisitingVals, itemID)
+							itemFieldsMap[r.FieldID] = exisitingVals
+							log.Println("*********> debug internal.job AF itemFieldsMap ", itemFieldsMap)
+							_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
+							if err != nil {
+								return errors.Wrap(err, "error: implicit connection with reverse reference failed")
+							}
 						}
 					}
 				}
@@ -636,12 +642,14 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 	return nil
 }
 
-func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string]string, notificationType notification.NotificationType) error {
+func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string][]string, notificationType notification.NotificationType) error {
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	baseIds := make([]string, 0)
-	for baseEntityID, baseItemID := range source {
-		baseID := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
-		baseIds = append(baseIds, baseID)
+	for baseEntityID, baseItemIDs := range source {
+		for _, baseItemID := range baseItemIDs {
+			baseID := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
+			baseIds = append(baseIds, baseID)
+		}
 	}
 
 	if e.Category == entity.CategoryNotification {

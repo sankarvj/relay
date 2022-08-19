@@ -334,12 +334,19 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 		if err != nil {
 			return item.Item{}, err
 		}
+		log.Printf("Discovery item created %+v \n", ns)
 	}
 
 	return it, nil
 }
 
 func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID string, anyEntityItem interface{}, db *sqlx.DB) (string, error) {
+	log.Println("-------------------")
+	log.Println("accountID", accountID)
+	log.Println("entityID", entityID)
+	log.Println("discoveryID", discoveryID)
+	log.Println("-------------------")
+
 	dis, err := discovery.Retrieve(ctx, accountID, entityID, discoveryID, db)
 	if err != nil {
 		return "", err

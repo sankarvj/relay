@@ -39,7 +39,7 @@ type NewItem struct {
 	Type      int                    `json:"type"`
 	State     int                    `json:"state"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
-	Source    map[string]string      `json:"source"`
+	Source    map[string][]string    `json:"source"`
 }
 
 type RefItem struct {

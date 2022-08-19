@@ -41,13 +41,13 @@ type Message struct {
 	ConversationID string                 `json:"conversation_id"`
 	NewFields      map[string]interface{} `json:"new_fields"`
 	OldFields      map[string]interface{} `json:"old_fields"`
-	Source         map[string]string      `json:"source"`
+	Source         map[string][]string    `json:"source"`
 	Meta           map[string]interface{} `json:"meta"`
 	Comment        string                 `json:"comment"`
 	State          int                    `json:"state"`
 }
 
-func NewCreteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, source map[string]string) *Message {
+func NewCreteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, source map[string][]string) *Message {
 	m := &Message{
 		ID:        fmt.Sprintf("%s::->>%s", "create", uuid.New().String()),
 		Type:      TypeItemCreate,

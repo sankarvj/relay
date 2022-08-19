@@ -187,7 +187,7 @@ func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string
 	return e, nil
 }
 
-func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
+func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string][]string) (item.Item, error) {
 	name := "System Generated"
 	ni := item.NewItem{
 		ID:        itemID,
@@ -210,7 +210,7 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 	return it, nil
 }
 
-func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string]string) (item.Item, error) {
+func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string][]string) (item.Item, error) {
 	ce, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
 	if err != nil {
 		return item.Item{}, err

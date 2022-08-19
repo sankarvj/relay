@@ -164,14 +164,12 @@ func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEnt
 	}
 
 	emailEntityItem := entity.EmailEntity{
-		From:      []string{},
-		To:        []string{fmt.Sprintf("{{%s.%s}}", contactEntityID, contactEntityKeyEmail)},
-		Cc:        []string{},
-		Bcc:       []string{},
-		Contacts:  []string{},
-		Companies: []string{},
-		Subject:   fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", contactEntityID, contactEntityKeyNPS),
-		Body:      fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
+		From:    []string{},
+		To:      []string{fmt.Sprintf("{{%s.%s}}", contactEntityID, contactEntityKeyEmail)},
+		Cc:      []string{},
+		Bcc:     []string{},
+		Subject: fmt.Sprintf("This mail is sent you to tell that your NPS scrore is {{%s.%s}}. We are very proud of you!", contactEntityID, contactEntityKeyNPS),
+		Body:    fmt.Sprintf("Hello {{%s.%s}}", contactEntityID, contactEntityKeyEmail),
 	}
 
 	_, err = entity.SaveFixedEntityItem(ctx, b.AccountID, b.TeamID, schema.SeedUserID1, entity.FixedEntityEmails, "Cult Mail Template", "", "", util.ConvertInterfaceToMap(emailEntityItem), b.DB)

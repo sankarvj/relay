@@ -175,7 +175,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string]string{contactEntity.ID: contactItem1.ID})
+	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string][]string{contactEntity.ID: []string{contactItem1.ID}})
 	if err != nil {
 		return err
 	}
@@ -183,12 +183,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Companies Item Created")
 
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Todo Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Todo Task", contactItem1.ID), map[string][]string{contactEntity.ID: {contactItem1.ID}})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - vijay (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Email Task", contactItem1.ID), map[string]string{contactEntity.ID: contactItem1.ID})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "An Email Task", contactItem1.ID), map[string][]string{contactEntity.ID: {contactItem1.ID}})
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string]string{dealEntity.ID: dealItem1.ID})
+	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string][]string{dealEntity.ID: {dealItem1.ID}})
 	if err != nil {
 		return err
 	}

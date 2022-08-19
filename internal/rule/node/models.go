@@ -138,8 +138,8 @@ func (n Node) VariablesMap() map[string]interface{} {
 	return variables
 }
 
-func (n Node) VarStrMap() map[string]string {
-	varStrMap := make(map[string]string, 0)
+func (n Node) VarStrMap() map[string][]string {
+	varStrMap := make(map[string][]string, 0)
 	vars := n.VariablesMap()
 	for k, v := range vars {
 		if k == GlobalEntity {
@@ -147,9 +147,9 @@ func (n Node) VarStrMap() map[string]string {
 		} else {
 			switch v := v.(type) {
 			case string:
-				varStrMap[k] = v
+				varStrMap[k] = []string{v}
 			default:
-				varStrMap[k] = fmt.Sprintf("%f", v)
+				varStrMap[k] = []string{fmt.Sprintf("%f", v)}
 			}
 		}
 
