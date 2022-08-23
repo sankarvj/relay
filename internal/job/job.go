@@ -12,8 +12,8 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
+	"gitlab.com/vjsideprojects/relay/internal/conversation"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
-	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
@@ -328,18 +328,6 @@ func (j *Job) eventItemDeleted(m stream.Message) {
 
 func (j *Job) eventConvAdded(m stream.Message) {
 	ctx := context.Background()
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
-	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
-		return
-	}
-
-	var parentEmailEntityItem entity.EmailEntity
-	_, err = entity.RetrieveUnmarshalledItem(ctx, m.AccountID, m.EntityID, m.ItemID, &parentEmailEntityItem, j.DB)
-	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
-		return
-	}
 
 	cv, err := conv.Retrieve(ctx, m.AccountID, m.ConversationID, j.DB)
 	if err != nil {
@@ -347,12 +335,29 @@ func (j *Job) eventConvAdded(m stream.Message) {
 		return
 	}
 
+	emailEntity, err := entity.Retrieve(ctx, cv.AccountID, cv.EntityID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
+		return
+	}
+
+	var emailItem entity.EmailEntity
+	_, err = entity.RetrieveUnmarshalledItem(ctx, m.AccountID, m.EntityID, m.ItemID, &emailItem, j.DB)
+	if err != nil {
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
+		return
+	}
+
 	//TODO push to job
-	replyTo := parentEmailEntityItem.MessageID
-	valueAddedFields := e.ValueAdd(cv.PayloadMap())
-	_, err = email.SendMail(ctx, m.AccountID, m.EntityID, m.ItemID, valueAddedFields, replyTo, j.DB)
+	replyTo := emailItem.MessageID
+	valueAddedFields := emailEntity.ValueAdd(cv.PayloadMap())
+	msgID, err := email.SendMail(ctx, m.AccountID, m.EntityID, m.ItemID, valueAddedFields, replyTo, j.DB)
 	if err != nil {
 		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while sending mail. error:", err)
+	}
+	err = conversation.UpdateID(ctx, j.DB, cv.ID, *msgID, time.Now())
+	if err != nil {
+		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while updating the old conv id with msg id. error:", err)
 	}
 }
 
@@ -605,15 +610,22 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 	}
 
 	switch e.Category {
-	case entity.CategoryEmail:
-		if it.Name == nil || *it.Name != "received" { //super hacky :( Trying to avoid the sendmail action when saving the received mail
+	case entity.CategoryEmail: //handles both receive and send
+		var emailItem entity.EmailEntity
+		entity.ParseFixedEntity(valueAddedFields, &emailItem)
+		convType := conversation.TypeEmailReceived
+		if emailItem.MessageID == "" { //sent
+			convType = conversation.TypeEmailSent
 			msgID, err := email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, "", db)
-			if err == nil {
-				err = saveMsgID(ctx, accountID, e.ID, it.ID, *msgID, db)
-				if err != nil {
-					log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when sending mails. error: ", err)
-				}
+			if err != nil {
+				return err
 			}
+			emailItem.MessageID = *msgID
+		}
+		//save the conversation
+		err = conversation.SaveConversation(ctx, acc.ID, it.EntityID, it.ID, emailItem, emailItem.Body, convType, conversation.StateSent, db)
+		if err != nil {
+			return errors.Wrap(err, "unable to save conversation")
 		}
 	case entity.CategoryMeeting:
 		err = calendar.CreateCalendarEvent(ctx, accountID, e.TeamID, e.ID, it.ID, valueAddedFields, db)
@@ -657,7 +669,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	}
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
+	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}
@@ -685,30 +697,6 @@ func destructOnIntegrations(ctx context.Context, accountID string, e entity.Enti
 		//calendar destruct yet to be implemented
 	}
 	return err
-}
-
-func saveMsgID(ctx context.Context, accountID, entityID, itemID, msgID string, db *sqlx.DB) error {
-	ns := discovery.NewDiscovery{
-		ID:        msgID,
-		AccountID: accountID,
-		EntityID:  entityID,
-		ItemID:    itemID,
-	}
-
-	_, err := discovery.Create(ctx, db, ns, time.Now())
-	if err != nil {
-		return err
-	}
-
-	var emailItem entity.EmailEntity
-	upFunc, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &emailItem, db)
-	if err != nil {
-		return err
-	}
-
-	emailItem.MessageID = msgID
-	emailItem.MessageSent = "true"
-	return upFunc(ctx, emailItem, db)
 }
 
 func connectionType(baseEntityID, entityID string, relationShips []relationship.Relationship) int {

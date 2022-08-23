@@ -92,7 +92,7 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 		Mode:        nf.Mode,
 		Type:        nf.Type,
 		Condition:   nf.Condition,
-		Status:      0,
+		Status:      FlowStatusActive,
 		CreatedAt:   now.UTC(),
 		UpdatedAt:   now.UTC().Unix(),
 	}
@@ -135,6 +135,24 @@ func Update(ctx context.Context, db *sqlx.DB, uf NewFlow, now time.Time) (Flow, 
 	}
 
 	return Retrieve(ctx, uf.ID, db)
+}
+
+func UpdateStatus(ctx context.Context, db *sqlx.DB, accountID, flowID string, status int, now time.Time) error {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.UpdateStatus")
+	defer span.End()
+
+	const q = `UPDATE flows SET
+		"status" = $1 
+		 WHERE account_id = $2 AND flow_id = $3`
+
+	_, err := db.ExecContext(ctx, q, status,
+		accountID, flowID,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating flow status failed")
+	}
+
+	return nil
 }
 
 //Call this only for segments
@@ -268,6 +286,12 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 	}
 	activeFlowMap := activeFlowMap(aflows)
 	for _, f := range flows {
+
+		if f.Status == FlowStatusInActive {
+			log.Println("internal.rule.flow Trigger : Flow status in-active. Not going forward ")
+			continue
+		}
+
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
@@ -307,6 +331,12 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 	if err != nil {
 		return err
 	}
+
+	if f.Status == FlowStatusInActive {
+		log.Println("internal.rule.flow Direct Trigger : Flow status in-active. Not going forward ")
+		return nil
+	}
+
 	n, err := node.Retrieve(ctx, accountID, flowID, nodeID, db)
 	if err != nil {
 		return err

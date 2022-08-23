@@ -8,7 +8,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
-func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityID, companyEntityID string, flowEntityID, nodeEntityID string) []entity.Field {
+func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKey, contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string, flowEntityID, nodeEntityID string) []entity.Field {
 	projectNameField := entity.Field{
 		Key:         "uuid-00-project-name",
 		Name:        "project_name",
@@ -34,7 +34,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: statusEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -51,7 +51,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		RefID:       ownerEntityID,
 		RefType:     entity.RefTypeStraight,
 		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -63,10 +63,10 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		Key:         "uuid-00-contacts",
 		Name:        "contact",
 		DisplayName: "Associated Contacts",
-		DomType:     entity.DomMultiSelect,
+		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -81,7 +81,7 @@ func ProjectFields(statusEntityID, ownerEntityID, ownerEntityKey, contactEntityI
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

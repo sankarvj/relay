@@ -56,6 +56,19 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Account, error) {
 	return &a, nil
 }
 
+func Delete(ctx context.Context, db *sqlx.DB, accountID string) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM accounts WHERE account_id = $1`
+
+	if _, err := db.ExecContext(ctx, q, accountID); err != nil {
+		return errors.Wrapf(err, "deleting account %s", accountID)
+	}
+
+	return nil
+}
+
 func CheckAvailability(ctx context.Context, name string, db *sqlx.DB) (*Account, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.account.CheckAvailability")
 	defer span.End()

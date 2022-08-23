@@ -66,4 +66,5 @@ const (
 //Type for the item is still open we can use it for anything
 const (
 	TypeDefault = 0
+	TypeDummy   = 1
 )

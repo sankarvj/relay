@@ -52,7 +52,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 	taskEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityTask)
 	if err == entity.ErrFixedEntityNotFound {
 		// add entity - task
-		fields := forms.TaskFields(contactEntity.ID, companyEntity.ID, b.NodeEntity.ID, b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("name"))
+		fields := forms.TaskFields(contactEntity.ID, contactEntity.Key("first_name"), companyEntity.ID, companyEntity.Key("name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name"))
 		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
 		if err != nil {
 			return nil, nil, nil, err
@@ -82,14 +82,14 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
 
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, comE.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
 	// add entity - notes
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(conE.ID, comE.ID, dealEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), dealEntity.ID, dealEntity.Key("deal_name")))
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - tickets
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(conE.ID, comE.ID, b.StatusEntity.ID))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTickets, "Tickets", entity.CategoryData, entity.StateTeamLevel, false, true, false, TicketFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.StatusEntity.ID, b.StatusEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -163,19 +163,19 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
 	// add contact item - vijay (straight)
-	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("Bruce Wayne", "gaajidurden@gmail.com"), nil)
+	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Wayne", "gaajidurden@gmail.com"), nil)
 	if err != nil {
 		return err
 	}
 	// add contact item - senthil (straight)
-	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals("George Kutty", "vijayasankarmobile@gmail.com"), nil)
+	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "George Kutty", "vijayasankarmobile@gmail.com"), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Zoho", "zoho.com"), map[string][]string{contactEntity.ID: []string{contactItem1.ID}})
+	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Zoho", "zoho.com"), map[string][]string{contactEntity.ID: []string{contactItem1.ID}})
 	if err != nil {
 		return err
 	}
@@ -404,27 +404,27 @@ func AddCompanies(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Freshworks", "freshworks.com"), nil)
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Freshworks", "freshworks.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Acme Intl", "acme.com"), nil)
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Acme Intl", "acme.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Tesla Inc", "tesla.com"), nil)
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Tesla Inc", "tesla.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Cisco Inc", "cisco.com"), nil)
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Cisco Inc", "cisco.com"), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals("Salesforce Inc", "salesforce.com"), nil)
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Salesforce Inc", "salesforce.com"), nil)
 	if err != nil {
 		return err
 	}

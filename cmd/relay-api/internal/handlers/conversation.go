@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -22,6 +23,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 	"golang.org/x/crypto/bcrypt"
@@ -46,17 +48,22 @@ func (cv *Conversation) List(ctx context.Context, w http.ResponseWriter, r *http
 	ctx, span := trace.StartSpan(ctx, "handlers.Conversation.List")
 	defer span.End()
 
+	acc, err := account.Retrieve(ctx, cv.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
 	conversations, err := conv.List(ctx, params["account_id"], params["entity_id"], params["item_id"], 0, cv.db)
 	if err != nil {
 		return err
 	}
 
-	// viewModelConversations := make([]conv.ViewModelConversation, len(conversations))
-	// for i, conversation := range conversations {
-	// 	viewModelConversations[i] = createViewModelConversation(conversation)
-	// }
+	viewModelConversations := make([]conv.ViewModelConversation, len(conversations))
+	for i, cnv := range conversations {
+		viewModelConversations[i] = createViewModelConversation(cnv, acc.Name)
+	}
 
-	return web.Respond(ctx, w, conversations, http.StatusOK)
+	return web.Respond(ctx, w, viewModelConversations, http.StatusOK)
 }
 
 func (cv *Conversation) SocketPreAuth(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -126,11 +133,13 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 	if err := web.Decode(r, &nc); err != nil {
 		return errors.Wrap(err, "")
 	}
-	itemID := params["item_id"]
+
 	nc.ID = uuid.New().String()
 	nc.AccountID = params["account_id"]
 	nc.EntityID = params["entity_id"]
+	itemID := params["item_id"]
 	nc.ItemID = &itemID
+	nc.Type = conv.TypeConvSent
 	nc.UserID = currentUser.ID //TODO store name and avatar also
 
 	conversation, err := conv.Create(ctx, cv.db, nc, time.Now())
@@ -179,4 +188,35 @@ func generateToken(email string) string {
 	hasher := md5.New()
 	hasher.Write(hash)
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func createViewModelConversation(cnu conv.ConversationUsr, accName string) conv.ViewModelConversation {
+
+	vmc := conv.ViewModelConversation{
+		ID:        cnu.ID,
+		Message:   cnu.Message,
+		Type:      cnu.Type,
+		State:     cnu.State,
+		CreatedAt: cnu.CreatedAt,
+	}
+
+	if cnu.UserID != nil {
+		vmc.UserID = *cnu.UserID
+	} else {
+		vmc.UserID = schema.SeedSystemUserID
+	}
+
+	if cnu.UserAvatar != nil {
+		vmc.UserAvatar = *cnu.UserAvatar
+	} else {
+		vmc.UserAvatar = fmt.Sprintf("https://avatars.dicebear.com/api/bottts/%s.svg", accName)
+	}
+
+	if cnu.UserName != nil {
+		vmc.UserName = *cnu.UserName
+	} else {
+		vmc.UserName = accName
+	}
+
+	return vmc
 }

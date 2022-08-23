@@ -7,6 +7,8 @@ import (
 	"net/mail"
 	"strconv"
 	"strings"
+
+	pluralize "github.com/gertd/go-pluralize"
 )
 
 const (
@@ -99,15 +101,25 @@ func Contains(s []string, e string) bool {
 	return false
 }
 
-func SubDomainInEmail(email string) string {
+func SubDomain(email string) string {
 	at := strings.LastIndex(email, "@")
 	if at >= 0 {
-		username, domain := email[:at], email[at+1:]
-		fmt.Printf("Username: %s, Domain: %s\n", username, domain)
+		_, domain := email[:at], email[at+1:]
 		components := strings.Split(domain, ".")
 		return components[0]
 	} else {
 		fmt.Printf("Error: %s is an invalid email address\n", email)
+		return ""
+	}
+}
+
+func MessageID(reference string) string {
+	at := strings.LastIndex(reference, "@")
+	if at >= 0 {
+		messageID, _ := reference[:at], reference[at+1:]
+		return messageID
+	} else {
+		fmt.Printf("Error: %s is an invalid reference address\n", reference)
 		return ""
 	}
 }
@@ -207,4 +219,35 @@ func IsEmpty(v string) bool {
 func IsValidEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 	return err == nil
+}
+
+func TruncateText(s string, max int) string {
+	if max > len(s) {
+		return s
+	}
+	return s[:strings.LastIndexAny(s[:max], " ...")]
+}
+
+func Singularize(s string) string {
+	return pluralize.NewClient().Singular(s)
+}
+
+func Pluralize(s string) string {
+	return pluralize.NewClient().Plural(s)
+}
+
+func UpperSinglarize(s string) string {
+	return strings.ToTitle(Singularize(s))
+}
+
+func UpperPluralize(s string) string {
+	return strings.ToTitle(Pluralize(s))
+}
+
+func LowerSinglarize(s string) string {
+	return strings.ToLower(Singularize(s))
+}
+
+func LowerPluralize(s string) string {
+	return strings.ToLower(Pluralize(s))
 }

@@ -213,6 +213,23 @@ func (f *Flow) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, createViewModelFlow(uuf, viewModelNodes), http.StatusOK)
 }
 
+func (f *Flow) UpdateStatus(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Flow.UpdateStatus")
+	defer span.End()
+
+	var uf flow.NewFlow
+	if err := web.Decode(r, &uf); err != nil {
+		return errors.Wrap(err, "")
+	}
+
+	err := flow.UpdateStatus(ctx, f.db, params["account_id"], params["flow_id"], uf.Status, time.Now())
+	if err != nil {
+		return errors.Wrapf(err, "Error updating flow status")
+	}
+
+	return web.Respond(ctx, w, nil, http.StatusOK)
+}
+
 func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModelFlow {
 	return flow.ViewModelFlow{
 		ID:          f.ID,
@@ -222,6 +239,7 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Expression:  f.Expression,
 		Mode:        f.Mode,
 		Type:        f.Type,
+		Status:      f.Status,
 		Nodes:       nodes,
 		Tokens:      f.Tokens(),
 	}

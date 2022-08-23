@@ -104,6 +104,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	tkn, err := generateJWT(ctx, tokenEmail, time.Now(), a.authenticator, a.db)
 	if err != nil {
+		account.Delete(ctx, a.db, acc.ID)
 		return web.NewRequestError(errors.Wrap(err, "JWT creation failed"), http.StatusInternalServerError)
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
@@ -111,12 +112,14 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	err = bootstrap.Bootstrap(ctx, a.db, a.rPool, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
 	if err != nil {
+		account.Delete(ctx, a.db, acc.ID)
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
 	if util.Contains(dft.Teams, "crm") {
 		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
+			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
@@ -124,6 +127,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if util.Contains(dft.Teams, "csm") {
 		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
+			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
@@ -131,6 +135,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if util.Contains(dft.Teams, "em") {
 		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
+			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
@@ -138,6 +143,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if util.Contains(dft.Teams, "pm") {
 		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
+			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}

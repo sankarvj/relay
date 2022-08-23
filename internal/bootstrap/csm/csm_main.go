@@ -21,7 +21,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
 
 	// add entity - project
-	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.OwnerEntity.ID, b.OwnerEntity.Key("email"), conE.ID, comE.ID, b.FlowEntity.ID, b.NodeEntity.ID))
+	projectEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("email"), conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID))
 	if err != nil {
 		return err
 	}

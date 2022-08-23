@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -104,29 +103,37 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis
 	return emailNotif.Send(ctx, TypeVisitorInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID, entityName string, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
+func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
 	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, baseIds, db)
-
-	entityName = strings.ToLower(entityName)
 
 	switch notificationType {
 	case TypeReminder:
 		if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-			appNotif.Subject = fmt.Sprintf("Your %s is due on %s", entityName, val)
+			appNotif.Subject = fmt.Sprintf("%s is due on %s", util.UpperSinglarize(entityDisName), val)
 		}
-		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
+		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 	case TypeCreated:
-		appNotif.Subject = fmt.Sprintf("Item created in %s", entityName)
-		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
+		switch entityCategory {
+		case entity.CategoryEmail:
+			appNotif.Subject = fmt.Sprintf("A new e-mail has been sent/received")
+			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
+		case entity.CategoryUsers:
+			appNotif.Subject = fmt.Sprintf("A new member added to your account")
+			appNotif.Body = fmt.Sprintf("New member %s added to your account", appNotif.Title)
+		default:
+			appNotif.Subject = fmt.Sprintf("A new record created in %s", util.LowerPluralize(entityDisName))
+			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
+		}
+
 	case TypeUpdated:
-		appNotif.Subject = fmt.Sprintf("%s `%s` is updated", entityName, appNotif.Title)
-		appNotif.Body = fmt.Sprintf("%s...", appNotif.Title)
+		appNotif.Subject = fmt.Sprintf("A record in %s is updated", util.LowerPluralize(entityDisName))
+		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", entityName, appNotif.Title, val)
+			appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 		} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", entityName, appNotif.Title, val)
+			appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 		} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", entityName, appNotif.Title, val)
+			appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 		}
 	}
 

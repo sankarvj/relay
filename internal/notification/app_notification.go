@@ -83,7 +83,7 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		}
 
 		if f.IsTitleLayout() {
-			appNotif.Title = f.Value.(string)
+			appNotif.Title = util.TruncateText(f.Value.(string), 30)
 		}
 
 		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime {

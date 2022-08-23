@@ -308,17 +308,19 @@ var migrations = []darwin.Migration{
 		Description: "Add conversations",
 		Script: `
 		CREATE TABLE conversations (
-			conversation_id  UUID,
+			conversation_id  TEXT,
 			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
-			item_id          UUID,
+			item_id          UUID REFERENCES items ON DELETE CASCADE,
 			user_id          UUID, 
 			type             INTEGER DEFAULT 0,
+			state            INTEGER DEFAULT 0,
 			message          TEXT,
 			payload          JSONB,
 			created_at       TIMESTAMP,
 			updated_at       BIGINT,
-			PRIMARY KEY (conversation_id)
+			PRIMARY KEY (conversation_id),
+			UNIQUE (account_id, conversation_id)
 		);
 		`,
 	},

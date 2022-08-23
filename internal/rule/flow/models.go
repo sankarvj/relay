@@ -23,6 +23,11 @@ const (
 	FlowModeSegment  = 2
 )
 
+const (
+	FlowStatusActive   = 0
+	FlowStatusInActive = 1
+)
+
 // FlowCondition defines exists/entry conditions
 //it will be used to identify whether to hold or continue the execution
 const (
@@ -68,6 +73,7 @@ type ViewModelFlow struct {
 	Expression  string                 `json:"expression"`
 	Mode        int                    `json:"mode"`
 	Type        int                    `json:"type"`
+	Status      int                    `json:"status"`
 	Nodes       []node.ViewModelNode   `json:"nodes"`
 	Tokens      map[string]interface{} `json:"tokens"`
 }
@@ -83,6 +89,7 @@ type NewFlow struct {
 	Tokens      map[string]interface{} `json:"tokens"`
 	Mode        int                    `json:"mode"`
 	Type        int                    `json:"type"`
+	Status      int                    `json:"status"`
 	Condition   int                    `json:"condition"`
 	Nodes       []node.NewNode         `json:"nodes"`
 	Queries     []node.Query           `json:"queries"`

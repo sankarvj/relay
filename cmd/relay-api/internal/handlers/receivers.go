@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	integ "gitlab.com/vjsideprojects/relay/internal/integration"
@@ -151,17 +151,17 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		return err
 	}
 
-	messageID := email.MessageID
 	replyTo := email.InReplyTo
 	references := email.References
 	to := email.To[0].Address
 	from := email.From[0].Address
 	subject := email.Subject
+	messageID := util.MessageID(email.MessageID)
+	uniqueDomainID := util.SubDomain(to)
 
-	discoveryID := util.SubDomainInEmail(to)
-	fmt.Printf("DiscoveryID: %s, MessageID: %s, ReplyTo: %s, References: %s", discoveryID, messageID, replyTo, references)
+	fmt.Printf("UniqueDomainID: %s \n MessageID: %s \n From: %s \n InReplyTo: %s \n References: %s \n ReplyTo: %s \n", uniqueDomainID, messageID, from, replyTo, references, email.ReplyTo)
 	var emailConfigEntityItem entity.EmailConfigEntity
-	eConfigItemID, err := entity.DiscoverAnyEntityItem(ctx, "", "", discoveryID, &emailConfigEntityItem, db)
+	eConfigItemID, err := entity.DiscoverAnyEntityItem(ctx, "", "", uniqueDomainID, &emailConfigEntityItem, db)
 	if err != nil {
 		return err
 	}
@@ -179,25 +179,27 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 
 	tracker.EmailChan().Log("Email Received", fmt.Sprintf("Received email from domain %s", emailConfigEntityItem.Domain))
 
-	if len(references) == 0 { // save as the message
-		err = saveEmailPlusConnect(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, emailEntityItem, db, rp, fbSDKPath)
+	if len(references) == 0 { // save as the first message
+		source, err := creatSourceIfNotExist(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, emailEntityItem, db, rp, fbSDKPath)
 		if err != nil {
-			return errors.Wrap(err, "unable to save the email received via SES for the discoveryID")
+			return errors.Wrap(err, "problem retriving/creating the contact/employee to associate a email")
 		}
+		//using emailConfig's account_id/team_id to save the email entity.
+		savedEmailItem, err := entity.SaveFixedEntityItem(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, schema.SeedSystemUserID, entity.FixedEntityEmails, "", "", "", util.ConvertInterfaceToMap(emailEntityItem), db)
+		if err != nil {
+			return err
+		}
+		//associating with the source.
+		//TODO: shall we move association to the workflow?
+		go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, savedEmailItem.AccountID, schema.SeedSystemUserID, savedEmailItem.EntityID, savedEmailItem.ID, source))
 	} else { // save as a conversation for the message saved
-		reference := references[0]
-		fixedEmailEntity, err := entity.RetrieveFixedEntity(ctx, db, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, entity.FixedEntityEmails)
-		if err != nil {
-			return err
-		}
-		log.Printf("Try to load for reference %+v \n", references)
-		var parentEmailEntityItem entity.EmailEntity
-		parentItemId, err := entity.DiscoverAnyEntityItem(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, reference, &parentEmailEntityItem, db)
-		if err != nil {
-			return err
+		reference := util.MessageID(references[0])
+		parentConv, err := conversation.Retrieve(ctx, emailConfigEntityItem.AccountID, reference, db)
+		if err != nil || parentConv.ItemID == nil {
+			return errors.Wrap(err, "conversation thread not exist. stopping here.")
 		}
 
-		err = saveConversation(ctx, fixedEmailEntity.AccountID, fixedEmailEntity.ID, parentItemId, emailEntityItem, email.TextBody, db)
+		err = conversation.SaveConversation(ctx, parentConv.AccountID, parentConv.EntityID, *parentConv.ItemID, emailEntityItem, emailEntityItem.Body, conversation.TypeConvReceived, conversation.StateDelivered, db)
 		if err != nil {
 			return errors.Wrap(err, "unable to save conversation")
 		}
@@ -205,50 +207,25 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 	return nil
 }
 
-func saveEmailPlusConnect(ctx context.Context, accountID, teamID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
+//creatSourceIfNotExist should take contact/employee as the source.
+//TODO: what happens if the both contacts/emplooyees not exist in that account?
+func creatSourceIfNotExist(ctx context.Context, accountID, teamID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) (map[string][]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityContacts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	contacts, err := createContactIfNotExist(ctx, accountID, e, emailEntityItem.RFrom[0], db, rp, fbSDKPath)
 	if err != nil {
 		tracker.ErrorChan().Log("Bug Found", fmt.Sprintf("Could not find contacts entity on account `%s`", accountID))
-		return err
+		return nil, err
 	}
-	//associating the contact. TODO Shall we move this to the workflow?? It is the vision
-	//emailEntityItem.Contacts = contacts
-	//using the account and team of the emailConfig we are saving the emails inside the same acc/team
-	it, err := entity.SaveFixedEntityItem(ctx, accountID, teamID, schema.SeedSystemUserID, entity.FixedEntityEmails, "received", emailEntityItem.MessageID, integration.TypeMails, util.ConvertInterfaceToMap(emailEntityItem), db)
-	if err != nil {
-		return err
-	}
-	//We are making a assumption: i.e contacts and emails are always have relationships
 	source := map[string][]string{e.ID: contacts}
-	//stream/queue
-	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, it.AccountID, schema.SeedSystemUserID, it.EntityID, it.ID, source))
-	return nil
-}
 
-func saveConversation(ctx context.Context, accountID, entityID, parentItemId string, emailEntityItem entity.EmailEntity, message string, db *sqlx.DB) error {
-	newConversation := conv.NewConversation{
-		ID:        uuid.New().String(),
-		AccountID: accountID,
-		EntityID:  entityID,
-		ItemID:    &parentItemId,
-		UserID:    schema.SeedSystemUserID,
-		Message:   message,
-		Payload:   util.ConvertInterfaceToMap(emailEntityItem),
-	}
-	_, err := conv.Create(ctx, db, newConversation, time.Now())
-	if err != nil {
-		return errors.Wrap(err, "error inserting the conversation message to the DB")
-	}
-	return nil
+	return source, nil
 }
 
 func createContactIfNotExist(ctx context.Context, accountID string, e entity.Entity, value string, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) ([]string, error) {
-
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil && err != user.ErrNotFound {
 		return []string{}, err

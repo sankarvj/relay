@@ -153,6 +153,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		DisplayName: "To",
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
+		Meta:        map[string]string{entity.MetaKeyRequired: "true"},
 		Field: &entity.Field{
 			Key:      "element",
 			DataType: entity.TypeString,

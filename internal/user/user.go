@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -165,6 +166,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	accountBytes, err := json.Marshal(n.Accounts)
 	if err != nil {
 		return User{}, errors.Wrap(err, "encode accounts to bytes")
+	}
+
+	if n.Avatar == nil || *n.Avatar == "" {
+		avatar := fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", n.Email)
+		n.Avatar = &avatar
 	}
 
 	u := User{
@@ -354,6 +360,9 @@ func (u User) AccountsB() map[string]interface{} {
 	}
 	if err := json.Unmarshal([]byte(*u.Accounts), &accounts); err != nil {
 		log.Printf("***> unexpected error occurred when unmarshalling user accounts error: %v\n", err)
+	}
+	if accounts == nil {
+		accounts = make(map[string]interface{}, 0)
 	}
 	return accounts
 }

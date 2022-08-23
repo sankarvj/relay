@@ -48,7 +48,7 @@ func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{},
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2)`
+	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2) ORDER BY created_at DESC`
 
 	if err := db.SelectContext(ctx, &items, q, accountID, pq.Array(ids)); err != nil {
 		return items, errors.Wrap(err, "selecting bulk items for selected item ids")

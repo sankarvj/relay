@@ -1,10 +1,14 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
+	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
-		Key:         "uuid-00-name",
+		Key:         nameFieldID,
 		Name:        "name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -12,56 +16,63 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
+	websiteFieldID := uuid.New().String()
 	websiteField := entity.Field{
-		Key:         "uuid-00-website",
+		Key:         websiteFieldID,
 		Name:        "website",
 		DisplayName: "Domain",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	cityFieldID := uuid.New().String()
 	cityField := entity.Field{
-		Key:         "uuid-00-city",
+		Key:         cityFieldID,
 		Name:        "city",
 		DisplayName: "City",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	stateFieldID := uuid.New().String()
 	stateField := entity.Field{
-		Key:         "uuid-00-state",
+		Key:         stateFieldID,
 		Name:        "state",
 		DisplayName: "State",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	annualRevenueFieldID := uuid.New().String()
 	annualRevenueField := entity.Field{
-		Key:         "uuid-00-revenue",
+		Key:         annualRevenueFieldID,
 		Name:        "revenue",
 		DisplayName: "Annual Revenue",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	countryFieldID := uuid.New().String()
 	countryField := entity.Field{
-		Key:         "uuid-00-country",
+		Key:         countryFieldID,
 		Name:        "country",
 		DisplayName: "Country",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	employeesCountFieldID := uuid.New().String()
 	employeesCountField := entity.Field{
-		Key:         "uuid-00-employees-count",
+		Key:         employeesCountFieldID,
 		Name:        "employees_count",
 		DisplayName: "Employees Count",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	ownerFieldID := uuid.New().String()
 	ownerField := entity.Field{
-		Key:         "uuid-00-owner",
+		Key:         ownerFieldID,
 		Name:        "owner",
 		DisplayName: "Company Owner",
 		DomType:     entity.DomAutoComplete,
@@ -80,16 +91,17 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 	return []entity.Field{nameField, websiteField, cityField, stateField, ownerField, annualRevenueField, countryField, employeesCountField}
 }
 
-func CompanyVals(name, website string) map[string]interface{} {
-	companyVals := map[string]interface{}{
-		"uuid-00-name":            name,
-		"uuid-00-website":         website,
-		"uuid-00-city":            "san francisco",
-		"uuid-00-state":           "california",
-		"uuid-00-country":         "USA",
-		"uuid-00-employees-count": 1000,
-		"uuid-00-revenue":         "2000",
-		"uuid-00-owner":           []interface{}{},
+func CompanyVals(companyEntity entity.Entity, name, website string) map[string]interface{} {
+	namedVals := map[string]interface{}{
+		"name":            name,
+		"website":         website,
+		"city":            "san francisco",
+		"state":           "california",
+		"country":         "USA",
+		"employees_count": 1000,
+		"revenue":         "2000",
+		"owner":           []interface{}{},
 	}
-	return companyVals
+
+	return keyMap(companyEntity.NamedKeys(), namedVals)
 }

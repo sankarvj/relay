@@ -285,6 +285,8 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 		return item.Item{}, err
 	}
 
+	//fixedEntity.ValueAdd(itemValMap(entityFields, namedValues))
+
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		Name:      &name,
@@ -341,12 +343,6 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 }
 
 func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID string, anyEntityItem interface{}, db *sqlx.DB) (string, error) {
-	log.Println("-------------------")
-	log.Println("accountID", accountID)
-	log.Println("entityID", entityID)
-	log.Println("discoveryID", discoveryID)
-	log.Println("-------------------")
-
 	dis, err := discovery.Retrieve(ctx, accountID, entityID, discoveryID, db)
 	if err != nil {
 		return "", err

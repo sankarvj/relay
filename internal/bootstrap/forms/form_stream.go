@@ -18,24 +18,16 @@ func StreamFields() []entity.Field {
 		DisplayName: "Message",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
-	fileField := entity.Field{
-		Key:         "uuid-00-file",
-		Name:        "file",
-		DisplayName: "File",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
-	}
-
-	return []entity.Field{titleField, messageField, fileField}
+	return []entity.Field{titleField, messageField}
 }
 
 func StreamVals(title, message, file string) map[string]interface{} {
 	streamVals := map[string]interface{}{
 		"uuid-00-title":   title,
 		"uuid-00-message": message,
-		"uuid-00-file":    file,
 	}
 	return streamVals
 }

@@ -143,7 +143,7 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 			userID := claims.Subject
 			usr, err := user.RetrieveUser(ctx, db, userID)
 			if err != nil {
-				err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
+				err := errors.New("user_not_exist") // value used in the UI dont change the string message.
 				return web.NewRequestError(err, http.StatusForbidden)
 			}
 

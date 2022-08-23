@@ -1,13 +1,14 @@
 package forms
 
 import (
+	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
+	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
-		Key:         schema.SeedFieldFNameKey,
+		Key:         nameFieldID,
 		Name:        "first_name",
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
@@ -15,8 +16,9 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyUnique: "true"},
 	}
 
+	emailFieldID := uuid.New().String()
 	emailField := entity.Field{
-		Key:         "uuid-00-email",
+		Key:         emailFieldID,
 		Name:        "email",
 		DisplayName: "Email",
 		DomType:     entity.DomText,
@@ -25,8 +27,9 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
+	mobileFieldID := uuid.New().String()
 	mobileField := entity.Field{
-		Key:         "uuid-00-mobile-numbers",
+		Key:         mobileFieldID,
 		Name:        "mobile_numbers",
 		DisplayName: "Mobile Numbers",
 		DataType:    entity.TypeList,
@@ -37,8 +40,9 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		},
 	}
 
+	avatarFieldID := uuid.New().String()
 	avatarField := entity.Field{
-		Key:         "uuid-00-avatar",
+		Key:         avatarFieldID,
 		Name:        "avatar",
 		DisplayName: "Avatar",
 		DataType:    entity.TypeString,
@@ -46,16 +50,18 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Who:         entity.WhoAvatar,
 	}
 
+	npsFieldID := uuid.New().String()
 	npsField := entity.Field{
-		Key:         schema.SeedFieldNPSKey,
+		Key:         npsFieldID,
 		Name:        "nps_score",
 		DisplayName: "NPS Score",
 		DataType:    entity.TypeNumber,
 		DomType:     entity.DomText,
 	}
 
+	lfStageFieldID := uuid.New().String()
 	lfStageField := entity.Field{
-		Key:         "uuid-00-lf-stage",
+		Key:         lfStageFieldID,
 		Name:        "lifecycle_stage",
 		DisplayName: "Lifecycle Stage",
 		DomType:     entity.DomSelect,
@@ -76,8 +82,9 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		},
 	}
 
+	ownerFieldID := uuid.New().String()
 	ownerField := entity.Field{
-		Key:         "uuid-00-owner",
+		Key:         ownerFieldID,
 		Name:        "owner",
 		DisplayName: "Owner",
 		DomType:     entity.DomAutoComplete,
@@ -96,14 +103,15 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, avatarField, ownerField}
 }
 
-func ContactVals(name, email string) map[string]interface{} {
-	contactVals := map[string]interface{}{
-		schema.SeedFieldFNameKey: name,
-		"uuid-00-email":          email,
-		"uuid-00-mobile-numbers": []interface{}{"9944293499", "9940209164"},
-		schema.SeedFieldNPSKey:   100,
-		"uuid-00-lf-stage":       []interface{}{"1"},
-		"uuid-00-owner":          []interface{}{},
+func ContactVals(contactEntity entity.Entity, firstName, email string) map[string]interface{} {
+	namedVals := map[string]interface{}{
+		"first_name":      firstName,
+		"email":           email,
+		"mobile_numbers":  []interface{}{"9944293499", "9940209164"},
+		"nps_score":       100,
+		"lifecycle_stage": []interface{}{"1"},
+		"owner":           []interface{}{},
 	}
-	return contactVals
+
+	return keyMap(contactEntity.NamedKeys(), namedVals)
 }

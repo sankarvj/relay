@@ -5,7 +5,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
+func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, nodeEntityID, statusEntityID, statusEntityKey string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 
 	descFieldID := uuid.New().String()
 	descField := entity.Field{
@@ -25,7 +25,7 @@ func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID s
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -41,7 +41,7 @@ func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID s
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -78,7 +78,7 @@ func TaskFields(contactEntityID, companyEntityID, nodeEntityID, statusEntityID s
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: "uuid-00-name"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: statusEntityKey},
 		Who:         entity.WhoStatus,
 		Dependent: &entity.Dependent{
 			ParentKey: dueByField.Key,
