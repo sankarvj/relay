@@ -237,11 +237,11 @@ func Pluralize(s string) string {
 }
 
 func UpperSinglarize(s string) string {
-	return strings.ToTitle(Singularize(s))
+	return strings.Title(Singularize(s))
 }
 
 func UpperPluralize(s string) string {
-	return strings.ToTitle(Pluralize(s))
+	return strings.Title(Pluralize(s))
 }
 
 func LowerSinglarize(s string) string {

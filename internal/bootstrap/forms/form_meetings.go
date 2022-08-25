@@ -1,11 +1,15 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, contactEntityFirstNameFieldID, companyEntityNameFieldID string) []entity.Field {
 
+	titleFieldID := uuid.New().String()
 	titleField := entity.Field{
-		Key:         "uuid-00-cal-title",
+		Key:         titleFieldID,
 		Name:        "cal_title",
 		DisplayName: "Title",
 		DomType:     entity.DomText,
@@ -13,8 +17,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
+	summaryFieldID := uuid.New().String()
 	summaryField := entity.Field{
-		Key:         "uuid-00-summary",
+		Key:         summaryFieldID,
 		Name:        "summary",
 		DisplayName: "Summary",
 		DomType:     entity.DomTextArea,
@@ -22,8 +27,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
+	attendessFieldID := uuid.New().String()
 	attendessField := entity.Field{
-		Key:         "uuid-00-attendess",
+		Key:         attendessFieldID,
 		Name:        "attendess",
 		DisplayName: "Attendess",
 		DomType:     entity.DomAutoComplete,
@@ -38,8 +44,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		},
 	}
 
+	startTimeFieldID := uuid.New().String()
 	startTimeField := entity.Field{
-		Key:         "uuid-00-start-time",
+		Key:         startTimeFieldID,
 		Name:        "start_time",
 		DisplayName: "Start Time",
 		DomType:     entity.DomText,
@@ -47,8 +54,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Who:         entity.WhoStartTime,
 	}
 
+	endTimeFieldID := uuid.New().String()
 	endTimeField := entity.Field{
-		Key:         "uuid-00-end-time",
+		Key:         endTimeFieldID,
 		Name:        "end_time",
 		DisplayName: "End Time",
 		DomType:     entity.DomText,
@@ -57,8 +65,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyRow: "true"},
 	}
 
+	timezoneFieldID := uuid.New().String()
 	timezoneField := entity.Field{
-		Key:         "uuid-00-timezone",
+		Key:         timezoneFieldID,
 		Name:        "timezone",
 		DisplayName: "Timezone",
 		DomType:     entity.DomText,
@@ -66,8 +75,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	createdAtFieldID := uuid.New().String()
 	createdAtField := entity.Field{
-		Key:         "uuid-00-created-at",
+		Key:         createdAtFieldID,
 		Name:        "created_at",
 		DisplayName: "Created At",
 		DomType:     entity.DomText,
@@ -75,8 +85,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	updatedAtFieldID := uuid.New().String()
 	updatedAtField := entity.Field{
-		Key:         "uuid-00-updated-at",
+		Key:         updatedAtFieldID,
 		Name:        "updated_at",
 		DisplayName: "Updated At",
 		DomType:     entity.DomText,
@@ -84,8 +95,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
+		Key:         contactFieldID,
 		Name:        "contact",
 		DisplayName: "Associated Contact",
 		DomType:     entity.DomAutoComplete,
@@ -99,8 +111,9 @@ func MeetingFields(contactEntityID, companyEntityID, contactEntityEmailFieldID, 
 		},
 	}
 
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
+		Key:         companyFieldID,
 		Name:        "company",
 		DisplayName: "Associated Company",
 		DomType:     entity.DomAutoComplete,

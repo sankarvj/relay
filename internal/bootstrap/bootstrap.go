@@ -201,17 +201,17 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 	}
 
 	// add status item - open
-	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(entity.FuExpNone, "Open", "#fb667e"), nil)
+	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNone, "Open", "#fb667e"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - closed
-	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(entity.FuExpDone, "Closed", "#66fb99"), nil)
+	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpDone, "Closed", "#66fb99"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - overdue
-	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(entity.FuExpNeg, "OverDue", "#66fb99"), nil)
+	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNeg, "OverDue", "#66fb99"), nil)
 	if err != nil {
 		return err
 	}

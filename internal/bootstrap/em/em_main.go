@@ -92,7 +92,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 
 	// add entity - employees
-	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, false, true, false, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.OwnerEntity.ID, ownerKey, rolesEntity.ID, roleEntityKey))
+	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, false, true, false, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id"), b.OwnerEntity.ID, ownerKey, rolesEntity.ID, roleEntityKey))
 	if err != nil {
 		return err
 	}

@@ -36,7 +36,7 @@ func TestEmailRuleRunner(t *testing.T) {
 
 			node := node.Node{
 				AccountID:  schema.SeedAccountID,
-				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", contactEntity.ID, schema.SeedFieldFNameKey),
+				Expression: fmt.Sprintf("{{%s.%s}} eq {Vijay}", contactEntity.ID, contactEntity.Key("first_name")),
 				Variables:  vars,
 				Actuals:    acts,
 				ActorID:    emailsEntity.ID,
@@ -69,7 +69,7 @@ func TestRuleRenderer(t *testing.T) {
 			contactItems, _ := item.List(tests.Context(), contactEntity.ID, db)
 
 			vars := map[string]interface{}{contactEntity.ID: contactItems[0].ID} // this will get populated only during the trigger
-			exp := fmt.Sprintf("{{%s.%s}}", contactEntity.ID, schema.SeedFieldFNameKey)
+			exp := fmt.Sprintf("{{%s.%s}}", contactEntity.ID, contactEntity.Key("first_name"))
 
 			eng := engine.Engine{
 				Job: &job.Job{},
@@ -206,7 +206,7 @@ func TestTrigger(t *testing.T) {
 			i, _ := item.Retrieve(tests.Context(), contactEntity.ID, contactItems[0].ID, db)
 			oldItemFields := i.Fields()
 			newItemFields := i.Fields()
-			newItemFields[schema.SeedFieldNPSKey] = 99
+			newItemFields[contactEntity.Key("nps_score")] = 99
 			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, flow.FlowTypeEventUpdate, db)
@@ -366,7 +366,8 @@ func TestGraphRuleRunner(t *testing.T) {
 
 		t.Log("\twhen evaluating the query")
 		{
-			expression = fmt.Sprintf("{{%s.%s}} gt {50} && {{%s.%s}} eq {Bruce Wayne}", "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldNPSKey, "380d2264-d4d7-444a-9f7a-ebca216bc67e", schema.SeedFieldFNameKey)
+			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, entity.FixedEntityContacts)
+			expression = fmt.Sprintf("{{%s.%s}} gt {50} && {{%s.%s}} eq {Bruce Wayne}", "380d2264-d4d7-444a-9f7a-ebca216bc67e", contactEntity.Key("nps_score"), "380d2264-d4d7-444a-9f7a-ebca216bc67e", contactEntity.Key("first_name"))
 			result := job.NewJabEngine().RunExpGrapher(tests.Context(), db, residPool, "3cf17266-3473-4006-984f-9325122678b7", expression)
 			log.Println("result ------------------> ---> --> -> ", result)
 			t.Logf("\t%s should pass with out fail", tests.Success)

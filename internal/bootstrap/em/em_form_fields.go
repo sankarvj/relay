@@ -29,7 +29,7 @@ func RoleVals(namekey, name string) map[string]interface{} {
 	return statusVals
 }
 
-func EmployeeFields(flowEntityID, nodeEntityID, ownerEntityID, ownerEntityKey string, roleEntityID, roleEntityKey string) []entity.Field {
+func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEntityKey string, roleEntityID, roleEntityKey string) []entity.Field {
 	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
 		Key:         nameFieldID,
@@ -116,7 +116,7 @@ func EmployeeFields(flowEntityID, nodeEntityID, ownerEntityID, ownerEntityKey st
 			Expressions: []string{""}, // empty means positive
 			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
 		},
-		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaKeyNode: "true", entity.MetaKeyRequired: "true"},
+		Meta: map[string]string{entity.MetaKeyDisplayGex: nodeKey, entity.MetaKeyNode: "true", entity.MetaKeyRequired: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      lifecyleField.Key,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -137,8 +138,6 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		}
 	}
 
-	log.Println("appNotif.Assignees ", appNotif.Assignees)
-
 	//Send email/firebase notification to assignees/followers/creators
 	for _, assignee := range appNotif.Assignees {
 		sendEmailAndFBNotification(ctx, appNotif, assignee, notificationType, db, firebaseSDKPath)
@@ -156,6 +155,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 func sendEmailAndFBNotification(ctx context.Context, appNotif AppNotification, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {
 
 	emailNotif := EmailNotification{
+		Name:      strings.Title(assignee.Name),
 		To:        []interface{}{assignee.Email},
 		Subject:   appNotif.Subject,
 		Body:      appNotif.Body,

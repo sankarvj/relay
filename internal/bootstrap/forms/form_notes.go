@@ -1,18 +1,23 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string) []entity.Field {
+	descFieldID := uuid.New().String()
 	descField := entity.Field{
-		Key:         "uuid-00-desc",
+		Key:         descFieldID,
 		Name:        "desc",
 		DisplayName: "Notes",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
+		Key:         contactFieldID,
 		Name:        "contact",
 		DisplayName: "Associated To",
 		DomType:     entity.DomAutoComplete,
@@ -26,8 +31,9 @@ func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
+		Key:         companyFieldID,
 		Name:        "company",
 		DisplayName: "Associated To",
 		DomType:     entity.DomAutoComplete,

@@ -141,6 +141,7 @@ func (j *Job) eventItemUpdated(m stream.Message) {
 		}
 	}
 	//TODO delete the log stream.
+	log.Println("***>***> Completed EventItemUpdated ***<***<")
 }
 
 func (j *Job) eventItemCreated(m stream.Message) {
@@ -220,8 +221,6 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		}
 	}
 
-	log.Printf("it.UserID----- %+v", it)
-
 	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 	//safely deleting the empty string...
@@ -236,7 +235,6 @@ func (j *Job) eventItemCreated(m stream.Message) {
 				stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
 			}
 		} else {
-			log.Printf("m.Source %+v", m.Source)
 			for j.baseEntityID, j.baseItemIDs = range m.Source {
 
 				if j.baseEntityID == "" {

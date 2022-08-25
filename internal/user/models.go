@@ -6,6 +6,11 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	UUID_ENGINE_USER = "10000000-1000-1000-1000-100000000000" //user calling from engine. executar data..
+	UUID_SYSTEM_USER = "00000000-0000-0000-0000-000000000000" //system user
+)
+
 // User represents someone with access to our system.
 type User struct {
 	ID           string         `db:"user_id" json:"id"`

@@ -13,16 +13,8 @@ const (
 	SeedUserID2      = "5cf37266-3473-4006-984f-9325122678b7"
 	SeedUserID3      = "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 	SeedUserID4      = "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"
-
 	//not only used in testing also used inside the projects
 
-	SeedPageViewEventEntityName = "page-view-event"
-	SeedActivityEventEntityName = "activity-event"
-
-	SeedFieldFNameKey = "uuid-00-fname"
-	SeedFieldNPSKey   = "uuid-00-nps-score"
-	SeedFieldVerbKey  = "uuid-00-verb"
-	SeedFieldPlanKey  = "uuid-00-plan"
 )
 
 func IsEntitySeeded(entityName string) bool {

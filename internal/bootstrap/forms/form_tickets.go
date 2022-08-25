@@ -1,10 +1,14 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, statusEntityID, statusEntityKey string) []entity.Field {
+	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
-		Key:         "uuid-00-subject",
+		Key:         nameFieldID,
 		Name:        "name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -12,8 +16,9 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
+	statusFieldID := uuid.New().String()
 	statusField := entity.Field{
-		Key:         "uuid-00-status",
+		Key:         statusFieldID,
 		Name:        "status",
 		DisplayName: "Status",
 		DomType:     entity.DomSelect,
@@ -28,8 +33,9 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		},
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
+		Key:         contactFieldID,
 		Name:        "contact",
 		DisplayName: "Associated Contacts",
 		DomType:     entity.DomAutoComplete,
@@ -43,8 +49,9 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		},
 	}
 
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
+		Key:         companyFieldID,
 		Name:        "company",
 		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,

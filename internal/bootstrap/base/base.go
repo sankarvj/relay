@@ -197,6 +197,7 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 		UserID:    &userID,
 		Fields:    fields,
 		Source:    source,
+		Type:      item.TypeDummy,
 	}
 
 	it, err := item.Create(ctx, b.DB, ni, time.Now())

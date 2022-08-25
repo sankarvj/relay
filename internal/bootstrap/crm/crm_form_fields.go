@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -30,8 +32,9 @@ func TaskVals(actorEntity entity.Entity, desc, contactID string) map[string]inte
 
 func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contactEntityEmailFieldID, contactEntityFirstNameFieldID, companyEntityNameFieldID, dealEntityNameFieldID string) []entity.Field {
 
+	titleFieldID := uuid.New().String()
 	titleField := entity.Field{
-		Key:         "uuid-00-cal-title",
+		Key:         titleFieldID,
 		Name:        "cal_title",
 		DisplayName: "Title",
 		DomType:     entity.DomText,
@@ -39,8 +42,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
+	summaryFieldID := uuid.New().String()
 	summaryField := entity.Field{
-		Key:         "uuid-00-summary",
+		Key:         summaryFieldID,
 		Name:        "summary",
 		DisplayName: "Summary",
 		DomType:     entity.DomTextArea,
@@ -48,8 +52,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
+	attendessFieldID := uuid.New().String()
 	attendessField := entity.Field{
-		Key:         "uuid-00-attendess",
+		Key:         attendessFieldID,
 		Name:        "attendess",
 		DisplayName: "Attendess",
 		DomType:     entity.DomAutoComplete,
@@ -64,8 +69,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		},
 	}
 
+	startTimeFieldID := uuid.New().String()
 	startTimeField := entity.Field{
-		Key:         "uuid-00-start-time",
+		Key:         startTimeFieldID,
 		Name:        "start_time",
 		DisplayName: "Start Time",
 		DomType:     entity.DomText,
@@ -73,8 +79,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Who:         entity.WhoStartTime,
 	}
 
+	endTimeFieldID := uuid.New().String()
 	endTimeField := entity.Field{
-		Key:         "uuid-00-end-time",
+		Key:         endTimeFieldID,
 		Name:        "end_time",
 		DisplayName: "End Time",
 		DomType:     entity.DomText,
@@ -83,8 +90,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Who:         entity.WhoEndTime,
 	}
 
+	timezoneFieldID := uuid.New().String()
 	timezoneField := entity.Field{
-		Key:         "uuid-00-timezone",
+		Key:         timezoneFieldID,
 		Name:        "timezone",
 		DisplayName: "Timezone",
 		DomType:     entity.DomText,
@@ -92,8 +100,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	createdAtFieldID := uuid.New().String()
 	createdAtField := entity.Field{
-		Key:         "uuid-00-created-at",
+		Key:         createdAtFieldID,
 		Name:        "created_at",
 		DisplayName: "Created At",
 		DomType:     entity.DomText,
@@ -101,8 +110,9 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	updatedAtFieldID := uuid.New().String()
 	updatedAtField := entity.Field{
-		Key:         "uuid-00-updated-at",
+		Key:         updatedAtFieldID,
 		Name:        "updated_at",
 		DisplayName: "Updated At",
 		DomType:     entity.DomText,
@@ -110,9 +120,10 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
-		Name:        "contact",
+		Key:         contactFieldID,
+		Name:        "associated_contacts",
 		DisplayName: "Associated Contact",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -125,9 +136,10 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		},
 	}
 
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
-		Name:        "company",
+		Key:         companyFieldID,
+		Name:        "associated_companies",
 		DisplayName: "Associated Company",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -140,9 +152,10 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		},
 	}
 
+	dealFieldID := uuid.New().String()
 	dealField := entity.Field{
-		Key:         "uuid-00-deal",
-		Name:        "deal",
+		Key:         dealFieldID,
+		Name:        "associated_deals",
 		DisplayName: "Associated Deal",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -158,9 +171,10 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 	return []entity.Field{titleField, summaryField, attendessField, startTimeField, endTimeField, timezoneField, createdAtField, updatedAtField, contactField, companyField, dealField}
 }
 
-func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string, flowEntityID, nodeEntityID string) []entity.Field {
-	dealName := entity.Field{
-		Key:         "uuid-00-deal-name",
+func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string, flowEntityID, nodeEntityID, nodeKey string) []entity.Field {
+	dealNameFieldID := uuid.New().String()
+	dealNameField := entity.Field{
+		Key:         dealNameFieldID,
 		Name:        "deal_name",
 		DisplayName: "Deal Name",
 		DomType:     entity.DomText,
@@ -168,8 +182,9 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
-	dealAmount := entity.Field{
-		Key:         "uuid-00-deal-amount",
+	dealAmountFieldID := uuid.New().String()
+	dealAmountField := entity.Field{
+		Key:         dealAmountFieldID,
 		Name:        "deal_amount",
 		DisplayName: "Deal Amount",
 		DomType:     entity.DomText,
@@ -177,9 +192,10 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
+	contactsFieldID := uuid.New().String()
 	contactsField := entity.Field{
-		Key:         "uuid-00-contacts",
-		Name:        "contact",
+		Key:         contactsFieldID,
+		Name:        "associated_contacts",
 		DisplayName: "Associated Contacts",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -192,18 +208,10 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	closeDateField := entity.Field{
-		Key:         "uuid-00-close-date",
-		Name:        "close_date",
-		DisplayName: "Close date",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeDate,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutDate},
-	}
-
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
-		Name:        "company",
+		Key:         companyFieldID,
+		Name:        "associated_companies",
 		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -216,8 +224,9 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
+	pipeFieldID := uuid.New().String()
 	pipeField := entity.Field{
-		Key:         "uuid-00-pipe",
+		Key:         pipeFieldID,
 		Name:        "pipeline",
 		DisplayName: "Pipeline",
 		DomType:     entity.DomAutoComplete,
@@ -232,8 +241,9 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
+	pipeStageFieldID := uuid.New().String()
 	pipeStageField := entity.Field{
-		Key:         "uuid-00-pipe-stage",
+		Key:         pipeStageFieldID,
 		Name:        "pipeline_stage",
 		DisplayName: "Pipeline Stage",
 		DomType:     entity.DomSelect,
@@ -245,7 +255,7 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 			Expressions: []string{""}, // empty means positive
 			Actions:     []string{fmt.Sprintf("{{{%s.%s}}}", reference.ActionFilter, reference.ByFlow)},
 		},
-		Meta: map[string]string{entity.MetaKeyDisplayGex: "uuid-00-fname", entity.MetaKeyNode: "true"},
+		Meta: map[string]string{entity.MetaKeyDisplayGex: nodeKey, entity.MetaKeyNode: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      pipeField.Key,
@@ -253,25 +263,36 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	return []entity.Field{dealName, dealAmount, contactsField, companyField, closeDateField, pipeField, pipeStageField}
+	closeDateFieldID := uuid.New().String()
+	closeDateField := entity.Field{
+		Key:         closeDateFieldID,
+		Name:        "close_date",
+		DisplayName: "Close date",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDate,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutDate},
+	}
+
+	return []entity.Field{dealNameField, dealAmountField, contactsField, companyField, pipeField, pipeStageField, closeDateField}
 }
 
-func DealVals(name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
+func DealVals(dealEntity entity.Entity, name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
 	dealVals := map[string]interface{}{
-		"uuid-00-deal-name":   name,
-		"uuid-00-deal-amount": amount,
-		"uuid-00-contacts":    []interface{}{contactID1, contactID2},
-		"uuid-00-pipe":        []interface{}{flowID},
-		"uuid-00-pipe-stage":  []interface{}{},
-		"uuid-00-company":     []interface{}{},
-		"uuid-00-close-date":  util.FormatTimeGo(time.Now()),
+		"deal_name":            name,
+		"deal_amount":          amount,
+		"associated_contacts":  []interface{}{contactID1, contactID2},
+		"associated_companies": []interface{}{},
+		"pipeline":             []interface{}{flowID},
+		"pipeline_stage":       []interface{}{},
+		"close_date":           util.FormatTimeGo(time.Now()),
 	}
-	return dealVals
+	return forms.KeyMap(dealEntity.NamedKeys(), dealVals)
 }
 
 func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, dealEntityID, dealEntityKey string) []entity.Field {
+	descFieldID := uuid.New().String()
 	descField := entity.Field{
-		Key:         "uuid-00-desc",
+		Key:         descFieldID,
 		Name:        "desc",
 		DisplayName: "Notes",
 		DomType:     entity.DomText,
@@ -279,9 +300,10 @@ func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
-		Name:        "contact",
+		Key:         contactFieldID,
+		Name:        "associated_contacts",
 		DisplayName: "Associated To",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -294,24 +316,10 @@ func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	dealField := entity.Field{
-		Key:         "uuid-00-deal",
-		Name:        "deal",
-		DisplayName: "Associated To",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       dealEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: dealEntityKey},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
-
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
-		Name:        "company",
+		Key:         companyFieldID,
+		Name:        "associated_companies",
 		DisplayName: "Associated To",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -324,20 +332,37 @@ func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	return []entity.Field{descField, contactField, dealField, companyField}
+	dealFieldID := uuid.New().String()
+	dealField := entity.Field{
+		Key:         dealFieldID,
+		Name:        "associated_deals",
+		DisplayName: "Associated To",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       dealEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: dealEntityKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{descField, contactField, companyField, dealField}
 }
 
-func NoteVals(desc, contactID string) map[string]interface{} {
+func NoteVals(noteEntity entity.Entity, desc, contactID string) map[string]interface{} {
 	noteVals := map[string]interface{}{
-		"uuid-00-desc":    desc,
-		"uuid-00-contact": []interface{}{contactID},
+		"desc":                desc,
+		"associated_contacts": []interface{}{contactID},
 	}
-	return noteVals
+	return forms.KeyMap(noteEntity.NamedKeys(), noteVals)
 }
 
 func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, statusEntityID, statusEntityKey string) []entity.Field {
+	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
-		Key:         "uuid-00-subject",
+		Key:         nameFieldID,
 		Name:        "name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -345,8 +370,9 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
+	statusFieldID := uuid.New().String()
 	statusField := entity.Field{
-		Key:         "uuid-00-status",
+		Key:         statusFieldID,
 		Name:        "status",
 		DisplayName: "Status",
 		DomType:     entity.DomSelect,
@@ -361,9 +387,10 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		},
 	}
 
+	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
-		Key:         "uuid-00-contact",
-		Name:        "contact",
+		Key:         contactFieldID,
+		Name:        "associated_contacts",
 		DisplayName: "Associated Contacts",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -376,9 +403,10 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		},
 	}
 
+	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
-		Key:         "uuid-00-company",
-		Name:        "company",
+		Key:         companyFieldID,
+		Name:        "associated_companies",
 		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -394,12 +422,12 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 	return []entity.Field{nameField, statusField, contactField, companyField}
 }
 
-func TicketVals(name, statusID string) map[string]interface{} {
+func TicketVals(ticketEntity entity.Entity, name, statusID string) map[string]interface{} {
 	ticketVals := map[string]interface{}{
-		"uuid-00-subject": name,
-		"uuid-00-contact": []interface{}{},
-		"uuid-00-company": []interface{}{},
-		"uuid-00-status":  []interface{}{statusID},
+		"name":                 name,
+		"associated_contacts":  []interface{}{},
+		"associated_companies": []interface{}{},
+		"status":               []interface{}{statusID},
 	}
-	return ticketVals
+	return forms.KeyMap(ticketEntity.NamedKeys(), ticketVals)
 }

@@ -136,7 +136,7 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 	}{
 		Items:      viewModelItems,
 		Flow:       createViewModelFlow(fl, nil),
-		EntityName: e.Name,
+		EntityName: e.DisplayName,
 		Fields:     fields,
 		Nodes:      viewModelNodes,
 	}

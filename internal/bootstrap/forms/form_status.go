@@ -1,6 +1,9 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func StatusFields() []entity.Field {
 	verbField := entity.Field{
@@ -12,8 +15,9 @@ func StatusFields() []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: "verb"},
 	}
 
+	nameFieldID := uuid.New().String()
 	nameField := entity.Field{
-		Key:         "uuid-00-name",
+		Key:         nameFieldID,
 		Name:        "name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -21,8 +25,9 @@ func StatusFields() []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
 	}
 
+	colorFieldID := uuid.New().String()
 	colorField := entity.Field{
-		Key:         "uuid-00-color",
+		Key:         colorFieldID,
 		Name:        "color",
 		DisplayName: "Color",
 		DomType:     entity.DomText,
@@ -33,11 +38,12 @@ func StatusFields() []entity.Field {
 	return []entity.Field{verbField, nameField, colorField}
 }
 
-func StatusVals(verb, name, color string) map[string]interface{} {
+func StatusVals(statusEntity entity.Entity, verb, name, color string) map[string]interface{} {
 	statusVals := map[string]interface{}{
-		entity.VerbKey:  verb,
-		"uuid-00-name":  name,
-		"uuid-00-color": color,
+		"name":  name,
+		"color": color,
 	}
-	return statusVals
+	itemVals := keyMap(statusEntity.NamedKeys(), statusVals)
+	itemVals[entity.VerbKey] = verb
+	return itemVals
 }

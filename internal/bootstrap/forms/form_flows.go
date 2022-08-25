@@ -1,35 +1,41 @@
 package forms
 
-import "gitlab.com/vjsideprojects/relay/internal/entity"
+import (
+	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+)
 
 func FlowFields() []entity.Field {
-	actualFlowID := entity.Field{
-		Key:         "uuid-00-flow-id",
+	actualFlowIDFieldID := uuid.New().String()
+	actualFlowIDField := entity.Field{
+		Key:         actualFlowIDFieldID,
 		Name:        "flow_id",
 		DisplayName: "ID",
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 	}
 
-	actualFlowName := entity.Field{
-		Key:         "uuid-00-flow-name",
+	actualFlowNameFieldID := uuid.New().String()
+	actualFlowNameField := entity.Field{
+		Key:         actualFlowNameFieldID,
 		Name:        "flow_name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
 
-	return []entity.Field{actualFlowID, actualFlowName}
+	return []entity.Field{actualFlowIDField, actualFlowNameField}
 }
 
 func NodeFields() []entity.Field {
-	actualFlowID := entity.Field{
-		Key:         "uuid-00-node-id",
+	actualFlowIDFieldID := uuid.New().String()
+	actualFlowIDFIeld := entity.Field{
+		Key:         actualFlowIDFieldID,
 		Name:        "node_id",
 		DisplayName: "ID",
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 	}
 
-	return []entity.Field{actualFlowID}
+	return []entity.Field{actualFlowIDFIeld}
 }

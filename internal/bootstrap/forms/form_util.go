@@ -7,3 +7,7 @@ func keyMap(namedKeys map[string]string, namedVals map[string]interface{}) map[s
 	}
 	return itemVals
 }
+
+func KeyMap(namedKeys map[string]string, namedVals map[string]interface{}) map[string]interface{} {
+	return keyMap(namedKeys, namedVals)
+}

@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -79,7 +80,7 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		}
 
 		if _, ok := dirtyFields[f.Key]; ok {
-			modifiedFields = append(modifiedFields, f.DisplayName)
+			modifiedFields = append(modifiedFields, fmt.Sprintf("%s", f.DisplayName))
 		}
 
 		if f.IsTitleLayout() {

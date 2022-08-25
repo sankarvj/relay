@@ -97,8 +97,8 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 		}
 		fields := e.FieldsIgnoreError()
 		for _, f := range fields {
-			if f.Key == schema.SeedFieldNPSKey {
-				exp := fmt.Sprintf("{{%s.%s}} gt {98}", entityID, schema.SeedFieldNPSKey)
+			if f.Name == "nps_score" {
+				exp := fmt.Sprintf("{{%s.%s}} gt {98}", entityID, e.Key("nps_score"))
 				err = addSegmentFlow(ctx, entityID, "High NPS", exp, b)
 				if err != nil {
 					return err
@@ -186,9 +186,9 @@ func (b *Base) AddLayouts(ctx context.Context, name, entityID string) error {
 	}
 	layoutFields := make(map[string]string, 0)
 	for _, f := range e.FieldsIgnoreError() {
-		if f.Key == "uuid-00-name" { // confusing? because this should happen only via the UI.
+		if f.Name == "first_name" { // confusing? because this should happen only via the UI.
 			layoutFields["title"] = f.Key
-		} else if f.Key == "uuid-00-owner" {
+		} else if f.Name == "owner" {
 			layoutFields["owner"] = f.Key
 		}
 	}

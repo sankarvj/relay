@@ -11,7 +11,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 )
 
 func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.Entity, *entity.Entity, *entity.Entity, error) {
@@ -82,7 +81,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
 
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID))
+	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id")))
 	if err != nil {
 		return err
 	}
@@ -162,20 +161,20 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
-	// add contact item - vijay (straight)
-	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Wayne", "gaajidurden@gmail.com"), nil)
+	// add contact item
+	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Sample", "bruce@sampleacc.com"), nil)
 	if err != nil {
 		return err
 	}
-	// add contact item - senthil (straight)
-	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "George Kutty", "vijayasankarmobile@gmail.com"), nil)
+	// add contact item
+	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Paul Sample", "paul@sampleacc.com"), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Zoho", "zoho.com"), map[string][]string{contactEntity.ID: []string{contactItem1.ID}})
+	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "SampleAcc", "sampleacc.com"), map[string][]string{contactEntity.ID: {contactItem1.ID}})
 	if err != nil {
 		return err
 	}
@@ -202,23 +201,23 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Automations Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals("Big Deal", 1000, contactItem1.ID, contactItem2.ID, b.SalesPipelineFlowID), nil)
+	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals(dealEntity, "Sample Acc Deal", 10000, contactItem1.ID, contactItem2.ID, b.SalesPipelineFlowID), nil)
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals("My Laptop Is Not Working", statusItems[0].ID), map[string][]string{dealEntity.ID: {dealItem1.ID}})
+	ticketItem1, err := b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals(ticketEntity, "My laptop is not working", statusItems[0].ID), map[string][]string{dealEntity.ID: {dealItem1.ID}})
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Tickets Items Created")
 
 	// add email-config & email-templates
-	err = b.AddEmails(ctx, contactEntity.ID, contactEntity.Key("email"), contactEntity.Key("nps_score"))
-	if err != nil {
-		return err
-	}
+	// err = b.AddEmails(ctx, contactEntity.ID, contactEntity.Key("email"), contactEntity.Key("nps_score"))
+	// if err != nil {
+	// 	return err
+	// }
 	fmt.Println("\tCRM:SAMPLES  Email Config Entity And It's Item Created")
 
 	err = b.AddLayouts(ctx, "card", companyEntity.ID)
@@ -385,12 +384,12 @@ func AddAutomation(ctx context.Context, b *base.Base) error {
 }
 
 func AddProps(ctx context.Context, b *base.Base) error {
-	_, err := b.EntityAdd(ctx, uuid.New().String(), schema.SeedPageViewEventEntityName, "Page View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, pageViewEventEntityFields())
+	_, err := b.EntityAdd(ctx, uuid.New().String(), "page_view", "Page View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, pageViewEventEntityFields())
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), schema.SeedActivityEventEntityName, "Activity View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, activityEventEntityFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), "activity_view", "Activity View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, activityEventEntityFields())
 	if err != nil {
 		return err
 	}

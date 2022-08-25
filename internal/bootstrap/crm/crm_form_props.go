@@ -1,13 +1,15 @@
 package crm
 
 import (
+	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 func pageViewEventEntityFields() []entity.Field {
 
+	urlFieldID := uuid.New().String()
 	urlField := entity.Field{
-		Key:         "uuid-00-url",
+		Key:         urlFieldID,
 		Name:        "url",
 		DisplayName: "URL",
 		DomType:     entity.DomText,
@@ -15,8 +17,9 @@ func pageViewEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "title"},
 	}
 
+	vistsCountFieldID := uuid.New().String()
 	vistsCountField := entity.Field{
-		Key:         "uuid-00-visits",
+		Key:         vistsCountFieldID,
 		Name:        "visits",
 		DisplayName: "Vists",
 		DomType:     entity.DomText,
@@ -24,8 +27,9 @@ func pageViewEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "footer"},
 	}
 
+	linkFieldID := uuid.New().String()
 	linkField := entity.Field{
-		Key:         "uuid-00-link-key",
+		Key:         linkFieldID,
 		Name:        "link",
 		DisplayName: "Link",
 		DomType:     entity.DomNotApplicable,
@@ -38,8 +42,9 @@ func pageViewEventEntityFields() []entity.Field {
 
 func activityEventEntityFields() []entity.Field {
 
+	activityNameFieldID := uuid.New().String()
 	activityNameField := entity.Field{
-		Key:         "uuid-00-activity-name",
+		Key:         activityNameFieldID,
 		Name:        "activity-name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -47,8 +52,9 @@ func activityEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "title"},
 	}
 
+	activityActionFieldID := uuid.New().String()
 	activityActionField := entity.Field{
-		Key:         "uuid-00-activity-action",
+		Key:         activityActionFieldID,
 		Name:        "activity-action",
 		DisplayName: "Action",
 		DomType:     entity.DomText,
@@ -56,8 +62,9 @@ func activityEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "footer"},
 	}
 
+	linkFieldID := uuid.New().String()
 	linkField := entity.Field{
-		Key:         "uuid-00-link-key",
+		Key:         linkFieldID,
 		Name:        "activity-link",
 		DisplayName: "Link",
 		DomType:     entity.DomNotApplicable,
@@ -69,8 +76,9 @@ func activityEventEntityFields() []entity.Field {
 }
 
 func propertyChangeEventEntityFields() []entity.Field {
+	propertyNameFieldID := uuid.New().String()
 	propertyNameField := entity.Field{
-		Key:         "uuid-00-property-name",
+		Key:         propertyNameFieldID,
 		Name:        "property-name",
 		DisplayName: "Name",
 		DomType:     entity.DomText,
@@ -78,8 +86,9 @@ func propertyChangeEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "title"},
 	}
 
+	propertyValueFieldID := uuid.New().String()
 	propertyValueField := entity.Field{
-		Key:         "uuid-00-property-value",
+		Key:         propertyValueFieldID,
 		Name:        "property-value",
 		DisplayName: "Value",
 		DomType:     entity.DomText,
@@ -87,8 +96,9 @@ func propertyChangeEventEntityFields() []entity.Field {
 		Meta:        map[string]string{"layout": "footer"},
 	}
 
+	linkFieldID := uuid.New().String()
 	linkField := entity.Field{
-		Key:         "uuid-00-link-key",
+		Key:         linkFieldID,
 		Name:        "link",
 		DisplayName: "Link",
 		DomType:     entity.DomNotApplicable,
