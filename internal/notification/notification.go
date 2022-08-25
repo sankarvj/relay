@@ -153,7 +153,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 }
 
 func sendEmailAndFBNotification(ctx context.Context, appNotif AppNotification, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {
-
+	log.Println("COming,,,,,,,,,,,,,,,,")
 	emailNotif := EmailNotification{
 		Name:      strings.Title(assignee.Name),
 		To:        []interface{}{assignee.Email},
@@ -165,6 +165,7 @@ func sendEmailAndFBNotification(ctx context.Context, appNotif AppNotification, a
 	if err1 != nil {
 		log.Println("***>***> emailNotif.Send. error:", err1)
 	}
+	log.Println("SUCCESSS,,,,,,,,,,,,,,,,")
 
 	fbNotif := FirebaseNotification{
 		AccountID: appNotif.AccountID,

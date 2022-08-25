@@ -35,12 +35,14 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		MagicLink   string
 		Requester   string
 		Body        string
+		Subject     string
 	}{
 		Name:        emNotif.Name,
 		AccountName: emNotif.AccountName,
 		MagicLink:   emNotif.MagicLink,
 		Requester:   emNotif.Requester,
 		Body:        emNotif.Body,
+		Subject:     emNotif.Subject,
 	}
 
 	template := "welcome.html"

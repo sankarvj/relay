@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -67,8 +66,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		exp = ""
 		exp = util.AddExpression(exp, fl.Expression)
 	}
-
-	log.Println("exp ", exp)
 
 	piper := Piper{Viable: e.FlowField() != nil}
 	if page == 0 {

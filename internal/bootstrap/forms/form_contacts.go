@@ -1,6 +1,8 @@
 package forms
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
@@ -111,6 +113,7 @@ func ContactVals(contactEntity entity.Entity, firstName, email string) map[strin
 		"nps_score":       100,
 		"lifecycle_stage": []interface{}{"1"},
 		"owner":           []interface{}{},
+		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/avataaars/%s.svg", firstName),
 	}
 
 	return keyMap(contactEntity.NamedKeys(), namedVals)
