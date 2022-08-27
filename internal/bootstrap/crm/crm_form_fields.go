@@ -395,7 +395,7 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

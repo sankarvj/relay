@@ -3,11 +3,15 @@ package notification
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 )
 
@@ -27,7 +31,7 @@ func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType Notifica
 	}
 
 	for _, client := range clients {
-		err = firebaseSend(client.DeviceToken, fbNotif.SDKPath)
+		err = FirebaseSend(client.DeviceToken, fbNotif.SDKPath)
 		if err != nil {
 			log.Println("error firebaseSend: ", err)
 			//delete token here
@@ -40,12 +44,11 @@ func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType Notifica
 	return nil
 }
 
-func firebaseSend(registrationToken, adminSDKPath string) error {
+func FirebaseSend(registrationToken, adminSDKPath string) error {
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(adminSDKPath)
 	config := &firebase.Config{ProjectID: "relay-70013"}
 	// Initialize default app
-	// config := &firebase.Config{ProjectID: "relay-94b69"}
 	app, err := firebase.NewApp(ctx, config, opt)
 	if err != nil {
 		log.Println("error getting firebase app", err)
@@ -60,9 +63,9 @@ func firebaseSend(registrationToken, adminSDKPath string) error {
 
 	// See documentation on defining a message payload.
 	message := &messaging.Message{
-		Data: map[string]string{
-			"score": "850",
-			"time":  "2:45",
+		Notification: &messaging.Notification{
+			Title: "title",
+			Body:  "busy",
 		},
 		Token: registrationToken,
 	}
@@ -77,4 +80,34 @@ func firebaseSend(registrationToken, adminSDKPath string) error {
 	// Response is a message ID string.
 	fmt.Println("Successfully sent message:", response)
 	return nil
+}
+
+const firebaseScope = "https://www.googleapis.com/auth/firebase.messaging"
+
+type tokenProvider struct {
+	tokenSource oauth2.TokenSource
+}
+
+// newTokenProvider function to get token for fcm-send
+func NewTokenProvider(credentialsLocation string) (*tokenProvider, error) {
+	jsonKey, err := ioutil.ReadFile(credentialsLocation)
+	if err != nil {
+		return nil, errors.New("fcm: failed to read credentials file at: " + credentialsLocation)
+	}
+	cfg, err := google.JWTConfigFromJSON(jsonKey, firebaseScope)
+	if err != nil {
+		return nil, errors.New("fcm: failed to get JWT config for the firebase.messaging scope")
+	}
+	ts := cfg.TokenSource(context.Background())
+	return &tokenProvider{
+		tokenSource: ts,
+	}, nil
+}
+
+func (src *tokenProvider) Token() (string, error) {
+	token, err := src.tokenSource.Token()
+	if err != nil {
+		return "", errors.New("fcm: failed to generate Bearer token")
+	}
+	return token.AccessToken, nil
 }

@@ -53,7 +53,6 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 
 			claims, err := authenticator.ParseClaims(parts[1])
 			if err != nil {
-				log.Println("here coming...")
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
 			// Add claims to the context so they can be retrieved later.

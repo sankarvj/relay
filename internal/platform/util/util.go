@@ -222,7 +222,7 @@ func IsValidEmail(email string) bool {
 }
 
 func TruncateText(s string, max int) string {
-	if max > len(s) {
+	if max >= len(s) {
 		return s
 	}
 	return s[:strings.LastIndexAny(s[:max], " ...")]
