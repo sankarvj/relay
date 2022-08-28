@@ -24,27 +24,25 @@ type FirebaseNotification struct {
 }
 
 func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error {
-
 	clients, err := RetrieveClients(ctx, fbNotif.AccountID, fbNotif.UserID, db)
 	if err != nil {
 		return err
 	}
-
 	for _, client := range clients {
-		err = FirebaseSend(client.DeviceToken, fbNotif.SDKPath)
+		err = FirebaseSend(fbNotif.Subject, fbNotif.Body, client.DeviceToken, fbNotif.SDKPath)
 		if err != nil {
-			log.Println("error firebaseSend: ", err)
+			log.Println("client err on firebaseSend: ", err)
 			//delete token here
+			DeleteClient(ctx, client.AccountID, client.UserID, client.DeviceToken, db)
 			continue
 		} else {
 			log.Println("message delivered successfully")
 		}
 	}
-
 	return nil
 }
 
-func FirebaseSend(registrationToken, adminSDKPath string) error {
+func FirebaseSend(subject, body string, registrationToken, adminSDKPath string) error {
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(adminSDKPath)
 	config := &firebase.Config{ProjectID: "relay-70013"}
@@ -64,8 +62,8 @@ func FirebaseSend(registrationToken, adminSDKPath string) error {
 	// See documentation on defining a message payload.
 	message := &messaging.Message{
 		Notification: &messaging.Notification{
-			Title: "title",
-			Body:  "busy",
+			Title: subject,
+			Body:  body,
 		},
 		Token: registrationToken,
 	}

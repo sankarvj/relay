@@ -32,7 +32,7 @@ func (n *Notification) Register(ctx context.Context, w http.ResponseWriter, r *h
 
 	accountID := params["account_id"]
 
-	var cr notification.ClientRegister
+	var cr notification.ViewModelClientRegister
 	if err := web.Decode(r, &cr); err != nil {
 		return errors.Wrap(err, "")
 	}
@@ -41,18 +41,21 @@ func (n *Notification) Register(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		return errors.Wrapf(err, "auth claims missing from context")
 	}
-	cr.AccountID = accountID
-	cr.UserID = currentUserID
 
-	_, err = notification.RetrieveClient(ctx, cr.AccountID, cr.UserID, cr.DeviceToken, n.db)
-
-	if err == notification.ErrNotFound {
-		_, err = notification.CreateClient(ctx, n.db, cr, time.Now())
+	if cr.DeviceToken != "" {
+		_, err = notification.RetrieveClient(ctx, accountID, currentUserID, cr.DeviceToken, n.db)
+		if err == notification.ErrNotFound {
+			_, err = notification.CreateClient(ctx, n.db, accountID, currentUserID, cr, time.Now())
+			if err != nil {
+				return errors.Wrapf(err, "failure in saving the client token")
+			}
+		}
+	}
+	if cr.OldToken != "" {
+		err = notification.DeleteClient(ctx, accountID, currentUserID, cr.OldToken, n.db)
 		if err != nil {
 			return errors.Wrapf(err, "failure in saving the client token")
 		}
-	} else {
-		log.Println("Token already registered for this user")
 	}
 
 	return web.Respond(ctx, w, true, http.StatusOK)

@@ -11,3 +11,10 @@ type ClientRegister struct {
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   int64     `db:"updated_at" json:"updated_at"`
 }
+
+type ViewModelClientRegister struct {
+	DeviceToken string `json:"device_token"`
+	OldToken    string `json:"old_token"`
+	DeviceType  string `json:"device_type"`
+	Status      int    `json:"status"`
+}

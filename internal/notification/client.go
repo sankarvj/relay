@@ -18,12 +18,19 @@ var (
 	ErrInvalidID = errors.New("Layout ID is not in its proper form")
 )
 
-func CreateClient(ctx context.Context, db *sqlx.DB, cr ClientRegister, now time.Time) (ClientRegister, error) {
+func CreateClient(ctx context.Context, db *sqlx.DB, accountID, userID string, vcr ViewModelClientRegister, now time.Time) (ClientRegister, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.client.Create")
 	defer span.End()
 
-	cr.CreatedAt = now.UTC()
-	cr.UpdatedAt = now.UTC().Unix()
+	cr := ClientRegister{
+		AccountID:   accountID,
+		UserID:      userID,
+		DeviceToken: vcr.DeviceToken,
+		DeviceType:  vcr.DeviceType,
+		Status:      vcr.Status,
+		CreatedAt:   now.UTC(),
+		UpdatedAt:   now.UTC().Unix(),
+	}
 
 	const q = `INSERT INTO clients
 		(account_id, user_id, device_token, device_type, status, created_at, updated_at)
@@ -73,4 +80,17 @@ func RetrieveClient(ctx context.Context, accountID, userID, device_token string,
 	}
 
 	return cr, nil
+}
+
+func DeleteClient(ctx context.Context, accountID, userID, dtoken string, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.DeleteClient")
+	defer span.End()
+
+	const q = `DELETE FROM clients WHERE account_id = $1 and user_id = $2 and device_token = $3`
+
+	if _, err := db.ExecContext(ctx, q, accountID, userID, dtoken); err != nil {
+		return errors.Wrapf(err, "deleting client for user %s", userID)
+	}
+
+	return nil
 }
