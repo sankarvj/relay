@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
@@ -19,13 +18,15 @@ import (
 type NotificationType int
 
 const (
-	TypeReminder NotificationType = iota
-	TypeAssigned
-	TypeCreated
-	TypeUpdated
-	TypeMemberInvitation
-	TypeWelcome
-	TypeVisitorInvitation
+	TypeReminder               NotificationType = 0
+	TypeAssigned               NotificationType = 1
+	TypeCreated                NotificationType = 2
+	TypeUpdated                NotificationType = 3
+	TypeMemberInvitation       NotificationType = 4
+	TypeWelcome                NotificationType = 5
+	TypeVisitorInvitation      NotificationType = 6
+	TypeEmailConversationAdded NotificationType = 7
+	TypeChatConversationAdded  NotificationType = 8
 )
 
 type Notification interface {
@@ -104,8 +105,8 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis
 	return emailNotif.Send(ctx, TypeVisitorInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, baseIds []string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
-	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, baseIds, db)
+func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, teamID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
+	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db)
 
 	switch notificationType {
 	case TypeReminder:
@@ -116,13 +117,27 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	case TypeCreated:
 		switch entityCategory {
 		case entity.CategoryEmail:
-			appNotif.Subject = fmt.Sprintf("A new e-mail has been sent/received")
+			appNotif.Subject = fmt.Sprintf("An e-mail has been sent/received")
+			// enriching subject with base elements
+			if appNotif.BaseEntityName != "" {
+				appNotif.Subject = fmt.Sprintf("%s for %s", appNotif.Subject, util.LowerSinglarize(appNotif.BaseEntityName))
+				if appNotif.BaseItemName != "" {
+					appNotif.Subject = fmt.Sprintf("%s `%s`", appNotif.Subject, appNotif.BaseItemName)
+				}
+			}
 			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		case entity.CategoryUsers:
 			appNotif.Subject = fmt.Sprintf("A new member added to your account")
 			appNotif.Body = fmt.Sprintf("New member %s added to your account", appNotif.Title)
 		default:
-			appNotif.Subject = fmt.Sprintf("A new record created in %s", util.LowerPluralize(entityDisName))
+			appNotif.Subject = fmt.Sprintf("A new %s created", util.LowerSinglarize(entityDisName))
+			// enriching subject with base elements
+			if appNotif.BaseEntityName != "" {
+				appNotif.Subject = fmt.Sprintf("%s in %s", appNotif.Subject, util.LowerSinglarize(appNotif.BaseEntityName))
+				if appNotif.BaseItemName != "" {
+					appNotif.Subject = fmt.Sprintf("%s `%s`", appNotif.Subject, appNotif.BaseItemName)
+				}
+			}
 			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		}
 
@@ -136,47 +151,29 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
 			appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 		}
+
+	case TypeChatConversationAdded:
+		if val, exist := appNotif.DirtyFields[entity.WhoMessage]; exist {
+			appNotif.Body = val
+		}
+		appNotif.Subject = fmt.Sprintf("New comment added in %s `%s`", util.LowerSinglarize(appNotif.BaseEntityName), appNotif.BaseItemName)
 	}
 
+	duplicateMasker := make(map[string]bool, 0)
 	//Send email/firebase notification to assignees/followers/creators
 	for _, assignee := range appNotif.Assignees {
-		sendEmailAndFBNotification(ctx, appNotif, assignee, notificationType, db, firebaseSDKPath)
-	}
-
-	if itemCreatorID != nil && *itemCreatorID != usrID {
-		for _, follower := range appNotif.Followers {
-			sendEmailAndFBNotification(ctx, appNotif, follower, notificationType, db, firebaseSDKPath)
+		if _, ok := duplicateMasker[assignee.UserID]; !ok {
+			appNotif.Send(ctx, assignee, notificationType, db, firebaseSDKPath)
+			duplicateMasker[assignee.UserID] = true
 		}
 	}
 
-	return appNotif.Send(ctx, notificationType, db)
-}
+	for _, follower := range appNotif.Followers {
+		if _, ok := duplicateMasker[follower.UserID]; !ok {
+			appNotif.Send(ctx, follower, notificationType, db, firebaseSDKPath)
+			duplicateMasker[follower.UserID] = true
+		}
+	}
 
-func sendEmailAndFBNotification(ctx context.Context, appNotif AppNotification, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {
-	log.Println("COming,,,,,,,,,,,,,,,,")
-	emailNotif := EmailNotification{
-		Name:      strings.Title(assignee.Name),
-		To:        []interface{}{assignee.Email},
-		Subject:   appNotif.Subject,
-		Body:      appNotif.Body,
-		MagicLink: auth.SimpleLink(appNotif.AccountID, appNotif.TeamID, appNotif.EntityID, appNotif.ItemID),
-	}
-	err1 := emailNotif.Send(ctx, notificationType, db)
-	if err1 != nil {
-		log.Println("***>***> emailNotif.Send. error:", err1)
-	}
-	log.Println("SUCCESSS,,,,,,,,,,,,,,,,")
-
-	fbNotif := FirebaseNotification{
-		AccountID: appNotif.AccountID,
-		UserID:    assignee.UserID,
-		Subject:   appNotif.Subject,
-		Body:      appNotif.Body,
-		SDKPath:   firebaseSDKPath,
-	}
-	err2 := fbNotif.Send(ctx, notificationType, db)
-	if err2 != nil {
-		log.Println("***>***> fbNotif.Send. error:", err2)
-	}
-	return err1, err2
+	return appNotif.Save(ctx, notificationType, db)
 }

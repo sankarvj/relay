@@ -8,6 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 const (
@@ -35,6 +36,7 @@ type Client struct {
 	conn   *websocket.Conn
 	hub    *Hub
 	id     string
+	base   string
 	room   string
 	user   string
 	name   string
@@ -42,16 +44,17 @@ type Client struct {
 	send   chan []byte
 }
 
-func NewClient(conn *websocket.Conn, hub *Hub, id, room, user, name, avatar string) *Client {
+func NewClient(conn *websocket.Conn, hub *Hub, id, base, room, user, email, name, avatar string) *Client {
 
-	if avatar == "" || avatar == "http://gravatar/vj" {
-		avatar = "https://randomuser.me/api/portraits/thumb/lego/1.jpg"
+	if avatar == "" {
+		avatar = util.Avatar(email)
 	}
 
 	return &Client{
 		conn:   conn,
 		hub:    hub,
 		id:     id,
+		base:   base,
 		room:   room,
 		user:   user,
 		name:   name,
@@ -96,7 +99,7 @@ func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 		viewModelConv.UserName = client.name
 
 		//sending the message to the handler for storing it in the DB
-		message := NewMessage(SendMessageAction, viewModelConv, client.room, client.user, client.id)
+		message := NewMessage(SendMessageAction, viewModelConv, client.base, client.room, client.user, client.id)
 		messageChan <- *message
 
 		//sending the message to the pub/sub

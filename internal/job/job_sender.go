@@ -32,7 +32,7 @@ func (j *Job) Stream(message *stream.Message) error {
 
 func queueSQS(message *stream.Message) error {
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1"),
+		Region: aws.String("us-east-1"), //TODO: don't hardcode take this param from the ENV
 	},
 	)
 
@@ -40,13 +40,13 @@ func queueSQS(message *stream.Message) error {
 		return err
 	}
 
-	// Create an SES session.
+	// Create an SQS session.
 	svc := sqs.New(sess)
 
 	// Make message JSON
 	msg, err := json.Marshal(message)
 	if err != nil {
-		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred when sending the job to SQS. error:", err)
+		log.Println("***>***> queueSQS: unexpected/unhandled error occurred when sending the job to SQS. error:", err)
 		return err
 	}
 
@@ -54,11 +54,11 @@ func queueSQS(message *stream.Message) error {
 		MessageAttributes: map[string]*sqs.MessageAttributeValue{
 			"Title": {
 				DataType:    aws.String("String"),
-				StringValue: aws.String("Job"),
+				StringValue: aws.String(message.ID),
 			},
 			"Action": {
 				DataType:    aws.String("String"),
-				StringValue: aws.String("Item Create"),
+				StringValue: aws.String(message.TypeStr()),
 			},
 		},
 		MessageBody: aws.String(string(msg)),

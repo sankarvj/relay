@@ -26,18 +26,18 @@ var (
 )
 
 // List retrieves a list of existing item for the entity associated from the database.
-func List(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
-	return ListFilterByState(ctx, entityID, StateDefault, db)
+func List(ctx context.Context, accountID, entityID string, db *sqlx.DB) ([]Item, error) {
+	return ListFilterByState(ctx, accountID, entityID, StateDefault, db)
 }
-func ListFilterByState(ctx context.Context, entityID string, state int, db *sqlx.DB) ([]Item, error) {
+func ListFilterByState(ctx context.Context, accountID, entityID string, state int, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.List")
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND state = $2 LIMIT $3`
+	const q = `SELECT * FROM items where account_id = $1 AND entity_id = $2 AND state = $3 LIMIT $4`
 
-	if err := db.SelectContext(ctx, &items, q, entityID, state, util.MaxLimt); err != nil {
-		return nil, errors.Wrap(err, "selecting items")
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, state, util.MaxLimt); err != nil {
+		return nil, errors.Wrap(err, "selecting items by state")
 	}
 
 	return items, nil
@@ -51,37 +51,37 @@ func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{},
 	const q = `SELECT * FROM items where account_id = $1 AND item_id = any($2) ORDER BY created_at DESC`
 
 	if err := db.SelectContext(ctx, &items, q, accountID, pq.Array(ids)); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for selected item ids")
+		return items, errors.Wrap(err, "selecting items for a list of item ids")
 	}
 
 	return items, nil
 }
 
-func EntityItems(ctx context.Context, entityID string, db *sqlx.DB) ([]Item, error) {
+func EntityItems(ctx context.Context, accountID, entityID string, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.EntityItems")
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 LIMIT 50`
+	const q = `SELECT * FROM items where account_id = $1 AND entity_id = $2 LIMIT 50`
 
 	if entityID != "" {
-		if err := db.SelectContext(ctx, &items, q, entityID); err != nil {
-			return items, errors.Wrap(err, "selecting bulk items for entity id")
+		if err := db.SelectContext(ctx, &items, q, accountID, entityID); err != nil {
+			return items, errors.Wrap(err, "selecting items for an entity")
 		}
 	}
 
 	return items, nil
 }
 
-func UserEntityItems(ctx context.Context, entityID, userID string, db *sqlx.DB) ([]Item, error) {
+func UserEntityItems(ctx context.Context, accountID, entityID, userID string, db *sqlx.DB) ([]Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.UserEntityItems")
 	defer span.End()
 
 	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = $1 AND user_id = $2 LIMIT 20`
+	const q = `SELECT * FROM items where account_id = $1 AND entity_id = $2 AND user_id = $3 LIMIT 20`
 
-	if err := db.SelectContext(ctx, &items, q, entityID, userID); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for entity id with user")
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, userID); err != nil {
+		return items, errors.Wrap(err, "selecting items for user")
 	}
 
 	return items, nil

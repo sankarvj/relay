@@ -10,13 +10,14 @@ import (
 
 //Type for the item is still open we can use it for anything
 const (
-	TypeDefault           = 0
-	TypeItemCreate        = 1
-	TypeItemUpdate        = 2
-	TypeItemDelete        = 3
-	TypeItemRemind        = 4
-	TypeItemDelayed       = 5
-	TypeConversationAdded = 6
+	TypeDefault                = 0
+	TypeItemCreate             = 1
+	TypeItemUpdate             = 2
+	TypeItemDelete             = 3
+	TypeItemRemind             = 4
+	TypeItemDelayed            = 5
+	TypeEmailConversationAdded = 6
+	TypeChatConversationAdded  = 7
 )
 
 const (
@@ -58,13 +59,13 @@ func NewCreteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, en
 		Source:    source,
 		State:     StateQueued,
 	}
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
 }
 
 func NewUpdateItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, newFields, oldFields map[string]interface{}) *Message {
 	m := &Message{
-		ID:        fmt.Sprintf("%s::->>%s", "update", uuid.New().String()),
+		ID:        fmt.Sprintf("%s#%s", "update", uuid.New().String()),
 		Type:      TypeItemUpdate,
 		AccountID: accountID,
 		UserID:    userID,
@@ -75,13 +76,13 @@ func NewUpdateItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, e
 		State:     StateQueued,
 	}
 
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
 }
 
 func NewDeleteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string) *Message {
 	m := &Message{
-		ID:        fmt.Sprintf("%s::->>%s", "delete", uuid.New().String()),
+		ID:        fmt.Sprintf("%s#%s", "delete", uuid.New().String()),
 		Type:      TypeItemDelete,
 		AccountID: accountID,
 		UserID:    userID,
@@ -90,13 +91,13 @@ func NewDeleteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, e
 		State:     StateQueued,
 	}
 
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
 }
 
 func NewReminderMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string) *Message {
 	m := &Message{
-		ID:        fmt.Sprintf("%s::->>%s", "reminder", uuid.New().String()),
+		ID:        fmt.Sprintf("%s#%s", "reminder", uuid.New().String()),
 		Type:      TypeItemRemind,
 		AccountID: accountID,
 		UserID:    userID,
@@ -105,13 +106,13 @@ func NewReminderMessage(ctx context.Context, db *sqlx.DB, accountID, userID, ent
 		State:     StateQueued,
 	}
 
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
 }
 
 func NewDelayMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, meta map[string]interface{}) *Message {
 	m := &Message{
-		ID:        fmt.Sprintf("%s::->>%s", "delay", uuid.New().String()),
+		ID:        fmt.Sprintf("%s#%s", "delay", uuid.New().String()),
 		Type:      TypeItemDelayed,
 		AccountID: accountID,
 		UserID:    userID,
@@ -120,21 +121,61 @@ func NewDelayMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entity
 		Meta:      meta,
 		State:     StateQueued,
 	}
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
 }
 
-func NewConversationMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID, conversationID string) *Message {
+func NewEmailConversationMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID, conversationID string, source map[string][]string) *Message {
 	m := &Message{
-		ID:             fmt.Sprintf("%s::->>%s", "conversation", uuid.New().String()),
-		Type:           TypeConversationAdded,
+		ID:             fmt.Sprintf("%s#%s", "emailconversation", uuid.New().String()),
+		Type:           TypeEmailConversationAdded,
 		AccountID:      accountID,
 		UserID:         userID,
 		EntityID:       entityID,
 		ItemID:         itemID,
 		ConversationID: conversationID,
+		Source:         source,
 		State:          StateQueued,
 	}
-	Add(ctx, db, m, "Queued", StateQueued)
+	add(ctx, db, m, "Queued", StateQueued)
 	return m
+}
+
+func NewChatConversationMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID, conversationID string, source map[string][]string) *Message {
+	m := &Message{
+		ID:             fmt.Sprintf("%s#%s", "chatconversation", uuid.New().String()),
+		Type:           TypeChatConversationAdded,
+		AccountID:      accountID,
+		UserID:         userID,
+		EntityID:       entityID,
+		ItemID:         itemID,
+		ConversationID: conversationID,
+		Source:         source,
+		State:          StateQueued,
+	}
+	add(ctx, db, m, "Queued", StateQueued)
+	return m
+}
+
+func (m Message) TypeStr() string {
+	switch m.Type {
+	case TypeDefault:
+		return "Type Default"
+	case TypeItemCreate:
+		return "Type Create"
+	case TypeItemUpdate:
+		return "Type Update"
+	case TypeItemDelete:
+		return "Type Delete"
+	case TypeItemRemind:
+		return "Type Remind"
+	case TypeItemDelayed:
+		return "Type Delay"
+	case TypeEmailConversationAdded:
+		return "Type Email Conversation"
+	case TypeChatConversationAdded:
+		return "Type Chat Conversation"
+	default:
+		return "Type Not Implemented"
+	}
 }

@@ -8,6 +8,7 @@ import (
 type Message struct {
 	Action   string                `json:"action"`
 	Payload  ViewModelConversation `json:"payload"`
+	Base     string                `json:"base"`
 	Room     string                `json:"room"`
 	User     string                `json:"user"`
 	ClientID string                `json:"client_id"`
@@ -20,12 +21,14 @@ type ViewModelConversation struct {
 	UserAvatar string `json:"user_avatar"`
 	Type       int    `json:"type"`
 	Message    string `json:"message"`
+	InflightID string `json:"inflight_id"`
 }
 
-func NewMessage(action string, viewModelConversation ViewModelConversation, room, user, clientID string) *Message {
+func NewMessage(action string, viewModelConversation ViewModelConversation, base, room, user, clientID string) *Message {
 	return &Message{
 		Action:   action,
 		Payload:  viewModelConversation,
+		Base:     base,
 		Room:     room,
 		User:     user,
 		ClientID: clientID,

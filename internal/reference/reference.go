@@ -137,13 +137,13 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 		} else if e.Category == entity.CategoryNode { // temp flow handler
 
 		} else if e.Category == entity.CategoryChildUnit {
-			refItems, err := item.EntityItems(ctx, e.ID, db)
+			refItems, err := item.EntityItems(ctx, accountID, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
 			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		} else if e.Category == entity.CategoryEmail {
-			refItems, err := item.EntityItems(ctx, e.ID, db)
+			refItems, err := item.EntityItems(ctx, accountID, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}

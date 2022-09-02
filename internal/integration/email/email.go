@@ -28,7 +28,7 @@ func DailyWatch(ctx context.Context, accountID, teamID, oAuthFile, topic string,
 		return err
 	}
 
-	emailConfigs, err := item.UserEntityItems(ctx, ec.ID, currentUserID, db)
+	emailConfigs, err := item.UserEntityItems(ctx, accountID, ec.ID, currentUserID, db)
 	if err != nil {
 		return err
 	}

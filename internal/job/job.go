@@ -13,7 +13,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/conversation"
-	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
@@ -47,116 +46,37 @@ func NewJob(db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Job {
 func (j *Job) Post(msg *stream.Message) error {
 	switch msg.Type {
 	case stream.TypeItemCreate:
-		j.eventItemCreated(*msg)
+		return j.eventItemCreated(msg)
 	case stream.TypeItemUpdate:
-		j.eventItemUpdated(*msg)
+		return j.eventItemUpdated(msg)
 	case stream.TypeItemDelete:
-		j.eventItemDeleted(*msg)
+		return j.eventItemDeleted(msg)
 	case stream.TypeItemRemind:
-		j.eventItemReminded(*msg)
+		return j.eventItemReminded(msg)
 	case stream.TypeItemDelayed:
-		j.eventDelayExhausted(*msg)
-	case stream.TypeConversationAdded:
-		j.eventConvAdded(*msg)
+		return j.eventDelayExhausted(msg)
+	case stream.TypeEmailConversationAdded:
+		return j.eventEmailConvAdded(msg)
+	case stream.TypeChatConversationAdded:
+		return j.eventChatConvAdded(msg)
 	}
 	return nil
 }
 
 // events
-
-func (j *Job) eventItemUpdated(m stream.Message) {
-	log.Println("***>***> Reached EventItemUpdated ***<***<")
-	ctx := context.Background()
-
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
-		return
-	}
-
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
-	if err != nil {
-		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred while retriving item on job. error:", err)
-		return
-	}
-
-	valueAddedFields := e.ValueAdd(m.NewFields)
-
-	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
-	m.State = ls.State
-
-	//workflows
-	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
-		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-			return
-		} else {
-			stream.Update(ctx, j.DB, &m, "Workflow", stream.StateWorkflow)
-		}
-	}
-
-	//connections
-	if m.State < stream.StateConnection {
-		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
-			return
-		} else {
-			stream.Update(ctx, j.DB, &m, "Connection", stream.StateConnection)
-		}
-	}
-
-	//who
-	if m.State < stream.StateWho {
-		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
-			return
-		} else {
-			stream.Update(ctx, j.DB, &m, "Who", stream.StateWho)
-		}
-	}
-
-	//act on notifications
-	if m.State < stream.StateNotification {
-		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
-			return
-		} else {
-			stream.Update(ctx, j.DB, &m, "Notification", stream.StateNotification)
-		}
-	}
-
-	//graph
-	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
-		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-			return
-		} else {
-			stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
-		}
-	}
-	//TODO delete the log stream.
-	log.Println("***>***> Completed EventItemUpdated ***<***<")
-}
-
-func (j *Job) eventItemCreated(m stream.Message) {
+func (j *Job) eventItemCreated(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemCreated ***<***<")
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
-		return
+		return err
 	}
 	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
-		return
+		return err
 	}
 	log.Println("***>***> Reaced FOR ITEM ***<***<", it.ID)
 
@@ -171,9 +91,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Workflow", stream.StateWorkflow)
+			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
 		}
 	}
 
@@ -182,9 +102,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, "created", j.DB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Connection", stream.StateConnection)
+			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
 		}
 	}
 
@@ -193,9 +113,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Category", stream.StateCategory)
+			stream.Update(ctx, j.DB, m, "Category", stream.StateCategory)
 		}
 	}
 
@@ -204,9 +124,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Who", stream.StateWho)
+			stream.Update(ctx, j.DB, m, "Who", stream.StateWho)
 		}
 	}
 
@@ -215,9 +135,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Notification", stream.StateNotification)
+			stream.Update(ctx, j.DB, m, "Notification", stream.StateNotification)
 		}
 	}
 
@@ -230,9 +150,9 @@ func (j *Job) eventItemCreated(m stream.Message) {
 			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 			if err != nil {
 				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-				return
+				return err
 			} else {
-				stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
+				stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
 			}
 		} else {
 			for j.baseEntityID, j.baseItemIDs = range m.Source {
@@ -244,28 +164,110 @@ func (j *Job) eventItemCreated(m stream.Message) {
 				err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
 				if err != nil {
 					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-					return
+					return err
 				}
 			}
-			stream.Update(ctx, j.DB, &m, "Redis", stream.StateRedis)
+			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
 		}
 	}
 	//TODO delete the log stream.
 	log.Println("***>***> Completed EventItemCreated ***<***<")
+	return nil
 }
 
-func (j *Job) eventItemReminded(m stream.Message) {
+func (j *Job) eventItemUpdated(m *stream.Message) error {
+	log.Println("***>***> Reached EventItemUpdated ***<***<")
+	ctx := context.Background()
+
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
+		return err
+	}
+
+	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
+	}
+
+	valueAddedFields := e.ValueAdd(m.NewFields)
+
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
+	//workflows
+	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
+		}
+	}
+
+	//connections
+	if m.State < stream.StateConnection {
+		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+		}
+	}
+
+	//who
+	if m.State < stream.StateWho {
+		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Who", stream.StateWho)
+		}
+	}
+
+	//act on notifications
+	if m.State < stream.StateNotification {
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Notification", stream.StateNotification)
+		}
+	}
+
+	//graph
+	if m.State < stream.StateRedis {
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+		}
+	}
+	//TODO delete the log stream.
+	log.Println("***>***> Completed EventItemUpdated ***<***<")
+	return nil
+}
+
+func (j *Job) eventItemReminded(m *stream.Message) error {
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
-		return
+		return err
 	}
 	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred while retriving item on job. error:", err)
-		return
+		return err
 	}
 
 	valueAddedFields := e.ValueAdd(it.Fields())
@@ -275,23 +277,25 @@ func (j *Job) eventItemReminded(m stream.Message) {
 	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeReminder)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
+		return err
 	}
+	return err
 }
 
-func (j *Job) eventItemDeleted(m stream.Message) {
+func (j *Job) eventItemDeleted(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemDeleted ***<***<")
 	ctx := context.Background()
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred when retriving entity on job. error:", err)
-		return
+		return err
 	}
 
 	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred while retriving item on job. error:", err)
-		return
+		return err
 	}
 
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
@@ -306,9 +310,9 @@ func (j *Job) eventItemDeleted(m stream.Message) {
 		err = item.Delete(ctx, j.DB, m.AccountID, m.EntityID, m.ItemID)
 		if err != nil {
 			log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete main item. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Primary DB Delete", stream.StatePrimaryDBDelete)
+			stream.Update(ctx, j.DB, m, "Primary DB Delete", stream.StatePrimaryDBDelete)
 		}
 	}
 
@@ -316,34 +320,36 @@ func (j *Job) eventItemDeleted(m stream.Message) {
 		err = graphdb.Delete(j.Rpool, m.AccountID, m.EntityID, m.ItemID)
 		if err != nil {
 			log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete redisgraph item. error: ", err)
-			return
+			return err
 		} else {
-			stream.Update(ctx, j.DB, &m, "Secondary DB Delete", stream.StateSecDBDelete)
+			stream.Update(ctx, j.DB, m, "Secondary DB Delete", stream.StateSecDBDelete)
 		}
 	}
 	log.Println("***>***> Finished EventItemDeleted ***<***<")
+	return nil
 }
 
-func (j *Job) eventConvAdded(m stream.Message) {
+func (j *Job) eventEmailConvAdded(m *stream.Message) error {
+	log.Println("***>***> Reached EventEmailConvAdded ***<***<")
 	ctx := context.Background()
 
-	cv, err := conv.Retrieve(ctx, m.AccountID, m.ConversationID, j.DB)
+	cv, err := conversation.Retrieve(ctx, m.AccountID, m.ConversationID, j.DB)
 	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
-		return
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
 	}
 
 	emailEntity, err := entity.Retrieve(ctx, cv.AccountID, cv.EntityID, j.DB)
 	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
-		return
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
+		return err
 	}
 
 	var emailItem entity.EmailEntity
 	_, err = entity.RetrieveUnmarshalledItem(ctx, m.AccountID, m.EntityID, m.ItemID, &emailItem, j.DB)
 	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
-		return
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
+		return err
 	}
 
 	//TODO push to job
@@ -351,26 +357,87 @@ func (j *Job) eventConvAdded(m stream.Message) {
 	valueAddedFields := emailEntity.ValueAdd(cv.PayloadMap())
 	msgID, err := email.SendMail(ctx, m.AccountID, m.EntityID, m.ItemID, valueAddedFields, replyTo, j.DB)
 	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while sending mail. error:", err)
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred while sending mail. error:", err)
 	}
 	err = conversation.UpdateID(ctx, j.DB, cv.ID, *msgID, time.Now())
 	if err != nil {
-		log.Println("***>***> EventConvAdded: unexpected/unhandled error occurred while updating the old conv id with msg id. error:", err)
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred while updating the old conv id with msg id. error:", err)
 	}
+	log.Println("***>***> Finished EventEmailConvAdded ***<***<")
+	return nil
 }
 
-func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, rp *redis.Pool) {
+func (j *Job) eventChatConvAdded(m *stream.Message) error {
+	log.Println("***>***> Reached EventChatConvAdded ***<***<")
+	ctx := context.Background()
+
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
+		return err
+	}
+	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
+	}
+	log.Println("***>***> Reaced FOR ITEM ***<***<", it.ID)
+
+	cv, err := conversation.Retrieve(ctx, m.AccountID, m.ConversationID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
+	}
+
+	valueAddedFields := e.ValueAdd(it.Fields())
+	valueAddedFields = appendMessage(cv.Message, valueAddedFields) //passing message to act_on_notifications... valueadded --> item.Fields() --> dirtyFields() --> whoMessage
+
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
+	//act on notifications
+	if m.State < stream.StateNotification {
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, e, it.ID, &m.UserID, nil, entity.FieldsMap(valueAddedFields), m.Source, notification.TypeChatConversationAdded)
+		if err != nil {
+			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on notification update. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Notification", stream.StateNotification)
+		}
+	}
+
+	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+	//insertion in to redis graph DB
+	//safely deleting the empty string...
+	delete(m.Source, "")
+	if m.State < stream.StateRedis {
+		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
+		if err != nil {
+			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+		}
+	}
+	//TODO delete the log stream.
+	log.Println("***>***> Completed EventChatConvAdded ***<***<")
+	return nil
+}
+
+func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, rp *redis.Pool) error {
 	err := launchUser(draftID, accountName, "", "", emailAddress, db, rp)
 	if err != nil {
 		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred while sending launch mail. error:", err)
+		return err
 	}
+	return nil
 }
 
 func (j *Job) EventEmailReceived(db *sqlx.DB) {
 
 }
 
-func (j *Job) eventDelayExhausted(m stream.Message) {
+func (j *Job) eventDelayExhausted(m *stream.Message) error {
 	ctx := context.Background()
 	triggerFlowID := m.Meta["trigger_flow_id"].(string)
 	triggerNodeID := m.Meta["trigger_node_id"].(string)
@@ -388,6 +455,7 @@ func (j *Job) eventDelayExhausted(m stream.Message) {
 	n, err := node.Retrieve(ctx, m.AccountID, triggerFlowID, triggerNodeID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventDelayExhausted: unexpected error occurred on node retrive. error: ", err)
+		return err
 	} else {
 		eng := engine.Engine{
 			Job: j,
@@ -397,7 +465,9 @@ func (j *Job) eventDelayExhausted(m stream.Message) {
 		err = flow.StartJobFlow(ctx, j.DB, j.Rpool, n, m.Meta, eng)
 		if err != nil {
 			log.Println("***>***> EventDelayExhausted: unexpected error occurred on startJobFlow. error: ", err)
+			return err
 		}
+		return nil
 	}
 }
 
@@ -654,32 +724,25 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 
 func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string][]string, notificationType notification.NotificationType) error {
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
-	baseIds := make([]string, 0)
-	for baseEntityID, baseItemIDs := range source {
-		for _, baseItemID := range baseItemIDs {
-			baseID := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
-			baseIds = append(baseIds, baseID)
-		}
-	}
-
 	if e.Category == entity.CategoryNotification {
 		return nil
 	}
+
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	notifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, baseIds, notificationType, j.DB, j.FirebaseSDKPath)
+	appNotifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, e.ValueAdd(newFields), dirtyFields, source, notificationType, j.DB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}
 
-	notifEntity, err := entity.Retrieve(ctx, notifItem.AccountID, notifItem.EntityID, j.DB)
+	notifEntity, err := entity.Retrieve(ctx, appNotifItem.AccountID, appNotifItem.EntityID, j.DB)
 	if err != nil {
 		return err
 	}
-	valueAddedFields := notifEntity.ValueAdd(notifItem.Fields())
+	valueAddedFields := notifEntity.ValueAdd(appNotifItem.Fields())
 
-	valueAddedFields = appendTimers(notifItem.CreatedAt, util.ConvertMilliToTime(notifItem.UpdatedAt), notifItem.UserID, valueAddedFields)
-	err = j.actOnRedisGraph(ctx, notifItem.AccountID, notifItem.EntityID, notifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
+	valueAddedFields = appendTimers(appNotifItem.CreatedAt, util.ConvertMilliToTime(appNotifItem.UpdatedAt), appNotifItem.UserID, valueAddedFields)
+	err = j.actOnRedisGraph(ctx, appNotifItem.AccountID, appNotifItem.EntityID, appNotifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
 	if err != nil {
 		return err
 	}
@@ -717,7 +780,6 @@ func connectionType(baseEntityID, entityID string, relationShips []relationship.
 
 		}
 	}
-	log.Println("typeOfConnection ", typeOfConnection)
 	return typeOfConnection
 }
 
@@ -740,6 +802,16 @@ func appendTimers(createdAt, updatedAt time.Time, userID *string, valueAddedFiel
 		valueAddedFields = append(valueAddedFields, createdByField)
 	}
 
+	return valueAddedFields
+}
+
+func appendMessage(message string, valueAddedFields []entity.Field) []entity.Field {
+	messageField := entity.Field{
+		Key:   entity.WhoMessage,
+		Value: util.TruncateText(message, 20),
+	}
+
+	valueAddedFields = append(valueAddedFields, messageField)
 	return valueAddedFields
 }
 

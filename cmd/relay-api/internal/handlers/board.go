@@ -27,7 +27,7 @@ func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.
 		if err != nil {
 			return choicers, err
 		}
-		items, err := item.EntityItems(ctx, groupByField.RefID, db)
+		items, err := item.EntityItems(ctx, enty.AccountID, groupByField.RefID, db)
 		if err != nil {
 			return choicers, err
 		}

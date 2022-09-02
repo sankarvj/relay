@@ -61,7 +61,7 @@ func MeetingFields(contactEntityID, companyEntityID, dealEntityID string, contac
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
 		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityEmailFieldID, entity.MetaKeyLayout: entity.MetaLayoutUsers},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityEmailFieldID, entity.MetaKeyLayout: entity.MetaLayoutUsers, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

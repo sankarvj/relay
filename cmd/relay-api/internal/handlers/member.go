@@ -36,7 +36,7 @@ func (m *Member) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	items, err := item.ListFilterByState(ctx, entityID, item.StateDefault, m.db)
+	items, err := item.ListFilterByState(ctx, accountID, entityID, item.StateDefault, m.db)
 	if err != nil {
 		return err
 	}

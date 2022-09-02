@@ -17,11 +17,15 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	conv "gitlab.com/vjsideprojects/relay/internal/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -108,8 +112,11 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 
 	clientID := uuid.New().String()
 	accountID, entityID, itemID := takeAEI(ctx, params, cv.db)
+	baseEntityID := r.URL.Query().Get("be")
+	baseItemID := r.URL.Query().Get("bi")
+	base := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
 	room := fmt.Sprintf("%s#%s#%s", accountID, entityID, itemID)
-	client := conversation.NewClient(conn, cv.hub, clientID, room, currentUserID, *cuser.Name, *cuser.Avatar)
+	client := conversation.NewClient(conn, cv.hub, clientID, base, room, currentUserID, cuser.Email, *cuser.Name, *cuser.Avatar)
 
 	go client.WritePump(cv.rPool)
 	go client.ReadPump(cv.rPool, cv.MessageChan)
@@ -147,7 +154,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewConversationMessage(ctx, cv.db, params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID))
+	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewEmailConversationMessage(ctx, cv.db, params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID, map[string][]string{}))
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }
@@ -160,22 +167,30 @@ func (cv *Conversation) Listen() {
 
 func (cv *Conversation) runGlobalMessageReceiver() {
 	cv.MessageChan = make(chan conversation.Message)
+
 	for {
 		select {
 		case newMessage := <-cv.MessageChan:
-			parts := strings.Split(newMessage.Room, "#")
+			//authenticate before inserting it to the DB
+			baseParts := strings.Split(newMessage.Base, "#")
+			streamParts := strings.Split(newMessage.Room, "#")
 			newConversation := conv.NewConversation{
 				ID:        newMessage.Payload.ID,
-				AccountID: parts[0],
-				EntityID:  parts[1],  // stream entity
-				ItemID:    &parts[2], // stream item
+				AccountID: streamParts[0],
+				EntityID:  streamParts[1],  // stream entity
+				ItemID:    &streamParts[2], // stream item
 				UserID:    newMessage.Payload.UserID,
 				Message:   newMessage.Payload.Message,
 			}
+			ctx := context.Background()
 			_, err := conv.Create(context.Background(), cv.db, newConversation, time.Now())
 			if err != nil {
 				log.Println("***> unhandled unexpected error occurred. when inserting the chat message to the DB", err)
 			}
+
+			//The conv added function works differently
+			go job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewChatConversationMessage(ctx, cv.db, newConversation.AccountID, newConversation.UserID, newConversation.EntityID, *newConversation.ItemID, newMessage.Payload.ID, map[string][]string{baseParts[0]: {baseParts[1]}}))
+			//addNotification(ctx, streamParts[0], baseParts[0], baseParts[1], newConversation.UserID, newConversation.Message, cv.authenticator.FireBaseAdminSDK, cv.db)
 		}
 	}
 }
@@ -219,4 +234,82 @@ func createViewModelConversation(cnu conv.ConversationUsr, accName string) conv.
 	}
 
 	return vmc
+}
+
+func addNotification(ctx context.Context, accountID, entityID, itemID, userID, message string, firebaseSDKPath string, db *sqlx.DB) error {
+	baseEntity, err := entity.Retrieve(ctx, accountID, entityID, db)
+	if err != nil {
+		log.Println("***>***> addNotification: unexpected/unhandled error occurred when retriving entity on job. error:", err)
+		return err
+	}
+	it, err := item.Retrieve(ctx, entityID, itemID, db)
+	if err != nil {
+		log.Println("***>***> addNotification: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
+	}
+
+	appNotif := notification.AppNotification{
+		AccountID: accountID,
+		TeamID:    "", // not able to get the team-id here....
+		UserID:    userID,
+		EntityID:  entityID,
+		ItemID:    itemID,
+		Followers: make([]entity.UserEntity, 0),
+		Assignees: make([]entity.UserEntity, 0),
+		BaseIds:   make([]string, 0), //events filter use case. check README for more info
+	}
+	titleField := entity.TitleField(baseEntity.FieldsIgnoreError())
+	appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
+	//adding base item follower and assignees
+	appNotif.AddFollower(ctx, accountID, it.UserID, db)
+	baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
+	for _, f := range baseValueAddedFields {
+		if f.Value == nil {
+			continue
+		}
+		if f.Who == entity.WhoAssignee {
+			appNotif.AddAssignees(ctx, accountID, f.Value.([]interface{}), db)
+		}
+	}
+
+	appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", baseEntity.ID, it.ID))
+	appNotif.Subject = fmt.Sprintf("Comment added in %s `%s`", util.LowerSinglarize(baseEntity.DisplayName), appNotif.BaseItemName)
+	appNotif.Body = util.TruncateText(message, 20)
+
+	notificationType := notification.TypeChatConversationAdded
+	duplicateMasker := make(map[string]bool, 0)
+	//Send email/firebase notification to assignees/followers/creators
+	for _, assignee := range appNotif.Assignees {
+		if _, ok := duplicateMasker[assignee.UserID]; !ok {
+			appNotif.Send(ctx, assignee, notificationType, db, firebaseSDKPath)
+			duplicateMasker[assignee.UserID] = true
+		}
+	}
+
+	for _, follower := range appNotif.Followers {
+		if _, ok := duplicateMasker[follower.UserID]; !ok {
+			appNotif.Send(ctx, follower, notificationType, db, firebaseSDKPath)
+			duplicateMasker[follower.UserID] = true
+		}
+	}
+
+	appNotifItem, err := appNotif.Save(ctx, notificationType, db)
+	if err != nil {
+		log.Println("***>***> addNotification: unexpected/unhandled error occurred while saving notification for conversation. error:", err)
+		return err
+	}
+
+	log.Println(appNotifItem)
+	// notifEntity, err := entity.Retrieve(ctx, appNotifItem.AccountID, appNotifItem.EntityID, db)
+	// if err != nil {
+	// 	return err
+	// }
+	// valueAddedFields := notifEntity.ValueAdd(appNotifItem.Fields())
+
+	// valueAddedFields = appendTimers(appNotifItem.CreatedAt, util.ConvertMilliToTime(appNotifItem.UpdatedAt), appNotifItem.UserID, valueAddedFields)
+	// err = j.actOnRedisGraph(ctx, appNotifItem.AccountID, appNotifItem.EntityID, appNotifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
 }

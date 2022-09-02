@@ -64,7 +64,7 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "selecting related connections")
 	}
 
-	if len(connections) == 15 {
+	if len(connections) == 5 {
 		next = connections[len(connections)-1].ConnectionID
 		log.Println("next ", next)
 	} else {

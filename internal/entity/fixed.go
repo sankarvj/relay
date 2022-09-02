@@ -156,19 +156,20 @@ type FlowEntity struct {
 
 // NotificationEntityItem represents structural format of notification entity
 type NotificationEntityItem struct {
-	AccountID string   `json:"account_id"`
-	TeamID    string   `json:"team_id"`
-	EntityID  string   `json:"entity_id"`
-	UserID    string   `json:"user_id"`
-	UserName  string   `json:"user_name"`
-	ItemID    string   `json:"item_id"`
-	Subject   string   `json:"subject"`
-	Body      string   `json:"body"`
-	Followers []string `json:"followers"`
-	Assignees []string `json:"assignees"`
-	BaseIds   []string `json:"base_ids"`
-	Type      int      `json:"type"`
-	CreatedAt string   `json:"created_at"`
+	AccountID  string   `json:"account_id"`
+	TeamID     string   `json:"team_id"`
+	EntityID   string   `json:"entity_id"`
+	UserID     string   `json:"user_id"`
+	UserName   string   `json:"user_name"`
+	UserAvatar string   `json:"user_avatar"`
+	ItemID     string   `json:"item_id"`
+	Subject    string   `json:"subject"`
+	Body       string   `json:"body"`
+	Followers  []string `json:"followers"`
+	Assignees  []string `json:"assignees"`
+	BaseIds    []string `json:"base_ids"`
+	Type       int      `json:"type"`
+	CreatedAt  string   `json:"created_at"`
 }
 
 //ParseFixedEntity creates the entity from the given value added fields
@@ -233,7 +234,7 @@ func RetriveFixedItemByCategory(ctx context.Context, accountID, teamID, entityCa
 	if err != nil {
 		return nil, nil, err
 	}
-	items, err := item.EntityItems(ctx, fixedEntity.ID, db)
+	items, err := item.EntityItems(ctx, accountID, fixedEntity.ID, db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,8 +286,6 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 		return item.Item{}, err
 	}
 
-	//fixedEntity.ValueAdd(itemValMap(entityFields, namedValues))
-
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		Name:      &name,
@@ -320,8 +319,6 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 	if err != nil {
 		return item.Item{}, err
 	}
-
-	//save to redis-graph
 
 	if discoveryID != "" {
 		ns := discovery.NewDiscovery{
@@ -361,7 +358,7 @@ func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *s
 		return "", err
 	}
 
-	refItems, _ := item.EntityItems(ctx, statusEntity.ID, db)
+	refItems, _ := item.EntityItems(ctx, accountID, statusEntity.ID, db)
 	for _, i := range refItems {
 		statusFields := statusEntity.ValueAdd(i.Fields())
 		for _, statusField := range statusFields {

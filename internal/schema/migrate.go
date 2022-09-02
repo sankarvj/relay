@@ -47,6 +47,8 @@ var migrations = []darwin.Migration{
 			updated_at    		BIGINT,
 			PRIMARY KEY (account_id)
 		);
+		CREATE INDEX idx_accounts_parent_account_id 
+		ON accounts(parent_account_id);
 		`,
 	},
 	{
@@ -70,6 +72,8 @@ var migrations = []darwin.Migration{
 			PRIMARY KEY (user_id),
 			UNIQUE (email)
 		);
+		CREATE INDEX idx_users_email
+		ON users(email);
 		`,
 	},
 	{
@@ -101,6 +105,8 @@ var migrations = []darwin.Migration{
 			PRIMARY KEY (team_id),
 			UNIQUE (account_id,name)
 		);
+		CREATE INDEX idx_teams_account_id
+		ON teams(account_id);
 		`,
 	},
 	{
@@ -128,6 +134,10 @@ var migrations = []darwin.Migration{
 			PRIMARY KEY (entity_id),
 			UNIQUE (team_id,display_name)
 		);
+		CREATE INDEX idx_entities_account_id
+		ON entities(account_id);
+		CREATE INDEX idx_entities_team_id
+		ON entities(team_id);
 		`,
 	},
 	{
@@ -149,6 +159,14 @@ var migrations = []darwin.Migration{
 			updated_at       BIGINT,
 			PRIMARY KEY (item_id)
 		);
+		CREATE INDEX idx_items_account_id
+		ON items(account_id);
+		CREATE INDEX idx_items_entity_id
+		ON items(entity_id);
+		CREATE INDEX idx_items_account_entity_ids
+		ON items(account_id,entity_id);
+		CREATE INDEX idx_items_genie_id
+		ON items(genie_id);
 		`,
 	},
 	{
@@ -171,6 +189,12 @@ var migrations = []darwin.Migration{
 			updated_at    BIGINT,
 			PRIMARY KEY (flow_id)
 		);
+		CREATE INDEX idx_flows_account_id
+		ON flows(account_id);
+		CREATE INDEX idx_flows_entity_id
+		ON flows(entity_id);
+		CREATE INDEX idx_flows_account_entity_ids
+		ON flows(account_id,entity_id);
 		`,
 	},
 	// In nodes it seems we are not using the stage_id effectively.
@@ -197,6 +221,10 @@ var migrations = []darwin.Migration{
 			updated_at    	BIGINT,
 			PRIMARY KEY (node_id)
 		);
+		CREATE INDEX idx_nodes_account_id
+		ON nodes(account_id);
+		CREATE INDEX idx_nodes_flow_id
+		ON nodes(flow_id);
 		`,
 	},
 	{
@@ -212,6 +240,8 @@ var migrations = []darwin.Migration{
 			is_active	BOOLEAN DEFAULT FALSE,
 			UNIQUE (flow_id, item_id)
 		);
+		CREATE INDEX idx_active_flows_flow_id
+		ON active_flows(flow_id);
 		`,
 	},
 	{
@@ -228,6 +258,8 @@ var migrations = []darwin.Migration{
 			is_active	BOOLEAN DEFAULT FALSE,
 			UNIQUE (flow_id,entity_id,item_id,node_id)
 		);
+		CREATE INDEX idx_active_nodes_flow_id
+		ON active_nodes(flow_id);
 		`,
 	},
 	{
@@ -245,6 +277,10 @@ var migrations = []darwin.Migration{
 			position 	   	BIGINT,
 			UNIQUE (account_id,src_entity_id,dst_entity_id,field_id)
 		);
+		CREATE INDEX idx_relationships_src_entity_id
+		ON relationships(src_entity_id);
+		CREATE INDEX idx_relationships_dst_entity_id
+		ON relationships(dst_entity_id);
 		`,
 	},
 	{
@@ -268,6 +304,12 @@ var migrations = []darwin.Migration{
 			updated_at    	BIGINT,
 			PRIMARY KEY     (connection_id)
 		);
+		CREATE INDEX idx_connections_account_id
+		ON connections(account_id);
+		CREATE INDEX idx_connections_relationship_id
+		ON connections(relationship_id);
+		CREATE INDEX idx_connections_dst_item_id
+		ON connections(dst_item_id);
 		`,
 	},
 	{
@@ -282,8 +324,13 @@ var migrations = []darwin.Migration{
 			item_id 	    UUID REFERENCES items ON DELETE CASCADE,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
+			PRIMARY KEY 	(discovery_id),
 			UNIQUE (account_id, entity_id, discovery_id, discovery_type)
 		);
+		CREATE INDEX idx_discoveries_discovery_id
+		ON discoveries(discovery_id);
+		CREATE INDEX idx_discoveries_account_discovery_entity_ids
+		ON discoveries(account_id,discovery_id,entity_id);
 		`,
 	},
 	{
@@ -322,6 +369,8 @@ var migrations = []darwin.Migration{
 			PRIMARY KEY (conversation_id),
 			UNIQUE (account_id, conversation_id)
 		);
+		CREATE INDEX idx_conversations_account_entity_item_ids
+		ON conversations(account_id,entity_id,item_id);
 		`,
 	},
 	{
@@ -338,6 +387,8 @@ var migrations = []darwin.Migration{
 			updated_at    	BIGINT,
 			UNIQUE (account_id, user_id, device_token)
 		);
+		CREATE INDEX idx_clients_account_user_ids
+		ON clients(account_id,user_id);
 		`,
 	},
 	{
@@ -360,6 +411,12 @@ var migrations = []darwin.Migration{
 			updated_at    	BIGINT,
 			UNIQUE (account_id, team_id, entity_id, item_id)
 		);
+		CREATE INDEX idx_visitors_visitor_id
+		ON visitors(visitor_id);
+		CREATE INDEX idx_visitors_account_id
+		ON visitors(account_id);
+		CREATE INDEX idx_visitors_email
+		ON visitors(email);
 		`,
 	},
 	{
@@ -374,6 +431,8 @@ var migrations = []darwin.Migration{
 			notification_setting    JSONB,
 			UNIQUE (account_id, user_id)
 		);
+		CREATE INDEX idx_user_settings_account_user_ids
+		ON user_settings(account_id,user_id);
 		`,
 	},
 	{
@@ -388,6 +447,8 @@ var migrations = []darwin.Migration{
 			created_at    	        TIMESTAMP,
 			UNIQUE (account_id, log_id)
 		);
+		CREATE INDEX idx_log_streams_account_log_ids
+		ON log_streams(account_id,log_id);
 		`,
 	},
 }

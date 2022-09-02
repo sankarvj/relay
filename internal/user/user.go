@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -169,7 +168,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	}
 
 	if n.Avatar == nil || *n.Avatar == "" {
-		avatar := fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", n.Email)
+		avatar := util.Avatar(n.Email)
 		n.Avatar = &avatar
 	}
 

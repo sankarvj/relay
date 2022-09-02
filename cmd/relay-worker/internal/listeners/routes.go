@@ -31,6 +31,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 		rPool:                redisPool,
 		firebaseAdminSDKPath: path.FirebaseSDKPath,
 	}
+	//this path is called from EBS worker. EBS worker will automatically listen SQS and post the API.
 	app.Handle("POST", "/v1/sqs/receiver", workerD.receiveSQSPayload)
 	// Register health check endpoint. This route is not authenticated.
 	check := Check{

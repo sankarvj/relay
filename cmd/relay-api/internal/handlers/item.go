@@ -180,7 +180,7 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	fields := e.FieldsIgnoreError()
 
-	items, err := item.ListFilterByState(ctx, entityID, state, i.db)
+	items, err := item.ListFilterByState(ctx, accountID, entityID, state, i.db)
 	if err != nil {
 		return err
 	}

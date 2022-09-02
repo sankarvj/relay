@@ -155,7 +155,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Sample Web Of Associations Created Between All The Above Entities")
 
-	statusItems, err := item.List(ctx, statusEntity.ID, b.DB)
+	statusItems, err := item.List(ctx, b.AccountID, statusEntity.ID, b.DB)
 	if err != nil {
 		return err
 	}

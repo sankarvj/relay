@@ -41,7 +41,7 @@ func Retrieve(ctx context.Context, accountID, logID string, db *sqlx.DB) (LogStr
 	return ls, nil
 }
 
-func Add(ctx context.Context, db *sqlx.DB, m *Message, comment string, state int) {
+func add(ctx context.Context, db *sqlx.DB, m *Message, comment string, state int) {
 	ctx, span := trace.StartSpan(ctx, "internal.log.Add")
 	defer span.End()
 

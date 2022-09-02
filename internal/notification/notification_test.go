@@ -45,14 +45,14 @@ func TestFirebase(t *testing.T) {
 
 	tp, _ := notification.NewTokenProvider(credLoc)
 	tk, _ := tp.Token()
-	log.Println("dd1--- ", tk)
+	log.Println("dd---- ", tk)
 
 	t.Log(" Given the need to send firebase notification")
 	{
 
 		t.Log("\tSend firebase notification1")
 		{
-			err := notification.FirebaseSend(clientToken, credLoc)
+			err := notification.FirebaseSend("title", "message", clientToken, credLoc)
 			if err != nil {
 				t.Fatalf("\tShould be able to send the firebase notification - %s", err)
 			}

@@ -225,7 +225,7 @@ func TruncateText(s string, max int) string {
 	if max >= len(s) {
 		return s
 	}
-	return s[:strings.LastIndexAny(s[:max], " ...")]
+	return s[:strings.LastIndexAny(s[:max-1], " ...")]
 }
 
 func Singularize(s string) string {
@@ -250,4 +250,8 @@ func LowerSinglarize(s string) string {
 
 func LowerPluralize(s string) string {
 	return strings.ToLower(Pluralize(s))
+}
+
+func Avatar(s string) string {
+	return fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", s)
 }

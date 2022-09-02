@@ -78,6 +78,15 @@ func NotificationFields(ownerEntityID string) []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
+	userAvatarFieldID := uuid.New().String()
+	userAvatarField := entity.Field{
+		Key:         userAvatarFieldID,
+		Name:        "user_avatar",
+		DisplayName: "User Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
 	entityFieldID := uuid.New().String()
 	entityField := entity.Field{
 		Key:         entityFieldID,
@@ -141,5 +150,5 @@ func NotificationFields(ownerEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, itemField, followerField, ownerField, baseField}
+	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, userAvatarField, itemField, followerField, ownerField, baseField}
 }

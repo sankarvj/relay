@@ -106,6 +106,7 @@ const (
 	WhoImage         = "image"
 	WhoEmail         = "email"
 	WhoAssetCategory = "asset_category"
+	WhoMessage       = "message"
 )
 
 // Field represents structural format of attributes in entity

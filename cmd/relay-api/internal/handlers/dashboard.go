@@ -270,7 +270,7 @@ func (gOne *GridOne) gridResult(ctx context.Context, resultMap map[string]int, d
 
 func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID string, f entity.Field, resultMap map[string]int, db *sqlx.DB) {
 	e, _ := entity.Retrieve(ctx, accountID, f.RefID, db)
-	refItems, _ := item.EntityItems(ctx, e.ID, db)
+	refItems, _ := item.EntityItems(ctx, accountID, e.ID, db)
 
 	choicer := reference.ItemChoices(&f, refItems, e.WhoFields())
 	gThree.Choices = make([]entity.Choice, 0)

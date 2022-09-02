@@ -54,7 +54,7 @@ func Associate(ctx context.Context, db *sqlx.DB, accountID, userID, relationship
 		Title:          title,
 		SubTitle:       subTitle,
 		Action:         action,
-		CreatedAt:      now,
+		CreatedAt:      now.UTC(),
 		UpdatedAt:      now.UTC().Unix(),
 	}
 
@@ -121,12 +121,12 @@ func JustChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, itemID string
 
 	var childItems []Connection
 	if next != "" {
-		const q = `SELECT * FROM connections where account_id = $1 AND ( dst_item_id = $2 ) AND connection_id > $3  ORDER BY created_at DESC LIMIT 2`
+		const q = `SELECT * FROM connections where account_id = $1 AND ( dst_item_id = $2 ) AND connection_id > $3  ORDER BY created_at DESC LIMIT 5`
 		if err := db.SelectContext(ctx, &childItems, q, accountID, itemID, next); err != nil {
 			return nil, errors.Wrap(err, "selecting src items for connected dst item")
 		}
 	} else {
-		const q = `SELECT * FROM connections where account_id = $1 AND ( dst_item_id = $2 ) ORDER BY created_at DESC LIMIT 2`
+		const q = `SELECT * FROM connections where account_id = $1 AND ( dst_item_id = $2 ) ORDER BY created_at DESC LIMIT 5`
 		if err := db.SelectContext(ctx, &childItems, q, accountID, itemID); err != nil {
 			return nil, errors.Wrap(err, "selecting src items for connected dst item")
 		}

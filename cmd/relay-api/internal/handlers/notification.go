@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -86,20 +85,18 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 	whoMap := e.WhoFields()
 
 	if memberID, ok := currentUser.AccountsB()[accountID]; ok {
-		followerKey := whoMap[entity.WhoFollower]
-		followers := updatedFields[followerKey]
+		followers := updatedFields[whoMap[entity.WhoFollower]]
 		if followers != nil {
 			followers := followers.([]interface{})
 			for i, fID := range followers {
 				if fID == memberID {
-					updatedFields[followerKey] = removeIndex(followers, i)
+					updatedFields[whoMap[entity.WhoFollower]] = removeIndex(followers, i)
 					break
 				}
 			}
 		}
-		log.Println("updatedFields--> ", updatedFields[followerKey])
 		assigneeKey := whoMap[entity.WhoAssignee]
-		assignees := updatedFields[followerKey]
+		assignees := updatedFields[whoMap[entity.WhoFollower]]
 		if assignees != nil {
 			assignees := assignees.([]interface{})
 			for i, fID := range assignees {

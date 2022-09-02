@@ -41,7 +41,7 @@ func (hub *Hub) registerClient(client *Client, rp *redis.Pool) error {
 		roomClients[client] = true
 		hub.Clients[client.room] = roomClients
 	}
-	message := NewMessage(UserJoinedAction, ViewModelConversation{}, client.room, client.user, client.id)
+	message := NewMessage(UserJoinedAction, ViewModelConversation{}, client.base, client.room, client.user, client.id)
 	err := hub.publishClientJoined(message, rp)
 	return err
 }
@@ -50,7 +50,7 @@ func (hub *Hub) unregisterClient(client *Client, rp *redis.Pool) {
 	if roomClients, ok := hub.Clients[client.room]; ok {
 		delete(roomClients, client)
 		hub.Clients[client.room] = roomClients
-		message := NewMessage(UserLeftAction, ViewModelConversation{}, client.room, client.user, client.id)
+		message := NewMessage(UserLeftAction, ViewModelConversation{}, client.base, client.room, client.user, client.id)
 		hub.publishClientLeft(message, rp)
 	}
 }
