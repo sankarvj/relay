@@ -142,8 +142,12 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 }
 
 func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID string, assignees []interface{}, db *sqlx.DB) {
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+	if err != nil {
+		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+	}
 	for _, assignee := range assignees {
-		userItem, err := entity.RetriveUserItem(ctx, accountID, assignee.(string), db)
+		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db)
 		if err != nil {
 			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 			continue
@@ -157,8 +161,12 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 	if err != nil {
 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
 	} else {
+		ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+		if err != nil {
+			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+		}
 		if memberID, ok := creator.AccountsB()[accountID]; ok {
-			userItem, err := entity.RetriveUserItem(ctx, accountID, memberID.(string), db)
+			userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db)
 			if err != nil {
 				log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 			} else {
@@ -166,6 +174,21 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 			}
 		}
 	}
+}
+
+func (appNotif *AppNotification) AddMoreFollowers(ctx context.Context, accountID string, db *sqlx.DB) {
+	// ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+	// if err != nil {
+	// 	log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+	// }
+	// if memberID, ok := creator.AccountsB()[accountID]; ok {
+	// 	userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db)
+	// 	if err != nil {
+	// 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
+	// 	} else {
+	// 		appNotif.Followers = append(appNotif.Followers, *userItem)
+	// 	}
+	// }
 }
 
 func (appNotif AppNotification) Send(ctx context.Context, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {

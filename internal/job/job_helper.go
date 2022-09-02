@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
+	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
@@ -50,8 +51,12 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	return evItem, nil
 }
 
-func launchUser(draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
-	return notification.WelcomeInvitation(draftID, accountName, requester, usrName, usrEmail, db, rp)
+func launchUser(ctx context.Context, draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+	dr, err := draft.Retrieve(ctx, draftID, db)
+	if err != nil {
+		return err
+	}
+	return notification.WelcomeInvitation(draftID, dr.Teams, accountName, requester, usrName, usrEmail, db, rp)
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {

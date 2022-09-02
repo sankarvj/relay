@@ -8,6 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
+	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -33,9 +34,15 @@ type Notification interface {
 	Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error
 }
 
-func WelcomeInvitation(draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+func WelcomeInvitation(draftID string, teams []string, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
 	ctx := context.Background()
-	magicLink, err := auth.CreateMagicLaunchLink(draftID, accountName, usrEmail, rp)
+
+	workBaseDomain := "workbaseone.com"
+	if len(teams) == 1 {
+		workBaseDomain = draft.TeamDomainMap[teams[0]]
+	}
+
+	magicLink, err := auth.CreateMagicLaunchLink(workBaseDomain, draftID, accountName, usrEmail, rp)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -52,9 +59,14 @@ func WelcomeInvitation(draftID, accountName, requester, usrName, usrEmail string
 	return emailNotif.Send(ctx, TypeWelcome, db)
 }
 
-func JoinInvitation(accountID, accountName, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, rp *redis.Pool) error {
+func JoinInvitation(accountID, accountName string, teams []string, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, rp *redis.Pool) error {
 	ctx := context.Background()
-	magicLink, err := auth.CreateMagicLink(accountID, usrName, usrEmail, memberID, rp)
+	workBaseDomain := "workbaseone.com"
+	if len(teams) == 1 {
+		workBaseDomain = draft.TeamDomainMap[teams[0]]
+	}
+
+	magicLink, err := auth.CreateMagicLink(workBaseDomain, accountID, usrName, usrEmail, memberID, rp)
 	if err != nil {
 		log.Println("***>***> JoinInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -174,6 +186,8 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 			duplicateMasker[follower.UserID] = true
 		}
 	}
+
+	log.Printf("appNotif --> %+v", appNotif)
 
 	return appNotif.Save(ctx, notificationType, db)
 }

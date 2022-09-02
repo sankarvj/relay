@@ -77,8 +77,6 @@ func (e *Entity) AddTag(ctx context.Context, db *sqlx.DB, tag string, position i
 	}
 
 	e.Tags = insert(e.Tags, position, tag)
-	log.Println("AddTag e.ID ", e.ID)
-	log.Println("AddTag e.Tags ", e.Tags)
 	const q = `UPDATE entities SET
 		"tags" = $3 
 		WHERE account_id = $1 AND entity_id = $2`
@@ -86,7 +84,7 @@ func (e *Entity) AddTag(ctx context.Context, db *sqlx.DB, tag string, position i
 		e.Tags,
 	)
 	if err != nil {
-		log.Println("unexpected error when adding the tags", err)
+		log.Println("***> unexpected error when adding the tags", err)
 	}
 
 	return err
@@ -96,12 +94,7 @@ func (e *Entity) CleanTags(ctx context.Context, db *sqlx.DB, tags []string) erro
 	ctx, span := trace.StartSpan(ctx, "internal.entity.CleanTags")
 	defer span.End()
 
-	log.Println("CleanTags e.Tags ", e.Tags)
-	log.Println("CleanTags tags ", tags)
-
 	e.Tags = append(e.Tags, tags...)
-	log.Println("CleanTags final similars ", e.Tags)
-
 	const q = `UPDATE entities SET
 		"tags" = $3 
 		WHERE account_id = $1 AND entity_id = $2`
@@ -109,7 +102,7 @@ func (e *Entity) CleanTags(ctx context.Context, db *sqlx.DB, tags []string) erro
 		e.Tags,
 	)
 	if err != nil {
-		log.Println("unexpected error when cleaning the tags", err)
+		log.Println("***> unexpected error when cleaning the tags", err)
 	}
 	return err
 }

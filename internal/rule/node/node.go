@@ -344,7 +344,7 @@ func (n NodeActor) ActualsMap() map[string]string {
 	if err := json.Unmarshal([]byte(n.Actuals), &actualsMap); err != nil {
 		//TODO handle this error properly
 		errMsg := errors.Wrapf(err, "unexpected error occurred when unmarshalling node actuals attributes to actuals type %q", n.ID)
-		log.Println(errMsg)
+		log.Printf("***> unexpected error occurred when unmarshalling actualsMap for flow: %v error: %v\n", n.ID, errMsg)
 		return actualsMap
 
 	}

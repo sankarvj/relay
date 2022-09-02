@@ -157,7 +157,12 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "problem reteriving current user")
 	}
 
-	userItem, err := entity.RetriveUserItem(ctx, accountID, memberID, m.db)
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, m.db, accountID, "", entity.FixedEntityOwner)
+	if err != nil {
+		return errors.Wrap(err, "problem reteriving owner entity")
+	}
+
+	userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID, m.db)
 	if err != nil {
 		return errors.Wrap(err, "member id does not exist")
 	}

@@ -9,8 +9,16 @@ import (
 const (
 	TeamCSM = "csm"
 	TeamCRM = "crm"
-	TeamCSD = "csd"
+	TeamEM  = "em"
+	TeamPM  = "pm"
 )
+
+var TeamDomainMap = map[string]string{
+	TeamCSM: "customeronboarding.workbaseone.com",
+	TeamCRM: "crm.workbaseone.com",
+	TeamEM:  "employeemanagement.workbaseone.com",
+	TeamPM:  "projectmanagement.workbaseone.com",
+}
 
 type Draft struct {
 	ID            string         `db:"draft_id" json:"id"`

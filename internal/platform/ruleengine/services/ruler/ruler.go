@@ -464,7 +464,7 @@ func (r *Ruler) makeGraph() error {
 }
 
 func (r *Ruler) exit() error {
-	log.Println("internal.platforms.ruleengine.services.ruler exit exit exit exit exit exit exit exit")
+	log.Println("*> internal.platforms.ruleengine.services.ruler exit")
 	return nil
 }
 

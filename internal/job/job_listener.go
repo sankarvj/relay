@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 )
 
 const (
@@ -101,8 +102,14 @@ func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, d
 		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when retriving account. error:", err)
 		return err
 	}
+
+	teams, err := team.List(ctx, accountID, db)
+	if err != nil {
+		return err
+	}
+
 	requester := fmt.Sprintf("Admin from %s", a.Name)
-	err = notification.JoinInvitation(accountID, a.Name, requester, userName, userEmail, memberID, db, rp)
+	err = notification.JoinInvitation(accountID, a.Name, team.Names(teams), requester, userName, userEmail, memberID, db, rp)
 	return err
 }
 

@@ -116,7 +116,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
-	if util.Contains(dft.Teams, "crm") {
+	if util.Contains(dft.Teams, draft.TeamCRM) {
 		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -124,7 +124,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, "csm") {
+	if util.Contains(dft.Teams, draft.TeamCSM) {
 		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -132,7 +132,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, "em") {
+	if util.Contains(dft.Teams, draft.TeamEM) {
 		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -140,7 +140,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, "pm") {
+	if util.Contains(dft.Teams, draft.TeamPM) {
 		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)

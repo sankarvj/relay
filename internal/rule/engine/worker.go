@@ -145,7 +145,6 @@ func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, re
 
 //Not so useful as of now
 func superBugger(ctx context.Context, db *sqlx.DB, accountID, entityID, fieldKey string, response interface{}, suberBug string) string {
-	log.Println("internal.rule.engine.worker running superBugger ", response)
 	output := ""
 	switch t := response.(type) {
 	case []interface{}:

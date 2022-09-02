@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"log"
 	"strings"
 	"time"
 
@@ -21,22 +20,18 @@ import (
 
 func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
 
-	log.Println("Reached executeInvite ")
 	e, err := entity.Retrieve(ctx, n.AccountID, n.Meta.EntityID, db)
 	if err != nil {
-		log.Println("Reached executeInvite item entity", err)
 		return err
 	}
 
 	i, err := item.Retrieve(ctx, n.Meta.EntityID, n.Meta.ItemID, db)
 	if err != nil {
-		log.Println("Reached executeInvite item err", err)
 		return err
 	}
 
 	visitorInvitationFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
-		log.Println("Reached executeInvite visitorInvitationFields err", err)
 		return err
 	}
 
@@ -129,7 +124,6 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 			memberEmail = itemFields[namedKeys["email"].Key].(string)
 		}
 	} else {
-		log.Println("Reached inviteMember NewItem ")
 		ni := item.NewItem{
 			ID:        uuid.New().String(),
 			AccountID: e.AccountID,

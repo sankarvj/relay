@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/pm"
+	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -94,9 +95,10 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 		(team_id, account_id, name, description, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 
+	description := teamName
 	_, err := db.ExecContext(
 		ctx, q,
-		teamID, accountID, teamName, "", time.Now().UTC(), time.Now().UTC().Unix(),
+		teamID, accountID, teamName, description, time.Now().UTC(), time.Now().UTC().Unix(),
 	)
 	return err
 }
@@ -256,7 +258,7 @@ func BootCRM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "CRM")
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCRM)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `team` insertion failed")
 	}
@@ -299,7 +301,7 @@ func BootCSM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "CSM")
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCSM)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CSM `team` insertion failed")
 	}
@@ -334,7 +336,7 @@ func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "EM")
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamEM)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:EM `team` insertion failed")
 	}
@@ -361,7 +363,7 @@ func BootPM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, "PM")
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamPM)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:PM `team` insertion failed")
 	}

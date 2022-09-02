@@ -74,7 +74,7 @@ func Decode(r *http.Request, val interface{}) error {
 			fields = append(fields, field)
 		}
 
-		log.Println("internal.platform.web fields responsible for err ", fields)
+		log.Println("*> expected error internal.platform.web fields responsible for err ", fields)
 
 		return &Error{
 			Err:    errors.New("field validation error"),
@@ -113,7 +113,7 @@ func DecodeAllowUnknown(r *http.Request, val interface{}) error {
 			fields = append(fields, field)
 		}
 
-		log.Println("internal.platform.web fields responsible for err ", fields)
+		log.Println("*> expected error internal.platform.web fields responsible for err ", fields)
 
 		return &Error{
 			Err:    errors.New("field validation error"),

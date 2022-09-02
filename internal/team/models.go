@@ -6,8 +6,8 @@ import "time"
 type Team struct {
 	ID          string    `db:"team_id" json:"id"`
 	AccountID   string    `db:"account_id" json:"account_id"`
-	Name        string    `db:"name" json:"name"`
-	Description *string   `db:"description" json:"description"`
+	Name        string    `db:"name" json:"name"`               //use this internally for indentifying the team template CRM,CSM,EM,PM
+	Description *string   `db:"description" json:"description"` //use this for UI display
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   int64     `db:"updated_at" json:"updated_at"`
 }

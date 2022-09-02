@@ -396,18 +396,13 @@ func namedFieldsMap(entityFields []Field) map[string]interface{} {
 	return params
 }
 
-func RetriveUserItem(ctx context.Context, accountID, memberID string, db *sqlx.DB) (*UserEntity, error) {
+func RetriveUserItem(ctx context.Context, accountID, ownerEntityID, memberID string, db *sqlx.DB) (*UserEntity, error) {
 	if memberID == "" {
 		return nil, errors.New("memberID is empty. Cannot retrive user item")
 	}
 
-	ownerEntity, err := RetrieveFixedEntity(ctx, db, accountID, "", FixedEntityOwner)
-	if err != nil {
-		return nil, err
-	}
-
 	var userEntityItem UserEntity
-	valueAddedFields, _, err := RetrieveFixedItem(ctx, ownerEntity.AccountID, ownerEntity.ID, memberID, db)
+	valueAddedFields, _, err := RetrieveFixedItem(ctx, accountID, ownerEntityID, memberID, db)
 	if err != nil {
 		return nil, err
 	}

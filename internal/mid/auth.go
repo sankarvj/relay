@@ -172,8 +172,6 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 				}
 
 				log.Println("VISITOR LOGGED IN")
-				log.Println("Check for access ", entityID)
-				log.Println("Check for access ", itemID)
 			}
 
 			return after(ctx, w, r, params)

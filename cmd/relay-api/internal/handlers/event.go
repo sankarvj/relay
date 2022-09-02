@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -66,7 +65,6 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	if len(connections) == 5 {
 		next = connections[len(connections)-1].ConnectionID
-		log.Println("next ", next)
 	} else {
 		next = ""
 	}

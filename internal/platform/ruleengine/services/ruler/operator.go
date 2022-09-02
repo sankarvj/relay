@@ -192,10 +192,10 @@ func notin(left, right Operand) bool { // assumption: left is a interface list &
 		return false
 	}
 
-	log.Println("c.leftDataType ", c.leftDataType)
-	log.Println("c.rightDataType ", c.rightDataType)
-	log.Println("c.left ", left)
-	log.Println("right ", right)
+	// log.Println("c.leftDataType ", c.leftDataType)
+	// log.Println("c.rightDataType ", c.rightDataType)
+	// log.Println("c.left ", left)
+	// log.Println("right ", right)
 
 	switch c.leftDataType {
 	case ListDT:

@@ -346,7 +346,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 		s = append(s, rs...)
 		sq := strings.Join(s, " ")
 		//DEBUGGING LOG
-		log.Println("internal.platform.graphdb upsert edge query:", sq)
+		//log.Println("internal.platform.graphdb upsert edge query:", sq)
 		_, err := graph.Query(sq)
 		if err != nil {
 			return err

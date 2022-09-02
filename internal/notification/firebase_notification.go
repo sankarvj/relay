@@ -31,12 +31,12 @@ func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType Notifica
 	for _, client := range clients {
 		err = FirebaseSend(fbNotif.Subject, fbNotif.Body, client.DeviceToken, fbNotif.SDKPath)
 		if err != nil {
-			log.Println("client err on firebaseSend: ", err)
+			log.Println("*> expected error client err on firebaseSend: ", err)
 			//delete token here
 			DeleteClient(ctx, client.AccountID, client.UserID, client.DeviceToken, db)
 			continue
 		} else {
-			log.Println("message delivered successfully")
+			log.Println("*> message delivered successfully")
 		}
 	}
 	return nil

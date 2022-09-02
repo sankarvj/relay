@@ -116,3 +116,13 @@ func CustomTemplates() []Template {
 	}
 	return templates
 }
+
+func Names(teams []Team) []string {
+	names := make([]string, 0)
+	for _, t := range teams {
+		if t.AccountID != t.ID { //skip base
+			names = append(names, t.Name)
+		}
+	}
+	return names
+}

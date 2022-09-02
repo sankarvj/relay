@@ -27,6 +27,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -78,7 +79,6 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
 	}
-	log.Println("***>***> Reaced FOR ITEM ***<***<", it.ID)
 
 	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
@@ -425,7 +425,8 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 }
 
 func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, rp *redis.Pool) error {
-	err := launchUser(draftID, accountName, "", "", emailAddress, db, rp)
+	ctx := context.Background()
+	err := launchUser(ctx, draftID, accountName, "", "", emailAddress, db, rp)
 	if err != nil {
 		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred while sending launch mail. error:", err)
 		return err
@@ -704,7 +705,14 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		var usr entity.UserEntity
 		jsonbody, _ := entity.MakeJSONBody(valueAddedFields)
 		json.Unmarshal(jsonbody, &usr)
-		err = notification.JoinInvitation(accountID, acc.Name, userName, usr.Name, usr.Email, it.ID, db, rp)
+		teams, err := team.List(ctx, accountID, db)
+		if err != nil {
+			return err
+		}
+		err = notification.JoinInvitation(accountID, acc.Name, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, rp)
+		if err != nil {
+			return errors.Wrap(err, "unable to invite members")
+		}
 	}
 	return err
 }

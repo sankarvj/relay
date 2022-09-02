@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -57,7 +58,7 @@ func SimpleLink(accountID, teamID, entityID, itemID string) string {
 	return magicLink
 }
 
-func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool) (string, error) {
+func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string, rp *redis.Pool) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -75,7 +76,7 @@ func CreateMagicLink(accountID, name, emailAddress, memId string, rp *redis.Pool
 		return "", err
 	}
 
-	magicLink := fmt.Sprintf("https://workbaseone.com/home/join?token=%v", token)
+	magicLink := fmt.Sprintf("https://%s/home/join?token=%v", workBaseDomain, token)
 
 	log.Println("join magicLink-------> ", magicLink)
 
@@ -103,7 +104,7 @@ func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token stri
 	return magicLink, nil
 }
 
-func CreateMagicLaunchLink(draftID, accountName, emailAddress string, rp *redis.Pool) (string, error) {
+func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, rp *redis.Pool) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -117,12 +118,10 @@ func CreateMagicLaunchLink(draftID, accountName, emailAddress string, rp *redis.
 
 	err = setToken(token, userInfo, rp)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "redis connection error")
 	}
 
-	magicLink := fmt.Sprintf("https://workbaseone.com/home/launch?token=%v", token)
-
-	log.Println("launch magicLink-------> ", magicLink)
+	magicLink := fmt.Sprintf("https://%s/home/launch?token=%v", domain, token)
 
 	return magicLink, nil
 }

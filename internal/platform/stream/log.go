@@ -57,7 +57,7 @@ func add(ctx context.Context, db *sqlx.DB, m *Message, comment string, state int
 		time.Now().UTC(),
 	)
 	if err != nil {
-		log.Println("unexpected error when adding log", err)
+		log.Println("***> unexpected error when adding log", err)
 	}
 }
 
@@ -65,7 +65,7 @@ func Update(ctx context.Context, db *sqlx.DB, m *Message, comment string, state 
 	ctx, span := trace.StartSpan(ctx, "internal.log.Update")
 	defer span.End()
 
-	log.Printf("log message updated for :: %s  -- comment :: %s  --  state :: %d", m.ID, m.Comment, m.State)
+	log.Printf("---> log message updated for :: %s  -- comment :: %s  --  state :: %d", m.ID, m.Comment, m.State)
 
 	m.Comment = comment
 	m.State = state
@@ -77,7 +77,7 @@ func Update(ctx context.Context, db *sqlx.DB, m *Message, comment string, state 
 	_, err := db.ExecContext(ctx, q, m.AccountID, m.ID,
 		comment, state)
 	if err != nil {
-		log.Println("unexpected error when updating log state", err)
+		log.Println("***> unexpected error when updating log state", err)
 	}
 }
 
@@ -88,6 +88,6 @@ func Delete(ctx context.Context, db *sqlx.DB, accountID, logID string) {
 	const q = `DELETE FROM log_streams WHERE account_id = $1 and log_id = $2`
 
 	if _, err := db.ExecContext(ctx, q, accountID, logID); err != nil {
-		log.Println("unexpected error when deleting log", err)
+		log.Println("***> unexpected error when deleting log", err)
 	}
 }
