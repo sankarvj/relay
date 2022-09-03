@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -96,7 +97,7 @@ func (t *Team) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &nt); err != nil {
 		return errors.Wrap(err, "")
 	}
-
+	nt.Description = strings.ToUpper(nt.Name)
 	//set account_id from the request path
 	nt.AccountID = params["account_id"]
 	nTeam, err := team.Create(ctx, t.db, nt, time.Now())

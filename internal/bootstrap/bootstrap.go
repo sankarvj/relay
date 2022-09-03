@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -95,7 +96,7 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName
 		(team_id, account_id, name, description, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 
-	description := teamName
+	description := strings.ToUpper(teamName)
 	_, err := db.ExecContext(
 		ctx, q,
 		teamID, accountID, teamName, description, time.Now().UTC(), time.Now().UTC().Unix(),

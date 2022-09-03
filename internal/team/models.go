@@ -14,9 +14,10 @@ type Team struct {
 
 // NewTeam contains information needed to create a new Team.
 type NewTeam struct {
-	AccountID string   `json:"account_id"`
-	Name      string   `json:"name" validate:"required"`
-	Modules   []string `json:"modules"`
+	AccountID   string   `json:"account_id"`
+	Name        string   `json:"name" validate:"required"`
+	Description string   `json:"description"`
+	Modules     []string `json:"modules"`
 }
 
 type Module struct {

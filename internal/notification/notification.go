@@ -28,6 +28,7 @@ const (
 	TypeVisitorInvitation      NotificationType = 6
 	TypeEmailConversationAdded NotificationType = 7
 	TypeChatConversationAdded  NotificationType = 8
+	TypeMemberAdded            NotificationType = 9
 )
 
 type Notification interface {
@@ -139,9 +140,16 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 			}
 			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		case entity.CategoryUsers:
+			notificationType = TypeMemberAdded //changing notification type in the mid-way
+			// adding all members as followers
+			appNotif.AddMoreFollowers(ctx, accountID, db)
 			appNotif.Subject = fmt.Sprintf("A new member added to your account")
 			appNotif.Body = fmt.Sprintf("New member %s added to your account", appNotif.Title)
 		default:
+			if len(source) == 0 { // add all members for the main module addition...
+				appNotif.AddMoreFollowers(ctx, accountID, db)
+			}
+
 			appNotif.Subject = fmt.Sprintf("A new %s created", util.LowerSinglarize(entityDisName))
 			// enriching subject with base elements
 			if appNotif.BaseEntityName != "" {
@@ -186,8 +194,6 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 			duplicateMasker[follower.UserID] = true
 		}
 	}
-
-	log.Printf("appNotif --> %+v", appNotif)
 
 	return appNotif.Save(ctx, notificationType, db)
 }

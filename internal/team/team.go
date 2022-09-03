@@ -51,19 +51,20 @@ func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (Team, e
 	defer span.End()
 
 	t := Team{
-		ID:        uuid.New().String(),
-		AccountID: n.AccountID,
-		Name:      n.Name,
-		CreatedAt: now.UTC(),
-		UpdatedAt: now.UTC().Unix(),
+		ID:          uuid.New().String(),
+		AccountID:   n.AccountID,
+		Name:        n.Name,
+		Description: &n.Description,
+		CreatedAt:   now.UTC(),
+		UpdatedAt:   now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO teams
-		(team_id, account_id, name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)`
+		(team_id, account_id, name, description, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := db.ExecContext(
 		ctx, q,
-		t.ID, t.AccountID, t.Name,
+		t.ID, t.AccountID, t.Name, t.Description,
 		t.CreatedAt, t.UpdatedAt,
 	)
 

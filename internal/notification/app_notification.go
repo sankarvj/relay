@@ -163,7 +163,7 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 	} else {
 		ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
 		if err != nil {
-			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 		}
 		if memberID, ok := creator.AccountsB()[accountID]; ok {
 			userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db)
@@ -177,18 +177,28 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 }
 
 func (appNotif *AppNotification) AddMoreFollowers(ctx context.Context, accountID string, db *sqlx.DB) {
-	// ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
-	// if err != nil {
-	// 	log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
-	// }
-	// if memberID, ok := creator.AccountsB()[accountID]; ok {
-	// 	userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db)
-	// 	if err != nil {
-	// 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
-	// 	} else {
-	// 		appNotif.Followers = append(appNotif.Followers, *userItem)
-	// 	}
-	// }
+	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+	if err != nil {
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+	}
+	userItems, err := item.ListFilterByState(ctx, accountID, ownerEntity.ID, item.StateDefault, db)
+	if err != nil {
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner items. error:", err)
+	}
+
+	for _, userItem := range userItems {
+		var userEntityItem entity.UserEntity
+		valueAddedFields := ownerEntity.ValueAdd(userItem.Fields())
+		err = entity.ParseFixedEntity(valueAddedFields, &userEntityItem)
+		if err != nil {
+			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while parsing owner items. error:", err)
+			continue
+		}
+		userEntityItem.MemberID = userItem.ID
+		if userEntityItem.UserID != "" {
+			appNotif.Followers = append(appNotif.Followers, userEntityItem)
+		}
+	}
 }
 
 func (appNotif AppNotification) Send(ctx context.Context, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -214,6 +215,7 @@ func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	userInfo, err := auth.AuthenticateToken(token, u.rPool)
 	if err != nil {
+		log.Println("***> unexpected error occurred in MLVerify. error: ", err)
 		return ErrForbiddenMLToken
 	}
 	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
