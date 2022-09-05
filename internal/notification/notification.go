@@ -164,12 +164,18 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	case TypeUpdated:
 		appNotif.Subject = fmt.Sprintf("A record in %s is updated", util.LowerPluralize(entityDisName))
 		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
-		if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
-		} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
-		} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
-			appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+		switch entityCategory {
+		case entity.CategoryUsers:
+			appNotif.Subject = "Invited member logged in"
+			appNotif.Body = fmt.Sprintf("%s `%s` has been logged in for the first time", "Member", appNotif.Title)
+		default:
+			if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
+				appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+			} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
+				appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+			} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
+				appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+			}
 		}
 
 	case TypeChatConversationAdded:

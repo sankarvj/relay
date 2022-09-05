@@ -50,7 +50,7 @@ type Message struct {
 
 func NewCreteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, source map[string][]string) *Message {
 	m := &Message{
-		ID:        fmt.Sprintf("%s::->>%s", "create", uuid.New().String()),
+		ID:        fmt.Sprintf("%s#%s", "create", uuid.New().String()),
 		Type:      TypeItemCreate,
 		AccountID: accountID,
 		UserID:    userID,
