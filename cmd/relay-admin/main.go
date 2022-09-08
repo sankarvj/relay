@@ -174,8 +174,8 @@ func seed(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 	}
 	nc := account.NewAccount{
 		ID:     schema.SeedAccountID,
-		Name:   "Wayplot",
-		Domain: "wayplot.com",
+		Name:   "Titan",
+		Domain: "titan.com",
 	}
 
 	a, err := account.Create(ctx, db, nc, time.Now())

@@ -60,7 +60,19 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
 	dir := path.Join(path.Dir(basepath), "..")
+
+	//check me before deployment
 	log.Println("dir ", dir)
+	localTesting := false
+	for _, toEmail := range emNotif.To {
+		if toEmail == "vijayasankarj@gmail.com" {
+			localTesting = true
+			break
+		}
+	}
+	if localTesting {
+		return nil
+	}
 
 	err := emNotif.ParseTemplate(fmt.Sprintf("templates/%s", template), templateData)
 	if err != nil {

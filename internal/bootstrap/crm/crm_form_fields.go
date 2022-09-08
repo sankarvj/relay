@@ -179,7 +179,7 @@ func DealFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		DisplayName: "Deal Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyHTML: "true"},
 	}
 
 	dealAmountFieldID := uuid.New().String()

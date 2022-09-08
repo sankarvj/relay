@@ -2,6 +2,7 @@ package crm
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -21,7 +22,9 @@ func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID s
 
 	for name, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
-			dealVals[f.Key] = fmt.Sprintf("{{%s.%s}}'s Deal", actorEntity.ID, titleKey)
+			atmention := `<p><span class="mention" data-index="0" data-denotation-char="#" data-id="{{%s.%s}}" data-value="Name"><span contenteditable="false"><span class="ql-mention-denotation-char">#</span>Name</span></span>'s Deal</p>`
+			log.Println("atmention", fmt.Sprintf(atmention, actorEntity.ID, titleKey))
+			dealVals[f.Key] = "Base Deal"
 		}
 		switch name {
 		case "pipeline":

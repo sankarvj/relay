@@ -3,19 +3,30 @@ package forms
 import (
 	"fmt"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
-	nameFieldID := uuid.New().String()
-	nameField := entity.Field{
-		Key:         nameFieldID,
+	firstNameFieldID := uuid.New().String()
+	firstNameField := entity.Field{
+		Key:         firstNameFieldID,
 		Name:        "first_name",
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyUnique: "true"},
+	}
+
+	lastNameFieldID := uuid.New().String()
+	lastNameField := entity.Field{
+		Key:         lastNameFieldID,
+		Name:        "last_name",
+		DisplayName: "Last Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	emailFieldID := uuid.New().String()
@@ -75,7 +86,15 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 			},
 			{
 				ID:           "2",
-				DisplayValue: "Contact",
+				DisplayValue: "Sales Qualified Lead",
+			},
+			{
+				ID:           "3",
+				DisplayValue: "Customer",
+			},
+			{
+				ID:           "4",
+				DisplayValue: "Other",
 			},
 		},
 		Field: &entity.Field{
@@ -102,15 +121,16 @@ func ContactFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{nameField, emailField, mobileField, npsField, lfStageField, avatarField, ownerField}
+	return []entity.Field{firstNameField, lastNameField, emailField, mobileField, npsField, lfStageField, avatarField, ownerField}
 }
 
 func ContactVals(contactEntity entity.Entity, firstName, email string) map[string]interface{} {
+
 	namedVals := map[string]interface{}{
 		"first_name":      firstName,
 		"email":           email,
-		"mobile_numbers":  []interface{}{"9944293499", "9940209164"},
-		"nps_score":       100,
+		"mobile_numbers":  []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
+		"nps_score":       randomdata.Number(100),
 		"lifecycle_stage": []interface{}{"1"},
 		"owner":           []interface{}{},
 		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/avataaars/%s.svg", firstName),

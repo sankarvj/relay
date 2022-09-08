@@ -162,19 +162,44 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Needed Items Retrived")
 
 	// add contact item
-	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Sample", "bruce@sampleacc.com"), nil)
+	contactItem1, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Matt Murdock", "matt@starkindst.com"), nil)
 	if err != nil {
 		return err
 	}
 	// add contact item
-	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Paul Sample", "paul@sampleacc.com"), nil)
+	contactItem2, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Natasha Romanova", "natasha@randcorp.com"), nil)
+	if err != nil {
+		return err
+	}
+
+	contactItem3, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Banner", "bruce@alumina.com"), nil)
+	if err != nil {
+		return err
+	}
+
+	contactItem4, err := b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bucky Barnes", "bucky@dailybugle.com"), nil)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
 
-	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "SampleAcc", "sampleacc.com"), map[string][]string{contactEntity.ID: {contactItem1.ID}})
+	companyItem1, err := b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Stark Industries", "starkindst.com"), map[string][]string{contactEntity.ID: {contactItem1.ID}})
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Rand corporation", "randcorp.com"), map[string][]string{contactEntity.ID: {contactItem2.ID}})
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Alumina", "alumina.com"), map[string][]string{contactEntity.ID: {contactItem3.ID}})
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, companyEntity.ID, uuid.New().String(), b.UserID, forms.CompanyVals(companyEntity, "Daily bugle", "dailybugle.com"), map[string][]string{contactEntity.ID: {contactItem4.ID}})
 	if err != nil {
 		return err
 	}
@@ -201,7 +226,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:SAMPLES Automations Created")
 
 	// add deal item with contacts - vijay & senthil (reverse) & pipeline stage
-	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals(dealEntity, "Sample Acc Deal", 10000, contactItem1.ID, contactItem2.ID, b.SalesPipelineFlowID), nil)
+	dealItem1, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals(dealEntity, "Base Deal", 1000, contactItem1.ID, contactItem2.ID, b.SalesPipelineFlowID), nil)
 	if err != nil {
 		return err
 	}

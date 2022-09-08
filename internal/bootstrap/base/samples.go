@@ -59,7 +59,7 @@ func (b *Base) AddPipelines(ctx context.Context, cwf *CoreWorkflow) error {
 
 func (b *Base) AddWorkflows(ctx context.Context, cwf *CoreWorkflow) error {
 	stageID := "00000000-0000-0000-0000-000000000000"
-	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModeWorkFlow, flow.FlowConditionEntry, "", flow.FlowTypeEventCreate)
+	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModeWorkFlow, flow.FlowConditionEntry, cwf.Exp, flow.FlowTypeEventCreate)
 	if err != nil {
 		return err
 	}

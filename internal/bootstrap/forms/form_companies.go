@@ -1,6 +1,7 @@
 package forms
 
 import (
+	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
@@ -95,11 +96,11 @@ func CompanyVals(companyEntity entity.Entity, name, website string) map[string]i
 	namedVals := map[string]interface{}{
 		"name":            name,
 		"website":         website,
-		"city":            "san francisco",
-		"state":           "california",
+		"city":            randomdata.City(),
+		"state":           randomdata.State(randomdata.Large),
 		"country":         "USA",
-		"employees_count": 1000,
-		"revenue":         "2000",
+		"employees_count": randomdata.Number(2000),
+		"revenue":         randomdata.Number(3000),
 		"owner":           []interface{}{},
 	}
 
