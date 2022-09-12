@@ -216,18 +216,23 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
-	existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
-	if err != nil {
-		return errors.Wrapf(err, "Item Get During Update")
-	}
 
 	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
 	if err != nil {
-		return errors.Wrapf(err, "Item Update: %+v", &ni)
+		return errors.Wrapf(err, "error when update item fields %+v", &ni)
 	}
-	//stream
-	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
-
+	if it.State != item.StateWebForm { // no need to go to job for web forms now!
+		existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
+		if err != nil {
+			return errors.Wrapf(err, "error retriving item")
+		}
+		go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
+	} else {
+		err = it.UpdateMeta(ctx, i.db, ni.Name, ni.Meta)
+		if err != nil {
+			return errors.Wrapf(err, "error when update item meta %+v", &ni)
+		}
+	}
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
 
@@ -270,6 +275,11 @@ func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *s
 	if err != nil {
 		return item.Item{}, err
 	}
+
+	if it.State == item.StateWebForm { // no need to go to job for web forms now!
+		return it, err
+	}
+
 	//stream
 	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
 	return it, err
@@ -377,6 +387,7 @@ func createViewModelItem(i item.Item) ViewModelItem {
 		Type:      i.Type,
 		State:     i.State,
 		Fields:    i.Fields(),
+		Meta:      i.Meta(),
 		CreatedAt: i.CreatedAt,
 		UpdatedAt: i.UpdatedAt,
 	}
@@ -400,6 +411,7 @@ type ViewModelItem struct {
 	Type      int                    `json:"type"`
 	State     int                    `json:"state"`
 	Fields    map[string]interface{} `json:"fields"`
+	Meta      map[string]interface{} `json:"meta"`
 	CreatedAt time.Time              `json:"created_at"`
 	UpdatedAt int64                  `json:"updated_at"`
 }

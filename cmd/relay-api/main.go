@@ -35,9 +35,7 @@ func main() {
 func run() error {
 	// =========================================================================
 	// Logging
-
 	log := log.New(os.Stdout, "RELAY API : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-
 	// =========================================================================
 	// Configuration
 
@@ -173,12 +171,10 @@ func run() error {
 
 	// =========================================================================
 	// Start WebServer
-
 	go func() {
 		log.Printf("main : Debug Listening %s", cfg.Web.DebugHost)
 		log.Printf("main : Debug Listener closed : %v", http.ListenAndServe(cfg.Web.DebugHost, http.DefaultServeMux))
 	}()
-
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 

@@ -90,7 +90,6 @@ func JustBulkRetrieve(ctx context.Context, ids []interface{}, db *sqlx.DB) ([]It
 	}
 
 	return items, nil
-
 }
 
 //TimeSeriesSameDayViewModel presents the item inside a time ticker map

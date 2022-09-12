@@ -155,6 +155,7 @@ var migrations = []darwin.Migration{
 			type             INTEGER DEFAULT 0,
 			name             TEXT,
 			fieldsb          JSONB,
+			metab            JSONB,
 			created_at       TIMESTAMP,
 			updated_at       BIGINT,
 			PRIMARY KEY (item_id)

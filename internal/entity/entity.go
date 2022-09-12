@@ -70,14 +70,22 @@ func AccountEntities(ctx context.Context, accountID string, categoryIds []int, d
 	return entities, nil
 }
 
-func TeamEntities(ctx context.Context, accountID string, teamID string, db *sqlx.DB) ([]Entity, error) {
+func TeamEntities(ctx context.Context, accountID, teamID string, categoryIds []int, db *sqlx.DB) ([]Entity, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.TeamEntities")
 	defer span.End()
 	entities := []Entity{}
-	const q = `SELECT * FROM entities where account_id = $1 AND team_id = $2`
-	if err := db.SelectContext(ctx, &entities, q, accountID, teamID); err != nil {
-		return nil, errors.Wrap(err, "selecting entities for category")
+	if len(categoryIds) == 0 {
+		const q = `SELECT * FROM entities where account_id = $1 AND team_id = $2`
+		if err := db.SelectContext(ctx, &entities, q, accountID, teamID); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for category")
+		}
+	} else {
+		const q = `SELECT * FROM entities where account_id = $1 AND team_id = $2 AND category = any($3)`
+		if err := db.SelectContext(ctx, &entities, q, accountID, teamID, pq.Array(categoryIds)); err != nil {
+			return nil, errors.Wrap(err, "selecting entities for category")
+		}
 	}
+
 	return entities, nil
 }
 

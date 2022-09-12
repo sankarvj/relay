@@ -16,6 +16,7 @@ type Item struct {
 	Type      int       `db:"type" json:"type"`
 	Name      *string   `db:"name" json:"name"`
 	Fieldsb   string    `db:"fieldsb" json:"fieldsb"`
+	Metab     *string   `db:"metab" json:"metab"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt int64     `db:"updated_at" json:"updated_at"`
 }
@@ -39,6 +40,7 @@ type NewItem struct {
 	Type      int                    `json:"type"`
 	State     int                    `json:"state"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
+	Meta      map[string]interface{} `json:"meta"`
 	Source    map[string][]string    `json:"source"`
 }
 
@@ -54,13 +56,16 @@ type RefItem struct {
 // we do not want to use pointers to basic types but we make exceptions around
 // marshalling/unmarshalling.
 type UpdateItem struct {
+	Name    string  `json:"name"`
 	Fieldsb *string `json:"fieldsb"`
+	Metab   *string `json:"metab"`
 }
 
 //State for the item specifies when to associate a item to the lists
 const (
 	StateDefault   = 0
 	StateBluePrint = 1 //used when adding blueprint item in the workflow
+	StateWebForm   = 2
 )
 
 //Type for the item is still open we can use it for anything

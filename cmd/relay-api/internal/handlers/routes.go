@@ -129,6 +129,12 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/mark", e.Mark, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 	app.Handle("DELETE", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
+	fom := Form{
+		db: db,
+	}
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/forms/:item_id", fom.Render)
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/forms", fom.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
 	noti := Notification{
 		db:            db,
 		rPool:         redisPool,

@@ -112,7 +112,7 @@ func (e *Entity) Associate(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (e *Entity) Associations(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	entities, err := entity.TeamEntities(ctx, params["account_id"], params["team_id"], e.db)
+	entities, err := entity.TeamEntities(ctx, params["account_id"], params["team_id"], []int{}, e.db)
 	if err != nil {
 		return err
 	}
