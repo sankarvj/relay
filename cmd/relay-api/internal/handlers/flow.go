@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -24,7 +23,6 @@ import (
 // Flow represents the journey
 type Flow struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 }
 

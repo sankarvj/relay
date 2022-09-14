@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
@@ -35,7 +35,7 @@ type Notification interface {
 	Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error
 }
 
-func WelcomeInvitation(draftID string, teams []string, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+func WelcomeInvitation(draftID string, teams []string, accountName, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
 
 	workBaseDomain := "workbaseone.com"
@@ -43,7 +43,7 @@ func WelcomeInvitation(draftID string, teams []string, accountName, requester, u
 		workBaseDomain = draft.TeamDomainMap[teams[0]]
 	}
 
-	magicLink, err := auth.CreateMagicLaunchLink(workBaseDomain, draftID, accountName, usrEmail, rp)
+	magicLink, err := auth.CreateMagicLaunchLink(workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -60,14 +60,14 @@ func WelcomeInvitation(draftID string, teams []string, accountName, requester, u
 	return emailNotif.Send(ctx, TypeWelcome, db)
 }
 
-func JoinInvitation(accountID, accountName string, teams []string, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, rp *redis.Pool) error {
+func JoinInvitation(accountID, accountName string, teams []string, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
 	workBaseDomain := "workbaseone.com"
 	if len(teams) == 1 {
 		workBaseDomain = draft.TeamDomainMap[teams[0]]
 	}
 
-	magicLink, err := auth.CreateMagicLink(workBaseDomain, accountID, usrName, usrEmail, memberID, rp)
+	magicLink, err := auth.CreateMagicLink(workBaseDomain, accountID, usrName, usrEmail, memberID, sdb)
 	if err != nil {
 		log.Println("***>***> JoinInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -84,7 +84,7 @@ func JoinInvitation(accountID, accountName string, teams []string, requester, us
 	return emailNotif.Send(ctx, TypeMemberInvitation, db)
 }
 
-func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error {
+func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
 
 	a, err := account.Retrieve(ctx, db, accountID)
@@ -100,7 +100,7 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, rp *redis
 	}
 
 	usrName := util.NameInEmail(v.Email)
-	magicLink, err := auth.CreateVisitorMagicLink(accountID, usrName, v.Email, visitorID, v.Token, rp)
+	magicLink, err := auth.CreateVisitorMagicLink(accountID, usrName, v.Email, visitorID, v.Token, sdb)
 	if err != nil {
 		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err

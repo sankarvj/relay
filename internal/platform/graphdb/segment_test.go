@@ -294,14 +294,14 @@ var (
 )
 
 func TestGraph(t *testing.T) {
-	residPool, teardown := tests.NewRedisUnit(t)
+	sdb, teardown := tests.NewSecDbUnit(t)
 	defer teardown()
 	//log.Printf("gpb1 %+v", gpb1)
 	t.Log(" Given the need create nodes and edges")
 	{
 		t.Log("\twhen adding the task item 1 to the graph")
 		{
-			err := graphdb.UpsertNode(residPool, gpb01)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb01)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -310,7 +310,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the task item 2 to the graph")
 		{
-			err := graphdb.UpsertNode(residPool, gpb02)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb02)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -319,7 +319,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the contact item to the graph with straight reference of task")
 		{
-			err := graphdb.UpsertNode(residPool, gpb1)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb1)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -328,7 +328,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen adding the deal item to the graph with reverse reference of contact")
 		{
-			err := graphdb.UpsertNode(residPool, gpb2)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb2)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -355,7 +355,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen fetching the created contact item from the graph")
 		{
-			n, err := graphdb.GetNode(residPool, accountID, contactEntityID, contactItemID)
+			n, err := graphdb.GetNode(sdb.GraphPool(), accountID, contactEntityID, contactItemID)
 			if err != nil {
 				t.Fatalf("\t%s should not throw any error during the fetch - %s", tests.Failed, err)
 			}
@@ -370,7 +370,7 @@ func TestGraph(t *testing.T) {
 		t.Log("\twhen updating the existing contact item to the graph")
 		{
 			updateNameGbp := graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode(contactItemID, updatedFields)
-			err := graphdb.UpsertNode(residPool, updateNameGbp)
+			err := graphdb.UpsertNode(sdb.GraphPool(), updateNameGbp)
 			if err != nil {
 				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)
 			}
@@ -379,7 +379,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen segmenting the updated item with relation to the graph")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment, 0, "", "")
+			_, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 			if err != nil {
 				t.Fatalf("\t%s should fetch with segmentation - %s", tests.Failed, err)
 			}
@@ -388,7 +388,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen querying with where clause as `IN ('itemID1')`")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment1, 0, "", "")
+			_, err := graphdb.GetResult(sdb.GraphPool(), gSegment1, 0, "", "")
 			if err != nil {
 				t.Fatalf("\t%s should query with IN clause - %s", tests.Failed, err)
 			}
@@ -399,7 +399,7 @@ func TestGraph(t *testing.T) {
 		{
 			b, _ := json.Marshal(gSegment2)
 			fmt.Println(string(b))
-			_, err := graphdb.GetCount(residPool, gSegment2, true)
+			_, err := graphdb.GetCount(sdb.GraphPool(), gSegment2, true)
 			if err != nil {
 				t.Fatalf("\t%s should return count - %s", tests.Failed, err)
 			}

@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -17,9 +17,8 @@ import (
 // Account represents the Account API method handler set.
 type Account struct {
 	db            *sqlx.DB
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
-	rPool         *redis.Pool
-	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
 // List returns all the existing accounts associated with logged-in user

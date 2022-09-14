@@ -92,8 +92,7 @@ func NewUnit(t *testing.T) (*sqlx.DB, func()) {
 	return db, teardown
 }
 
-//NewRedisUnit creates a redis connection pool
-func NewRedisUnit(t *testing.T) (*redis.Pool, func()) {
+func NewSecDbUnit(t *testing.T) (*database.SecDB, func()) {
 	t.Helper()
 
 	c := databasetest.StartRedisContainer(t)
@@ -120,7 +119,7 @@ func NewRedisUnit(t *testing.T) (*redis.Pool, func()) {
 		databasetest.StopContainer(t, c)
 	}
 
-	return redisPool, teardown
+	return database.Init(redisPool, redisPool, redisPool), teardown
 }
 
 // Test owns state for running and shutting down tests.

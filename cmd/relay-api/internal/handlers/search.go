@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -34,12 +34,12 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// Its a fixed wrapper entity. Call the respective items
 	if e.Category == entity.CategoryFlow { // temp flow handler
 		// fi is the entityID here
-		choices, err = LikeSearchFlows(ctx, accountID, fi, term, i.db, i.rPool)
+		choices, err = LikeSearchFlows(ctx, accountID, fi, term, i.db)
 		if err != nil {
 			return err
 		}
 	} else if e.Category == entity.CategoryNode { // temp flow handler
-		choices, err = LikeSearchNodes(ctx, accountID, []string{fi}, term, i.db, i.rPool)
+		choices, err = LikeSearchNodes(ctx, accountID, []string{fi}, term, i.db)
 		if err != nil {
 			return err
 		}
@@ -53,9 +53,9 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	} else {
 		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
 		if e.Field(key).DataType == entity.TypeList {
-			choices, err = likeSearchElements(ctx, accountID, e.ID, exp, i.db, i.rPool)
+			choices, err = likeSearchElements(ctx, accountID, e.ID, exp, i.db, i.sdb)
 		} else {
-			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoFields(), i.db, i.rPool)
+			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoFields(), i.db, i.sdb)
 		}
 		if err != nil {
 			return err
@@ -65,9 +65,9 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
-func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key string, whoMap map[string]string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key string, whoMap map[string]string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
 	result, _, err := NewSegmenter(exp).
-		segment(ctx, accountID, entityID, db, rPool)
+		segment(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +78,12 @@ func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key strin
 	return choiceResponse(key, items, whoMap), nil
 }
 
-func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
 	duplicateReducer := make(map[string]interface{}, 0)
 	choices := make([]entity.Choice, 0)
 	result, _, err := NewSegmenter(exp).
 		_useReturn().
-		segment(ctx, accountID, entityID, db, rPool)
+		segment(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db
 	return choices, nil
 }
 
-func LikeSearchFlows(ctx context.Context, accountID, entityID, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func LikeSearchFlows(ctx context.Context, accountID, entityID, term string, db *sqlx.DB) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
 
 	flows, err := flow.SearchByKey(ctx, accountID, entityID, term, db)
@@ -121,7 +121,7 @@ func LikeSearchFlows(ctx context.Context, accountID, entityID, term string, db *
 	return choices, nil
 }
 
-func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB, rPool *redis.Pool) ([]entity.Choice, error) {
+func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, term string, db *sqlx.DB) ([]entity.Choice, error) {
 	choices := make([]entity.Choice, 0)
 	nodes, err := node.Stages(ctx, accountID, flowIDs, term, db)
 	if err != nil {

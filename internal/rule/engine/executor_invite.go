@@ -5,20 +5,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
 
-func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
+func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, sdb *database.SecDB) error {
 
 	e, err := entity.Retrieve(ctx, n.AccountID, n.Meta.EntityID, db)
 	if err != nil {
@@ -62,9 +63,9 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 
 			if len(role) > 0 {
 				if role[0] == auth.RoleAdmin || role[0] == auth.RoleMember || role[0] == auth.RoleUser {
-					return inviteMember(ctx, nv, role[0].(string), body, eng, db, rp)
+					return inviteMember(ctx, nv, role[0].(string), body, eng, db, sdb)
 				} else if role[0] == auth.RoleVisitor {
-					return inviteVisitor(ctx, nv, body, eng, db, rp)
+					return inviteVisitor(ctx, nv, body, eng, db, sdb)
 				}
 			}
 		}
@@ -76,17 +77,17 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 //a user should be either USER or ADMIN/SUPER-ADMIN can't be both
 //add the user-id/account-id/team-id/entity-id/item-id to the access-list table.
 //send it to user via email
-func inviteVisitor(ctx context.Context, nv visitor.NewVisitor, body string, eng *Engine, db *sqlx.DB, rp *redis.Pool) error {
+func inviteVisitor(ctx context.Context, nv visitor.NewVisitor, body string, eng *Engine, db *sqlx.DB, sdb *database.SecDB) error {
 	v, err := visitor.Create(ctx, db, nv, time.Now())
 	if err != nil {
 		return err
 	}
 
-	err = eng.Job.AddVisitor(v.AccountID, v.VistitorID, body, db, rp)
+	err = eng.Job.AddVisitor(v.AccountID, v.VistitorID, body, db, sdb)
 	return err
 }
 
-func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body string, eng *Engine, db *sqlx.DB, rp *redis.Pool) error {
+func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body string, eng *Engine, db *sqlx.DB, sdb *database.SecDB) error {
 	//adding access for this member..
 	if role == auth.RoleUser {
 		_, err := visitor.Create(ctx, db, nv, time.Now())
@@ -102,7 +103,7 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 
 	namedKeys := entity.NamedFieldsObjMap(e.FieldsIgnoreError())
 
-	items, err := checkIfMemberAlreadyExist(ctx, nv.AccountID, e.ID, nv.Email, namedKeys, db, rp)
+	items, err := checkIfMemberAlreadyExist(ctx, nv.AccountID, e.ID, nv.Email, namedKeys, db, sdb)
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 			ID:        uuid.New().String(),
 			AccountID: e.AccountID,
 			EntityID:  e.ID,
-			UserID:    util.String(UUID_SYSTEM_USER),
+			UserID:    util.String(user.UUID_SYSTEM_USER),
 			Fields:    recreateFields(nv.Email, role, nv.TeamID, namedKeys),
 		}
 
@@ -142,7 +143,7 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 		memberEmail = itemFields[namedKeys["email"].Key].(string)
 	}
 
-	err = eng.Job.AddMember(nv.AccountID, memberID, memberName, memberEmail, body, db, rp)
+	err = eng.Job.AddMember(nv.AccountID, memberID, memberName, memberEmail, body, db, sdb)
 	return err
 }
 
@@ -157,7 +158,7 @@ func recreateFields(email, role, associatedTeamID string, namedKeys map[string]e
 	return itemFields
 }
 
-func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email string, namedKeys map[string]entity.Field, db *sqlx.DB, rp *redis.Pool) ([]item.Item, error) {
+func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email string, namedKeys map[string]entity.Field, db *sqlx.DB, sdb *database.SecDB) ([]item.Item, error) {
 	conditionFields := make([]graphdb.Field, 0)
 	emailField := namedKeys["email"]
 	gf := graphdb.Field{
@@ -169,7 +170,7 @@ func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email s
 	conditionFields = append(conditionFields, gf)
 
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetResult(rp, gSegment, 0, "", "")
+	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 	if err != nil {
 		return nil, err
 	}

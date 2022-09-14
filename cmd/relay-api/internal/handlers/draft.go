@@ -33,7 +33,7 @@ func (a *Account) Draft(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrapf(err, "Draft: %+v", &draft)
 	}
 
-	(&job.Job{}).EventUserSignedUp(draft.AccountName, draft.BusinessEmail, draft.ID, a.db, a.rPool)
+	(&job.Job{}).EventUserSignedUp(draft.AccountName, draft.BusinessEmail, draft.ID, a.db, a.sdb)
 	return web.Respond(ctx, w, true, http.StatusCreated)
 }
 
@@ -64,7 +64,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.New("User firebase token mismatch"), http.StatusUnauthorized)
 	}
 
-	userInfo, err := auth.AuthenticateToken(mlToken, a.rPool)
+	userInfo, err := auth.AuthenticateToken(mlToken, a.sdb)
 	if err != nil {
 		return web.NewRequestError(errors.New("User magic link token mismatch"), http.StatusUnauthorized)
 	}
@@ -110,14 +110,14 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	//this will take the user in the frontend to the specific account even multiple accounts exists
 	tkn.Accounts = []string{nc.ID}
 
-	err = bootstrap.Bootstrap(ctx, a.db, a.rPool, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
+	err = bootstrap.Bootstrap(ctx, a.db, a.sdb, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
 	if err != nil {
 		account.Delete(ctx, a.db, acc.ID)
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
 	if util.Contains(dft.Teams, draft.TeamCRM) {
-		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
@@ -125,7 +125,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if util.Contains(dft.Teams, draft.TeamCSM) {
-		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
@@ -133,7 +133,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if util.Contains(dft.Teams, draft.TeamEM) {
-		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
@@ -141,7 +141,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if util.Contains(dft.Teams, draft.TeamPM) {
-		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.rPool, a.authenticator.FireBaseAdminSDK)
+		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)

@@ -3,15 +3,15 @@ package handlers
 import (
 	"context"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
-func validateItemCreate(ctx context.Context, accountID, entityID string, values map[string]interface{}, db *sqlx.DB, rp *redis.Pool) *ErrorResponse {
+func validateItemCreate(ctx context.Context, accountID, entityID string, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) *ErrorResponse {
 	e, err := entity.Retrieve(ctx, accountID, entityID, db)
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "item create validation failed"))
@@ -27,7 +27,7 @@ func validateItemCreate(ctx context.Context, accountID, entityID string, values 
 	}
 
 	//unique field error
-	uniqueErrorsMap, err := validateUniquness(ctx, e, values, db, rp)
+	uniqueErrorsMap, err := validateUniquness(ctx, e, values, db, sdb)
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "uniquness validation failed"))
 	}
@@ -60,7 +60,7 @@ func validateRequired(ctx context.Context, e entity.Entity, values map[string]in
 	return requiredErrorsMap, nil
 }
 
-func validateUniquness(ctx context.Context, e entity.Entity, values map[string]interface{}, db *sqlx.DB, rp *redis.Pool) (map[string]ErrorPayload, error) {
+func validateUniquness(ctx context.Context, e entity.Entity, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) (map[string]ErrorPayload, error) {
 
 	//unique fields only
 	fields := e.UniqueFields()
@@ -94,7 +94,7 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 	}
 
 	gSegment := graphdb.BuildGNode(e.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetResult(rp, gSegment, 0, "", "")
+	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 	if err != nil {
 		return nil, err
 	}

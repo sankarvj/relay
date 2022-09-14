@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -18,6 +17,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/pm"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
@@ -25,7 +25,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
-func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string, accountID, accountName string, cuser *user.User) error {
+func Bootstrap(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string, accountID, accountName string, cuser *user.User) error {
 	ctx, span := trace.StartSpan(ctx, "internal.account.Bootstrap")
 	defer span.End()
 
@@ -45,7 +45,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath
 		return errors.Wrap(err, "team bootstrap failed")
 	}
 
-	b := base.NewBase(accountID, teamID, cuser.ID, db, rp, firebaseSDKPath)
+	b := base.NewBase(accountID, teamID, cuser.ID, db, sdb, firebaseSDKPath)
 	b.AccountName = accountName
 
 	err = BootstrapOwnerEntity(ctx, memberID, cuser, b)
@@ -254,7 +254,7 @@ func CurrentOwner(ctx context.Context, db *sqlx.DB, accountID, teamID string) (s
 
 // THE TEAM SPECIFIC BOOTS
 
-func BootCRM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
+func BootCRM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:CRM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -265,7 +265,7 @@ func BootCRM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 	}
 	fmt.Println("\t\t\tBootstrap:CRM `team` added")
 
-	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CRM `boot` functions started")
@@ -297,7 +297,7 @@ func BootCRM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 	return nil
 }
 
-func BootCSM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
+func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:CSM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -308,7 +308,7 @@ func BootCSM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 	}
 	fmt.Println("\t\t\tBootstrap:CSM `team` added")
 
-	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions started")
@@ -332,7 +332,7 @@ func BootCSM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKP
 	return nil
 }
 
-func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
+func BootEM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:EM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -343,7 +343,7 @@ func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 	}
 	fmt.Println("\t\t\tBootstrap:EM `team` added")
 
-	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:EM `boot` functions started")
@@ -359,7 +359,7 @@ func BootEM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 	return nil
 }
 
-func BootPM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) error {
+func BootPM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
 	fmt.Printf("\nBootstrap:PM STARTED for the accountID %s\n", accountID)
 
 	ctx := context.Background()
@@ -370,7 +370,7 @@ func BootPM(accountID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPa
 	}
 	fmt.Println("\t\t\tBootstrap:PM `team` added")
 
-	b := base.NewBase(accountID, teamID, userID, db, rp, firebaseSDKPath)
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
 
 	//boot
 	fmt.Println("\t\t\tBootstrap:PM `boot` functions started")

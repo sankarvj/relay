@@ -7,13 +7,13 @@ import (
 	"time"
 
 	firebase "firebase.google.com/go"
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -35,7 +35,7 @@ var ErrForbiddenMLToken = web.NewRequestError(
 // User represents the User API method handler set.
 type User struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -213,7 +213,7 @@ func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	token := r.URL.Query().Get("ml_token")
 
-	userInfo, err := auth.AuthenticateToken(token, u.rPool)
+	userInfo, err := auth.AuthenticateToken(token, u.sdb)
 	if err != nil {
 		log.Println("***> unexpected error occurred in MLVerify. error: ", err)
 		return ErrForbiddenMLToken
@@ -237,7 +237,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrap(err, "verifying fbToken")
 	}
 
-	userInfo, err := auth.AuthenticateToken(mlToken, u.rPool)
+	userInfo, err := auth.AuthenticateToken(mlToken, u.sdb)
 	if err != nil {
 		return web.NewRequestError(errors.New("User doest not exist. Please create a account first"), http.StatusUnauthorized)
 	}
@@ -289,7 +289,7 @@ func (u *User) Visit(ctx context.Context, w http.ResponseWriter, r *http.Request
 
 	mlToken := r.URL.Query().Get("ml_token") // magiclink token
 
-	userInfo, err := auth.AuthenticateToken(mlToken, u.rPool)
+	userInfo, err := auth.AuthenticateToken(mlToken, u.sdb)
 	if err != nil {
 		return errors.Wrap(err, "verifying mlToken")
 	}
@@ -352,7 +352,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 	}
 
 	//stream
-	go job.NewJob(u.db, u.rPool, u.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, u.db, accountID, userID, ownerEntity.ID, existingItem.ID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(u.db, u.sdb, u.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, u.db, accountID, userID, ownerEntity.ID, existingItem.ID, it.Fields(), existingItem.Fields()))
 
 	//adding in the members items for reverse lookup of userID from memberID.
 	return nil

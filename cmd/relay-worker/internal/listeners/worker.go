@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"go.opencensus.io/trace"
@@ -16,7 +16,7 @@ import (
 
 type Worker struct {
 	db                   *sqlx.DB
-	rPool                *redis.Pool
+	sdb                  *database.SecDB
 	firebaseAdminSDKPath string
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -32,7 +32,7 @@ func (wrk *Worker) receiveSQSPayload(ctx context.Context, w http.ResponseWriter,
 	}
 
 	log.Printf("Received SQS Message ---> %+v", message)
-	err := job.NewJob(wrk.db, wrk.rPool, wrk.firebaseAdminSDKPath).Post(&message)
+	err := job.NewJob(wrk.db, wrk.sdb, wrk.firebaseAdminSDKPath).Post(&message)
 	if err != nil {
 		log.Println("***> unexpected error in the worker", err)
 		return err

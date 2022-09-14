@@ -6,21 +6,18 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
-const (
-	UUID_SYSTEM_USER = "10000000-1000-1000-1000-100000000000"
-)
-
-func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp *redis.Pool) error {
+func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sdb *database.SecDB) error {
 	// value add the fields with the template item provided in the actuals.
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
@@ -30,7 +27,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
-		UserID:    util.String(UUID_SYSTEM_USER),
+		UserID:    util.String(user.UUID_SYSTEM_USER),
 		AccountID: n.AccountID,
 		StageID:   &n.StageID,
 		EntityID:  n.ActorID,
@@ -44,7 +41,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.Stream(stream.NewCreteItemMessage(ctx, db, n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
+		eng.Job.Stream(stream.NewCreteItemMessage(ctx, db, n.AccountID, user.UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
 	case node.Modify:
 		actualItemID := n.ActualsMap()[n.ActorID]
@@ -60,7 +57,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, rp
 		if err != nil {
 			return err
 		}
-		eng.Job.Stream(stream.NewUpdateItemMessage(ctx, db, n.AccountID, UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
+		eng.Job.Stream(stream.NewUpdateItemMessage(ctx, db, n.AccountID, user.UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
 	}
 
 	return err

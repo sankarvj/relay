@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
@@ -20,8 +20,8 @@ import (
 // Relationship represents the Relationship API method handler set.
 type Relationship struct {
 	db            *sqlx.DB
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
-	rPool         *redis.Pool
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
@@ -68,7 +68,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	// 1. Fetch child item ids by querying the connections table.
 	// 2. Fetch child item ids by querying the graph db. tick
 	// 3. Fetch child item ids by querying the genie_id (formerly parent_item_id)
-	viewModelItems, fields, countMap, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.rPool)
+	viewModelItems, fields, countMap, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, rs.db, rs.sdb)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, db *sqlx.DB, rPool *redis.Pool) ([]ViewModelItem, []entity.Field, map[string]int, error) {
+func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, db *sqlx.DB, sdb *database.SecDB) ([]ViewModelItem, []entity.Field, map[string]int, error) {
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 
@@ -132,14 +132,14 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 		viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 			AddCount().
 			AddSourceCondition(sourceEntityID, sourceItemID).
-			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
 	} else { // implicit straight. tasks are the child of deals because task has a deal field
 		if isFieldKeyExist(relation.FieldID, entity.FieldsMap(fields)) {
 			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)
 			exp = util.AddExpression(exp, newExp)
 			viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 				AddCount().
-				filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+				filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
 		} else { // implicit reverse. contacts are the child of deals because deals has a contact field
 			var it item.Item
 			it, err = item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
@@ -151,7 +151,7 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 				viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 					AddCount().
 					AddSourceIDCondition(util.ConvertSliceTypeRev(ids.([]interface{}))).
-					filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, rPool)
+					filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
 			}
 		}
 	}

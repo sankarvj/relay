@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -25,7 +26,6 @@ import (
 // Segmentation represents the Segmentation API method handler set.
 type Segmentation struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -58,8 +58,8 @@ func (s *Segmentation) Create(ctx context.Context, w http.ResponseWriter, r *htt
 	return web.Respond(ctx, w, createViewModelFlow(f, []node.ViewModelNode{}), http.StatusCreated)
 }
 
-func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, sourceMap map[string]interface{}, db *sqlx.DB, rp *redis.Pool) ([]ViewModelItem, map[string]int, error) {
-	itemResultBody, err := s.filterItems(ctx, accountID, entityID, db, rp)
+func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string, fields []entity.Field, sourceMap map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) ([]ViewModelItem, map[string]int, error) {
+	itemResultBody, err := s.filterItems(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,9 +68,9 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	return viewModelItems, itemResultBody.TotalCount, nil
 }
 
-func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, db *sqlx.DB, rp *redis.Pool) (*ItemResultBody, error) {
+func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (*ItemResultBody, error) {
 
-	segmentResult, countResult, err := s.segment(ctx, accountID, entityID, db, rp)
+	segmentResult, countResult, err := s.segment(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +86,10 @@ func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, 
 	return &ItemResultBody{Items: items, TotalCount: totalCount}, nil
 }
 
-func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, rp *redis.Pool) (*rg.QueryResult, *rg.QueryResult, error) {
+func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (*rg.QueryResult, *rg.QueryResult, error) {
 	conditionFields := make([]graphdb.Field, 0)
 
-	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rp, accountID, s.exp)
+	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, s.exp)
 
 	if filter != nil {
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
@@ -117,7 +117,7 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
 	gSegment.UseReturnNode = s.useReturn
 
-	return listWithCountAsync(rp, gSegment, s.page, s.sortby, s.direction, s.CountEnabled())
+	return listWithCountAsync(sdb.GraphPool(), gSegment, s.page, s.sortby, s.direction, s.CountEnabled())
 }
 
 func listWithCountAsync(rp *redis.Pool, gSegment graphdb.GraphNode, page int, sortby, direction string, doCount bool) (*rg.QueryResult, *rg.QueryResult, error) {

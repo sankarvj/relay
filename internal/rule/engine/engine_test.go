@@ -90,7 +90,7 @@ func TestCreateItemRuleRunner(t *testing.T) {
 	tests.SeedEntity(t, db)
 	tests.SeedWorkFlows(t, db)
 	defer teardown()
-	residPool, teardown2 := tests.NewRedisUnit(t)
+	sdb, teardown2 := tests.NewSecDbUnit(t)
 	defer teardown2()
 	t.Log("Given the need to run the engine to create new item")
 	{
@@ -116,7 +116,8 @@ func TestCreateItemRuleRunner(t *testing.T) {
 			eng := engine.Engine{
 				Job: &job.Job{},
 			}
-			_, err := eng.RunRuleEngine(tests.Context(), db, residPool, node)
+
+			_, err := eng.RunRuleEngine(tests.Context(), db, sdb, node)
 			if err != nil {
 				t.Fatalf("\t%s\tshould create item : %s.", tests.Failed, err)
 			}
@@ -131,7 +132,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 	tests.SeedEntity(t, db)
 	tests.SeedWorkFlows(t, db)
 	defer teardown()
-	residPool, teardown2 := tests.NewRedisUnit(t)
+	sdb, teardown2 := tests.NewSecDbUnit(t)
 	defer teardown2()
 	t.Log("Given the need to run the engine to update existing item")
 	{
@@ -155,7 +156,7 @@ func TestUpdateRuleRunner(t *testing.T) {
 			eng := engine.Engine{
 				Job: &job.Job{},
 			}
-			_, err := eng.RunRuleEngine(tests.Context(), db, residPool, node)
+			_, err := eng.RunRuleEngine(tests.Context(), db, sdb, node)
 			if err != nil {
 				t.Fatalf("\t%s should update item : %s.", tests.Failed, err)
 			}
@@ -333,13 +334,13 @@ func TestGraphRuleRunner(t *testing.T) {
 	tests.SeedEntity(t, db)
 	tests.SeedPipelines(t, db)
 	defer teardown1()
-	residPool, teardown2 := tests.NewRedisUnit(t)
+	sdb, teardown2 := tests.NewSecDbUnit(t)
 	defer teardown2()
 	t.Log("Given the need to run the engine to evaluate a query")
 	{
 		t.Log("\twhen adding the contact item to the graph with straight reference of task")
 		{
-			err := graphdb.UpsertNode(residPool, gpb1)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb1)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -348,7 +349,7 @@ func TestGraphRuleRunner(t *testing.T) {
 
 		t.Log("\twhen adding the deal item to the graph with reverse reference of contact")
 		{
-			err := graphdb.UpsertNode(residPool, gpb2)
+			err := graphdb.UpsertNode(sdb.GraphPool(), gpb2)
 			if err != nil {
 				t.Fatalf("\t%s should create the node(item) to the graph - %s", tests.Failed, err)
 			}
@@ -357,7 +358,7 @@ func TestGraphRuleRunner(t *testing.T) {
 
 		t.Log("\twhen segmenting the updated item with relation to the graph")
 		{
-			_, err := graphdb.GetResult(residPool, gSegment, 0, "", "")
+			_, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 			if err != nil {
 				t.Fatalf("\t%s should fetch the item - %s", tests.Failed, err)
 			}
@@ -368,7 +369,7 @@ func TestGraphRuleRunner(t *testing.T) {
 		{
 			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, entity.FixedEntityContacts)
 			expression = fmt.Sprintf("{{%s.%s}} gt {50} && {{%s.%s}} eq {Bruce Wayne}", "380d2264-d4d7-444a-9f7a-ebca216bc67e", contactEntity.Key("nps_score"), "380d2264-d4d7-444a-9f7a-ebca216bc67e", contactEntity.Key("first_name"))
-			result := job.NewJabEngine().RunExpGrapher(tests.Context(), db, residPool, "3cf17266-3473-4006-984f-9325122678b7", expression)
+			result := job.NewJabEngine().RunExpGrapher(tests.Context(), db, sdb, "3cf17266-3473-4006-984f-9325122678b7", expression)
 			log.Println("result ------------------> ---> --> -> ", result)
 			t.Logf("\t%s should pass with out fail", tests.Success)
 		}

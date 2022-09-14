@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -22,7 +22,7 @@ import (
 // Team represents the Team API method handler set.
 type Team struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 }
 
@@ -113,7 +113,7 @@ func (t *Team) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, currentUserID string, modules []string) {
 
-	b := base.NewBase(accountID, teamID, currentUserID, t.db, t.rPool, t.authenticator.FireBaseAdminSDK)
+	b := base.NewBase(accountID, teamID, currentUserID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 	b.LoadFixedEntities(ctx)
 
 	for _, v := range modules {
@@ -158,25 +158,25 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 func (t *Team) createCustomTemplates(ctx context.Context, accountID, userID, templateKey string) error {
 	switch templateKey {
 	case "crm":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.rPool, t.authenticator.FireBaseAdminSDK)
+		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:crm:", err)
 			return err
 		}
 	case "support":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.rPool, t.authenticator.FireBaseAdminSDK)
+		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:support:", err)
 			return err
 		}
 	case "onboarding-emp":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.rPool, t.authenticator.FireBaseAdminSDK)
+		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-emp:", err)
 			return err
 		}
 	case "onboarding-cust":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.rPool, t.authenticator.FireBaseAdminSDK)
+		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-cust:", err)
 			return err

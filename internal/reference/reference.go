@@ -53,19 +53,19 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 
 	//dependent logic during list/retrive/edit. this logic should not get executed in create or blueprint create
 	//the values evaluted using this logic should be attached to each item
-	for _, item := range items {
+	for _, i := range items {
 
-		if item.ID == "" { // skip create/bp
+		if i.ID == "" || i.State == item.StateWebForm { // skip create/bp
 			continue
 		}
 
-		for i := 0; i < len(fields); i++ {
-			f := &fields[i]
+		for index := 0; index < len(fields); index++ {
+			f := &fields[index]
 			if f.IsDependent() {
-				_, pv := parentField(fields, f.Dependent.ParentKey, item.Fields())
+				_, pv := parentField(fields, f.Dependent.ParentKey, i.Fields())
 				for k, exp := range f.Dependent.Expressions {
 					log.Printf("******> debug internal.reference called `RunExpEvaluator` for dependents evalution key: %+v exp: %+v ", k, exp)
-					result := eng.RunExpEvaluator(ctx, db, nil, accountID, exp, item.Fields())
+					result := eng.RunExpEvaluator(ctx, db, nil, accountID, exp, i.Fields())
 					if result {
 						action := f.Dependent.Actions[k] // take the corresponding action
 
@@ -99,7 +99,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 func populateExistingItemIds(items []item.Item, fields []entity.Field) map[string][]interface{} {
 	referenceIds := make(map[string][]interface{}, 0)
 	for _, i := range items {
-		if (i == item.Item{}) {
+		if (i == item.Item{} || i.State == item.StateWebForm) {
 			continue
 		}
 		for _, f := range fields {

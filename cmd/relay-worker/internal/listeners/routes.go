@@ -8,6 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/mid"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
@@ -21,14 +22,14 @@ type Path struct {
 }
 
 // API constructs an http.Handler with all application routes defined.
-func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, path Path) http.Handler {
+func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.SecDB, path Path) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
 
 	workerD := Worker{
 		db:                   db,
-		rPool:                redisPool,
+		sdb:                  sdb,
 		firebaseAdminSDKPath: path.FirebaseSDKPath,
 	}
 	//this path is called from EBS worker. EBS worker will automatically listen SQS and post the API.

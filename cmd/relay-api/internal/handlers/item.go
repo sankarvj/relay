@@ -12,7 +12,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -20,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -30,7 +30,7 @@ import (
 // Item represents the Item API method handler set.
 type Item struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -95,7 +95,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 				AddPage(page).
 				AddSortLogic(sortby, direction).
 				AddCount().
-				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
+				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.sdb)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			vitems, _, err := NewSegmenter(finalExp).
 				AddPage(page).
 				AddSortLogic(sortby, direction).
-				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
+				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.sdb)
 			if err != nil {
 				return err
 			}
@@ -129,7 +129,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			AddPage(page).
 			AddSortLogic(sortby, direction).
 			AddCount().
-			filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.rPool)
+			filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.sdb)
 		if err != nil {
 			return err
 		}
@@ -226,7 +226,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return errors.Wrapf(err, "error retriving item")
 		}
-		go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
+		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
 	} else {
 		err = it.UpdateMeta(ctx, i.db, ni.Name, ni.Meta)
 		if err != nil {
@@ -257,12 +257,12 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.UserID = &currentUserID
 	ni.ID = uuid.New().String()
 
-	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.rPool)
+	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.sdb)
 	if errorMap != nil {
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.rPool, i.authenticator.FireBaseAdminSDK)
+	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.sdb, i.authenticator.FireBaseAdminSDK)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
@@ -270,7 +270,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
-func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) (item.Item, error) {
+func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) (item.Item, error) {
 	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
 		return item.Item{}, err
@@ -281,7 +281,7 @@ func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *s
 	}
 
 	//stream
-	go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
+	go job.NewJob(db, sdb, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, ni.AccountID, userID, ni.EntityID, it.ID, ni.Source))
 	return it, err
 }
 
@@ -373,7 +373,7 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// }
 
 	//stream
-	go job.NewJob(i.db, i.rPool, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, i.db, accountID, currentUserID, entityID, itemID))
+	go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, i.db, accountID, currentUserID, entityID, itemID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }

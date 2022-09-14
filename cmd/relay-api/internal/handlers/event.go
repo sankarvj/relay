@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -20,8 +19,7 @@ import (
 
 // Check provides support for orchestration health checks.
 type Event struct {
-	db    *sqlx.DB
-	rPool *redis.Pool
+	db *sqlx.DB
 }
 
 // Create inserts a new team into the system.

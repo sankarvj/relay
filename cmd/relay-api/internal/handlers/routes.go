@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/mid"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis.Pool, authenticator *auth.Authenticator, publisher *conversation.Publisher) http.Handler {
+func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.SecDB, authenticator *auth.Authenticator, publisher *conversation.Publisher) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
@@ -29,7 +29,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	u := User{
 		db:            db,
 		authenticator: authenticator,
-		rPool:         redisPool,
+		sdb:           sdb,
 	}
 
 	// users login token
@@ -50,7 +50,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	a := Account{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register accounts management endpoints.
@@ -64,7 +64,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	v := Visitor{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register accounts management endpoints.
@@ -77,7 +77,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	integ := Integration{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 		publisher:     publisher,
 	}
@@ -89,8 +89,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	t := Team{
 		db:            db,
+		sdb:           sdb,
 		authenticator: authenticator,
-		rPool:         redisPool,
 	}
 	// Register teams management endpoints.
 	app.Handle("POST", "/v1/accounts/:account_id/teams", t.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
@@ -101,7 +101,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	m := Member{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register teams management endpoints.
@@ -112,7 +112,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	e := Entity{
 		db:            db,
-		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register entities management endpoints.
@@ -130,14 +129,17 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	app.Handle("DELETE", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	fom := Form{
-		db: db,
+		db:            db,
+		sdb:           sdb,
+		authenticator: authenticator,
 	}
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/forms/:item_id", fom.Render)
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/forms/:item_id", fom.Adder)
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/forms", fom.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	noti := Notification{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register teams management endpoints.
@@ -146,7 +148,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	i := Item{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register items management endpoints.
@@ -162,7 +164,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	s := Segmentation{
 		db:            db,
-		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register items management endpoints.
@@ -171,7 +172,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	f := Flow{
 		db:            db,
-		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register items management endpoints.
@@ -186,7 +186,6 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	n := Node{
 		db:            db,
-		rPool:         redisPool,
 		authenticator: authenticator,
 	}
 	// Register items management endpoints.
@@ -198,7 +197,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	rs := Relationship{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register relationship management endpoints.
@@ -207,7 +206,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 
 	ass := AwsSnsSubscription{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register sns subscription from aws for the product key.
@@ -216,31 +215,30 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, redisPool *redis
 	//TODO move this as a new service
 	cv := Conversation{
 		db:            db,
-		rPool:         redisPool,
+		sdb:           sdb,
 		hub:           conversation.NewInstanceHub(),
 		authenticator: authenticator,
 	}
 	cv.Listen()
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/auth", cv.SocketPreAuth, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
-	app.Handle("GET", "/v1/ws/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/:token", cv.WebSocketMessage, mid.HasSocketAccess(redisPool))
+	app.Handle("GET", "/v1/ws/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/:token", cv.WebSocketMessage, mid.HasSocketAccess(sdb))
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	ev := Event{
-		db:    db,
-		rPool: redisPool,
+		db: db,
 	}
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/events", ev.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	c := Counter{
-		db:    db,
-		rPool: redisPool,
+		db:  db,
+		sdb: sdb,
 	}
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/count/:destination", c.Count, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	d := Dashboard{
-		db:    db,
-		rPool: redisPool,
+		db:  db,
+		sdb: sdb,
 	}
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/overview", d.Overview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 

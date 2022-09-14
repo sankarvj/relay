@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
@@ -274,7 +274,7 @@ func DirtyFlows(ctx context.Context, flows []Flow, dirtyFields map[string]interf
 }
 
 // Trigger triggers the inactive flows which are ready to be triggerd based on rules in the flows
-func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, flows []Flow, eng engine.Engine) []error {
+func Trigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, itemID string, flows []Flow, eng engine.Engine) []error {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.Trigger")
 	defer span.End()
 	triggerErrors := make([]error, 0)
@@ -294,17 +294,17 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
-		if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) { //entry
+		if eng.RunExpEvaluator(ctx, db, sdb, n.AccountID, n.Expression, n.VariablesMap()) { //entry
 			if af.stopEntryTriggerFlow(f.Type) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
 			} else {
-				err = af.entryFlowTrigger(ctx, db, rp, n, eng)
+				err = af.entryFlowTrigger(ctx, db, sdb, n, eng)
 			}
 		} else if f.Type == FlowTypeLeavesSegment {
 			if af.stopExitTriggerFlow(f.Type) { //skip trigger if new or inactive or not allowed( i.e ftype != segment).
 				err = ErrFlowInActive
 			} else {
-				err = af.exitFlowTrigger(ctx, db, rp, n, eng)
+				err = af.exitFlowTrigger(ctx, db, sdb, n, eng)
 			}
 		}
 		//concat errors in the loop. nil if no error exists
@@ -324,7 +324,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, itemID string, fl
 }
 
 //DirectTrigger is when you want to execute the item on a particular node stage.
-func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, flowID, nodeID, entityID, itemID string, eng engine.Engine) error {
+func DirectTrigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, flowID, nodeID, entityID, itemID string, eng engine.Engine) error {
 	log.Printf("internal.rule.flow Direct Trigger : flowID:%s, nodeID:%s, entityID:%s, itemID:%s\n", flowID, nodeID, entityID, itemID)
 	//retrival of primary components item,flow,node
 	f, err := Retrieve(ctx, flowID, db)
@@ -359,12 +359,12 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, 
 
 	//update meta. very important to update meta before calling exp evaluator
 	n.UpdateMeta(i.EntityID, i.ID, f.Type).UpdateVariables(i.EntityID, i.ID)
-	if eng.RunExpEvaluator(ctx, db, rp, n.AccountID, n.Expression, n.VariablesMap()) {
+	if eng.RunExpEvaluator(ctx, db, sdb, n.AccountID, n.Expression, n.VariablesMap()) {
 		af, err := RetrieveAF(ctx, db, itemID, f.ID)
 		if err != nil && err != ErrNotFound { //usually for the first time the af will not exist there
 			return err
 		}
-		return af.entryFlowTrigger(ctx, db, rp, n, eng) // entering the workflow with all the variables loaded in the node
+		return af.entryFlowTrigger(ctx, db, sdb, n, eng) // entering the workflow with all the variables loaded in the node
 	}
 	return ErrExpressionConditionFailed
 }

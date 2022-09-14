@@ -3,12 +3,12 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
@@ -27,7 +27,7 @@ var (
 // Integration represents the data needed for the third party integration details.
 type Integration struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	publisher     *conversation.Publisher
 }

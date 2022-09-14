@@ -118,19 +118,21 @@ func run() error {
 		rp.Close()
 	}()
 
+	sdb := database.Init(rp, rp, rp)
+
 	switch cfg.Args.Num(0) {
 	case "migrate":
 		err = migrate(dbConfig)
 	case "seed":
-		err = seed(db, rp, cfg.Auth.GoogleKeyFile)
+		err = seed(db, sdb, cfg.Auth.GoogleKeyFile)
 	case "crmadd":
-		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "csmadd":
-		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "pmadd":
-		err = bootstrap.BootPM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+		err = bootstrap.BootPM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "emadd":
-		err = bootstrap.BootEM(schema.SeedAccountID, schema.SeedUserID1, db, rp, cfg.Auth.GoogleKeyFile)
+		err = bootstrap.BootEM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "useradd":
 		err = useradd(db, schema.SeedAccountID, cfg.Args.Num(1), cfg.Args.Num(2))
 	case "keygen":
@@ -161,7 +163,7 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
+func seed(db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) error {
 
 	if err := schema.SeedUsers(db); err != nil {
 		return err
@@ -183,7 +185,7 @@ func seed(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
 		return err
 	}
 
-	err = bootstrap.Bootstrap(ctx, db, rp, fbSDKPath, a.ID, a.Name, cuser)
+	err = bootstrap.Bootstrap(ctx, db, sdb, fbSDKPath, a.ID, a.Name, cuser)
 	if err != nil {
 		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err

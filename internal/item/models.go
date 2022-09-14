@@ -72,4 +72,5 @@ const (
 const (
 	TypeDefault = 0
 	TypeDummy   = 1
+	TypeForm    = 2
 )

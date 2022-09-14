@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
 
 type Counter struct {
-	db    *sqlx.DB
-	rPool *redis.Pool
+	db  *sqlx.DB
+	sdb *database.SecDB
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
@@ -38,13 +39,13 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	switch destination {
 	case entity.FixedEntityTask:
-		res, err := taskCountPerItem(ctx, accountID, entityID, dstEntity, countBody, c.db, c.rPool)
+		res, err := taskCountPerItem(ctx, accountID, entityID, dstEntity, countBody, c.db, c.sdb)
 		if err != nil {
 			return err
 		}
 		return web.Respond(ctx, w, res, http.StatusOK)
 	case entity.FixedEntityNode:
-		res, err := itemCountPerStage(accountID, entityID, dstEntity, countBody, c.rPool)
+		res, err := itemCountPerStage(accountID, entityID, dstEntity, countBody, c.sdb)
 		if err != nil {
 			return err
 		}
@@ -53,7 +54,7 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, fmt.Sprintf("%s Not Implemented", destination), http.StatusNotImplemented)
 }
 
-func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, rPool *redis.Pool) (map[string]CountResponse, error) {
+func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, sdb *database.SecDB) (map[string]CountResponse, error) {
 	var statusField entity.Field
 	for _, f := range dstEntity.FieldsIgnoreError() {
 		if f.Who == entity.WhoStatus {
@@ -67,14 +68,14 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
+	resultA, err := graphdb.GetCount(sdb.GraphPool(), gSegmentA, true)
 	if err != nil {
 		return nil, err
 	}
 	allTasksCount := counts(resultA)
 
 	gSegmentD := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForDone)
-	resultD, err := graphdb.GetCount(rPool, gSegmentD, true)
+	resultD, err := graphdb.GetCount(sdb.GraphPool(), gSegmentD, true)
 	if err != nil {
 		return nil, err
 	}
@@ -83,15 +84,55 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 }
 
 //itemCountPerStage
-func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, rPool *redis.Pool) (map[string]int, error) {
+func itemCountPerStage(accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, sdb *database.SecDB) (map[string]int, error) {
 	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForStage)
-	resultA, err := graphdb.GetCount(rPool, gSegmentA, true)
+	resultA, err := graphdb.GetCount(sdb.GraphPool(), gSegmentA, true)
 	if err != nil {
 		return nil, err
 	}
 	return counts(resultA), nil
+}
+
+func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp string, db *sqlx.DB, sdb *database.SecDB) error {
+	conditionFields := make([]graphdb.Field, 0)
+
+	if gOne == nil || gOne.SelectedEntity == nil {
+		return nil
+	}
+
+	fields, err := gOne.SelectedEntity.FilteredFields()
+	if err != nil {
+		return errors.Wrapf(err, "WidgetGridOne: fields retieve error")
+	}
+
+	for _, f := range fields {
+		if f.IsFlow() {
+			conditionFields = append(conditionFields, conditionable(f, gOne.SelectedFlow.ID))
+		}
+		if f.IsNode() {
+			conditionFields = append(conditionFields, relatable(f))
+		}
+	}
+
+	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, exp)
+	if filter != nil {
+		for _, f := range fields {
+			if condition, ok := filter.Conditions[f.Key]; ok {
+				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
+			}
+		}
+	}
+
+	gSegment := graphdb.BuildGNode(accountID, gOne.SelectedEntity.ID, false).MakeBaseGNode("", conditionFields)
+
+	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
+	if err != nil {
+		return errors.Wrapf(err, "WidgetGridOne: get stage count")
+	}
+	gOne.gridResult(ctx, counts(result), db)
+	return nil
 }
 
 func counts(result *rg.QueryResult) map[string]int {

@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
@@ -112,17 +112,17 @@ func ActiveNodesForItem(ctx context.Context, accountID, flowID, itemID string, d
 	return activeNodes, nil
 }
 
-func startJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, eng engine.Engine) error {
+func startJobFlow(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n *node.Node, eng engine.Engine) error {
 	//TODO call this in job Q
-	return nextRun(ctx, db, rp, *n, map[string]interface{}{}, eng)
+	return nextRun(ctx, db, sdb, *n, map[string]interface{}{}, eng)
 }
 
-func StartJobFlow(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n *node.Node, ruleSetResponse map[string]interface{}, eng engine.Engine) error {
+func StartJobFlow(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n *node.Node, ruleSetResponse map[string]interface{}, eng engine.Engine) error {
 	//TODO call this in job Q
-	return nextRun(ctx, db, rp, *n, ruleSetResponse, eng)
+	return nextRun(ctx, db, sdb, *n, ruleSetResponse, eng)
 }
 
-func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, parentResponseMap map[string]interface{}, eng engine.Engine) error {
+func nextRun(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node, parentResponseMap map[string]interface{}, eng engine.Engine) error {
 	err := upsertActives(ctx, db, n)
 	if err != nil {
 		//TODO push this to DL queue
@@ -147,13 +147,13 @@ func nextRun(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, pare
 			log.Printf("rule.flow.active_node: encountered stage node. Skipping auto run\n")
 			continue
 		}
-		runJob(ctx, db, rp, childNode, eng)
+		runJob(ctx, db, sdb, childNode, eng)
 	}
 	return nil
 }
 
-func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng engine.Engine) error {
-	ruleResult, err := eng.RunRuleEngine(ctx, db, rp, n)
+func runJob(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node, eng engine.Engine) error {
+	ruleResult, err := eng.RunRuleEngine(ctx, db, sdb, n)
 	if err != nil {
 		//TODO push this to DL queue
 		log.Println("***> unexpected error occurred in runJob. when executing the engine...", err)
@@ -169,7 +169,7 @@ func runJob(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node, eng e
 	if ruleResult.Pause { // the flow should be re-started from the delay listener.
 		return ErrPauseExecuteNode
 	}
-	return nextRun(ctx, db, rp, n, ruleResult.Response, eng)
+	return nextRun(ctx, db, sdb, n, ruleResult.Response, eng)
 }
 
 func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, entityID, itemID string) (bool, error) {

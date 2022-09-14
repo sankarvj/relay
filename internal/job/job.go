@@ -7,7 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
@@ -18,6 +17,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -26,7 +26,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -36,12 +35,12 @@ type Job struct {
 	baseItemIDs     []string
 	baseEntityID    string
 	DB              *sqlx.DB
-	Rpool           *redis.Pool
+	SDB             *database.SecDB
 	FirebaseSDKPath string
 }
 
-func NewJob(db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Job {
-	return &Job{DB: db, Rpool: rp, FirebaseSDKPath: firebaseSDKPath}
+func NewJob(db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) *Job {
+	return &Job{DB: db, SDB: sdb, FirebaseSDKPath: firebaseSDKPath}
 }
 
 func (j *Job) Post(msg *stream.Message) error {
@@ -87,8 +86,8 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	m.State = ls.State
 
 	//workflows
-	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
-		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.Rpool)
+	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 			return err
@@ -110,7 +109,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//categories such as email,meeting,members
 	if m.State < stream.StateCategory {
-		err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.Rpool)
+		err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 			return err
@@ -121,7 +120,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//who
 	if m.State < stream.StateWho {
-		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
+		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 			return err
@@ -147,7 +146,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
 		if len(m.Source) == 0 {
-			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
+			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
 			if err != nil {
 				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 				return err
@@ -161,7 +160,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
 					continue
 				}
-				err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
+				err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
 				if err != nil {
 					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 					return err
@@ -197,8 +196,8 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 	m.State = ls.State
 
 	//workflows
-	if m.UserID != engine.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
-		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.Rpool)
+	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
 			return err
@@ -220,7 +219,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 
 	//who
 	if m.State < stream.StateWho {
-		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.Rpool)
+		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 			return err
@@ -243,7 +242,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 	//graph
 	if m.State < stream.StateRedis {
 		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
-		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.Rpool)
+		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 			return err
@@ -317,7 +316,7 @@ func (j *Job) eventItemDeleted(m *stream.Message) error {
 	}
 
 	if m.State < stream.StateSecDBDelete {
-		err = graphdb.Delete(j.Rpool, m.AccountID, m.EntityID, m.ItemID)
+		err = graphdb.Delete(j.SDB.GraphPool(), m.AccountID, m.EntityID, m.ItemID)
 		if err != nil {
 			log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on delete redisgraph item. error: ", err)
 			return err
@@ -411,7 +410,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
-		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.Rpool)
+		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 			return err
@@ -424,9 +423,9 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 	return nil
 }
 
-func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, rp *redis.Pool) error {
+func (j *Job) EventUserSignedUp(accountName, emailAddress, draftID string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
-	err := launchUser(ctx, draftID, accountName, "", "", emailAddress, db, rp)
+	err := launchUser(ctx, draftID, accountName, "", "", emailAddress, db, sdb)
 	if err != nil {
 		log.Println("***>***> EventUserSignedUp: unexpected/unhandled error occurred while sending launch mail. error:", err)
 		return err
@@ -463,7 +462,7 @@ func (j *Job) eventDelayExhausted(m *stream.Message) error {
 		}
 
 		n.UpdateMeta(triggerEntityID, triggerItemID, triggerFlowType).UpdateVariables(triggerEntityID, triggerItemID)
-		err = flow.StartJobFlow(ctx, j.DB, j.Rpool, n, m.Meta, eng)
+		err = flow.StartJobFlow(ctx, j.DB, j.SDB, n, m.Meta, eng)
 		if err != nil {
 			log.Println("***>***> EventDelayExhausted: unexpected error occurred on startJobFlow. error: ", err)
 			return err
@@ -474,7 +473,7 @@ func (j *Job) eventDelayExhausted(m *stream.Message) error {
 
 //act ons
 
-func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
+func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnRedisGraph kicked in")
 	if oldFields != nil { //use only during the update
 		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
@@ -517,14 +516,14 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 	}
 
-	err := graphdb.UpsertNode(rp, gpbNode)
+	err := graphdb.UpsertNode(sdb.GraphPool(), gpbNode)
 	if err != nil {
 		return errors.Wrap(err, "error: redisGrpah insertion job")
 	}
 	return nil
 }
 
-func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
+func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string, oldFields, newFields map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnWorkflows kicked in")
 	eng := engine.Engine{
 		Job: j,
@@ -547,14 +546,14 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 		case flow.FlowTypeEventUpdate:
 			dirtyFlows := flow.DirtyFlows(ctx, flows, dirtyFields)
 			if len(dirtyFlows) > 0 {
-				errs = flow.Trigger(ctx, db, rp, itemID, dirtyFlows, eng)
+				errs = flow.Trigger(ctx, db, sdb, itemID, dirtyFlows, eng)
 			}
 		case flow.FlowTypeEventCreate:
-			errs = flow.Trigger(ctx, db, rp, itemID, flows, eng)
+			errs = flow.Trigger(ctx, db, sdb, itemID, flows, eng)
 		}
 	}
 
-	err = actOnPipelines(ctx, eng, e, itemID, dirtyFields, newFields, db, rp)
+	err = actOnPipelines(ctx, eng, e, itemID, dirtyFields, newFields, db, sdb)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -571,14 +570,14 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 }
 
 //actOnPipelines -  not a generic way. the way we use dependent is muddy
-func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, rp *redis.Pool) error {
+func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnPipelines kicked in")
 	for _, fi := range e.FieldsIgnoreError() {
 
 		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := dirtyField.([]interface{})[0].(string)
-			err := flow.DirectTrigger(ctx, db, rp, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
+			err := flow.DirectTrigger(ctx, db, sdb, e.AccountID, flowID, nodeID, e.ID, itemID, eng)
 			if err != nil {
 				return errors.Wrap(err, "error: acting on pipelines")
 			}
@@ -661,7 +660,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 	return nil
 }
 
-func actOnCategories(ctx context.Context, accountID, currentUserID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, rp *redis.Pool) error {
+func actOnCategories(ctx context.Context, accountID, currentUserID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnCategories kicked in")
 	//shall we move this to a common place
 	acc, err := account.Retrieve(ctx, db, accountID)
@@ -670,7 +669,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 	}
 
 	userName := "System User"
-	if currentUserID != engine.UUID_SYSTEM_USER && currentUserID != schema.SeedSystemUserID {
+	if currentUserID != user.UUID_SYSTEM_USER && currentUserID != user.UUID_ENGINE_USER && currentUserID != user.UUID_ANONYMOUS_USER {
 		currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
 		if err != nil {
 			return err
@@ -709,7 +708,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		if err != nil {
 			return err
 		}
-		err = notification.JoinInvitation(accountID, acc.Name, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, rp)
+		err = notification.JoinInvitation(accountID, acc.Name, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, sdb)
 		if err != nil {
 			return errors.Wrap(err, "unable to invite members")
 		}
@@ -717,14 +716,14 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 	return err
 }
 
-func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFields []entity.Field, rp *redis.Pool) error {
+func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFields []entity.Field, sdb *database.SecDB) error {
 	for _, f := range valueAddedFields {
 		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil {
 			when, err := util.ParseTime(f.Value.(string))
 			if err != nil {
 				return err
 			}
-			return (j).AddReminder(accountID, userID, entityID, itemID, when, rp)
+			return (j).AddReminder(accountID, userID, entityID, itemID, when, sdb)
 		}
 	}
 	return nil
@@ -750,7 +749,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, e
 	valueAddedFields := notifEntity.ValueAdd(appNotifItem.Fields())
 
 	valueAddedFields = appendTimers(appNotifItem.CreatedAt, util.ConvertMilliToTime(appNotifItem.UpdatedAt), appNotifItem.UserID, valueAddedFields)
-	err = j.actOnRedisGraph(ctx, appNotifItem.AccountID, appNotifItem.EntityID, appNotifItem.ID, nil, valueAddedFields, j.DB, j.Rpool)
+	err = j.actOnRedisGraph(ctx, appNotifItem.AccountID, appNotifItem.EntityID, appNotifItem.ID, nil, valueAddedFields, j.DB, j.SDB)
 	if err != nil {
 		return err
 	}

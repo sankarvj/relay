@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/team"
@@ -45,8 +46,8 @@ const (
 type Listener struct {
 }
 
-func (j *Job) AddDelay(accountID, userID, entityID, itemID string, meta map[string]interface{}, when time.Time, rp *redis.Pool) error {
-	conn := rp.Get()
+func (j *Job) AddDelay(accountID, userID, entityID, itemID string, meta map[string]interface{}, when time.Time, sdb *database.SecDB) error {
+	conn := sdb.Scheduler().Get()
 	defer conn.Close()
 	whenMilli := util.GetMilliSeconds(when)
 	rrj := RedisJob{
@@ -67,8 +68,8 @@ func (j *Job) AddDelay(accountID, userID, entityID, itemID string, meta map[stri
 	return zadd(conn, reminders, whenMilli, string(raw))
 }
 
-func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.Time, rp *redis.Pool) error {
-	conn := rp.Get()
+func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.Time, sdb *database.SecDB) error {
+	conn := sdb.Scheduler().Get()
 	defer conn.Close()
 	whenMilli := util.GetMilliSeconds(when)
 	rrj := RedisJob{
@@ -88,13 +89,13 @@ func (j *Job) AddReminder(accountID, userID, entityID, itemID string, when time.
 	return zadd(conn, reminders, whenMilli, string(raw))
 }
 
-func (J *Job) AddVisitor(accountID, visitorID, body string, db *sqlx.DB, rp *redis.Pool) error {
+func (J *Job) AddVisitor(accountID, visitorID, body string, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*> Reached addvisitor on job")
-	err := notification.VisitorInvitation(accountID, visitorID, body, db, rp)
+	err := notification.VisitorInvitation(accountID, visitorID, body, db, sdb)
 	return err
 }
 
-func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, db *sqlx.DB, rp *redis.Pool) error {
+func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
 	log.Println("*> Reached addmember on job")
 	a, err := account.Retrieve(ctx, db, accountID)
@@ -109,13 +110,13 @@ func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, d
 	}
 
 	requester := fmt.Sprintf("Admin from %s", a.Name)
-	err = notification.JoinInvitation(accountID, a.Name, team.Names(teams), requester, userName, userEmail, memberID, db, rp)
+	err = notification.JoinInvitation(accountID, a.Name, team.Names(teams), requester, userName, userEmail, memberID, db, sdb)
 	return err
 }
 
-func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool, fbSDKPath string) {
+func (l Listener) RunReminderListener(db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) {
 	ctx := context.Background()
-	conn := rp.Get()
+	conn := sdb.Scheduler().Get()
 	defer conn.Close()
 
 	for {
@@ -128,12 +129,12 @@ func (l Listener) RunReminderListener(db *sqlx.DB, rp *redis.Pool, fbSDKPath str
 		if redisJob.State == JobStateRiped {
 			switch redisJob.Type {
 			case JobTypeReminder:
-				go NewJob(db, rp, fbSDKPath).Stream(stream.NewReminderMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID))
+				go NewJob(db, sdb, fbSDKPath).Stream(stream.NewReminderMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID))
 			case JobTypeDelay:
-				go NewJob(db, rp, fbSDKPath).Stream(stream.NewDelayMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta))
+				go NewJob(db, sdb, fbSDKPath).Stream(stream.NewDelayMessage(ctx, db, redisJob.AccountID, redisJob.UserID, redisJob.EntityID, redisJob.ItemID, redisJob.Meta))
 			}
 		}
-		time.Sleep(3 * time.Second) //reduce this time when more requests received
+		time.Sleep(10 * time.Second) //reduce this time when more requests received
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -12,6 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
@@ -21,8 +21,8 @@ import (
 
 type Member struct {
 	db            *sqlx.DB
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
-	rPool         *redis.Pool
 }
 
 func (m *Member) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -92,12 +92,12 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		Fields:    recreateFields(vm, namedKeys),
 	}
 
-	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, m.db, m.rPool)
+	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, m.db, m.sdb)
 	if errorMap != nil {
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, currentUserID, ni, m.db, m.rPool, m.authenticator.FireBaseAdminSDK)
+	it, err := createAndPublish(ctx, currentUserID, ni, m.db, m.sdb, m.authenticator.FireBaseAdminSDK)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &ni)
 	}
@@ -144,7 +144,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrapf(err, "member update: %+v", &it)
 	}
 	//stream
-	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
+	go job.NewJob(m.db, m.sdb, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
 
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -182,7 +182,7 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	//stream
-	go job.NewJob(m.db, m.rPool, m.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID))
+	go job.NewJob(m.db, m.sdb, m.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -58,7 +58,7 @@ func SimpleLink(accountID, teamID, entityID, itemID string) string {
 	return magicLink
 }
 
-func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string, rp *redis.Pool) (string, error) {
+func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string, sdb *database.SecDB) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -71,7 +71,7 @@ func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string
 		MemberID:  memId,
 	}
 
-	err = setToken(token, userInfo, rp)
+	err = sdb.SetUserToken(token, userInfo.encode())
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string
 	return magicLink, nil
 }
 
-func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token string, rp *redis.Pool) (string, error) {
+func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token string, sdb *database.SecDB) (string, error) {
 
 	userInfo := UserInfo{
 		Name:      name,
@@ -92,7 +92,7 @@ func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token stri
 		MemberID:  visitorID,
 	}
 
-	err := setToken(token, userInfo, rp)
+	err := sdb.SetUserToken(token, userInfo.encode())
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token stri
 	return magicLink, nil
 }
 
-func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, rp *redis.Pool) (string, error) {
+func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, sdb *database.SecDB) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -116,7 +116,7 @@ func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, rp
 		Email:       emailAddress,
 	}
 
-	err = setToken(token, userInfo, rp)
+	err = sdb.SetUserToken(token, userInfo.encode())
 	if err != nil {
 		return "", errors.Wrap(err, "redis connection error")
 	}
@@ -136,8 +136,8 @@ func EmailHash(emailAddress string) (string, error) {
 
 // Invoke this when the user hits
 // the login URL https://bookface.com/login?code=<token>
-func AuthenticateToken(token string, rp *redis.Pool) (UserInfo, error) {
-	usrInfo, err := getUserInfo(token, rp)
+func AuthenticateToken(token string, sdb *database.SecDB) (UserInfo, error) {
+	usrInfo, err := getUserInfo(token, sdb)
 	if err != nil {
 		return UserInfo{}, err
 	}
@@ -145,24 +145,13 @@ func AuthenticateToken(token string, rp *redis.Pool) (UserInfo, error) {
 	return usrInfo, nil
 }
 
-func setToken(key string, usrInfo UserInfo, rp *redis.Pool) error {
-	conn := rp.Get()
-	defer conn.Close()
-	err := conn.Send("SET", key, usrInfo.encode())
-	return err
-}
-
-func getUserInfo(key string, rp *redis.Pool) (UserInfo, error) {
-	conn := rp.Get()
-	defer conn.Close()
-	msgStr, err := redis.String(conn.Do("GET", key))
+func getUserInfo(key string, sdb *database.SecDB) (UserInfo, error) {
+	msgStr, err := sdb.GetUserToken(key)
 	if err != nil {
 		return UserInfo{}, err
 	}
-
 	userInfo := &UserInfo{}
 	userInfo.UnmarshalJSON([]byte(msgStr))
-
 	//TODO delete token from redis after the first time retrival
 	return *userInfo, nil
 }

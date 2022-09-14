@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
@@ -14,6 +13,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"go.opencensus.io/trace"
@@ -51,12 +51,12 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	return evItem, nil
 }
 
-func launchUser(ctx context.Context, draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, rp *redis.Pool) error {
+func launchUser(ctx context.Context, draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
 	dr, err := draft.Retrieve(ctx, draftID, db)
 	if err != nil {
 		return err
 	}
-	return notification.WelcomeInvitation(draftID, dr.Teams, accountName, requester, usrName, usrEmail, db, rp)
+	return notification.WelcomeInvitation(draftID, dr.Teams, accountName, requester, usrName, usrEmail, db, sdb)
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {

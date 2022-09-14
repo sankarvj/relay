@@ -135,11 +135,13 @@ func run() error {
 		rp.Close()
 	}()
 
+	sdb := database.Init(rp, rp, rp)
+
 	//this should be started as the separate service.
 	go func() {
 		log.Printf("main : Debug Running Job Listener")
 		l := job.Listener{}
-		l.RunReminderListener(db, rp, path.FirebaseSDKPath)
+		l.RunReminderListener(db, sdb, path.FirebaseSDKPath)
 	}()
 
 	// =========================================================================
@@ -160,7 +162,7 @@ func run() error {
 		AllowCredentials: true,
 	})
 
-	handler := c.Handler(listeners.API(shutdown, log, db, rp, path))
+	handler := c.Handler(listeners.API(shutdown, log, db, sdb, path))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

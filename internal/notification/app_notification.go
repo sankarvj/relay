@@ -12,7 +12,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
-	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -60,7 +59,7 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 			appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", baseEntityID, baseItemID))
 			if i == 0 && berr == nil { // for now fetching one time is enough
 				it, err := item.Retrieve(ctx, baseEntityID, baseItemID, db)
-				if err == nil {
+				if err == nil && it.State != item.StateWebForm {
 					titleField := entity.TitleField(baseEntity.FieldsIgnoreError())
 					appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 
@@ -81,7 +80,7 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 	}
 
 	appNotif.DirtyFields = make(map[string]string, 0)
-	if itemCreatorID != nil && *itemCreatorID != engine.UUID_SYSTEM_USER && *itemCreatorID != userID {
+	if itemCreatorID != nil && *itemCreatorID != user.UUID_SYSTEM_USER && *itemCreatorID != userID {
 		appNotif.AddFollower(ctx, accountID, itemCreatorID, db)
 	}
 

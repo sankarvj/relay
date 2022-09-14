@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jmoiron/sqlx"
@@ -23,7 +22,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/conversation"
-	"gitlab.com/vjsideprojects/relay/internal/platform/redisdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -36,7 +35,7 @@ import (
 // Check provides support for orchestration health checks.
 type Conversation struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	hub           *conversation.Hub
 	authenticator *auth.Authenticator
 	MessageChan   chan conversation.Message // to receive message in the handler from the hub platform
@@ -78,7 +77,7 @@ func (cv *Conversation) SocketPreAuth(ctx context.Context, w http.ResponseWriter
 
 	token := generateToken(currentUserID)
 
-	err = redisdb.RedisSet(cv.rPool, token, currentUserID)
+	err = cv.sdb.SetSocketAuthToken(token, currentUserID)
 	if err != nil {
 		return err
 	}
@@ -118,8 +117,8 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 	room := fmt.Sprintf("%s#%s#%s", accountID, entityID, itemID)
 	client := conversation.NewClient(conn, cv.hub, clientID, base, room, currentUserID, cuser.Email, *cuser.Name, *cuser.Avatar)
 
-	go client.WritePump(cv.rPool)
-	go client.ReadPump(cv.rPool, cv.MessageChan)
+	go client.WritePump()
+	go client.ReadPump(cv.sdb.PubSubPool(), cv.MessageChan)
 
 	cv.hub.Register <- client
 
@@ -154,7 +153,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewEmailConversationMessage(ctx, cv.db, params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID, map[string][]string{}))
+	job.NewJob(cv.db, cv.sdb, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewEmailConversationMessage(ctx, cv.db, params["account_id"], currentUser.ID, params["entity_id"], itemID, conversation.ID, map[string][]string{}))
 
 	return web.Respond(ctx, w, conversation, http.StatusCreated)
 }
@@ -162,7 +161,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 //WS
 func (cv *Conversation) Listen() {
 	go cv.runGlobalMessageReceiver()
-	go cv.hub.Run(cv.rPool)
+	go cv.hub.Run(cv.sdb.PubSubPool())
 }
 
 func (cv *Conversation) runGlobalMessageReceiver() {
@@ -189,7 +188,7 @@ func (cv *Conversation) runGlobalMessageReceiver() {
 			}
 
 			//The conv added function works differently
-			go job.NewJob(cv.db, cv.rPool, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewChatConversationMessage(ctx, cv.db, newConversation.AccountID, newConversation.UserID, newConversation.EntityID, *newConversation.ItemID, newMessage.Payload.ID, map[string][]string{baseParts[0]: {baseParts[1]}}))
+			go job.NewJob(cv.db, cv.sdb, cv.authenticator.FireBaseAdminSDK).Stream(stream.NewChatConversationMessage(ctx, cv.db, newConversation.AccountID, newConversation.UserID, newConversation.EntityID, *newConversation.ItemID, newMessage.Payload.ID, map[string][]string{baseParts[0]: {baseParts[1]}}))
 			//addNotification(ctx, streamParts[0], baseParts[0], baseParts[1], newConversation.UserID, newConversation.Message, cv.authenticator.FireBaseAdminSDK, cv.db)
 		}
 	}

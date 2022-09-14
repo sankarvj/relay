@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -12,7 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func grapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, expression string) (interface{}, error) {
+func grapher(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, expression string) (interface{}, error) {
 	//log.Println("rule.engine.grapher:  query: ", expression)
 	if expression == node.MeEntity { //just like making grapher smart
 		currentUserID, err := user.RetrieveCurrentUserID(ctx)

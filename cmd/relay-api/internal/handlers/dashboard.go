@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
@@ -25,8 +25,8 @@ import (
 )
 
 type Dashboard struct {
-	db    *sqlx.DB
-	rPool *redis.Pool
+	db  *sqlx.DB
+	sdb *database.SecDB
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
@@ -80,7 +80,7 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 		gridOne.SelectedEntityFields = e.FieldsIgnoreError()
 	}
 
-	err := gridOne.WidgetGridOne(ctx, accountID, teamID, exp, d.db, d.rPool)
+	err := gridOne.WidgetGridOne(ctx, accountID, teamID, exp, d.db, d.sdb)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 	return web.Respond(ctx, w, overview, http.StatusOK)
 }
 
-func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp string, db *sqlx.DB, rPool *redis.Pool) error {
+func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp string, db *sqlx.DB, sdb *database.SecDB) error {
 	if gOne.SelectedEntity != nil && gOne.SelectedEntity.FlowField() != nil { //main stages. ex: deal stages
 		flows, err := flow.List(ctx, []string{gOne.SelectedEntity.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
 		if err != nil {
@@ -115,47 +115,7 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp s
 		}
 	}
 
-	return getGoneResult(ctx, accountID, gOne, exp, db, rPool)
-}
-
-func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp string, db *sqlx.DB, rPool *redis.Pool) error {
-	conditionFields := make([]graphdb.Field, 0)
-
-	if gOne == nil || gOne.SelectedEntity == nil {
-		return nil
-	}
-
-	fields, err := gOne.SelectedEntity.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridOne: fields retieve error")
-	}
-
-	for _, f := range fields {
-		if f.IsFlow() {
-			conditionFields = append(conditionFields, conditionable(f, gOne.SelectedFlow.ID))
-		}
-		if f.IsNode() {
-			conditionFields = append(conditionFields, relatable(f))
-		}
-	}
-
-	filter := job.NewJabEngine().RunExpGrapher(ctx, db, rPool, accountID, exp)
-	if filter != nil {
-		for _, f := range fields {
-			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
-			}
-		}
-	}
-
-	gSegment := graphdb.BuildGNode(accountID, gOne.SelectedEntity.ID, false).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetCount(rPool, gSegment, true)
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridOne: get stage count")
-	}
-	gOne.gridResult(ctx, counts(result), db)
-	return nil
+	return getGoneResult(ctx, accountID, gOne, exp, db, sdb)
 }
 
 func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID string, db *sqlx.DB, rPool *redis.Pool) error {
@@ -215,7 +175,7 @@ func (d *Dashboard) Dashboard(ctx context.Context, w http.ResponseWriter, r *htt
 
 	_, countMap, err := NewSegmenter(exp).
 		AddCount().
-		filterWrapper(ctx, params["account_id"], e.ID, fields, map[string]interface{}{}, d.db, d.rPool)
+		filterWrapper(ctx, params["account_id"], e.ID, fields, map[string]interface{}{}, d.db, d.sdb)
 	if err != nil {
 		return err
 	}

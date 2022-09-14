@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/DusanKasan/parsemail"
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -23,6 +22,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -140,7 +140,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 ***/
 
-func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) error {
+func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) error {
 	data, err := base64.StdEncoding.DecodeString(mb.Content)
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 	tracker.EmailChan().Log("Email Received", fmt.Sprintf("Received email from domain %s", emailConfigEntityItem.Domain))
 
 	if len(references) == 0 { // save as the first message
-		source, err := creatSourceIfNotExist(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, emailEntityItem, db, rp, fbSDKPath)
+		source, err := creatSourceIfNotExist(ctx, emailConfigEntityItem.AccountID, emailConfigEntityItem.TeamID, emailEntityItem, db, sdb, fbSDKPath)
 		if err != nil {
 			return errors.Wrap(err, "problem retriving/creating the contact/employee to associate a email")
 		}
@@ -191,7 +191,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 		}
 		//associating with the source.
 		//TODO: shall we move association to the workflow?
-		go job.NewJob(db, rp, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, savedEmailItem.AccountID, schema.SeedSystemUserID, savedEmailItem.EntityID, savedEmailItem.ID, source))
+		go job.NewJob(db, sdb, fbSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, savedEmailItem.AccountID, schema.SeedSystemUserID, savedEmailItem.EntityID, savedEmailItem.ID, source))
 	} else { // save as a conversation for the message saved
 		reference := util.MessageID(references[0])
 		parentConv, err := conversation.Retrieve(ctx, emailConfigEntityItem.AccountID, reference, db)
@@ -209,13 +209,13 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, rp *re
 
 //creatSourceIfNotExist should take contact/employee as the source.
 //TODO: what happens if the both contacts/emplooyees not exist in that account?
-func creatSourceIfNotExist(ctx context.Context, accountID, teamID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) (map[string][]string, error) {
+func creatSourceIfNotExist(ctx context.Context, accountID, teamID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) (map[string][]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityContacts)
 	if err != nil {
 		return nil, err
 	}
 
-	contacts, err := createContactIfNotExist(ctx, accountID, e, emailEntityItem.RFrom[0], db, rp, fbSDKPath)
+	contacts, err := createContactIfNotExist(ctx, accountID, e, emailEntityItem.RFrom[0], db, sdb, fbSDKPath)
 	if err != nil {
 		tracker.ErrorChan().Log("Bug Found", fmt.Sprintf("Could not find contacts entity on account `%s`", accountID))
 		return nil, err
@@ -225,7 +225,7 @@ func creatSourceIfNotExist(ctx context.Context, accountID, teamID string, emailE
 	return source, nil
 }
 
-func createContactIfNotExist(ctx context.Context, accountID string, e entity.Entity, value string, db *sqlx.DB, rp *redis.Pool, fbSDKPath string) ([]string, error) {
+func createContactIfNotExist(ctx context.Context, accountID string, e entity.Entity, value string, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) ([]string, error) {
 	currentUserID, err := user.RetrieveCurrentUserID(ctx)
 	if err != nil && err != user.ErrNotFound {
 		return []string{}, err
@@ -235,7 +235,7 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 
 	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
 	//TODO: segment call doesn't need the count. But it is executing count query in the call. Shall we stop it?
-	result, _, err := NewSegmenter(exp).segment(ctx, accountID, e.ID, db, rp)
+	result, _, err := NewSegmenter(exp).segment(ctx, accountID, e.ID, db, sdb)
 	if err != nil {
 		return []string{}, err
 	}
@@ -257,7 +257,7 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 			Fields:    fields,
 		}
 
-		it, err := createAndPublish(ctx, currentUserID, ni, db, rp, fbSDKPath)
+		it, err := createAndPublish(ctx, currentUserID, ni, db, sdb, fbSDKPath)
 		if err != nil {
 			return []string{}, err
 		}

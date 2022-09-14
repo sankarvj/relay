@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/aws"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
@@ -25,7 +25,7 @@ var ErrForbidden = web.NewRequestError(
 // AwsSnsSubscription provides support for subscribtion/message .
 type AwsSnsSubscription struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 }
 
@@ -67,7 +67,7 @@ func (ass *AwsSnsSubscription) Create(ctx context.Context, w http.ResponseWriter
 		if err != nil {
 			return errors.Wrap(err, "unable to decode mailbody while the body is passed")
 		}
-		return receiveSESEmail(ctx, mb, ass.db, ass.rPool, ass.authenticator.FireBaseAdminSDK)
+		return receiveSESEmail(ctx, mb, ass.db, ass.sdb, ass.authenticator.FireBaseAdminSDK)
 	}
 	return nil
 }

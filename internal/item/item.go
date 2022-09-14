@@ -135,17 +135,18 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 		Type:      n.Type,
 		State:     n.State,
 		Fieldsb:   string(fieldsBytes),
+		Metab:     marshalMeta(n.Meta),
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO items
-		(item_id, account_id, entity_id, genie_id, user_id, stage_id, name, type, state, fieldsb, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		(item_id, account_id, entity_id, genie_id, user_id, stage_id, name, type, state, fieldsb, metab, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		i.ID, i.AccountID, i.EntityID, i.GenieID, i.UserID, i.StageID, i.Name, i.Type, i.State, i.Fieldsb,
+		i.ID, i.AccountID, i.EntityID, i.GenieID, i.UserID, i.StageID, i.Name, i.Type, i.State, i.Fieldsb, i.Metab,
 		i.CreatedAt, i.UpdatedAt,
 	)
 	if err != nil {

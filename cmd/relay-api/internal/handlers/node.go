@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -20,7 +19,6 @@ import (
 // Node represents the units inside the flow or inside the stage
 type Node struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
 	authenticator *auth.Authenticator
 }
 

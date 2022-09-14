@@ -110,7 +110,7 @@ func (client *Client) ReadPump(rp *redis.Pool, messageChan chan Message) {
 	}
 }
 
-func (client *Client) WritePump(rp *redis.Pool) {
+func (client *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()

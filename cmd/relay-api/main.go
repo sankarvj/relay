@@ -189,7 +189,9 @@ func run() error {
 		Topic: cfg.PubSub.GmailPublisherTopic,
 	}
 
-	handler := c.Handler(handlers.API(shutdown, log, db, rp, authenticator, publisher))
+	sdb := database.Init(rp, rp, rp)
+
+	handler := c.Handler(handlers.API(shutdown, log, db, sdb, authenticator, publisher))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

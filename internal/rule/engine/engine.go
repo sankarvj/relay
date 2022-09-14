@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/jobber"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
@@ -23,7 +23,7 @@ type RuleResult struct {
 }
 
 //RunRuleEngine runs the expression and execute action if the expression conditions met
-func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool, n node.Node) (*RuleResult, error) {
+func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node) (*RuleResult, error) {
 	var err error
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(n.Expression, ruler.Execute, signalsChan)
@@ -38,15 +38,15 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 				work.InboundRespCh <- result
 			}
 		case ruler.Grapher:
-			if result, err := grapher(ctx, db, rp, n.AccountID, work.Expression); err != nil {
+			if result, err := grapher(ctx, db, sdb, n.AccountID, work.Expression); err != nil {
 				return nil, err
 			} else {
 				work.InboundRespCh <- result
 			}
 		case ruler.PosExecutor:
-			err = ruleResult.executePosCase(ctx, e, n, db, rp)
+			err = ruleResult.executePosCase(ctx, e, n, db, sdb)
 		case ruler.NegExecutor:
-			err = ruleResult.executeNegCase(ctx, e, n, db, rp)
+			err = ruleResult.executeNegCase(ctx, e, n, db, sdb)
 		}
 	}
 
@@ -108,7 +108,7 @@ func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, accountID
 }
 
 //RunExpGrapher run the expression and returns graph query in a readable format
-func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string) *ruler.Filter {
+func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string) *ruler.Filter {
 	var filter *ruler.Filter
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, ruler.Graph, signalsChan)
@@ -116,7 +116,7 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker: //why worker calling grapher? because the logic is same as worker
-			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
+			if result, err := grapher(ctx, db, sdb, accountID, work.Expression); err != nil {
 				log.Printf("***> unexpected error occurred. sending empty conditions - error: %v ", err)
 				return nil
 			} else {
@@ -130,7 +130,7 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, rp *redis.Pool,
 }
 
 //RunExpEvaluator runs the expression to see whether the condition met or not
-func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Pool, accountID, exp string, variables map[string]interface{}) bool {
+func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) bool {
 	positive := false
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, ruler.Execute, signalsChan)
@@ -145,7 +145,7 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, rp *redis.Poo
 				work.InboundRespCh <- result
 			}
 		case ruler.Grapher: //input:executes this when it finds the what??? - actually here the grapher should come into picture when the conditions refers the reference value. Need to implement
-			if result, err := grapher(ctx, db, rp, accountID, work.Expression); err != nil {
+			if result, err := grapher(ctx, db, sdb, accountID, work.Expression); err != nil {
 				log.Println("***> unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {

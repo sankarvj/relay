@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
@@ -21,7 +21,7 @@ import (
 // Visitor represents the Visitor API method handler set.
 type Visitor struct {
 	db            *sqlx.DB
-	rPool         *redis.Pool
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -98,7 +98,7 @@ func (v *Visitor) RetrieveItem(ctx context.Context, w http.ResponseWriter, r *ht
 
 	mlToken := r.URL.Query().Get("ml_token")
 
-	userInfo, err := auth.AuthenticateToken(mlToken, v.rPool)
+	userInfo, err := auth.AuthenticateToken(mlToken, v.sdb)
 	if err != nil {
 		return errors.Wrap(err, "verifying mlToken")
 	}
@@ -119,7 +119,7 @@ func (v *Visitor) RetrieveItem(ctx context.Context, w http.ResponseWriter, r *ht
 
 	i := Item{
 		db:            v.db,
-		rPool:         v.rPool,
+		sdb:           v.sdb,
 		authenticator: v.authenticator,
 	}
 
@@ -164,7 +164,7 @@ func (v *Visitor) Resend(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return errors.Wrapf(err, "Cannot change active state for this visitor")
 	}
 
-	go job.NewJob(v.db, v.rPool, v.authenticator.FireBaseAdminSDK).AddVisitor(accountID, visitorID, vmv.Body, v.db, v.rPool)
+	go job.NewJob(v.db, v.sdb, v.authenticator.FireBaseAdminSDK).AddVisitor(accountID, visitorID, vmv.Body, v.db, v.sdb)
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
@@ -210,7 +210,7 @@ func (v *Visitor) Create(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return err
 	}
 
-	go job.NewJob(v.db, v.rPool, v.authenticator.FireBaseAdminSDK).AddVisitor(vis.AccountID, vis.VistitorID, vmv.Body, v.db, v.rPool)
+	go job.NewJob(v.db, v.sdb, v.authenticator.FireBaseAdminSDK).AddVisitor(vis.AccountID, vis.VistitorID, vmv.Body, v.db, v.sdb)
 
 	return web.Respond(ctx, w, createViewModelVisitor(vis, "", ""), http.StatusCreated)
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
@@ -16,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/layout"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
@@ -33,7 +33,7 @@ type Base struct {
 	UserID          string
 	Local           bool
 	DB              *sqlx.DB
-	RP              *redis.Pool
+	SecDB           *database.SecDB
 	FirebaseSDKPath string
 
 	CoreEntity
@@ -85,14 +85,14 @@ type CoreNode struct {
 	Tokens     map[string]interface{}
 }
 
-func NewBase(accountID, teamID, userID string, db *sqlx.DB, rp *redis.Pool, firebaseSDKPath string) *Base {
+func NewBase(accountID, teamID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) *Base {
 	build := expvar.Get("build")
 	return &Base{
 		AccountID:       accountID,
 		TeamID:          teamID,
 		UserID:          userID,
 		DB:              db,
-		RP:              rp,
+		SecDB:           sdb,
 		Local:           (build == nil || build.String() == `"dev"`),
 		FirebaseSDKPath: firebaseSDKPath,
 	}
@@ -205,7 +205,7 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 		return item.Item{}, err
 	}
 
-	job.NewJob(b.DB, b.RP, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(ctx, b.DB, b.AccountID, userID, entityID, it.ID, ni.Source))
+	job.NewJob(b.DB, b.SecDB, b.FirebaseSDKPath).Stream(stream.NewCreteItemMessage(ctx, b.DB, b.AccountID, userID, entityID, it.ID, ni.Source))
 
 	fmt.Printf("\t\tItem '%s' Bootstraped\n", *it.Name)
 	return it, nil
