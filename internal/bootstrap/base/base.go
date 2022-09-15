@@ -39,6 +39,7 @@ type Base struct {
 	CoreEntity
 	CoreItem
 	CoreAutomation
+	CrmSample
 }
 
 // These entites must be created or loaded before adding a new product
@@ -65,12 +66,22 @@ type CoreAutomation struct {
 	SalesPipelineFlowID string
 }
 
+type CrmSample struct {
+	ContactItemMatt         item.Item
+	ContactItemNatasha      item.Item
+	LeadStatusItemNew       item.Item
+	LeadStatusItemBadTiming item.Item
+	LeadStatusItemConnected item.Item
+	LeadStatusItemAttempted item.Item
+}
+
 type CoreWorkflow struct {
-	FlowID  string
-	ActorID string
-	Name    string
-	Exp     string
-	Nodes   []*CoreNode
+	FlowID   string
+	ActorID  string
+	Name     string
+	Exp      string
+	Nodes    []*CoreNode
+	FlowType int
 }
 
 type CoreNode struct {
@@ -231,7 +242,7 @@ func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string,
 
 	valueAddedFields := ce.ValueAdd(ni.Fields)
 	for _, f := range valueAddedFields {
-		if f.IsTitleLayout() {
+		if f.IsTitleLayout() && f.Value != nil {
 			s := f.Value.(string)
 			ni.Name = &s
 		}

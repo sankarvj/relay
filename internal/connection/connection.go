@@ -135,6 +135,26 @@ func JustChildItemIDs(ctx context.Context, db *sqlx.DB, accountID, itemID string
 	return childItems, nil
 }
 
+func AllChild(ctx context.Context, db *sqlx.DB, accountID, srcEntityID, srcItemID, dstEntityID string, next string) ([]ConnectedItem, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.connection.AllChilds")
+	defer span.End()
+
+	var connectedItems []ConnectedItem
+	if next != "" {
+		const q = `SELECT DISTINCT(dst_item_id), connection_id, created_at FROM connections where account_id = $1 AND src_entity_id = $2 AND src_item_id = $3 AND dst_entity_id = $4 AND connection_id > $5 ORDER BY created_at DESC LIMIT 1000`
+		if err := db.SelectContext(ctx, &connectedItems, q, accountID, srcEntityID, srcItemID, dstEntityID, next); err != nil {
+			return nil, errors.Wrap(err, "selecting dst items for connected src item")
+		}
+	} else {
+		const q = `SELECT DISTINCT(dst_item_id), connection_id, created_at FROM connections where account_id = $1 AND src_entity_id = $2 AND src_item_id = $3 AND dst_entity_id = $4 ORDER BY created_at DESC LIMIT 1000`
+		if err := db.SelectContext(ctx, &connectedItems, q, accountID, srcEntityID, srcItemID, dstEntityID); err != nil {
+			return nil, errors.Wrap(err, "selecting dst items for connected src item")
+		}
+	}
+
+	return connectedItems, nil
+}
+
 func Delete(ctx context.Context, db *sqlx.DB, relationshipID, dstItemID string) error {
 	ctx, span := trace.StartSpan(ctx, "internal.connection.Delete")
 	defer span.End()

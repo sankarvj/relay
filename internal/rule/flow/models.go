@@ -29,7 +29,7 @@ const (
 )
 
 // FlowCondition defines exists/entry conditions
-//it will be used to identify whether to hold or continue the execution
+// it will be used to identify whether to hold or continue the execution
 const (
 	FlowConditionNil   = -1
 	FlowConditionBoth  = 0

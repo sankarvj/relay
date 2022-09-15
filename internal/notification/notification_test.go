@@ -52,7 +52,8 @@ func TestFirebase(t *testing.T) {
 
 		t.Log("\tSend firebase notification1")
 		{
-			err := notification.FirebaseSend("title", "message", clientToken, credLoc)
+			data := make(map[string]string, 0)
+			err := notification.FirebaseSend(data, "title", "message", clientToken, credLoc)
 			if err != nil {
 				t.Fatalf("\tShould be able to send the firebase notification - %s", err)
 			}

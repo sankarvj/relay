@@ -309,6 +309,8 @@ var migrations = []darwin.Migration{
 		ON connections(account_id);
 		CREATE INDEX idx_connections_relationship_id
 		ON connections(relationship_id);
+		CREATE INDEX idx_connections_src_entity_id
+		ON connections(src_entity_id);
 		CREATE INDEX idx_connections_dst_item_id
 		ON connections(dst_item_id);
 		`,

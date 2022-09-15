@@ -59,7 +59,7 @@ func (b *Base) AddPipelines(ctx context.Context, cwf *CoreWorkflow) error {
 
 func (b *Base) AddWorkflows(ctx context.Context, cwf *CoreWorkflow) error {
 	stageID := "00000000-0000-0000-0000-000000000000"
-	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModeWorkFlow, flow.FlowConditionEntry, cwf.Exp, flow.FlowTypeEventCreate)
+	f, err := b.FlowAdd(ctx, uuid.New().String(), cwf.ActorID, cwf.Name, flow.FlowModeWorkFlow, flow.FlowConditionEntry, cwf.Exp, cwf.FlowType)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func addSegmentFlow(ctx context.Context, entityID, name, exp string, b *Base) er
 	return nil
 }
 
-func (b *Base) AddConnections(ctx context.Context, associationID1, associationID2 string, conEid, comEid, deEid, tickEid entity.Entity, conID, comID, dealID, ticketID item.Item) error {
+func (b *Base) AddConnections(ctx context.Context, associationID1 string, conEid, comEid, deEid entity.Entity, conID, comID, dealID item.Item) error {
 	//contact company association
 	// err := b.ConnectionAdd(ctx, associationID1, "Contact", conEid.ID, comEid.ID, conID.ID, comID.ID, comEid.ValueAdd(comID.Fields()), "Created")
 	// if err != nil {

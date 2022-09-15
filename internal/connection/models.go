@@ -18,3 +18,9 @@ type Connection struct {
 	CreatedAt      time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt      int64     `db:"updated_at" json:"updated_at"`
 }
+
+type ConnectedItem struct {
+	DstItemID    string    `db:"dst_item_id"  json:"dst_item_id"`
+	ConnectionID string    `db:"connection_id"  json:"connection_id"`
+	CreatedAt    time.Time `db:"created_at" json:"created_at"`
+}

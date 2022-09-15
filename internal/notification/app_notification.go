@@ -25,6 +25,7 @@ type AppNotification struct {
 	Body           string
 	UserName       string
 	UserAvatar     string
+	CreatedAt      int64
 	Followers      []entity.UserEntity
 	Assignees      []entity.UserEntity
 	BaseIds        []string //useful for fetching the events....
@@ -214,11 +215,14 @@ func (appNotif AppNotification) Send(ctx context.Context, assignee entity.UserEn
 	}
 
 	fbNotif := FirebaseNotification{
-		AccountID: appNotif.AccountID,
-		UserID:    assignee.UserID,
-		Subject:   appNotif.Subject,
-		Body:      appNotif.Body,
-		SDKPath:   firebaseSDKPath,
+		AccountID:    appNotif.AccountID,
+		TargetUserID: assignee.UserID,
+		UserName:     appNotif.UserName,
+		UserAvatar:   appNotif.UserAvatar,
+		CreatedAt:    util.ConvertMilliToTime(appNotif.CreatedAt),
+		Subject:      appNotif.Subject,
+		Body:         appNotif.Body,
+		SDKPath:      firebaseSDKPath,
 	}
 	err2 := fbNotif.Send(ctx, notificationType, db)
 	if err2 != nil {

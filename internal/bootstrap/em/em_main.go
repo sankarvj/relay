@@ -8,6 +8,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
@@ -511,8 +512,9 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	fmt.Println("\tEM:SAMPLES inviteTemplate added")
 
 	cf := &base.CoreWorkflow{
-		Name:    "When a new employee added",
-		ActorID: employeeEntity.ID,
+		Name:     "When a new employee added",
+		ActorID:  employeeEntity.ID,
+		FlowType: flow.FlowTypeEventCreate,
 		Nodes: []*base.CoreNode{
 			{
 				Name:       "Invite Employee as users to the portal",

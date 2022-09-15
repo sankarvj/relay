@@ -217,17 +217,19 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
+	//retriving the existing item don't change the order of execution
+	existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
+	if err != nil {
+		return errors.Wrapf(err, "error retriving item")
+	}
+
 	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
 	if err != nil {
 		return errors.Wrapf(err, "error when update item fields %+v", &ni)
 	}
 	if it.State != item.StateWebForm { // no need to go to job for web forms now!
-		existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
-		if err != nil {
-			return errors.Wrapf(err, "error retriving item")
-		}
 		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
-	} else {
+	} else { // TODO: update meta in the fields update itself
 		err = it.UpdateMeta(ctx, i.db, ni.Name, ni.Meta)
 		if err != nil {
 			return errors.Wrapf(err, "error when update item meta %+v", &ni)

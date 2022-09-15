@@ -47,6 +47,7 @@ const (
 	FixedEntityNode            = "nodes"
 	FixedEntityDelay           = "delay"
 	FixedEntityStatus          = "status"
+	FixedEntityLeadStatus      = "lead_status"
 	FixedEntityType            = "type"
 	FixedEntityVisitorInvite   = "visitor_invite"
 	FixedEntityEmployee        = "employee"

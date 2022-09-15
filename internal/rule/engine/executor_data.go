@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -18,6 +19,7 @@ import (
 )
 
 func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sdb *database.SecDB) error {
+	log.Printf("internal.rule.engine.executeData %s - %s \n", n.ActorID, n.ActualsItemID())
 	// value add the fields with the template item provided in the actuals.
 	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
@@ -25,9 +27,9 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 	}
 
 	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
-	ni := item.NewItem{
+	templateItem := item.NewItem{
 		ID:        uuid.New().String(),
-		UserID:    util.String(user.UUID_SYSTEM_USER),
+		UserID:    util.String(user.UUID_ENGINE_USER),
 		AccountID: n.AccountID,
 		StageID:   &n.StageID,
 		EntityID:  n.ActorID,
@@ -36,30 +38,78 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 
 	switch n.Type {
 	case node.Push, node.Task, node.Meeting, node.Email:
-		log.Printf("internal.rule.engine.executor_data create item %+v\n", ni)
-		it, err := item.Create(ctx, db, ni, time.Now())
+		it, err := item.Create(ctx, db, templateItem, time.Now())
 		if err != nil {
 			return err
 		}
-		eng.Job.Stream(stream.NewCreteItemMessage(ctx, db, n.AccountID, user.UUID_SYSTEM_USER, it.EntityID, it.ID, n.VarStrMap()))
+		eng.Job.Stream(stream.NewCreteItemMessage(ctx, db, n.AccountID, user.UUID_ENGINE_USER, it.EntityID, it.ID, n.VarStrMap()))
 		//n.VarStrMap() is equivalent of passing source entity:item in the usual item create
 	case node.Modify:
-		actualItemID := n.ActualsMap()[n.ActorID]
-		it, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
-		if err != nil {
-			return err
+		actualItemID := n.ActualsItemID()
+
+		// update the trigger entity/item if the actor/trigger are same
+		// when a deal is updated change the status of the deal
+		if n.ActorID == n.Meta.EntityID {
+			err = eng.updateItemFields(ctx, n.AccountID, n.ActorID, actualItemID, templateItem, db)
+		} else { // when a deal is updated, make changes it all of its related contact.
+			err = eng.updateRelatedItems(ctx, n.AccountID, n.Meta.EntityID, n.Meta.ItemID, n.ActorID, templateItem, "", db)
 		}
-		_, err = item.UpdateFields(ctx, db, n.ActorID, actualItemID, ni.Fields)
-		if err != nil {
-			return err
-		}
-		uit, err := item.Retrieve(ctx, n.ActorID, actualItemID, db)
-		if err != nil {
-			return err
-		}
-		eng.Job.Stream(stream.NewUpdateItemMessage(ctx, db, n.AccountID, user.UUID_SYSTEM_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
+
 	}
 
+	return err
+}
+
+func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityID, actorItemID string, templateItem item.NewItem, db *sqlx.DB) error {
+	it, err := item.Retrieve(ctx, actorEntityID, actorItemID, db)
+	if err != nil {
+		return err
+	}
+
+	updatedFields := make(map[string]interface{}, 0)
+	for key, val := range it.Fields() {
+		if templateItem.Fields[key] != "" && templateItem.Fields[key] != nil {
+			updatedFields[key] = templateItem.Fields[key]
+		} else {
+			updatedFields[key] = val
+		}
+	}
+
+	_, err = item.UpdateFields(ctx, db, actorEntityID, actorItemID, updatedFields)
+	if err != nil {
+		return err
+	}
+	uit, err := item.Retrieve(ctx, actorEntityID, actorItemID, db)
+	if err != nil {
+		return err
+	}
+
+	eng.Job.Stream(stream.NewUpdateItemMessage(ctx, db, accountID, user.UUID_ENGINE_USER, it.EntityID, it.ID, uit.Fields(), it.Fields()))
+	log.Println("internal.rule.engine.executeData: Item fields updated successfully")
+	return nil
+}
+
+func (eng *Engine) updateRelatedItems(ctx context.Context, accountID, srcEntityID, srcItemID, actorEntityID string, templateItem item.NewItem, next string, db *sqlx.DB) error {
+	var err error
+	connectedItems, err := connection.AllChild(ctx, db, accountID, srcEntityID, srcItemID, actorEntityID, next)
+	if err != nil {
+		return err
+	}
+
+	for _, childItem := range connectedItems { //each contact needs to get updated with the template.
+		err = eng.updateItemFields(ctx, accountID, actorEntityID, childItem.DstItemID, templateItem, db)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(connectedItems) == 1000 {
+		next = connectedItems[len(connectedItems)-1].ConnectionID
+		err = eng.updateRelatedItems(ctx, accountID, srcEntityID, srcItemID, actorEntityID, templateItem, next, db)
+		if err != nil {
+			return err
+		}
+	}
 	return err
 }
 

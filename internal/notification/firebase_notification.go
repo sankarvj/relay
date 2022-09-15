@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strconv"
+	"time"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
@@ -16,20 +18,29 @@ import (
 )
 
 type FirebaseNotification struct {
-	AccountID string
-	UserID    string
-	Subject   string
-	Body      string
-	SDKPath   string
+	AccountID    string
+	TargetUserID string
+	UserName     string
+	UserAvatar   string
+	CreatedAt    time.Time
+	Subject      string
+	Body         string
+	SDKPath      string
 }
 
 func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error {
-	clients, err := RetrieveClients(ctx, fbNotif.AccountID, fbNotif.UserID, db)
+	clients, err := RetrieveClients(ctx, fbNotif.AccountID, fbNotif.TargetUserID, db)
 	if err != nil {
 		return err
 	}
+	data := make(map[string]string, 0)
+	data["user_name"] = fbNotif.UserName
+	data["user_avatar"] = fbNotif.UserAvatar
+	data["created_at"] = fbNotif.CreatedAt.String()
+	data["type"] = strconv.Itoa(int(notifType))
+
 	for _, client := range clients {
-		err = FirebaseSend(fbNotif.Subject, fbNotif.Body, client.DeviceToken, fbNotif.SDKPath)
+		err = FirebaseSend(data, fbNotif.Subject, fbNotif.Body, client.DeviceToken, fbNotif.SDKPath)
 		if err != nil {
 			log.Println("*> expected error client err on firebaseSend: ", err)
 			//delete token here
@@ -42,7 +53,7 @@ func (fbNotif FirebaseNotification) Send(ctx context.Context, notifType Notifica
 	return nil
 }
 
-func FirebaseSend(subject, body string, registrationToken, adminSDKPath string) error {
+func FirebaseSend(data map[string]string, subject, body string, registrationToken, adminSDKPath string) error {
 	ctx := context.Background()
 	opt := option.WithCredentialsFile(adminSDKPath)
 	config := &firebase.Config{ProjectID: "relay-70013"}
@@ -61,6 +72,7 @@ func FirebaseSend(subject, body string, registrationToken, adminSDKPath string) 
 
 	// See documentation on defining a message payload.
 	message := &messaging.Message{
+		Data: data,
 		Notification: &messaging.Notification{
 			Title: subject,
 			Body:  body,

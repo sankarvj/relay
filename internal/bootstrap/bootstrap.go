@@ -283,14 +283,6 @@ func BootCRM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 	}
 	fmt.Println("\t\t\tBootstrap:CRM `samples` functions completed successfully")
 
-	//event props
-	fmt.Println("\t\t\tBootstrap:CRM `event props` functions started")
-	err = crm.AddProps(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "\t\t\tBootstrap:CRM `event props` functions failed")
-	}
-	fmt.Println("\t\t\tBootstrap:CRM `event props` functions completed successfully")
-
 	//all done
 	fmt.Printf("\nBootstrap:CRM ENDED successfully for the accountID: %s\n", accountID)
 
