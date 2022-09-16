@@ -199,6 +199,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DisplayName: "Total revenue",
 		DataType:    entity.TypeNumber,
 		DomType:     entity.DomText,
+		Meta:        map[string]string{entity.MetaKeyCalc: entity.MetaCalcSum},
 	}
 
 	timeZoneFieldID := uuid.New().String()
@@ -235,6 +236,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DisplayName: "tags",
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
+		Meta:        map[string]string{entity.MetaKeyCalc: entity.MetaCalcAggr},
 		Field: &entity.Field{
 			Key:      "element",
 			DataType: entity.TypeString,
@@ -244,10 +246,11 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 	return []entity.Field{firstNameField, lastNameField, jobTitleField, emailField, mobileField, npsField, lfStageField, leadStatusField, avatarField, ownerField, associatedCompaniesField, createdByUserField, becameACustomerDateField, totalRevenueField, timeZoneField, websiteURLField, twitterUserNameField, tagsField}
 }
 
-func ContactVals(contactEntity entity.Entity, firstName, email, leadStatusItemID string) map[string]interface{} {
+func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadStatusItemID string) map[string]interface{} {
 
 	namedVals := map[string]interface{}{
 		"first_name":      firstName,
+		"last_name":       lastName,
 		"email":           email,
 		"mobile_numbers":  []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
 		"nps_score":       randomdata.Number(100),

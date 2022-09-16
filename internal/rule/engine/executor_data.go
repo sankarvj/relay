@@ -61,21 +61,28 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 }
 
 func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityID, actorItemID string, templateItem item.NewItem, db *sqlx.DB) error {
+
+	e, err := entity.Retrieve(ctx, accountID, actorEntityID, db)
+	if err != nil {
+		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
+		return err
+	}
+
 	it, err := item.Retrieve(ctx, actorEntityID, actorItemID, db)
 	if err != nil {
 		return err
 	}
 
-	updatedFields := make(map[string]interface{}, 0)
-	for key, val := range it.Fields() {
-		if templateItem.Fields[key] != "" && templateItem.Fields[key] != nil {
-			updatedFields[key] = templateItem.Fields[key]
-		} else {
-			updatedFields[key] = val
+	fields := e.FieldsIgnoreError()
+	itemFields := it.Fields()
+
+	for _, f := range fields {
+		if templateItem.Fields[f.Key] != "" && templateItem.Fields[f.Key] != nil {
+			itemFields[f.Key] = f.CalcFunc().Calc(itemFields[f.Key], templateItem.Fields[f.Key])
 		}
 	}
 
-	_, err = item.UpdateFields(ctx, db, actorEntityID, actorItemID, updatedFields)
+	_, err = item.UpdateFields(ctx, db, actorEntityID, actorItemID, itemFields)
 	if err != nil {
 		return err
 	}

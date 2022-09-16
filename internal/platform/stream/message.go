@@ -22,8 +22,8 @@ const (
 
 const (
 	StateQueued          = 0
-	StateWorkflow        = 1
-	StateConnection      = 2
+	StateConnection      = 1
+	StateWorkflow        = 2
 	StateCategory        = 3
 	StateWho             = 4
 	StateNotification    = 5

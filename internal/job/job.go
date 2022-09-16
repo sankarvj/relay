@@ -85,17 +85,6 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
 	m.State = ls.State
 
-	//workflows
-	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
-		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.SDB)
-		if err != nil {
-			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-			return err
-		} else {
-			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
-		}
-	}
-
 	//connect
 	if m.State < stream.StateConnection {
 		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, "created", j.DB)
@@ -104,6 +93,17 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 			return err
 		} else {
 			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+		}
+	}
+
+	//workflows
+	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, nil, it.Fields(), j.DB, j.SDB)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
 		}
 	}
 
@@ -195,17 +195,6 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
 	m.State = ls.State
 
-	//workflows
-	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
-		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.SDB)
-		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
-			return err
-		} else {
-			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
-		}
-	}
-
 	//connections
 	if m.State < stream.StateConnection {
 		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
@@ -214,6 +203,17 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 			return err
 		} else {
 			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+		}
+	}
+
+	//workflows
+	if m.UserID != user.UUID_SYSTEM_USER && m.State < stream.StateWorkflow { // for now, preventing loops in workflows by this check!
+		err = j.actOnWorkflows(ctx, e, m.ItemID, m.OldFields, m.NewFields, j.DB, j.SDB)
+		if err != nil {
+			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWorkflows. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Workflow", stream.StateWorkflow)
 		}
 	}
 
@@ -546,7 +546,6 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 		case flow.FlowTypeEventUpdate:
 			dirtyFlows := flow.DirtyFlows(ctx, flows, dirtyFields)
 			if len(dirtyFlows) > 0 {
-				log.Printf("dirtyFlows --> %+v ", dirtyFlows)
 				errs = flow.Trigger(ctx, db, sdb, itemID, dirtyFlows, eng)
 			}
 		case flow.FlowTypeEventCreate:
@@ -555,7 +554,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 	}
 
 	err = actOnPipelines(ctx, eng, e, itemID, dirtyFields, newFields, db, sdb)
-	if err != nil {
+	if err != nil && err != flow.ErrFlowActive {
 		errs = append(errs, err)
 	}
 
@@ -575,7 +574,7 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 	log.Println("*********> debug internal.job actOnPipelines kicked in")
 	for _, fi := range e.FieldsIgnoreError() {
 
-		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
+		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && dirtyField != nil && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
 			nodeID := dirtyField.([]interface{})[0].(string)
 			err := flow.DirectTrigger(ctx, db, sdb, e.AccountID, flowID, nodeID, e.ID, itemID, eng)

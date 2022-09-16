@@ -52,6 +52,11 @@ type CoreEntity struct {
 	StatusEntity      entity.Entity
 	TypeEntity        entity.Entity
 	InviteEntity      entity.Entity
+	ContactEntity     entity.Entity
+	CompanyEntity     entity.Entity
+	TaskEntity        entity.Entity
+	DealEntity        entity.Entity
+	ProjectEntity     entity.Entity
 }
 
 type CoreItem struct {

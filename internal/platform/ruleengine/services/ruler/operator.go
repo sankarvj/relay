@@ -47,7 +47,7 @@ func Compare(left, right interface{}) bool {
 func compare(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: eq and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: eq and error:", c.err)
 		return false
 	}
 
@@ -69,7 +69,7 @@ func compare(left, right Operand) bool {
 func differ(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: !eq and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: !eq and error:", c.err)
 		return false
 	}
 
@@ -91,7 +91,7 @@ func differ(left, right Operand) bool {
 func greaterThan(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: gt and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: gt and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -104,7 +104,7 @@ func greaterThan(left, right Operand) bool {
 func lesserThan(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: lt and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: lt and error:", c.err)
 		return false
 	}
 
@@ -118,7 +118,7 @@ func lesserThan(left, right Operand) bool {
 func after(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: af and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: af and error:", c.err)
 		return false
 	}
 
@@ -132,7 +132,7 @@ func after(left, right Operand) bool {
 func before(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: bf and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: bf and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -145,7 +145,7 @@ func before(left, right Operand) bool {
 func between(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: bw and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: bw and error:", c.err)
 		return false
 	}
 
@@ -171,7 +171,7 @@ func in(left, right Operand) bool { // assumption: left is a interface list & ri
 	c := cast(left, right, false)
 	if c.err != nil {
 
-		log.Println("***> unexpected error occurred when comparing operands for operator: in and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: in and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {
@@ -188,7 +188,7 @@ func in(left, right Operand) bool { // assumption: left is a interface list & ri
 func notin(left, right Operand) bool { // assumption: left is a interface list & right is a simple string/number
 	c := cast(left, right, false)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: not in and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: not in and error:", c.err)
 		return false
 	}
 
@@ -215,7 +215,7 @@ func notin(left, right Operand) bool { // assumption: left is a interface list &
 func like(left, right Operand) bool {
 	c := cast(left, right, true)
 	if c.err != nil {
-		log.Println("***> unexpected error occurred when comparing operands for operator: lk and error:", c.err)
+		log.Println("***> expected error occurred when comparing operands for operator: lk and error:", c.err)
 		return false
 	}
 	switch c.leftDataType {

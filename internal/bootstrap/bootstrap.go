@@ -275,6 +275,14 @@ func BootCRM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 	}
 	fmt.Println("Bootstrap:CRM `boot` functions completed successfully")
 
+	//workflows
+	fmt.Println("Bootstrap:CRM `workflows` functions started")
+	err = crm.AddWorkflows(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:CRM `workflows` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:CRM `workflows` functions completed successfully")
+
 	//samples
 	fmt.Println("Bootstrap:CRM `samples` functions started")
 	err = crm.AddSamples(ctx, b)
@@ -309,6 +317,14 @@ func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 		return errors.Wrap(err, "\t\t\tBootstrap:CSM `boot` functions failed")
 	}
 	fmt.Println("\t\t\tBootstrap:CSM `boot` functions completed successfully")
+
+	//workflows
+	fmt.Println("Bootstrap:CSM `workflows` functions started")
+	err = csm.AddWorkflows(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:CSM `workflows` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:CSM `workflows` functions completed successfully")
 
 	//samples
 	fmt.Println("Bootstrap:CSM `samples` functions started")

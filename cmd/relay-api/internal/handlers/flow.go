@@ -236,6 +236,7 @@ func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModel
 		Description: f.Description,
 		Expression:  f.Expression,
 		Mode:        f.Mode,
+		State:       f.State,
 		Type:        f.Type,
 		Status:      f.Status,
 		Nodes:       nodes,

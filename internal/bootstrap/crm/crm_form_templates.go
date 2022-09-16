@@ -88,7 +88,7 @@ func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadS
 		case "total_revenue":
 			contactVals[f.Key] = fmt.Sprintf("{{%s.%s}}", actorEntity.ID, dealAmountKey)
 		case "tags":
-			contactVals[f.Key] = []interface{}{"enterprise_customer"}
+			contactVals[f.Key] = []interface{}{"Enterprise customer"}
 		}
 	}
 

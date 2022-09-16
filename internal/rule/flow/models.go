@@ -8,12 +8,13 @@ import (
 
 //FlowType is the type of flow
 const (
-	FlowTypeAll           = -1
-	FlowTypeUnknown       = 0
-	FlowTypeEntersSegment = 1
-	FlowTypeLeavesSegment = 2
-	FlowTypeEventCreate   = 3
-	FlowTypeEventUpdate   = 4
+	FlowTypeAll                 = -1
+	FlowTypeUnknown             = 0
+	FlowTypeEntersSegment       = 1
+	FlowTypeLeavesSegment       = 2
+	FlowTypeEventCreate         = 3
+	FlowTypeEventUpdate         = 4
+	FlowTypeEventCreateOrUpdate = 5
 )
 
 const (
@@ -26,6 +27,11 @@ const (
 const (
 	FlowStatusActive   = 0
 	FlowStatusInActive = 1
+)
+
+const (
+	FlowStateOnce    = 0
+	FlowStateAllTime = 1
 )
 
 // FlowCondition defines exists/entry conditions
@@ -47,6 +53,7 @@ type Flow struct {
 	Name        string    `db:"name" json:"name"`
 	Description string    `db:"description" json:"description"`
 	Mode        int       `db:"mode" json:"mode"`
+	State       int       `db:"state" json:"state"`
 	Type        int       `db:"type" json:"type"`
 	Condition   int       `db:"condition" json:"condition"`
 	Status      int       `db:"status" json:"status"`
@@ -72,6 +79,7 @@ type ViewModelFlow struct {
 	Description string                 `json:"description"`
 	Expression  string                 `json:"expression"`
 	Mode        int                    `json:"mode"`
+	State       int                    `json:"state"`
 	Type        int                    `json:"type"`
 	Status      int                    `json:"status"`
 	Nodes       []node.ViewModelNode   `json:"nodes"`
@@ -88,6 +96,7 @@ type NewFlow struct {
 	Expression  string                 `json:"expression"`
 	Tokens      map[string]interface{} `json:"tokens"`
 	Mode        int                    `json:"mode"`
+	State       int                    `json:"state"`
 	Type        int                    `json:"type"`
 	Status      int                    `json:"status"`
 	Condition   int                    `json:"condition"`

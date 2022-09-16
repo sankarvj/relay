@@ -84,6 +84,7 @@ const (
 	MetaKeyRow         = "row"
 	MetaMultiChoice    = "multi"
 	MetaKeyHTML        = "html"
+	MetaKeyCalc        = "calc"
 )
 
 const (
@@ -91,6 +92,9 @@ const (
 	MetaLayoutSubTitle = "sub-title"
 	MetaLayoutUsers    = "users"
 	MetaLayoutDate     = "date"
+
+	MetaCalcAggr = "aggr"
+	MetaCalcSum  = "sum"
 )
 
 //traits of the field
@@ -435,6 +439,13 @@ func (f Field) IsRequired() bool {
 		return val == "true"
 	}
 	return false
+}
+
+func (f Field) CalcFunc() Calculator {
+	if val, ok := f.Meta[MetaKeyCalc]; ok {
+		return pickCalculator(val)
+	}
+	return Unknown{}
 }
 
 func FieldsMap(entityFields []Field) map[string]interface{} {

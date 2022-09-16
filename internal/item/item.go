@@ -283,10 +283,10 @@ func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interf
 	for key, newItem := range newItemFields {
 		if oldItem, ok := oldItemFields[key]; ok {
 			if ruler.Compare(newItem, oldItem) {
-				log.Printf("internal.item diff : no change detected for key %s\n", key)
+				//log.Printf("internal.item diff : no change detected for key %s\n", key)
 				delete(diffFields, key)
 			} else {
-				log.Printf("internal.item diff : change captured for key %s\n", key)
+				//log.Printf("internal.item diff : change captured for key %s\n", key)
 			}
 		}
 	}

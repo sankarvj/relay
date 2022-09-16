@@ -9,14 +9,13 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
 )
 
-func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.Entity, *entity.Entity, *entity.Entity, error) {
-
+func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) error {
+	var err error
 	leadStatusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityLeadStatus)
 	if err != nil {
-		return nil, nil, nil, err
+		return err
 	}
 
 	companyEntity, err := entity.RetrieveFixedEntityAccountLevel(ctx, b.DB, b.AccountID, entity.FixedEntityCompanies)
@@ -25,14 +24,14 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 		comForms := forms.CompanyFields(b.OwnerEntity.ID, b.OwnerEntity.Key("email"))
 		companyEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityCompanies, "Companies", entity.CategoryData, entity.StateTeamLevel, false, true, true, comForms)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	} else if err == nil {
 		// update entity - companies with crm team-id
 		companyEntity.SharedTeamIds = append(companyEntity.SharedTeamIds, b.TeamID)
 		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, companyEntity.ID, companyEntity.SharedTeamIds, time.Now())
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	}
 
@@ -42,14 +41,14 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 		conForms := forms.ContactFields(b.OwnerEntity.ID, b.OwnerEntity.Key("name"), companyEntity.ID, companyEntity.Key("name"), leadStatusEntity.ID, leadStatusEntity.Key("name"))
 		contactEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityContacts, "Contacts", entity.CategoryData, entity.StateTeamLevel, false, true, true, conForms)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	} else if err == nil {
 		// update entity - contacts with crm team-id
 		contactEntity.SharedTeamIds = append(contactEntity.SharedTeamIds, b.TeamID)
 		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, contactEntity.ID, contactEntity.SharedTeamIds, time.Now())
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	}
 
@@ -59,7 +58,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 		fields := forms.TaskFields(contactEntity.ID, contactEntity.Key("first_name"), companyEntity.ID, companyEntity.Key("name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name"))
 		taskEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityTask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, fields)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 
 	} else if err == nil {
@@ -67,13 +66,16 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) (*entity.
 		taskEntity.SharedTeamIds = append(taskEntity.SharedTeamIds, b.TeamID)
 		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, taskEntity.ID, taskEntity.SharedTeamIds, time.Now())
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 	}
+	b.ContactEntity = contactEntity
+	b.CompanyEntity = companyEntity
+	b.TaskEntity = taskEntity
 
 	fmt.Println("\tCRM:BOOT Contacts/Companies/Task Entity Created/Update")
 
-	return &contactEntity, &companyEntity, &taskEntity, nil
+	return nil
 }
 
 func Boot(ctx context.Context, b *base.Base) error {
@@ -87,28 +89,28 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:BOOT Lead Status Entity Created")
 
-	conE, comE, _, err := CreateContactCompanyTaskEntity(ctx, b)
+	err = CreateContactCompanyTaskEntity(ctx, b)
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
 
 	// add entity - deal
-	dealEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id")))
+	b.DealEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDeals, "Deals", entity.CategoryData, entity.StateTeamLevel, false, true, false, DealFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Deals Entity Created")
 
 	// add entity - notes
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(conE.ID, conE.Key("first_name"), comE.ID, comE.Key("name"), dealEntity.ID, dealEntity.Key("deal_name")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityNote, "Notes", entity.CategoryNotes, entity.StateTeamLevel, false, false, false, NoteFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name"), b.DealEntity.ID, b.DealEntity.Key("deal_name")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Notes Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(conE.ID, comE.ID, dealEntity.ID, conE.Key("email"), conE.Key("first_name"), comE.Key("name"), dealEntity.Key("deal_name")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.DealEntity.ID, b.ContactEntity.Key("email"), b.ContactEntity.Key("first_name"), b.CompanyEntity.Key("name"), b.DealEntity.Key("deal_name")))
 	if err != nil {
 		return err
 	}
@@ -124,8 +126,37 @@ func Boot(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
-func AddSamples(ctx context.Context, b *base.Base) error {
+func AddWorkflows(ctx context.Context, b *base.Base) error {
+	var err error
+	err = addAutomations(ctx, b)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Automations Created")
 
+	err = b.AddLayouts(ctx, "card", b.CompanyEntity.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Sample Layouts Created For All The Above Entities")
+
+	err = b.AddSegments(ctx, b.ContactEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = b.AddSegments(ctx, b.CompanyEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = b.AddSegments(ctx, b.DealEntity.ID)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Sample Segments Created For Contacts/Companies/Deals")
+	return nil
+}
+
+func AddSamples(ctx context.Context, b *base.Base) error {
 	emailsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmails)
 	if err != nil {
 		return err
@@ -186,31 +217,6 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Deal Item Created")
 
-	err = addAutomations(ctx, b)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Automations Created")
-
-	err = b.AddLayouts(ctx, "card", companyEntity.ID)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Sample Layouts Created For All The Above Entities")
-
-	err = b.AddSegments(ctx, contactEntity.ID)
-	if err != nil {
-		return err
-	}
-	err = b.AddSegments(ctx, companyEntity.ID)
-	if err != nil {
-		return err
-	}
-	err = b.AddSegments(ctx, dealEntity.ID)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tCRM:SAMPLES Sample Segments Created For Contacts/Companies/Deals")
 	return nil
 }
 
@@ -293,22 +299,22 @@ func addProps(ctx context.Context, b *base.Base) error {
 func addContacts(ctx context.Context, b *base.Base, contactEntity, taskEntity entity.Entity) error {
 	var err error
 	// add contact item
-	b.ContactItemMatt, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Matt Murdock", "matt@starkindst.com", b.LeadStatusItemNew.ID), nil)
+	b.ContactItemMatt, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Matt", "Murdock", "matt@starkindst.com", b.LeadStatusItemNew.ID), nil)
 	if err != nil {
 		return err
 	}
 	// add contact item
-	b.ContactItemNatasha, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Natasha Romanova", "natasha@randcorp.com", b.LeadStatusItemConnected.ID), nil)
+	b.ContactItemNatasha, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Natasha", "Romanova", "natasha@randcorp.com", b.LeadStatusItemConnected.ID), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce Banner", "bruce@alumina.com", b.LeadStatusItemAttempted.ID), nil)
+	_, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bruce", "Banner", "bruce@alumina.com", b.LeadStatusItemAttempted.ID), nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bucky Barnes", "bucky@dailybugle.com", b.LeadStatusItemBadTiming.ID), nil)
+	_, err = b.ItemAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, forms.ContactVals(contactEntity, "Bucky", "Barnes", "bucky@dailybugle.com", b.LeadStatusItemBadTiming.ID), nil)
 	if err != nil {
 		return err
 	}
@@ -412,42 +418,29 @@ func addLeadStatus(ctx context.Context, leadStatusEntity entity.Entity, b *base.
 }
 
 func addDeals(ctx context.Context, b *base.Base, dealEntity, contactEntity entity.Entity) error {
-	contacts, err := item.EntityItems(ctx, b.AccountID, contactEntity.ID, b.DB)
-	if err != nil {
-		return err
-	}
-
-	var mattID string
-	var natashaID string
-	if len(contacts) > 1 {
-		mattID = contacts[0].ID
-	} else if len(contacts) > 0 {
-		natashaID = contacts[0].ID
-	}
-
-	_, err = b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals(dealEntity, "Base Deal", 1000, mattID, natashaID, b.SalesPipelineFlowID), nil)
+	_, err := b.ItemAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, DealVals(dealEntity, "Base Deal", 1000, b.ContactItemMatt.ID, b.ContactItemNatasha.ID, b.SalesPipelineFlowID), nil)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func addTickets(ctx context.Context, b *base.Base, dealEntity entity.Entity, dealItem1 item.Item) error {
-	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTickets)
-	if err != nil {
-		return err
-	}
-	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
-	if err != nil {
-		return err
-	}
-	statusItems, err := item.List(ctx, b.AccountID, statusEntity.ID, b.DB)
-	if err != nil {
-		return err
-	}
-	_, err = b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals(ticketEntity, "My laptop is not working", statusItems[0].ID), map[string][]string{dealEntity.ID: {dealItem1.ID}})
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func addTickets(ctx context.Context, b *base.Base, dealEntity entity.Entity, dealItem1 item.Item) error {
+// 	ticketEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTickets)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	statusItems, err := item.List(ctx, b.AccountID, statusEntity.ID, b.DB)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	_, err = b.ItemAdd(ctx, ticketEntity.ID, uuid.New().String(), b.UserID, TicketVals(ticketEntity, "My laptop is not working", statusItems[0].ID), map[string][]string{dealEntity.ID: {dealItem1.ID}})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }

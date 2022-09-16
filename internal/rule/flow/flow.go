@@ -55,7 +55,11 @@ func List(ctx context.Context, entityIDs []string, fm int, ft int, db *sqlx.DB) 
 
 	types := []int{ft}
 	if ft == FlowTypeAll {
-		types = []int{FlowTypeUnknown, FlowTypeEntersSegment, FlowTypeLeavesSegment, FlowTypeEventCreate, FlowTypeEventUpdate}
+		types = []int{FlowTypeUnknown, FlowTypeEntersSegment, FlowTypeLeavesSegment, FlowTypeEventCreate, FlowTypeEventUpdate, FlowTypeEventCreateOrUpdate}
+	}
+
+	if ft == FlowTypeEventCreate || ft == FlowTypeEventUpdate {
+		types = []int{ft, FlowTypeEventCreateOrUpdate}
 	}
 
 	q, args, err := sqlx.In(`SELECT * FROM flows where entity_id IN (?) AND mode IN (?) AND type IN (?) LIMIT 100;`, entityIDs, modes, types)
@@ -90,6 +94,7 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 		Expression:  nf.Expression,
 		Tokenb:      &tokenB,
 		Mode:        nf.Mode,
+		State:       nf.State,
 		Type:        nf.Type,
 		Condition:   nf.Condition,
 		Status:      FlowStatusActive,
@@ -98,12 +103,12 @@ func Create(ctx context.Context, db *sqlx.DB, nf NewFlow, now time.Time) (Flow, 
 	}
 
 	const q = `INSERT INTO flows
-		(flow_id, account_id, entity_id, name, description, expression, tokenb, type, mode, condition, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+		(flow_id, account_id, entity_id, name, description, expression, tokenb, type, mode, state, condition, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Tokenb, f.Type, f.Mode, f.Condition, f.Status,
+		f.ID, f.AccountID, f.EntityID, f.Name, f.Description, f.Expression, f.Tokenb, f.Type, f.Mode, f.State, f.Condition, f.Status,
 		f.CreatedAt, f.UpdatedAt,
 	)
 	if err != nil {
@@ -123,12 +128,13 @@ func Update(ctx context.Context, db *sqlx.DB, uf NewFlow, now time.Time) (Flow, 
 		"description" = $4,
 		"type" = $5,
 		"mode" = $6,
-		"expression" = $7,
-		"updated_at" = $8 
+		"state" = $7,
+		"expression" = $8,
+		"updated_at" = $9 
 		 WHERE flow_id = $1`
 
 	_, err := db.ExecContext(ctx, q, uf.ID,
-		uf.EntityID, uf.Name, uf.Description, uf.Type, uf.Mode, uf.Expression, now.Unix(),
+		uf.EntityID, uf.Name, uf.Description, uf.Type, uf.Mode, uf.State, uf.Expression, now.Unix(),
 	)
 	if err != nil {
 		return Flow{}, errors.Wrap(err, "updating flow")
@@ -280,7 +286,7 @@ func Trigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, itemID strin
 	triggerErrors := make([]error, 0)
 
 	//TODO what if the matched flows has 1 million records
-	aflows, err := ActiveFlows(ctx, ids(flows), db)
+	aflows, err := activeFlows(ctx, ids(flows), itemID, db)
 	if err != nil {
 		return append(triggerErrors, err)
 	}
@@ -295,21 +301,24 @@ func Trigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, itemID strin
 		af := activeFlowMap[f.ID]
 		n := node.RootNode(f.AccountID, f.ID, f.EntityID, itemID, f.Expression).UpdateMeta(f.EntityID, itemID, f.Type).UpdateVariables(f.EntityID, itemID)
 		if eng.RunExpEvaluator(ctx, db, sdb, n.AccountID, n.Expression, n.VariablesMap()) { //entry
-			if af.stopEntryTriggerFlow(f.Type) { //skip trigger if already active or of exit condition
+			if af.stopEntryTriggerFlow(f.Type, f.State, itemID) { //skip trigger if already active or of exit condition
 				err = ErrFlowActive
 			} else {
 				err = af.entryFlowTrigger(ctx, db, sdb, n, eng)
 			}
-		} else if f.Type == FlowTypeLeavesSegment {
-			if af.stopExitTriggerFlow(f.Type) { //skip trigger if new or inactive or not allowed( i.e ftype != segment).
-				err = ErrFlowInActive
-			} else {
-				err = af.exitFlowTrigger(ctx, db, sdb, n, eng)
-			}
 		}
+		// else if f.Type == FlowTypeLeavesSegment {
+		// 	if af.stopExitTriggerFlow(f.Type) { //skip trigger if new or inactive or not allowed( i.e ftype != segment).
+		// 		err = ErrFlowInActive
+		// 	} else {
+		// 		err = af.exitFlowTrigger(ctx, db, sdb, n, eng)
+		// 	}
+		// }
 		//concat errors in the loop. nil if no error exists
-		err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", f.ID)
-		triggerErrors = append(triggerErrors, err)
+		if err != nil && err != ErrFlowActive {
+			err = errors.Wrapf(err, "error in entry/exit trigger for flowID %q", f.ID)
+			triggerErrors = append(triggerErrors, err)
+		}
 	}
 
 	if len(triggerErrors) > 0 {

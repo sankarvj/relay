@@ -82,14 +82,28 @@ func RetrieveAF(ctx context.Context, db *sqlx.DB, itemID, flowID string) (Active
 	return af, nil
 }
 
-// ActiveFlows get the active flows entries for the dirty flow ids if exists
-// TODO pagination. This is called from the UI
+// ActiveFlows get the active flows entries for the dirty flow ids if exists for the particular item
+func activeFlows(ctx context.Context, flowIDs []string, itemID string, db *sqlx.DB) ([]ActiveFlow, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.activeFlows")
+	defer span.End()
+
+	activeFlows := []ActiveFlow{}
+	const q = `SELECT * FROM active_flows where flow_id = any($1) and item_id = $2 LIMIT 1000`
+
+	if err := db.SelectContext(ctx, &activeFlows, q, pq.Array(flowIDs), itemID); err != nil {
+		return activeFlows, errors.Wrap(err, "selecting active flows")
+	}
+
+	return activeFlows, nil
+}
+
+//Remove this method. Useful only in one place which is not necessary
 func ActiveFlows(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveFlow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.activeFlows")
 	defer span.End()
 
 	activeFlows := []ActiveFlow{}
-	const q = `SELECT * FROM active_flows where flow_id = any($1)`
+	const q = `SELECT * FROM active_flows where flow_id = any($1) LIMIT 10000`
 
 	if err := db.SelectContext(ctx, &activeFlows, q, pq.Array(flowIDs)); err != nil {
 		return activeFlows, errors.Wrap(err, "selecting active flows")
@@ -128,8 +142,19 @@ func (af ActiveFlow) exitFlowTrigger(ctx context.Context, db *sqlx.DB, sdb *data
 	return startJobFlow(ctx, db, sdb, n, eng)
 }
 
-func (af ActiveFlow) stopEntryTriggerFlow(ftype int) bool {
-	return (ftype == FlowTypeEntersSegment) && af.IsActive
+//stops re-running the flow for an item if it already active
+func (af ActiveFlow) stopEntryTriggerFlow(ftype, fstate int, itemID string) bool {
+	isRanAlready := af.IsActive && af.ItemID == itemID && fstate == FlowStateOnce && (ftype == FlowTypeEntersSegment || ftype == FlowTypeEventUpdate || ftype == FlowTypeEventCreate || ftype == FlowTypeEventCreateOrUpdate)
+	if isRanAlready {
+		log.Println("------------------------########################################------------------------")
+		log.Println("------------------------########################################------------------------")
+		log.Println("------------------------##################I#####################------------------------")
+		log.Println("------------------------#################RAN####################------------------------")
+		log.Println("------------------------###############ALREADY##################------------------------")
+		log.Println("------------------------########################################------------------------")
+		log.Println("------------------------########################################------------------------")
+	}
+	return isRanAlready
 }
 
 func (af ActiveFlow) stopExitTriggerFlow(ftype int) bool {
@@ -137,7 +162,7 @@ func (af ActiveFlow) stopExitTriggerFlow(ftype int) bool {
 }
 
 func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {
-	if af.Life == 0 {
+	if af.Life == 0 || af.ItemID != itemID {
 		af.AccountID = accountID
 		af.FlowID = flowID
 		af.ItemID = itemID
