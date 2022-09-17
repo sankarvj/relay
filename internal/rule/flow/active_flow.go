@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
@@ -26,12 +28,12 @@ func CreateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) (ActiveFlow, erro
 	defer span.End()
 
 	const q = `INSERT INTO active_flows
-		(account_id,flow_id, item_id, node_id, is_active, life)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(account_id,flow_id, item_id, node_id, is_active, life, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	_, err := db.ExecContext(
 		ctx, q,
-		af.AccountID, af.FlowID, af.ItemID, af.NodeID, af.IsActive, af.Life,
+		af.AccountID, af.FlowID, af.ItemID, af.NodeID, af.IsActive, af.Life, af.CreatedAt, af.UpdatedAt,
 	)
 	if err != nil {
 		return ActiveFlow{}, errors.Wrap(err, "inserting active_flow")
@@ -48,10 +50,11 @@ func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
 	const q = `UPDATE active_flows SET
 		"node_id" = $3, 
 		"is_active" = $4,
-		"life" = $5
+		"life" = $5,
+		"updated_At" = $6 
 		WHERE item_id = $1 AND flow_id = $2` //should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, af.ItemID, af.FlowID,
-		af.NodeID, af.IsActive, af.Life,
+		af.NodeID, af.IsActive, af.Life, af.UpdatedAt,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating active flow")
@@ -82,7 +85,7 @@ func RetrieveAF(ctx context.Context, db *sqlx.DB, itemID, flowID string) (Active
 	return af, nil
 }
 
-// ActiveFlows get the active flows entries for the dirty flow ids if exists for the particular item
+// activeFlows get the active flows entries for the dirty flow ids if exists for the particular item
 func activeFlows(ctx context.Context, flowIDs []string, itemID string, db *sqlx.DB) ([]ActiveFlow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.activeFlows")
 	defer span.End()
@@ -98,14 +101,16 @@ func activeFlows(ctx context.Context, flowIDs []string, itemID string, db *sqlx.
 }
 
 //Remove this method. Useful only in one place which is not necessary
-func ActiveFlows(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveFlow, error) {
+func ActiveFlows(ctx context.Context, accountID string, flowIDs []string, page int, db *sqlx.DB) ([]ActiveFlow, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeFlow.activeFlows")
 	defer span.End()
 
-	activeFlows := []ActiveFlow{}
-	const q = `SELECT * FROM active_flows where flow_id = any($1) LIMIT 10000`
+	offset := page * util.PageLimt
 
-	if err := db.SelectContext(ctx, &activeFlows, q, pq.Array(flowIDs)); err != nil {
+	activeFlows := []ActiveFlow{}
+	const q = `SELECT * FROM active_flows where account_id = $1 AND flow_id = any($2) order by updated_at offset $3 LIMIT $4`
+
+	if err := db.SelectContext(ctx, &activeFlows, q, accountID, pq.Array(flowIDs), offset, util.PageLimt); err != nil {
 		return activeFlows, errors.Wrap(err, "selecting active flows")
 	}
 
@@ -162,6 +167,7 @@ func (af ActiveFlow) stopExitTriggerFlow(ftype int) bool {
 }
 
 func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, itemID string) error {
+	now := time.Now()
 	if af.Life == 0 || af.ItemID != itemID {
 		af.AccountID = accountID
 		af.FlowID = flowID
@@ -169,6 +175,8 @@ func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowI
 		af.NodeID = nodeID
 		af.IsActive = true
 		af.Life = 1
+		af.CreatedAt = now.UTC()
+		af.UpdatedAt = now.UTC().Unix()
 		_, err := CreateAF(ctx, db, af)
 		return err
 	}
@@ -177,11 +185,13 @@ func (af ActiveFlow) enableAF(ctx context.Context, db *sqlx.DB, accountID, flowI
 	}
 	af.IsActive = true
 	af.Life = af.Life + 1
+	af.UpdatedAt = now.Unix()
 	return UpdateAF(ctx, db, af)
 }
 
 func (af ActiveFlow) disableAF(ctx context.Context, db *sqlx.DB) error {
 	af.IsActive = false
+	af.UpdatedAt = time.Now().Unix()
 	return UpdateAF(ctx, db, af)
 }
 

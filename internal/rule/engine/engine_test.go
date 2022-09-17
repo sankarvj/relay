@@ -250,8 +250,8 @@ func TestDirectTrigger(t *testing.T) {
 			}
 			t.Logf("\t%s should flow with out error", tests.Success)
 
-			afs, _ := flow.ActiveFlows(tests.Context(), []string{flowID}, db) //pipeline-id
-			ans, _ := flow.ActiveNodes(tests.Context(), []string{flowID}, db) //pipeline-id
+			afs, _ := flow.ActiveFlows(tests.Context(), accountID, []string{flowID}, 0, db) //pipeline-id
+			ans, _ := flow.ActiveNodes(tests.Context(), accountID, []string{flowID}, 0, db) //pipeline-id
 			log.Printf("afs >>>>>>>>>>>>>>>>>>>>>> %v", afs)
 			log.Printf("ans >>>>>>>>>>>>>>>>>>>>>> %v", ans)
 

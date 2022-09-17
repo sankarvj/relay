@@ -93,9 +93,10 @@ type ViewModelNode struct {
 }
 
 type ViewModelActiveNode struct {
-	ID       string `json:"id"`
-	IsActive bool   `json:"is_active"`
-	Life     int    `json:"life"`
+	ID        string    `json:"id"`
+	IsActive  bool      `json:"is_active"`
+	Life      int       `json:"life"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // NewNode has information needed to creat new node

@@ -108,7 +108,7 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp s
 		if len(flows) > 0 {
 			vmf := createViewModelFlow(flows[0], nil)
 			gOne.SelectedFlow = &vmf
-			gOne.Stages, err = viewModelStages(ctx, gOne.SelectedFlow.ID, db)
+			gOne.Stages, err = viewModelStages(ctx, accountID, gOne.SelectedFlow.ID, db)
 			if err != nil {
 				return err
 			}
@@ -257,8 +257,8 @@ func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID strin
 	}
 }
 
-func viewModelStages(ctx context.Context, flowID string, db *sqlx.DB) ([]ViewModelStage, error) {
-	nodes, err := node.NodeActorsList(ctx, flowID, db)
+func viewModelStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]ViewModelStage, error) {
+	nodes, err := node.NodeActorsList(ctx, accountID, flowID, db)
 	if err != nil {
 		return nil, err
 	}

@@ -4,27 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"go.opencensus.io/trace"
 )
 
 //UpdateMeta patches the meta data right now it is used to save the UI web forms
-func (i *Item) UpdateMeta(ctx context.Context, db *sqlx.DB, name *string, meta map[string]interface{}) error {
+func UpdateFieldsWithMeta(ctx context.Context, db *sqlx.DB, i Item, name *string, fields, meta map[string]interface{}) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.UpdateMeta")
 	defer span.End()
 
 	i.Name = name
 	i.Metab = i.metabJson(meta)
+	i.Fieldsb = *marshalMap(fields)
+	i.UpdatedAt = time.Now().Unix()
 
 	const q = `UPDATE items SET
-		"metab" = $4,
-		"name"  = $5
+		"name"  = $4,
+		"metab" = $5,
+		"fieldsb" = $6,
+		"updated_at" = $7 
 		WHERE account_id = $1 AND entity_id = $2 AND item_id = $3`
 	_, err := db.ExecContext(ctx, q, i.AccountID, i.EntityID, i.ID,
-		i.Metab, i.Name,
+		i.Name, i.Metab, i.Fieldsb, i.UpdatedAt,
 	)
-	return err
+	return i, err
 }
 
 func (i Item) Meta() map[string]interface{} {
@@ -43,10 +48,10 @@ func (i Item) metabJson(meta map[string]interface{}) *string {
 	for key, value := range meta {
 		existingMeta[key] = value
 	}
-	return marshalMeta(existingMeta)
+	return marshalMap(existingMeta)
 }
 
-func marshalMeta(meta map[string]interface{}) *string {
+func marshalMap(meta map[string]interface{}) *string {
 	input, _ := json.Marshal(meta)
 	metab := string(input)
 	return &metab

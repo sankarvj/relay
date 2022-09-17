@@ -72,7 +72,7 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 		}
 
 		if len(flows) > 0 {
-			viewModelNodes, err = nodeStages(ctx, flows[0].ID, db)
+			viewModelNodes, err = nodeStages(ctx, accountID, flows[0].ID, db)
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 			flowIDs := it.Fields()[f.Key]
 			if flowIDs != nil {
 				flowID := flowIDs.([]interface{})[0]
-				viewModelNodes, err = nodeStages(ctx, flowID.(string), db)
+				viewModelNodes, err = nodeStages(ctx, accountID, flowID.(string), db)
 				if err != nil {
 					return err
 				}
@@ -109,8 +109,8 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 	return nil
 }
 
-func nodeStages(ctx context.Context, flowID string, db *sqlx.DB) ([]node.ViewModelNode, error) {
-	nodes, err := node.NodeActorsList(ctx, flowID, db)
+func nodeStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]node.ViewModelNode, error) {
+	nodes, err := node.NodeActorsList(ctx, accountID, flowID, db)
 	if err != nil {
 		return nil, err
 	}

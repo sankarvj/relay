@@ -54,10 +54,15 @@ func ReplaceHTML(src string) string {
 	}
 	replace(root, ch)
 	if ch.isActive { // render HTML only for HTML strings
-		return renderNode(root)
-	} else {
-		return src
+		src = renderNode(root)
 	}
+
+	src = strings.Replace(src, `\"`, "", -1)
+	src = strings.Replace(src, `<html><head></head><body><p>`, "", -1)
+	src = strings.Replace(src, `</p></head></body></html>`, "", -1)
+	src = strings.Replace(src, `</p></body></html>`, "", -1)
+
+	return src
 
 }
 
@@ -65,7 +70,8 @@ func renderNode(n *html.Node) string {
 	var buf bytes.Buffer
 	w := io.Writer(&buf)
 	html.Render(w, n)
-	return buf.String()
+	escaped := html.UnescapeString(buf.String())
+	return escaped
 }
 
 func replace(n *html.Node, ch *CodeHTML) {

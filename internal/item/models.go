@@ -4,6 +4,20 @@ import (
 	"time"
 )
 
+//State for the item specifies when to associate a item to the lists
+const (
+	StateDefault   = 0
+	StateBluePrint = 1 //used when adding blueprint item in the workflow
+	StateWebForm   = 2
+)
+
+//Type for the item is still open we can use it for anything
+const (
+	TypeDefault = 0
+	TypeDummy   = 1
+	TypeForm    = 2
+)
+
 // Item represents the individual unit of entity
 type Item struct {
 	ID        string    `db:"item_id" json:"id"`
@@ -61,16 +75,10 @@ type UpdateItem struct {
 	Metab   *string `json:"metab"`
 }
 
-//State for the item specifies when to associate a item to the lists
-const (
-	StateDefault   = 0
-	StateBluePrint = 1 //used when adding blueprint item in the workflow
-	StateWebForm   = 2
-)
-
-//Type for the item is still open we can use it for anything
-const (
-	TypeDefault = 0
-	TypeDummy   = 1
-	TypeForm    = 2
-)
+func MakeItem(bp bool) Item {
+	item := Item{}
+	if bp {
+		item.State = StateBluePrint
+	}
+	return item
+}

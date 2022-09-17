@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"go.opencensus.io/trace"
@@ -28,12 +30,13 @@ func CreateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) (ActiveNode, erro
 	defer span.End()
 
 	const q = `INSERT INTO active_nodes
-		(account_id, flow_id, node_id, entity_id, item_id, is_active, life)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		(account_id, flow_id, node_id, entity_id, item_id, is_active, life, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := db.ExecContext(
 		ctx, q,
 		an.AccountID, an.FlowID, an.NodeID, an.EntityID, an.ItemID, an.IsActive, an.Life,
+		an.CreatedAt, an.UpdatedAt,
 	)
 	if err != nil {
 		return ActiveNode{}, errors.Wrap(err, "inserting active_node")
@@ -49,10 +52,11 @@ func UpdateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) error {
 
 	const q = `UPDATE active_nodes SET
 		"is_active" = $4,
-		"life" = $5
+		"life" = $5,
+		"updated_At" = $6 
 		WHERE item_id = $1 AND flow_id = $2 AND node_id = $3` //TODO: should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, an.ItemID, an.FlowID, an.NodeID,
-		an.IsActive, an.Life,
+		an.IsActive, an.Life, an.UpdatedAt,
 	)
 	if err != nil {
 		return errors.Wrap(err, "updating active flow")
@@ -84,28 +88,32 @@ func RetrieveAN(ctx context.Context, db *sqlx.DB, nodeID, itemID, flowID string)
 }
 
 // ActiveNodes get the active nodes entries for the given flows
-func ActiveNodes(ctx context.Context, flowIDs []string, db *sqlx.DB) ([]ActiveNode, error) {
+func ActiveNodes(ctx context.Context, accountID string, flowIDs []string, page int, db *sqlx.DB) ([]ActiveNode, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.ActiveNodes")
 	defer span.End()
 
-	activeNodes := []ActiveNode{}
-	const q = `SELECT * FROM active_nodes where flow_id = any($1)`
+	offset := page * util.PageLimt
 
-	if err := db.SelectContext(ctx, &activeNodes, q, pq.Array(flowIDs)); err != nil {
+	activeNodes := []ActiveNode{}
+	const q = `SELECT * FROM active_nodes where account_id = $1 AND flow_id = any($2) order by updated_at offset $3 LIMIT $4`
+
+	if err := db.SelectContext(ctx, &activeNodes, q, accountID, pq.Array(flowIDs), offset, util.PageLimt); err != nil {
 		return activeNodes, errors.Wrap(err, "selecting active nodes")
 	}
 
 	return activeNodes, nil
 }
 
-func ActiveNodesForItem(ctx context.Context, accountID, flowID, itemID string, db *sqlx.DB) ([]ActiveNode, error) {
+func ActiveNodesForItem(ctx context.Context, accountID, flowID, itemID string, page int, db *sqlx.DB) ([]ActiveNode, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.rule.flow.activeNode.ActiveNodesForItem")
 	defer span.End()
 
-	activeNodes := []ActiveNode{}
-	const q = `SELECT * FROM active_nodes where account_id = $1 AND flow_id = $2 AND item_id = $3`
+	offset := page * util.PageLimt
 
-	if err := db.SelectContext(ctx, &activeNodes, q, accountID, flowID, itemID); err != nil {
+	activeNodes := []ActiveNode{}
+	const q = `SELECT * FROM active_nodes where account_id = $1 AND flow_id = $2 AND item_id = $3 order by updated_at offset $4 LIMIT $5`
+
+	if err := db.SelectContext(ctx, &activeNodes, q, accountID, flowID, itemID, offset, util.PageLimt); err != nil {
 		return activeNodes, errors.Wrap(err, "selecting active nodes")
 	}
 
@@ -173,6 +181,7 @@ func runJob(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node, 
 }
 
 func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, entityID, itemID string) (bool, error) {
+	now := time.Now()
 	an, err := RetrieveAN(ctx, db, nodeID, itemID, flowID)
 	if err != nil && err != ErrNotFound {
 		return false, err
@@ -185,10 +194,13 @@ func upsertAN(ctx context.Context, db *sqlx.DB, accountID, flowID, nodeID, entit
 		an.IsActive = true
 		an.NodeID = nodeID
 		an.Life = 1
+		an.CreatedAt = now.UTC()
+		an.UpdatedAt = now.UTC().Unix()
 		_, err = CreateAN(ctx, db, an)
 	} else {
 		an.IsActive = true
 		an.Life = an.Life + 1
+		an.UpdatedAt = now.Unix()
 		err = UpdateAN(ctx, db, an)
 	}
 	return an.Life > 1, err

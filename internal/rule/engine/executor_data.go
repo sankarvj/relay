@@ -27,6 +27,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 	}
 
 	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
+
 	templateItem := item.NewItem{
 		ID:        uuid.New().String(),
 		UserID:    util.String(user.UUID_ENGINE_USER),

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -247,7 +248,7 @@ func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string,
 
 	valueAddedFields := ce.ValueAdd(ni.Fields)
 	for _, f := range valueAddedFields {
-		if f.IsTitleLayout() && f.Value != nil {
+		if f.IsTitleLayout() && f.Value != nil && !strings.HasPrefix(f.Value.(string), "<") {
 			s := f.Value.(string)
 			ni.Name = &s
 		}

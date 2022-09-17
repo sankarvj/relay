@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -36,26 +37,45 @@ If the items count is equal to 1, we will populate all the available choices if 
 
 func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.Item, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
 
+	//populate base entity only in the blue print case
+	var be entity.Entity
+	if len(srcMap) > 0 && len(items) > 0 && items[0].State == item.StateBluePrint {
+		keys := make([]string, 0, len(srcMap))
+		for k := range srcMap {
+			keys = append(keys, k)
+		}
+		be, _ = entity.Retrieve(ctx, accountID, keys[0], db)
+	}
+
 	refIds := populateExistingItemIds(items, fields)
 	// 1.populate referenceIDS in the map format <fieldKey: []ExistingItemIds{} + []BaseItemIds{}>
 	// 2.based on the value populated update the choices
 	for i := 0; i < len(fields); i++ {
 		f := &fields[i]
 		ids := refIds[f.Key]
-		if srcItemID, ok := srcMap[f.RefID]; ok && srcItemID != "" { // if the parent item exists please add it to the item
+		if srcItemID, ok := srcMap[f.RefID]; ok && srcItemID != "" { // if the parent item exists please add it to the item. why? we are silently associating the parent item with the child
 			if ids == nil {
 				ids = []interface{}{}
 			}
 			ids = append(ids, srcItemID)
 		}
 		updateChoices(ctx, db, accountID, entityID, f, ids, eng)
+
+		//updating base choices for blue print case
+		if len(items) > 0 && items[0].State == item.StateBluePrint {
+			if f.IsReference() {
+				updateBPChoices(&fields[i], &be)
+			} else if f.IsNode() {
+				updateBPChoices(&fields[i], &be)
+			}
+		}
 	}
 
-	//dependent logic during list/retrive/edit. this logic should not get executed in create or blueprint create
+	//dependent logic during list/retrive/edit. this logic should not get executed in create or blueprint/webform create
 	//the values evaluted using this logic should be attached to each item
 	for _, i := range items {
 
-		if i.ID == "" || i.State == item.StateWebForm { // skip create/bp
+		if i.ID == "" || i.State == item.StateWebForm || i.State == item.StateBluePrint { // skip create/bp
 			continue
 		}
 
@@ -209,8 +229,13 @@ func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 	}
 }
 
-//ChoicesBluePrint populate the choices of the template fields and also sets the one by evaluting the parent which is creating it
-func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
+//updateBPChoices populate the choices of the template fields and also sets the one by evaluting the parent which is creating it
+func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
+
+	if sourceEntity == nil {
+		return
+	}
+
 	sourceFields := sourceEntity.FieldsIgnoreError()
 
 	//Adding parents existing items to the child choices
@@ -226,7 +251,6 @@ func ChoicesBluePrint(f *entity.Field, sourceEntity entity.Entity) {
 				f.Value = []interface{}{fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, sf.Key)}
 				f.SetMeta("config")
 			}
-
 			break
 		}
 	}
@@ -262,8 +286,10 @@ func removeDuplicateValues(intSlice []interface{}) []interface{} {
 	list := []interface{}{}
 	for _, entry := range intSlice {
 		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
+			if _, err := uuid.Parse(entry.(string)); err == nil { //invalidating expression ids {{something.id}}
+				keys[entry] = true
+				list = append(list, entry)
+			}
 		}
 	}
 	return list

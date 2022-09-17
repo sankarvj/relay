@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -218,22 +219,17 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//retriving the existing item don't change the order of execution
-	existingItem, err := item.Retrieve(ctx, entityID, ni.ID, i.db)
+	existingItem, err := item.Retrieve(ctx, entityID, itemID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "error retriving item")
 	}
 
-	it, err := item.UpdateFields(ctx, i.db, entityID, itemID, ni.Fields)
+	it, err := item.UpdateFieldsWithMeta(ctx, i.db, existingItem, ni.Name, ni.Fields, ni.Meta)
 	if err != nil {
 		return errors.Wrapf(err, "error when update item fields %+v", &ni)
 	}
-	if it.State != item.StateWebForm { // no need to go to job for web forms now!
+	if it.State == item.StateDefault { // no need to go to job for web forms now!
 		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
-	} else { // TODO: update meta in the fields update itself
-		err = it.UpdateMeta(ctx, i.db, ni.Name, ni.Meta)
-		if err != nil {
-			return errors.Wrapf(err, "error when update item meta %+v", &ni)
-		}
 	}
 	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
 }
@@ -301,51 +297,37 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
+	fields := e.FieldsIgnoreError()
 
-	it := item.Item{}
-	if itemID != "undefined" {
+	it := item.MakeItem(populateBR)
+	bonds := []relationship.Bond{}
+	if itemID != "undefined" { // get call
 		it, err = item.Retrieve(ctx, entityID, itemID, i.db)
 		if err != nil {
 			return err
 		}
-
-	}
-
-	bonds, err := relationship.List(ctx, i.db, accountID, params["team_id"], entityID)
-	if err != nil {
-		return err
-	}
-
-	fields := e.FieldsIgnoreError()
-	viewModelItems := itemResponse([]item.Item{it})
-	if len(viewModelItems) == 0 {
-		viewModelItems = append(viewModelItems, ViewModelItem{})
-	}
-
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
-
-	if populateBR {
-		be, err := entity.Retrieve(ctx, accountID, baseEntityID, i.db)
+		//TODO not needed to populate this all the time
+		bonds, err = relationship.List(ctx, i.db, accountID, params["team_id"], entityID)
 		if err != nil {
 			return err
 		}
-		for i := 0; i < len(fields); i++ {
-			if fields[i].IsReference() {
-				reference.ChoicesBluePrint(&fields[i], be)
-			} else if fields[i].IsNode() {
-				reference.ChoicesBluePrint(&fields[i], be)
-			}
-		}
-	}
-
-	//update date and time fields with current time
-	if itemID == "undefined" { //create call
+	} else { //create call
+		//update date and time fields with current time
 		for i := 0; i < len(fields); i++ {
 			if fields[i].IsDateOrTime() {
 				fields[i].Value = time.Now()
 			}
 		}
 	}
+
+	viewModelItems := itemResponse([]item.Item{it})
+	if len(viewModelItems) == 0 {
+		viewModelItems = append(viewModelItems, ViewModelItem{})
+	}
+
+	log.Printf("before updating reference %+v", it)
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
+	log.Printf("after updating reference %+v", it)
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

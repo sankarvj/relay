@@ -240,6 +240,8 @@ var migrations = []darwin.Migration{
 			node_id    	UUID,
 		    life 	   	INTEGER DEFAULT 0,
 			is_active	BOOLEAN DEFAULT FALSE,
+			created_at  TIMESTAMP,
+			updated_at  BIGINT,
 			UNIQUE (flow_id, item_id)
 		);
 		CREATE INDEX idx_active_flows_flow_id
@@ -258,6 +260,8 @@ var migrations = []darwin.Migration{
 			node_id    	UUID REFERENCES nodes ON DELETE CASCADE,
 		    life 	   	INTEGER DEFAULT 0,
 			is_active	BOOLEAN DEFAULT FALSE,
+			created_at  TIMESTAMP,
+			updated_at  BIGINT,
 			UNIQUE (flow_id,entity_id,item_id,node_id)
 		);
 		CREATE INDEX idx_active_nodes_flow_id

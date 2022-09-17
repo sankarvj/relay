@@ -203,7 +203,9 @@ func (r Ruler) startParsingLexer(rule string) Ruler {
 }
 
 func (r Ruler) startComputingLexer(rule string) Ruler {
+	log.Println("before  ReplaceHTML--:: ", rule)
 	rule = ReplaceHTML(rule)
+	log.Println("after ReplaceHTML--:: ", rule)
 	l := lexer.BeginLexing("rule", rule)
 	var token lexertoken.Token
 	for {

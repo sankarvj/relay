@@ -14,6 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -66,7 +67,7 @@ func (f *Flow) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	nodes, err := node.NodeActorsList(ctx, fl.ID, f.db)
+	nodes, err := node.NodeActorsList(ctx, params["account_id"], fl.ID, f.db)
 	if err != nil {
 		return err
 	}
@@ -80,9 +81,11 @@ func (f *Flow) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 }
 
 //remove this method. useful only for verification of flow path
-func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Flow.RetrieveActivedItems")
+func (f *Flow) FlowTrails(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Flow.FlowTrails")
 	defer span.End()
+
+	next := util.ConvertStrToInt(r.URL.Query().Get("next"))
 
 	fl, err := flow.Retrieve(ctx, params["flow_id"], f.db)
 	if err != nil {
@@ -100,12 +103,12 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	//TODO add pagination
-	aflows, err := flow.ActiveFlows(ctx, []string{fl.ID}, f.db)
+	aflows, err := flow.ActiveFlows(ctx, params["account_id"], []string{fl.ID}, next, f.db)
 	if err != nil {
 		return err
 	}
 
-	nodes, err := node.NodeActorsList(ctx, fl.ID, f.db)
+	nodes, err := node.NodeActorsList(ctx, params["account_id"], fl.ID, f.db)
 	if err != nil {
 		return err
 	}
@@ -115,9 +118,12 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 		viewModelNodes[i] = createViewModelNodeActor(node)
 	}
 
-	items, err := item.BulkRetrieve(ctx, e.ID, itemIds(aflows), f.db)
-	if err != nil {
-		return err
+	var items []item.Item
+	if len(aflows) > 0 {
+		items, err = item.BulkRetrieve(ctx, e.ID, itemIds(aflows), f.db)
+		if err != nil {
+			return err
+		}
 	}
 
 	viewModelItems := make([]ViewModelItem, len(items))
@@ -125,28 +131,33 @@ func (f *Flow) RetrieveActivedItems(ctx context.Context, w http.ResponseWriter, 
 		viewModelItems[i] = createViewModelItem(item)
 	}
 
+	next = next + 1
 	response := struct {
 		Items      []ViewModelItem      `json:"items"`
 		Flow       flow.ViewModelFlow   `json:"flow"`
 		EntityName string               `json:"entity_name"`
 		Fields     []entity.Field       `json:"fields"`
 		Nodes      []node.ViewModelNode `json:"nodes"`
+		Next       string               `json:"next"`
 	}{
 		Items:      viewModelItems,
 		Flow:       createViewModelFlow(fl, nil),
 		EntityName: e.DisplayName,
 		Fields:     fields,
 		Nodes:      viewModelNodes,
+		Next:       fmt.Sprint(next),
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func (f *Flow) RetrieveActiveNodes(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Flow.RetrieveActiveNodes")
+func (f *Flow) TrailNodes(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Flow.TrailNodes")
 	defer span.End()
 
-	activeNodes, err := flow.ActiveNodesForItem(ctx, params["account_id"], params["flow_id"], params["item_id"], f.db)
+	next := util.ConvertStrToInt(r.URL.Query().Get("next"))
+
+	activeNodes, err := flow.ActiveNodesForItem(ctx, params["account_id"], params["flow_id"], params["item_id"], next, f.db)
 	if err != nil {
 		return err
 	}
@@ -156,7 +167,16 @@ func (f *Flow) RetrieveActiveNodes(ctx context.Context, w http.ResponseWriter, r
 		viewModelActiveNodes[i] = createViewModelActiveNode(an)
 	}
 
-	return web.Respond(ctx, w, viewModelActiveNodes, http.StatusOK)
+	next = next + 1
+	response := struct {
+		Nodes []node.ViewModelActiveNode `json:"nodes"`
+		Next  string                     `json:"next"`
+	}{
+		Nodes: viewModelActiveNodes,
+		Next:  fmt.Sprint(next),
+	}
+
+	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
 // Create inserts a new flow into the entity.
@@ -198,7 +218,7 @@ func (f *Flow) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Error updating flow")
 	}
 
-	nodes, err := node.NodeActorsList(ctx, uuf.ID, f.db)
+	nodes, err := node.NodeActorsList(ctx, uf.AccountID, uuf.ID, f.db)
 	if err != nil {
 		return err
 	}
@@ -281,9 +301,10 @@ func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {
 
 func createViewModelActiveNode(n flow.ActiveNode) node.ViewModelActiveNode {
 	return node.ViewModelActiveNode{
-		ID:       n.NodeID,
-		IsActive: n.IsActive,
-		Life:     n.Life,
+		ID:        n.NodeID,
+		IsActive:  n.IsActive,
+		Life:      n.Life,
+		CreatedAt: n.CreatedAt,
 	}
 }
 

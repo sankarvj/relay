@@ -135,7 +135,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 		Type:      n.Type,
 		State:     n.State,
 		Fieldsb:   string(fieldsBytes),
-		Metab:     marshalMeta(n.Meta),
+		Metab:     marshalMap(n.Meta),
 		CreatedAt: now.UTC(),
 		UpdatedAt: now.UTC().Unix(),
 	}

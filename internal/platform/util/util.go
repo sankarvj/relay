@@ -221,11 +221,21 @@ func IsValidEmail(email string) bool {
 	return err == nil
 }
 
-func TruncateText(s string, max int) string {
-	if max >= len(s) {
-		return s
+func TruncateText(str string, length int) string {
+	if length <= 0 {
+		return ""
 	}
-	return s[:strings.LastIndexAny(s[:max-1], " ...")]
+
+	truncated := ""
+	count := 0
+	for _, char := range str {
+		truncated += string(char)
+		count++
+		if count >= length {
+			break
+		}
+	}
+	return truncated
 }
 
 func Singularize(s string) string {

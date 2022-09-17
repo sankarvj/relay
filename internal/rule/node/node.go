@@ -102,14 +102,14 @@ func BulkRetrieve(ctx context.Context, ids []interface{}, db *sqlx.DB) ([]Node, 
 }
 
 //NodeActorsList is list with entity details joined
-func NodeActorsList(ctx context.Context, flowID string, db *sqlx.DB) ([]NodeActor, error) {
+func NodeActorsList(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]NodeActor, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.node.NodeActorsList")
 	defer span.End()
 
 	nodes := []NodeActor{}
-	const q = `select e.name as entity_name,e.category,n.node_id,n.flow_id,n.parent_node_id,n.actor_id,n.stage_id,n.name,n.description,n.weight,n.type,n.expression,n.tokenb,n.actuals from nodes as n left join entities as e on n.actor_id = e.entity_id where n.flow_id = $1`
+	const q = `select e.name as entity_name,e.category,n.node_id,n.flow_id,n.parent_node_id,n.actor_id,n.stage_id,n.name,n.description,n.weight,n.type,n.expression,n.tokenb,n.actuals from nodes as n left join entities as e on n.actor_id = e.entity_id where n.account_id = $1 AND n.flow_id = $2`
 
-	if err := db.SelectContext(ctx, &nodes, q, flowID); err != nil {
+	if err := db.SelectContext(ctx, &nodes, q, accountID, flowID); err != nil {
 		return nil, errors.Wrap(err, "selecting node actors")
 	}
 

@@ -61,16 +61,6 @@ type Flow struct {
 	UpdatedAt   int64     `db:"updated_at" json:"updated_at"`
 }
 
-// ActiveFlow represents the flow which are currently active
-type ActiveFlow struct {
-	AccountID string `db:"account_id" json:"account_id"`
-	FlowID    string `db:"flow_id" json:"flow_id"`
-	ItemID    string `db:"item_id" json:"item_id"`
-	NodeID    string `db:"node_id" json:"node_id"`
-	Life      int    `db:"life" json:"life"`
-	IsActive  bool   `db:"is_active" json:"is_active"`
-}
-
 // ViewModelFlow represents the view model of flow
 type ViewModelFlow struct {
 	ID          string                 `json:"id"`
@@ -104,13 +94,27 @@ type NewFlow struct {
 	Queries     []node.Query           `json:"queries"`
 }
 
+// ActiveFlow represents the flow which are currently active
+type ActiveFlow struct {
+	AccountID string    `db:"account_id" json:"account_id"`
+	FlowID    string    `db:"flow_id" json:"flow_id"`
+	ItemID    string    `db:"item_id" json:"item_id"`
+	NodeID    string    `db:"node_id" json:"node_id"`
+	Life      int       `db:"life" json:"life"`
+	IsActive  bool      `db:"is_active" json:"is_active"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt int64     `db:"updated_at" json:"updated_at"`
+}
+
 // ActiveNode represents the node which are currently active
 type ActiveNode struct {
-	AccountID string `db:"account_id" json:"account_id"`
-	FlowID    string `db:"flow_id" json:"flow_id"`
-	EntityID  string `db:"entity_id" json:"entity_id"`
-	ItemID    string `db:"item_id" json:"item_id"`
-	NodeID    string `db:"node_id" json:"node_id"`
-	Life      int    `db:"life" json:"life"`
-	IsActive  bool   `db:"is_active" json:"is_active"`
+	AccountID string    `db:"account_id" json:"account_id"`
+	FlowID    string    `db:"flow_id" json:"flow_id"`
+	EntityID  string    `db:"entity_id" json:"entity_id"`
+	ItemID    string    `db:"item_id" json:"item_id"`
+	NodeID    string    `db:"node_id" json:"node_id"`
+	Life      int       `db:"life" json:"life"`
+	IsActive  bool      `db:"is_active" json:"is_active"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt int64     `db:"updated_at" json:"updated_at"`
 }
