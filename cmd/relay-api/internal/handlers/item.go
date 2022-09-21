@@ -218,6 +218,8 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
+	log.Printf("ni ------------->>>>>>>>>>>>>>>>>>>>> %+v", ni)
+
 	//retriving the existing item don't change the order of execution
 	existingItem, err := item.Retrieve(ctx, entityID, itemID, i.db)
 	if err != nil {
@@ -325,9 +327,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
 
-	log.Printf("before updating reference %+v", it)
 	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
-	log.Printf("after updating reference %+v", it)
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

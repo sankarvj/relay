@@ -36,9 +36,9 @@ func (s Sum) Calc(oldValue, newValue interface{}) interface{} {
 	case int:
 		return oldValue.(int) + newValue.(int)
 	case int64:
-		return oldValue.(int64) + newValue.(int64)
+		return oldValue.(int64) + int64(newValue.(int))
 	case float64:
-		return oldValue.(float64) + newValue.(float64)
+		return oldValue.(float64) + float64(newValue.(int))
 	case string:
 
 		return fmt.Sprintf("%s %s", oldValue, newValue)

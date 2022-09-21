@@ -14,7 +14,7 @@ import (
 func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) error {
 	var err error
 	leadStatusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityLeadStatus)
-	if err != nil {
+	if err != nil && err != entity.ErrFixedEntityNotFound {
 		return err
 	}
 

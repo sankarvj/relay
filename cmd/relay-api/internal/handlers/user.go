@@ -199,7 +199,7 @@ func (u *User) Verfiy(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "verifying token with firebase")
 	}
 
-	tkn, err := generateJWT(ctx, tokenEmail, v.Now, u.authenticator, u.db)
+	tkn, err := generateUserJWT(ctx, tokenEmail, v.Now, u.authenticator, u.db)
 	if err != nil {
 		return web.NewRequestError(err, http.StatusUnauthorized)
 	}
@@ -273,7 +273,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrap(err, "adding member record for this user failed")
 	}
 
-	tkn, err := generateJWT(ctx, tokenEmail, time.Now(), u.authenticator, u.db)
+	tkn, err := generateUserJWT(ctx, tokenEmail, time.Now(), u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
@@ -313,7 +313,7 @@ func (u *User) Visit(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
 	}
 
-	tkn, err := generateJWT(ctx, vis.Email, time.Now(), u.authenticator, u.db)
+	tkn, err := generateUserJWT(ctx, vis.Email, time.Now(), u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
@@ -380,7 +380,7 @@ func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, 
 	return token.UID, token.Claims["email"].(string), nil
 }
 
-func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
+func generateUserJWT(ctx context.Context, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
 	dbUser, err := user.RetrieveUserByUniqIdentifier(ctx, db, email, "")
 	if err != nil {
 		errors.Wrap(err, "user does not exist in the DB. Cannot generate JWT token")
@@ -403,6 +403,16 @@ func generateJWT(ctx context.Context, email string, now time.Time, a *auth.Authe
 	}
 	tkn.Accounts = dbUser.AccountIDs()
 	return &tkn, nil
+}
+
+func generateSystemUserJWT(ctx context.Context, accountID string, scope []string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (string, error) {
+	claims := auth.NewClaims(accountID, scope, now, 24*7*1000*time.Hour)
+
+	systemToken, err := a.GenerateToken(claims)
+	if err != nil {
+		return "", err
+	}
+	return systemToken, nil
 }
 
 func createViewModelUser(u user.User) user.ViewModelUser {

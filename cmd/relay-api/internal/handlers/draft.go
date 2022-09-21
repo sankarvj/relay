@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
@@ -102,13 +103,24 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Account creation failed"), http.StatusInternalServerError)
 	}
 
-	tkn, err := generateJWT(ctx, tokenEmail, time.Now(), a.authenticator, a.db)
+	systemToken, err := generateSystemUserJWT(ctx, acc.ID, []string{}, time.Now(), a.authenticator, a.db)
 	if err != nil {
 		account.Delete(ctx, a.db, acc.ID)
-		return web.NewRequestError(errors.Wrap(err, "JWT creation failed"), http.StatusInternalServerError)
+		return web.NewRequestError(errors.Wrap(err, "System JWT creation failed"), http.StatusInternalServerError)
+	}
+	err = token.Create(ctx, a.db, systemToken, acc.ID, time.Now())
+	if err != nil {
+		account.Delete(ctx, a.db, acc.ID)
+		return web.NewRequestError(errors.Wrap(err, "System JWT token save failed"), http.StatusInternalServerError)
+	}
+
+	userToken, err := generateUserJWT(ctx, tokenEmail, time.Now(), a.authenticator, a.db)
+	if err != nil {
+		account.Delete(ctx, a.db, acc.ID)
+		return web.NewRequestError(errors.Wrap(err, "User JWT creation failed"), http.StatusInternalServerError)
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
-	tkn.Accounts = []string{nc.ID}
+	userToken.Accounts = []string{nc.ID}
 
 	err = bootstrap.Bootstrap(ctx, a.db, a.sdb, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
 	if err != nil {
@@ -150,7 +162,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	draft.Delete(ctx, draftID, a.db)
 
-	return web.Respond(ctx, w, tkn, http.StatusCreated)
+	return web.Respond(ctx, w, userToken, http.StatusCreated)
 }
 
 func createNewVerifiedUser(ctx context.Context, name, email string, roles []string, db *sqlx.DB) (user.User, error) {

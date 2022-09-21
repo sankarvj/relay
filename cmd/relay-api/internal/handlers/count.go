@@ -120,7 +120,7 @@ func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp str
 	if filter != nil {
 		for _, f := range fields {
 			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, makeGraphField(&f, condition.Term, condition.Expression, false))
+				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
 			}
 		}
 	}

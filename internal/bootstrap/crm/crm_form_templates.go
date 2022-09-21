@@ -8,7 +8,8 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
-func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID string) map[string]interface{} {
+func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID string) (map[string]interface{}, map[string]interface{}) {
+	dealMeta := make(map[string]interface{}, 0)
 	dealVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
 
@@ -34,10 +35,11 @@ func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID s
 		}
 
 	}
-	return dealVals
+	return dealVals, dealMeta
 }
 
-func taskTemplates(msg string, thisEntity entity.Entity, actorEntity entity.Entity, withToken bool) map[string]interface{} {
+func taskTemplates(msg string, thisEntity entity.Entity, actorEntity entity.Entity, withToken bool) (map[string]interface{}, map[string]interface{}) {
+	taskMeta := make(map[string]interface{}, 0)
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
 
@@ -65,17 +67,18 @@ func taskTemplates(msg string, thisEntity entity.Entity, actorEntity entity.Enti
 		}
 	}
 
-	return taskVals
+	return taskVals, taskMeta
 }
 
-func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadStatus string) map[string]interface{} {
+func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadStatus string) (map[string]interface{}, map[string]interface{}) {
+	contactMeta := make(map[string]interface{}, 0)
 	contactVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
 
-	var dealAmountKey string
+	var dealAmountField entity.Field
 	for _, f := range actorEntity.FieldsIgnoreError() {
 		if f.Name == "deal_amount" {
-			dealAmountKey = f.Key
+			dealAmountField = f
 		}
 	}
 
@@ -84,13 +87,15 @@ func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadS
 		case "lead_status":
 			contactVals[f.Key] = []interface{}{leadStatus}
 		case "total_revenue":
-			contactVals[f.Key] = fmt.Sprintf("{{%s.%s}}", actorEntity.ID, dealAmountKey)
+			val := fmt.Sprintf("{{%s.%s}}", actorEntity.ID, dealAmountField.Key)
+			contactVals[f.Key] = val
+			contactMeta[val] = dealAmountField.DisplayName
 		case "tags":
 			contactVals[f.Key] = []interface{}{"Enterprise customer"}
 		}
 	}
 
-	return contactVals
+	return contactVals, contactMeta
 }
 
 func ticketTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {

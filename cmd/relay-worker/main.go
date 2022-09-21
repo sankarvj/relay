@@ -93,13 +93,6 @@ func run() error {
 		DisableTLS: cfg.DB.DisableTLS,
 	}
 
-	secDbConfig := database.SecConfig{
-		User:     cfg.SecDB.User,
-		Password: cfg.SecDB.Password,
-		Host:     cfg.SecDB.Host,
-		Name:     cfg.SecDB.Name,
-	}
-
 	db, err := database.Open(dbConfig)
 	if err != nil {
 		return errors.Wrap(err, "connecting to primary db")
@@ -111,6 +104,13 @@ func run() error {
 
 	path := listeners.Path{
 		FirebaseSDKPath: cfg.Auth.GoogleKeyFile,
+	}
+
+	secDbConfig := database.SecConfig{
+		User:     cfg.SecDB.User,
+		Password: cfg.SecDB.Password,
+		Host:     cfg.SecDB.Host,
+		Name:     cfg.SecDB.Name,
 	}
 
 	rp := &redis.Pool{

@@ -3,15 +3,11 @@ package handlers
 import (
 	"context"
 	"log"
-	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
-	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -122,81 +118,6 @@ func nodeStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]n
 		}
 	}
 	return viewModelNodes, nil
-}
-
-func makeGraphField(f *entity.Field, value interface{}, expression string, reverse bool) graphdb.Field {
-	if f.IsReference() {
-		dataType := graphdb.TypeString
-		if strings.EqualFold(lexertoken.INSign, expression) || strings.EqualFold(lexertoken.NotINSign, expression) {
-			dataType = graphdb.TypeWist
-			switch v := value.(type) {
-			case string:
-				arr := strings.Split(strings.ReplaceAll(v, " ", ""), ",")
-				value = arr
-			}
-		}
-		return graphdb.Field{
-			Key:       f.Key,
-			Value:     []interface{}{""},
-			DataType:  graphdb.TypeReference,
-			RefID:     f.RefID,
-			IsReverse: reverse,
-			Field: &graphdb.Field{
-				Expression: graphdb.Operator(expression),
-				Key:        "id",
-				DataType:   dataType,
-				Value:      value,
-			},
-		}
-	} else if f.IsList() {
-		return graphdb.Field{
-			Key:      f.Key,
-			Value:    []interface{}{value},
-			DataType: graphdb.DType(f.DataType),
-			Field: &graphdb.Field{
-				Expression: graphdb.Operator(expression),
-				Key:        "element",
-				DataType:   graphdb.DType(f.Field.DataType),
-			},
-		}
-	} else if f.IsDateOrTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis
-		var min string
-		var max string
-		dataType := graphdb.DType(f.DataType)
-		switch v := value.(type) {
-		case string:
-			if value == "now" {
-				dataType = graphdb.TypeDateTimeMillis
-				value = util.GetMilliSecondsStr(time.Now().UTC())
-			} else {
-				parts := strings.Split(v, "-")
-				if len(parts) == 2 { // date range
-					dataType = graphdb.TypeDateRange
-					min = parts[0]
-					max = parts[1]
-				}
-			}
-
-		case int, int64:
-			dataType = graphdb.TypeDateTimeMillis
-		}
-
-		return graphdb.Field{
-			Expression: graphdb.Operator(expression),
-			Key:        f.Key,
-			DataType:   dataType,
-			Value:      value,
-			Min:        min,
-			Max:        max,
-		}
-	} else {
-		return graphdb.Field{
-			Expression: graphdb.Operator(expression),
-			Key:        f.Key,
-			DataType:   graphdb.DType(f.DataType),
-			Value:      value,
-		}
-	}
 }
 
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.QueryResult) ([]item.Item, error) {

@@ -165,8 +165,9 @@ INSERT INTO public.users (user_id, accounts, name, avatar, email, phone, verifie
 
 const accountSeeds = `
 INSERT INTO public.accounts (account_id, parent_account_id, name, domain, avatar, plan, mode, timezone, language, country, issued_at, expiry, created_at, updated_at) VALUES ('3cf17266-3473-4006-984f-9325122678b7', NULL, 'Wayplot', 'wayplot.com', NULL, 0, 0, NULL, NULL, NULL, '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', 1610290392);
-INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('3cf17266-3473-4006-984f-9325122678b7', '3cf17266-3473-4006-984f-9325122678b7', 'Base', '', '2021-04-08 06:19:04.630095', 1617862744);
+INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('73d54431-318c-4b3b-ae73-82c75cd56dcb', '3cf17266-3473-4006-984f-9325122678b7', 'Base', '', '2021-04-08 06:19:04.630095', 1617862744);
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('2f3c379d-60f6-4793-8928-3d2ccb852208', '3cf17266-3473-4006-984f-9325122678b7', 'CRM', '', '2021-04-08 06:19:09.377088', 1617862749);
+INSERT INTO public.tokens (token, account_id, type, state, scope, issued_at, expiry, created_at) VALUES ('eyJhbGciOiJSUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJyb2xlcyI6W10sImV4cCI6MjI2ODU4MzgxMiwiaWF0IjoxNjYzNzgzODEyLCJzdWIiOiJjYTMxMmJjNi0zMGE1LTQ4YTgtYTU0ZC1iMTk3YjQyZjBjODEifQ.IrOr3cvLPr-rXxsbMsTffX0eRBVwtPLv4gFrz9bqTnI4dQF6x0DC255wfPWfK60jqv6n5CkzGSPok80Ltyp7RPg-pfjCQfvAQslXxDZozT90qS7VXksFc7b-TdHkpmEXlL0ffqiqmqAIOU5DUQ2jI8qRBKKdTr3W6w91pyq1uCq4JN9CpJ0M8N_W5aiVviFwm4luJ--QFxlGD5UsRwozE08GM5hUCUwLhSy85oW2bkWFQT22NGvpkUiAe8kWgU3ZuNBw-kS2s5j3kyJdPzzwlAxpsXQ7MHBpslW9x_M0Yt88_pKPcABUGORYv0WRUC4yObjOlrSPN4YLAB9VIfFaNQ', '3cf17266-3473-4006-984f-9325122678b7', 0, 0, '{}', '2022-09-21 18:10:12.084639', '2041-11-20 18:10:12.084639', '2022-09-21 18:10:12.084639');
 `
 
 const entityItemSeeds = `

@@ -7,11 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
 
 	"github.com/ardanlabs/conf"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -20,6 +22,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
+	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -120,11 +123,29 @@ func run() error {
 
 	sdb := database.Init(rp, rp, rp)
 
+	log.Println("main : Started : Initializing authentication support")
+
+	keyContents, err := ioutil.ReadFile(cfg.Auth.PrivateKeyFile)
+	if err != nil {
+		return errors.Wrap(err, "reading auth private key")
+	}
+
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(keyContents)
+	if err != nil {
+		return errors.Wrap(err, "parsing auth private key")
+	}
+
+	f := auth.NewSimpleKeyLookupFunc(cfg.Auth.KeyID, privateKey.Public().(*rsa.PublicKey))
+	authenticator, err := auth.NewAuthenticator(privateKey, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleClientSecret, cfg.Auth.KeyID, cfg.Auth.Algorithm, f)
+	if err != nil {
+		return errors.Wrap(err, "constructing authenticator")
+	}
+
 	switch cfg.Args.Num(0) {
 	case "migrate":
 		err = migrate(dbConfig)
 	case "seed":
-		err = seed(db, sdb, cfg.Auth.GoogleKeyFile)
+		err = seed(db, sdb, authenticator)
 	case "crmadd":
 		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "csmadd":
@@ -163,7 +184,7 @@ func migrate(cfg database.Config) error {
 	return nil
 }
 
-func seed(db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) error {
+func seed(db *sqlx.DB, sdb *database.SecDB, auth *auth.Authenticator) error {
 
 	if err := schema.SeedUsers(db); err != nil {
 		return err
@@ -185,7 +206,16 @@ func seed(db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) error {
 		return err
 	}
 
-	err = bootstrap.Bootstrap(ctx, db, sdb, fbSDKPath, a.ID, a.Name, cuser)
+	systemToken, err := generateSystemUserJWT(ctx, a.ID, []string{}, time.Now(), auth, db)
+	if err != nil {
+		return errors.Wrap(err, "System JWT creation failed")
+	}
+	err = token.Create(ctx, db, systemToken, a.ID, time.Now())
+	if err != nil {
+		return errors.Wrap(err, "System JWT token save failed")
+	}
+
+	err = bootstrap.Bootstrap(ctx, db, sdb, auth.FireBaseAdminSDK, a.ID, a.Name, cuser)
 	if err != nil {
 		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err
@@ -263,4 +293,14 @@ func keygen(path string) error {
 	}
 
 	return nil
+}
+
+func generateSystemUserJWT(ctx context.Context, accountID string, scope []string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (string, error) {
+	claims := auth.NewClaims(accountID, scope, now, 24*7*1000*time.Hour)
+
+	systemToken, err := a.GenerateToken(claims)
+	if err != nil {
+		return "", err
+	}
+	return systemToken, nil
 }

@@ -99,6 +99,9 @@ deploy-worker:
 deploy-admin:
 	./deploy-admin.sh
 
+deploy-events:
+	./deploy-events.sh
+
 ngrok:
 	../ngrok http 3000
 

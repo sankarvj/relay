@@ -8,6 +8,7 @@ require (
 	github.com/DusanKasan/parsemail v1.2.0 // indirect
 	github.com/Pallinder/go-randomdata v1.2.0 // indirect
 	github.com/ardanlabs/conf v1.2.0
+	github.com/aws/aws-lambda-go v1.34.1 // indirect
 	github.com/aws/aws-sdk-go v1.42.22 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dimfeld/httptreemux/v5 v5.0.2

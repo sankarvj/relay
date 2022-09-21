@@ -339,57 +339,57 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 		return err
 	}
 
-	assetTemplateMacbookPro, err := b.TemplateAdd(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Pro", itemIDMap["macbook_pro"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateMacbookPro, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Pro", itemIDMap["macbook_pro"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateMacbookAir, err := b.TemplateAdd(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Air", itemIDMap["macbook_air"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateMacbookAir, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Air", itemIDMap["macbook_air"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateiPhone14, err := b.TemplateAdd(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iPhone 14", itemIDMap["iphone_14"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateiPhone14, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iPhone 14", itemIDMap["iphone_14"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateiMac, err := b.TemplateAdd(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iMac", itemIDMap["imac"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateiMac, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iMac", itemIDMap["imac"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateGit, err := b.TemplateAdd(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Git Access", itemIDMap["git"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateGit, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Git Access", itemIDMap["git"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateMail, err := b.TemplateAdd(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Mail Access", itemIDMap["mail"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateMail, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Mail Access", itemIDMap["mail"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateInfra, err := b.TemplateAdd(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Infra Access", itemIDMap["infra"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateInfra, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Infra Access", itemIDMap["infra"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateMarketing, err := b.TemplateAdd(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Merketing Tools Access", itemIDMap["marketing"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateMarketing, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Merketing Tools Access", itemIDMap["marketing"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateEarnings, err := b.TemplateAdd(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Earnings Sheet Access", itemIDMap["earnings"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateEarnings, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Earnings Sheet Access", itemIDMap["earnings"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	taskTemplate1, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare financial report for ", taskEntity, employeeEntity), nil)
+	taskTemplate1, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare financial report for ", taskEntity, employeeEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	taskTemplate2, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Remove all the given access for ", taskEntity, employeeEntity), nil)
+	taskTemplate2, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Remove all the given access for ", taskEntity, employeeEntity), nil)
 	if err != nil {
 		return err
 	}
@@ -504,7 +504,7 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	}
 	fmt.Println("\tEM:SAMPLES Pipeline And Its Nodes Created")
 
-	inviteTemplate, err := b.TemplateAdd(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity, employeeEntity), nil)
+	inviteTemplate, err := b.TemplateAddWithOutMeta(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity, employeeEntity), nil)
 	if err != nil {
 		return err
 	}

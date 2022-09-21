@@ -153,8 +153,6 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Println("\tCRM:BOOT Retrived Owner,Contact,Company & EmailConfig")
-
 	// add entity - emails
 	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email")))
 	if err != nil {
@@ -228,7 +226,12 @@ func (b *Base) ItemAdd(ctx context.Context, entityID, itemID, userID string, fie
 	return it, nil
 }
 
-func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string][]string) (item.Item, error) {
+func (b *Base) TemplateAddWithOutMeta(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, source map[string][]string) (item.Item, error) {
+	meta := make(map[string]interface{}, 0)
+	return b.TemplateAdd(ctx, entityID, itemID, userID, fields, meta, source)
+}
+
+func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, meta map[string]interface{}, source map[string][]string) (item.Item, error) {
 	ce, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
 	if err != nil {
 		return item.Item{}, err
@@ -243,6 +246,7 @@ func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string,
 		UserID:    &userID,
 		State:     item.StateBluePrint,
 		Fields:    fields,
+		Meta:      meta,
 		Source:    source,
 	}
 

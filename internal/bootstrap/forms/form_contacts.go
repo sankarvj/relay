@@ -9,6 +9,8 @@ import (
 )
 
 func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, companyEntityKey string, leadStatusEntityID, leadStatusEntityKey string) []entity.Field {
+	fields := make([]entity.Field, 0)
+
 	firstNameFieldID := uuid.New().String()
 	firstNameField := entity.Field{
 		Key:         firstNameFieldID,
@@ -18,6 +20,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
+	fields = append(fields, firstNameField)
 
 	lastNameFieldID := uuid.New().String()
 	lastNameField := entity.Field{
@@ -28,6 +31,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
+	fields = append(fields, lastNameField)
 
 	jobTitleFieldID := uuid.New().String()
 	jobTitleField := entity.Field{
@@ -38,6 +42,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		Meta:        map[string]string{},
 	}
+	fields = append(fields, jobTitleField)
 
 	emailFieldID := uuid.New().String()
 	emailField := entity.Field{
@@ -49,6 +54,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		Who:         entity.WhoEmail,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyUnique: "true"},
 	}
+	fields = append(fields, emailField)
 
 	mobileFieldID := uuid.New().String()
 	mobileField := entity.Field{
@@ -62,6 +68,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			DataType: entity.TypeString,
 		},
 	}
+	fields = append(fields, mobileField)
 
 	avatarFieldID := uuid.New().String()
 	avatarField := entity.Field{
@@ -72,6 +79,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DomType:     entity.DomImage,
 		Who:         entity.WhoAvatar,
 	}
+	fields = append(fields, avatarField)
 
 	npsFieldID := uuid.New().String()
 	npsField := entity.Field{
@@ -81,6 +89,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeNumber,
 		DomType:     entity.DomText,
 	}
+	fields = append(fields, npsField)
 
 	lfStageFieldID := uuid.New().String()
 	lfStageField := entity.Field{
@@ -112,22 +121,26 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			DataType: entity.TypeString,
 		},
 	}
+	fields = append(fields, lfStageField)
 
-	leadStatusFieldID := uuid.New().String()
-	leadStatusField := entity.Field{
-		Key:         leadStatusFieldID,
-		Name:        "lead_status",
-		DisplayName: "Lead Status",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeReference,
-		RefID:       leadStatusEntityID,
-		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: leadStatusEntityKey},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
+	if leadStatusEntityID != "" {
+		leadStatusFieldID := uuid.New().String()
+		leadStatusField := entity.Field{
+			Key:         leadStatusFieldID,
+			Name:        "lead_status",
+			DisplayName: "Lead Status",
+			DomType:     entity.DomSelect,
+			DataType:    entity.TypeReference,
+			RefID:       leadStatusEntityID,
+			RefType:     entity.RefTypeStraight,
+			Meta:        map[string]string{entity.MetaKeyDisplayGex: leadStatusEntityKey},
+			Field: &entity.Field{
+				DataType: entity.TypeString,
+				Key:      "id",
+				Value:    "--",
+			},
+		}
+		fields = append(fields, leadStatusField)
 	}
 
 	ownerFieldID := uuid.New().String()
@@ -147,6 +160,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			Value:    "--",
 		},
 	}
+	fields = append(fields, ownerField)
 
 	associatedCompaniesFieldID := uuid.New().String()
 	associatedCompaniesField := entity.Field{
@@ -164,6 +178,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			Value:    "--",
 		},
 	}
+	fields = append(fields, associatedCompaniesField)
 
 	createdByUserFieldID := uuid.New().String()
 	createdByUserField := entity.Field{
@@ -182,6 +197,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			Value:    "--",
 		},
 	}
+	fields = append(fields, createdByUserField)
 
 	becameACustomerDateFieldID := uuid.New().String()
 	becameACustomerDateField := entity.Field{
@@ -191,6 +207,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDate,
 	}
+	fields = append(fields, becameACustomerDateField)
 
 	totalRevenueFieldID := uuid.New().String()
 	totalRevenueField := entity.Field{
@@ -201,6 +218,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DomType:     entity.DomText,
 		Meta:        map[string]string{entity.MetaKeyCalc: entity.MetaCalcSum},
 	}
+	fields = append(fields, totalRevenueField)
 
 	timeZoneFieldID := uuid.New().String()
 	timeZoneField := entity.Field{
@@ -210,6 +228,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		DomType:     entity.DomText,
 	}
+	fields = append(fields, timeZoneField)
 
 	websiteURLFieldID := uuid.New().String()
 	websiteURLField := entity.Field{
@@ -219,6 +238,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		DomType:     entity.DomText,
 	}
+	fields = append(fields, websiteURLField)
 
 	twitterUserNameFieldID := uuid.New().String()
 	twitterUserNameField := entity.Field{
@@ -228,12 +248,13 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeString,
 		DomType:     entity.DomText,
 	}
+	fields = append(fields, twitterUserNameField)
 
 	tagsFieldID := uuid.New().String()
 	tagsField := entity.Field{
 		Key:         tagsFieldID,
 		Name:        "tags",
-		DisplayName: "tags",
+		DisplayName: "Tags",
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Meta:        map[string]string{entity.MetaKeyCalc: entity.MetaCalcAggr},
@@ -242,8 +263,9 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			DataType: entity.TypeString,
 		},
 	}
+	fields = append(fields, tagsField)
 
-	return []entity.Field{firstNameField, lastNameField, jobTitleField, emailField, mobileField, npsField, lfStageField, leadStatusField, avatarField, ownerField, associatedCompaniesField, createdByUserField, becameACustomerDateField, totalRevenueField, timeZoneField, websiteURLField, twitterUserNameField, tagsField}
+	return fields
 }
 
 func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadStatusItemID string) map[string]interface{} {

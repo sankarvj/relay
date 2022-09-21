@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
@@ -111,6 +116,8 @@ const (
 	WhoEmail         = "email"
 	WhoAssetCategory = "asset_category"
 	WhoMessage       = "message"
+	WhoContacts      = "contacts"
+	WhoCompanies     = "companies"
 )
 
 // Field represents structural format of attributes in entity
@@ -318,6 +325,10 @@ func (e Entity) FieldByKey(key string) Field {
 
 func (e Entity) NamedKeys() map[string]string {
 	return NamedKeysMap(e.FieldsIgnoreError())
+}
+
+func (e Entity) NamedFields() map[string]Field {
+	return NamedFieldsObjMap(e.FieldsIgnoreError())
 }
 
 func (f *Field) SetDisplayGex(key string) {
@@ -535,4 +546,79 @@ func TitleField(fields []Field) Field {
 		}
 	}
 	return Field{}
+}
+
+func (f *Field) MakeGraphField(value interface{}, expression string, reverse bool) graphdb.Field {
+	if f.IsReference() {
+		dataType := graphdb.TypeString
+		if strings.EqualFold(lexertoken.INSign, expression) || strings.EqualFold(lexertoken.NotINSign, expression) {
+			dataType = graphdb.TypeWist
+			switch v := value.(type) {
+			case string:
+				arr := strings.Split(strings.ReplaceAll(v, " ", ""), ",")
+				value = arr
+			}
+		}
+		return graphdb.Field{
+			Key:       f.Key,
+			Value:     []interface{}{""},
+			DataType:  graphdb.TypeReference,
+			RefID:     f.RefID,
+			IsReverse: reverse,
+			Field: &graphdb.Field{
+				Expression: graphdb.Operator(expression),
+				Key:        "id",
+				DataType:   dataType,
+				Value:      value,
+			},
+		}
+	} else if f.IsList() {
+		return graphdb.Field{
+			Key:      f.Key,
+			Value:    []interface{}{value},
+			DataType: graphdb.DType(f.DataType),
+			Field: &graphdb.Field{
+				Expression: graphdb.Operator(expression),
+				Key:        "element",
+				DataType:   graphdb.DType(f.Field.DataType),
+			},
+		}
+	} else if f.IsDateOrTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis
+		var min string
+		var max string
+		dataType := graphdb.DType(f.DataType)
+		switch v := value.(type) {
+		case string:
+			if value == "now" {
+				dataType = graphdb.TypeDateTimeMillis
+				value = util.GetMilliSecondsStr(time.Now().UTC())
+			} else {
+				parts := strings.Split(v, "-")
+				if len(parts) == 2 { // date range
+					dataType = graphdb.TypeDateRange
+					min = parts[0]
+					max = parts[1]
+				}
+			}
+
+		case int, int64:
+			dataType = graphdb.TypeDateTimeMillis
+		}
+
+		return graphdb.Field{
+			Expression: graphdb.Operator(expression),
+			Key:        f.Key,
+			DataType:   dataType,
+			Value:      value,
+			Min:        min,
+			Max:        max,
+		}
+	} else {
+		return graphdb.Field{
+			Expression: graphdb.Operator(expression),
+			Key:        f.Key,
+			DataType:   graphdb.DType(f.DataType),
+			Value:      value,
+		}
+	}
 }

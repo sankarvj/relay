@@ -79,7 +79,8 @@ func addAutomations(ctx context.Context, b *base.Base) error {
 }
 
 func whenCompanyAdded(ctx context.Context, b *base.Base, companyEntity, dealEntity, taskEntity entity.Entity) (*base.CoreWorkflow, error) {
-	dealTemplateBasic, err := b.TemplateAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(dealEntity, companyEntity, b.SalesPipelineFlowID), nil)
+	templateFields, templateMeta := dealTemplates(dealEntity, companyEntity, b.SalesPipelineFlowID)
+	dealTemplateBasic, err := b.TemplateAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,8 @@ func whenCompanyAdded(ctx context.Context, b *base.Base, companyEntity, dealEnti
 }
 
 func whenContactAdded(ctx context.Context, b *base.Base, contactEntity, dealEntity, taskEntity entity.Entity) (*base.CoreWorkflow, error) {
-	dealTemplateBasic, err := b.TemplateAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, dealTemplates(dealEntity, contactEntity, b.SalesPipelineFlowID), nil)
+	templateFields, templateMeta := dealTemplates(dealEntity, contactEntity, b.SalesPipelineFlowID)
+	dealTemplateBasic, err := b.TemplateAdd(ctx, dealEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +125,8 @@ func whenContactAdded(ctx context.Context, b *base.Base, contactEntity, dealEnti
 }
 
 func whenDealAmountExceeds1000(ctx context.Context, b *base.Base, contactEntity, dealEntity entity.Entity) (*base.CoreWorkflow, error) {
-	relatedContactUpdateTemplate, err := b.TemplateAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, contactTemplates(contactEntity, dealEntity, b.LeadStatusItemNew.ID), nil)
+	templateFields, templateMeta := contactTemplates(contactEntity, dealEntity, b.LeadStatusItemNew.ID)
+	relatedContactUpdateTemplate, err := b.TemplateAdd(ctx, contactEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -145,32 +148,38 @@ func whenDealAmountExceeds1000(ctx context.Context, b *base.Base, contactEntity,
 }
 
 func salesPipeline(ctx context.Context, b *base.Base, dealEntity, taskEntity entity.Entity) (*base.CoreWorkflow, error) {
-	taskTemplateScheduleCall, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Schedule a call for", taskEntity, dealEntity, true), nil)
+	templateFields, templateMeta := taskTemplates("Schedule a call for", taskEntity, dealEntity, true)
+	taskTemplateScheduleCall, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	taskTemplatePreparePricingDeck, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare the pricing deck", taskEntity, dealEntity, false), nil)
+	templateFields, templateMeta = taskTemplates("Prepare the pricing deck", taskEntity, dealEntity, false)
+	taskTemplatePreparePricingDeck, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	taskTemplateIntimateManager, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Intimate manager about the deal and confirm the deal amount", taskEntity, dealEntity, false), nil)
+	templateFields, templateMeta = taskTemplates("Intimate manager about the deal and confirm the deal amount", taskEntity, dealEntity, false)
+	taskTemplateIntimateManager, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	taskTemplatePrepareInvoice, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare the invoice and subscription charges for both monthly and annually", taskEntity, dealEntity, false), nil)
+	templateFields, templateMeta = taskTemplates("Prepare the invoice and subscription charges for both monthly and annually", taskEntity, dealEntity, false)
+	taskTemplatePrepareInvoice, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	taskTemplateHandOff, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Hand off to finance team", taskEntity, dealEntity, false), nil)
+	templateFields, templateMeta = taskTemplates("Hand off to finance team", taskEntity, dealEntity, false)
+	taskTemplateHandOff, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	taskTemplateAddReason, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Describe the lost reason in #general conversation", taskEntity, dealEntity, false), nil)
+	templateFields, templateMeta = taskTemplates("Describe the lost reason in #general conversation", taskEntity, dealEntity, false)
+	taskTemplateAddReason, err := b.TemplateAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, templateFields, templateMeta, nil)
 	if err != nil {
 		return nil, err
 	}
