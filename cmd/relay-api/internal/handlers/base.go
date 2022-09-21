@@ -121,32 +121,13 @@ func nodeStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]n
 }
 
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.QueryResult) ([]item.Item, error) {
-	itemIDs := itemIDs(result)
+	itemIDs := util.ParseGraphResult(result)
 	items, err := item.BulkRetrieveItems(ctx, accountID, itemIDs, db)
 	if err != nil {
 		return []item.Item{}, err
 	}
 
 	return sort(items, itemIDs), nil
-}
-
-func itemIDs(result *rg.QueryResult) []interface{} {
-	itemIds := make([]interface{}, 0)
-	if result != nil {
-		for result.Next() { // Next returns true until the iterator is depleted.
-			// Get the current Record.
-			r := result.Record()
-
-			// Entries in the Record can be accessed by index or key.
-			record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
-			//if record["id"] != "--" { //TODO: hacky-none-fix
-			itemIds = append(itemIds, record["id"])
-			//}
-
-		}
-	}
-
-	return itemIds
 }
 
 func itemElements(result *rg.QueryResult) []interface{} {

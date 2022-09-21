@@ -239,7 +239,7 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 	if err != nil {
 		return []string{}, err
 	}
-	itemIds := itemIDs(result)
+	itemIds := util.ParseGraphResult(result)
 
 	if len(itemIds) == 0 {
 		fields := make(map[string]interface{}, 0)

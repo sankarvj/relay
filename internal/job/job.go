@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -59,6 +60,8 @@ func (j *Job) Post(msg *stream.Message) error {
 		return j.eventEmailConvAdded(msg)
 	case stream.TypeChatConversationAdded:
 		return j.eventChatConvAdded(msg)
+	case stream.TypeEventAdded:
+		return j.eventEventAdded(msg)
 	}
 	return nil
 }
@@ -87,7 +90,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//connect
 	if m.State < stream.StateConnection {
-		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, "created", j.DB)
+		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, nil, e.DisplayName, j.DB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 			return err
@@ -140,33 +143,14 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 		}
 	}
 
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
-		if len(m.Source) == 0 {
-			err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
-			if err != nil {
-				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-				return err
-			} else {
-				stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
-			}
-		} else {
-			for j.baseEntityID, j.baseItemIDs = range m.Source {
-
-				if j.baseEntityID == "" {
-					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph: baseEntityID is empty")
-					continue
-				}
-				err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
-				if err != nil {
-					log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
-					return err
-				}
-			}
-			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
+		if err != nil {
+			return err
 		}
 	}
 	//TODO delete the log stream.
@@ -197,7 +181,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 
 	//connections
 	if m.State < stream.StateConnection {
-		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, "updated", j.DB)
+		err = j.actOnConnections(m.AccountID, m.UserID, map[string][]string{}, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, j.DB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
 			return err
@@ -242,12 +226,9 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 	//graph
 	if m.State < stream.StateRedis {
 		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
-		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
+		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
 		if err != nil {
-			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
 			return err
-		} else {
-			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
 		}
 	}
 	//TODO delete the log stream.
@@ -405,11 +386,11 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 		}
 	}
 
-	valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 	//insertion in to redis graph DB
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -420,6 +401,91 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 	}
 	//TODO delete the log stream.
 	log.Println("***>***> Completed EventChatConvAdded ***<***<")
+	return nil
+}
+
+func (j *Job) eventEventAdded(m *stream.Message) error {
+	log.Println("***>***> Reached EventEventAdded ***<***<")
+	ctx := context.Background()
+	if m.Source == nil {
+		m.Source = make(map[string][]string, 0)
+	}
+
+	identifierElements := strings.Split(m.Identifier, ":")
+	if len(identifierElements) == 3 {
+		conditionFields := make([]graphdb.Field, 0)
+		entityName := identifierElements[0]
+		fieldKey := identifierElements[1]
+		fieldValue := identifierElements[1]
+
+		e, err := entity.RetrieveByName(ctx, m.AccountID, entityName, j.DB)
+		if err != nil {
+			return err
+		}
+		exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
+		filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
+
+		fields, err := e.FilteredFields()
+		if err != nil {
+			return err
+		}
+
+		for _, f := range fields {
+			if condition, ok := filter.Conditions[f.Key]; ok {
+				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
+			}
+		}
+
+		gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
+		result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
+		if err != nil {
+			return err
+		}
+
+		m.Source[e.ID] = util.ParseGraphResultWithStrIDs(result)
+	}
+
+	log.Println("m.Source ------------------------:: ", m.Source)
+
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
+		return err
+	}
+	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	if err != nil {
+		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		return err
+	}
+
+	valueAddedFields := e.ValueAdd(it.Fields())
+	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
+
+	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+	m.State = ls.State
+
+	//connect
+	if m.State < stream.StateConnection {
+		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, j.DB)
+		if err != nil {
+			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+		}
+	}
+
+	//insertion in to redis graph DB
+	//safely deleting the empty string...
+	delete(m.Source, "")
+	if m.State < stream.StateRedis {
+		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -588,7 +654,7 @@ func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, ite
 
 // It connects the implicit relationships which as inferred by the field
 // Right now, the connection helps fetching the events and nothing else. (check whether the flow/node gets added to redis because of this)
-func (j Job) actOnConnections(accountID, userID string, base map[string][]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName, action string, db *sqlx.DB) error {
+func (j Job) actOnConnections(accountID, userID string, base map[string][]string, entityID, itemID string, newFields, oldFields []entity.Field, entityName string, db *sqlx.DB) error {
 	log.Println("*********> debug internal.job actOnConnections kicked in")
 	ctx := context.Background()
 	createEvent := oldFields == nil
@@ -597,6 +663,10 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 	relationships, err := relationship.Relationships(ctx, db, accountID, entityID)
 	if err != nil {
 		return errors.Wrap(err, "error: querying relationships")
+	}
+	action := "updated"
+	if createEvent {
+		action = "created"
 	}
 
 	for _, r := range relationships {
@@ -837,4 +907,34 @@ func deletedList(newList, oldList interface{}) []interface{} {
 		}
 	}
 	return deletedList
+}
+
+func (j *Job) actOnRedisWrapper(ctx context.Context, m *stream.Message, valueAddedFields []entity.Field) error {
+	if len(m.Source) == 0 {
+		err := j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
+		if err != nil {
+			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+		}
+	} else {
+		if m.OldFields != nil { //for update case need not loop base
+			err := j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
+			if err != nil {
+				return err
+			}
+		} else {
+			for j.baseEntityID, j.baseItemIDs = range m.Source {
+				if j.baseEntityID == "" {
+					continue
+				}
+				err := j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+	}
+	return nil
 }

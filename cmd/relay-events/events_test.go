@@ -22,7 +22,7 @@ func TestEvent(t *testing.T) {
 			"module":     "page_views",
 			"identifier": "contacts:email:user@example.com",
 			"event":      "User Registered",
-			"count":      "1",
+			"count":      1,
 			"icon":       "🔥",
 			"notify":     true,
 			"tags": map[string]interface{}{

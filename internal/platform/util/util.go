@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	pluralize "github.com/gertd/go-pluralize"
+	rg "github.com/redislabs/redisgraph-go"
 )
 
 const (
@@ -264,4 +265,34 @@ func LowerPluralize(s string) string {
 
 func Avatar(s string) string {
 	return fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", s)
+}
+
+func ParseGraphResult(result *rg.QueryResult) []interface{} {
+	itemIds := make([]interface{}, 0)
+	if result != nil {
+		for result.Next() { // Next returns true until the iterator is depleted.
+			// Get the current Record.
+			r := result.Record()
+
+			// Entries in the Record can be accessed by index or key.
+			record := ConvertInterfaceToMap(ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
+			//if record["id"] != "--" { //TODO: hacky-none-fix
+			itemIds = append(itemIds, record["id"])
+			//}
+
+		}
+	}
+	return itemIds
+}
+
+func ParseGraphResultWithStrIDs(result *rg.QueryResult) []string {
+	itemIds := make([]string, 0)
+	if result != nil {
+		for result.Next() {
+			r := result.Record()
+			record := ConvertInterfaceToMap(ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
+			itemIds = append(itemIds, record["id"].(string))
+		}
+	}
+	return itemIds
 }

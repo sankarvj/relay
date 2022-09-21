@@ -14,7 +14,6 @@ import (
 	"github.com/ardanlabs/conf"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -23,7 +22,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 )
@@ -51,7 +49,7 @@ func main() {
 func initialize(eHandler *EventsHandler) error {
 
 	log := log.New(os.Stdout, "RELAY EVENTS : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-	log.Println("initialization started")
+	log.Println("main : initialization started")
 	// =========================================================================
 	// Configuration
 
@@ -62,12 +60,6 @@ func initialize(eHandler *EventsHandler) error {
 			Host       string `conf:"default:0.0.0.0,env:DB_HOST"`
 			Name       string `conf:"default:relaydb,env:DB_NAME"`
 			DisableTLS bool   `conf:"default:true"`
-		}
-		SecDB struct {
-			User     string `conf:"default:redisgraph,env:SEC_DB_USER"`
-			Password string `conf:"default:redis,noprint,env:SEC_DB_PASSWORD"`
-			Host     string `conf:"default:127.0.0.1:6379,env:SEC_DB_HOST"`
-			Name     string `conf:"default:relaydb,env:SEC_DB_NAME"`
 		}
 		Auth struct {
 			KeyID              string `conf:"default:1"`
@@ -101,54 +93,24 @@ func initialize(eHandler *EventsHandler) error {
 
 	//connect to db only if connection is nil
 	var err error
+	log.Println("main : started : initializing database")
 	if eHandler.db == nil {
 		eHandler.db, err = database.Open(dbConfig)
 		if err != nil {
 			return errors.Wrap(err, "connecting to primary db")
 		}
-		log.Println("new db instance created")
+		log.Println("main : completed : new db instance created")
 	} else {
-		log.Println("old db instance reused")
+		log.Println("main : completed : old db instance reused")
 	}
 
-	secDbConfig := database.SecConfig{
-		User:     cfg.SecDB.User,
-		Password: cfg.SecDB.Password,
-		Host:     cfg.SecDB.Host,
-		Name:     cfg.SecDB.Name,
-	}
-
-	if eHandler.sdb == nil || eHandler.sdb.GraphPool() == nil {
-		rp := &redis.Pool{
-			MaxIdle:     50,
-			MaxActive:   50,
-			IdleTimeout: 240 * time.Second,
-			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", secDbConfig.Host, redis.DialPassword(secDbConfig.Password))
-				if err != nil {
-					return nil, err
-				}
-				return c, err
-			},
-
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
-				return err
-			},
-		}
-		eHandler.sdb = database.Init(rp, rp, rp)
-		log.Println("new sdb instance created")
-	} else {
-		log.Println("old sdb instance reused")
-	}
-
-	log.Println("main : Started : Initializing authentication support")
+	log.Println("main : started : initializing authentication support")
 	err = initializeAuth(eHandler, cfg.Auth.PrivateKeyFile, cfg.Auth.KeyID, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleClientSecret, cfg.Auth.Algorithm)
 	if err != nil {
-		return errors.Wrap(err, "initializing authentication support")
+		return errors.Wrap(err, "main : errored : authentication support")
 	}
-	log.Println("main : Completed : Initializing authentication support")
-	log.Println("initialization completed")
+	log.Println("main : completed : authentication support")
+	log.Println("main : initialization completed")
 
 	return nil
 }
@@ -173,42 +135,35 @@ func initializeAuth(eHandler *EventsHandler, privateKeyFile, keyID, googleKeyFil
 }
 
 func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) error {
-	fmt.Printf("received event: %+v\n", event)
-
 	payload, ok := event.(map[string]interface{})
 	if !ok {
-		err := errors.New("post body does not exist")
-		return web.NewRequestError(err, http.StatusBadRequest)
+		return web.NewRequestError(errors.New("post body not exist"), http.StatusBadRequest)
 	}
 
 	var body map[string]interface{}
 	if payload["body"] != nil {
 		body = payload["body"].(map[string]interface{})
 	} else {
-		err := errors.New("body does not exist")
-		return web.NewRequestError(err, http.StatusBadRequest)
+		return web.NewRequestError(errors.New("post body not exist"), http.StatusBadRequest)
 	}
 
 	headers := payload["headers"].(map[string]interface{})
 	token := headers["Authorization"]
-	fmt.Printf("received body: %+v\n", body)
 
 	accountID, err := h.authenticate(token)
 	if err != nil {
 		return err
 	}
-	fmt.Println("authentication successfull")
+	fmt.Println("handleEvent : authentication successfull")
 
-	h.findingBase(ctx, accountID, strValue(body["identifier"]))
-
-	entityName := strValue(body["module"])
-	data := make(map[string]interface{}, 0)
-
-	return h.processEvent(ctx, accountID, entityName, data)
+	return h.processEvent(ctx, accountID, body)
 }
 
-func (h EventsHandler) processEvent(ctx context.Context, accountID, entityName string, data map[string]interface{}) error {
-	log.Println("entityName ", entityName)
+func (h EventsHandler) processEvent(ctx context.Context, accountID string, body map[string]interface{}) error {
+	fmt.Println("processEvent : started")
+	identifier := strValue(body["identifier"])
+	entityName := strValue(body["module"])
+
 	//actual entity : page_view, events, errors, sign_ups, subscriptions
 	e, err := entity.RetrieveByName(ctx, accountID, entityName, h.db)
 	if err != nil {
@@ -230,36 +185,33 @@ func (h EventsHandler) processEvent(ctx context.Context, accountID, entityName s
 		itemFields = make(map[string]interface{}, 0)
 	}
 	namedFieldsMap := e.NamedFields()
-	for name, v := range data {
+
+	for name, v := range body {
 		if f, ok := namedFieldsMap[name]; ok {
-			if f.Who == entity.WhoContacts {
-				itemFields[f.Key] = []interface{}{}
-			} else if f.Who == entity.WhoCompanies {
-				itemFields[f.Key] = []interface{}{}
-			} else {
-				itemFields[f.Key] = f.CalcFunc().Calc(itemFields[f.Key], v)
-			}
+			itemFields[f.Key] = f.CalcFunc().Calc(itemFields[f.Key], v)
 		}
 	}
 
 	if it.ID == "" {
-		err = createItem(ctx, h.db, accountID, e.ID, itemFields)
+		it, err = createItem(ctx, h.db, accountID, e.ID, itemFields)
 		if err != nil {
 			return err
 		}
-		go job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewCreteItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, map[string][]string{}))
+		job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, it.Fields(), nil, identifier))
 	} else {
 		updatedItem, err := item.UpdateFields(ctx, h.db, e.ID, it.ID, itemFields)
 		if err != nil {
 			return err
 		}
-		go job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, updatedItem.Fields(), it.Fields()))
+		job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, updatedItem.Fields(), it.Fields(), identifier))
 	}
+
+	fmt.Println("processEvent : completed")
 
 	return nil
 }
 
-func createItem(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields map[string]interface{}) error {
+func createItem(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields map[string]interface{}) (item.Item, error) {
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		Name:      nil,
@@ -268,45 +220,11 @@ func createItem(ctx context.Context, db *sqlx.DB, accountID, entityID string, fi
 		UserID:    nil,
 		Fields:    fields,
 	}
-	_, err := item.Create(ctx, db, ni, time.Now())
+	it, err := item.Create(ctx, db, ni, time.Now())
 	if err != nil {
-		return err
+		return it, err
 	}
-	return nil
-}
-
-func (h EventsHandler) findingBase(ctx context.Context, accountID string, identifier string) (map[string]string, error) {
-	sourceMap := map[string]string{}
-	elements := strings.Split(identifier, ":")
-	if len(elements) == 3 {
-		conditionFields := make([]graphdb.Field, 0)
-		entityName := elements[0]
-		fieldKey := elements[1]
-		fieldValue := elements[1]
-
-		e, err := entity.RetrieveByName(ctx, accountID, entityName, h.db)
-		if err != nil {
-			return sourceMap, err
-		}
-		exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
-		filter := job.NewJabEngine().RunExpGrapher(ctx, h.db, h.sdb, accountID, exp)
-
-		fields, err := e.FilteredFields()
-		if err != nil {
-			return sourceMap, err
-		}
-
-		for _, f := range fields {
-			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
-			}
-		}
-
-		gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
-		result, err := graphdb.GetResult(h.sdb.GraphPool(), gSegment, 0, "", "")
-		log.Println("three result", result)
-	}
-	return sourceMap, nil
+	return it, nil
 }
 
 func (h EventsHandler) authenticate(token interface{}) (string, error) {
