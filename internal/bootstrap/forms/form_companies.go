@@ -50,7 +50,7 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Name:        "revenue",
 		DisplayName: "Annual Revenue",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+		DataType:    entity.TypeNumber,
 	}
 
 	countryFieldID := uuid.New().String()
@@ -68,7 +68,38 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Name:        "employees_count",
 		DisplayName: "Employees Count",
 		DomType:     entity.DomText,
-		DataType:    entity.TypeString,
+		DataType:    entity.TypeNumber,
+	}
+
+	healthFieldID := uuid.New().String()
+	healthField := entity.Field{
+		Key:         healthFieldID,
+		Name:        "health",
+		DisplayName: "Health",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeNumber,
+		Choices: []entity.Choice{
+			{
+				ID:           "1",
+				DisplayValue: "Very Poor",
+			},
+			{
+				ID:           "2",
+				DisplayValue: "Poor",
+			},
+			{
+				ID:           "3",
+				DisplayValue: "Moderate",
+			},
+			{
+				ID:           "4",
+				DisplayValue: "Good",
+			},
+			{
+				ID:           "5",
+				DisplayValue: "Cool",
+			},
+		},
 	}
 
 	ownerFieldID := uuid.New().String()
@@ -89,7 +120,7 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{nameField, websiteField, cityField, stateField, ownerField, annualRevenueField, countryField, employeesCountField}
+	return []entity.Field{nameField, websiteField, cityField, stateField, ownerField, annualRevenueField, countryField, employeesCountField, healthField}
 }
 
 func CompanyVals(companyEntity entity.Entity, name, website string) map[string]interface{} {
@@ -99,8 +130,9 @@ func CompanyVals(companyEntity entity.Entity, name, website string) map[string]i
 		"city":            randomdata.City(),
 		"state":           randomdata.State(randomdata.Large),
 		"country":         "USA",
-		"employees_count": randomdata.Number(2000),
+		"employees_count": randomdata.Number(200),
 		"revenue":         randomdata.Number(3000),
+		"health":          randomdata.Number(1, 5),
 		"owner":           []interface{}{},
 	}
 

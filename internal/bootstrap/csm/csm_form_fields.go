@@ -2,12 +2,34 @@ package csm
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
+
+func taskVals(actorEntity entity.Entity, desc, contactID string) map[string]interface{} {
+
+	taskVals := make(map[string]interface{}, 0)
+	namedFieldsMap := entity.NamedFieldsObjMap(actorEntity.FieldsIgnoreError())
+
+	for name, f := range namedFieldsMap {
+		switch name {
+		case "desc":
+			taskVals[f.Key] = desc
+		case "contact":
+			taskVals[f.Key] = []interface{}{contactID}
+		case "reminder", "due_by":
+			taskVals[f.Key] = util.FormatTimeGo(time.Now())
+		}
+
+	}
+	return taskVals
+}
 
 func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKey, contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string, flowEntityID, nodeEntityID, nodeKey string) []entity.Field {
 	projectNameFieldID := uuid.New().String()
@@ -96,6 +118,27 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		},
 	}
 
+	startTimeFieldID := uuid.New().String()
+	startTimeField := entity.Field{
+		Key:         startTimeFieldID,
+		Name:        "start_time",
+		DisplayName: "Start Time",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoStartTime,
+	}
+
+	endTimeFieldID := uuid.New().String()
+	endTimeField := entity.Field{
+		Key:         endTimeFieldID,
+		Name:        "end_time",
+		DisplayName: "End Time",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoEndTime,
+		Meta:        map[string]string{entity.MetaKeyRow: "true"},
+	}
+
 	pipeFieldID := uuid.New().String()
 	pipeField := entity.Field{
 		Key:         pipeFieldID,
@@ -135,10 +178,10 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		},
 	}
 
-	return []entity.Field{projectNameField, planField, statusField, ownerField, contactsField, companyField, pipeField, pipeStageField}
+	return []entity.Field{projectNameField, planField, statusField, ownerField, contactsField, companyField, startTimeField, endTimeField, pipeField, pipeStageField}
 }
 
-func ProjVals(projectEntity entity.Entity, name string, amount int, contactID1, contactID2, flowID string) map[string]interface{} {
+func ProjVals(projectEntity entity.Entity, name string, contactID1, contactID2, flowID string) map[string]interface{} {
 	projVals := map[string]interface{}{
 		"project_name":         name,
 		"associated_contacts":  []interface{}{contactID1, contactID2},
@@ -288,4 +331,226 @@ func MeetingFields(contactEntityID, companyEntityID, projectEntityID string, con
 	}
 
 	return []entity.Field{titleField, summaryField, attendessField, startTimeField, endTimeField, timezoneField, createdAtField, updatedAtField, contactField, companyField, projectField}
+}
+
+func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string) []entity.Field {
+	activityNameFieldID := uuid.New().String()
+	activityNameField := entity.Field{
+		Key:         activityNameFieldID,
+		Name:        "activity_name",
+		DisplayName: "Activity Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+	}
+
+	activityDescFieldID := uuid.New().String()
+	activityDescField := entity.Field{
+		Key:         activityDescFieldID,
+		Name:        "activity_desc",
+		DisplayName: "Description",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+	}
+
+	timeOfEventFieldID := uuid.New().String()
+	timeOfEventField := entity.Field{
+		Key:         timeOfEventFieldID,
+		Name:        "time",
+		DisplayName: "Time",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoStartTime,
+	}
+
+	iconFieldID := uuid.New().String()
+	iconField := entity.Field{
+		Key:         iconFieldID,
+		Name:        "icon",
+		DisplayName: "Icon",
+		DomType:     entity.DomImage,
+		DataType:    entity.TypeString,
+	}
+
+	tagsFieldID := uuid.New().String()
+	tagsField := entity.Field{
+		Key:         tagsFieldID,
+		Name:        "tags",
+		DisplayName: "Tags",
+		DataType:    entity.TypeList,
+		DomType:     entity.DomMultiSelect,
+		Field: &entity.Field{
+			Key:      "element",
+			DataType: entity.TypeString,
+		},
+	}
+
+	contactsFieldID := uuid.New().String()
+	contactsField := entity.Field{
+		Key:         contactsFieldID,
+		Name:        "associated_contacts",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaMultiChoice: "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyFieldID := uuid.New().String()
+	companyField := entity.Field{
+		Key:         companyFieldID,
+		Name:        "associated_companies",
+		DisplayName: "Associated Companies",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{activityNameField, activityDescField, timeOfEventField, tagsField, contactsField, companyField, iconField}
+}
+
+func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1, contactID2, companyID1 string) map[string]interface{} {
+	actVals := map[string]interface{}{
+		"activity_name":        name,
+		"activity_desc":        desc,
+		"icon":                 "🔥",
+		"tagsField":            []interface{}{"super"},
+		"associated_contacts":  []interface{}{contactID1},
+		"associated_companies": []interface{}{companyID1},
+	}
+	return forms.KeyMap(activityEntity.NamedKeys(), actVals)
+}
+
+func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string) []entity.Field {
+	planNameFieldID := uuid.New().String()
+	planNameField := entity.Field{
+		Key:         planNameFieldID,
+		Name:        "plan_name",
+		DisplayName: "Plan Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+	}
+
+	planDescFieldID := uuid.New().String()
+	planDescField := entity.Field{
+		Key:         planDescFieldID,
+		Name:        "activity_desc",
+		DisplayName: "Description",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+	}
+
+	timeOfEventFieldID := uuid.New().String()
+	timeOfEventField := entity.Field{
+		Key:         timeOfEventFieldID,
+		Name:        "time",
+		DisplayName: "Time",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoStartTime,
+	}
+
+	iconFieldID := uuid.New().String()
+	iconField := entity.Field{
+		Key:         iconFieldID,
+		Name:        "icon",
+		DisplayName: "Icon",
+		DomType:     entity.DomImage,
+		DataType:    entity.TypeString,
+	}
+
+	reasonFieldID := uuid.New().String()
+	reasonField := entity.Field{
+		Key:         reasonFieldID,
+		Name:        "reason",
+		DisplayName: "Reason",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeList,
+		Choices: []entity.Choice{
+			{
+				ID:           "1",
+				DisplayValue: "Product not useful",
+			},
+			{
+				ID:           "2",
+				DisplayValue: "Expensive",
+			},
+			{
+				ID:           "3",
+				DisplayValue: "Technical issues",
+			},
+			{
+				ID:           "4",
+				DisplayValue: "Switching to other product",
+			},
+			{
+				ID:           "5",
+				DisplayValue: "Others",
+			},
+		},
+		Field: &entity.Field{
+			Key:      "id",
+			DataType: entity.TypeString,
+		},
+	}
+
+	contactsFieldID := uuid.New().String()
+	contactsField := entity.Field{
+		Key:         contactsFieldID,
+		Name:        "associated_contacts",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaMultiChoice: "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	companyFieldID := uuid.New().String()
+	companyField := entity.Field{
+		Key:         companyFieldID,
+		Name:        "associated_companies",
+		DisplayName: "Associated Companies",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       companyEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{planNameField, planDescField, timeOfEventField, reasonField, contactsField, companyField, iconField}
+}
+
+func PlanVals(planEntity entity.Entity, name, desc string, contactID1, contactID2, companyID1 string) map[string]interface{} {
+	planVals := map[string]interface{}{
+		"plan_name":            name,
+		"plan_desc":            desc,
+		"icon":                 "🔥",
+		"reason":               []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
+		"associated_contacts":  []interface{}{contactID1},
+		"associated_companies": []interface{}{companyID1},
+	}
+	return forms.KeyMap(planEntity.NamedKeys(), planVals)
 }

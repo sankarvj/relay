@@ -64,7 +64,10 @@ func run() error {
 			GoogleKeyFile      string `conf:"default:config/dev/relay-70013-firebase-adminsdk-cfun3-58caec85f0.json,env:AUTH_GOOGLE_KEY_FILE"`
 			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
 		}
-		Args  conf.Args
+		Service struct {
+			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
+			WorkerSqsURL string `conf:"default:us-east-1,env:AWS_WORKER_SQS_URL"`
+		}
 		Build string `conf:"default:dev,env:BUILD"`
 	}
 
@@ -80,7 +83,13 @@ func run() error {
 		return errors.Wrap(err, "error: parsing config")
 	}
 
+	// Store Global Variables
 	expvar.NewString("build").Set(cfg.Build)
+	expvar.NewString("aws_region").Set(cfg.Service.Region)
+	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
+
+	// =========================================================================
+	// App Starting
 	log.Printf("main : Started : Application initializing : version %q", cfg.Build)
 	defer log.Println("main : Completed")
 

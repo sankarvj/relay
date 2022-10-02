@@ -228,6 +228,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	ev := Event{
 		db: db,
 	}
+
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/events", ev.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	c := Counter{
@@ -241,6 +242,16 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 		sdb: sdb,
 	}
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/overview", d.Overview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+
+	ts := Timeseries{
+		db:            db,
+		sdb:           sdb,
+		authenticator: authenticator,
+	}
+	app.Handle("POST", "/v1/accounts/:account_id/timeseries", ts.Create)
+	app.Handle("GET", "/v1/accounts/:account_id/entities/:entity_id/timeseries", ts.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/entities/:entity_id/timeseries/count/:count_by", ts.Count, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/entities/:entity_id/timeseries/sum/:sum_by", ts.Sum, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
 
 	return app
 }

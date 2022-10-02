@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"expvar"
 	"fmt"
 	"log"
 	"net/mail"
@@ -53,6 +54,10 @@ func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
 		log.Println("*> expected error occured when unmarshalling on `ConvertInterfaceToMap` sending empty map. error:", err)
 	}
 	return itemMap
+}
+
+func ConvertIntToStr(i int) string {
+	return strconv.FormatInt(int64(i), 10)
 }
 
 func ConvertStrToInt(s string) int {
@@ -295,4 +300,12 @@ func ParseGraphResultWithStrIDs(result *rg.QueryResult) []string {
 		}
 	}
 	return itemIds
+}
+
+func ExpvarGet(key string) string {
+	val := expvar.Get("build")
+	if val != nil {
+		return strings.Trim(val.String(), "\"")
+	}
+	return ""
 }

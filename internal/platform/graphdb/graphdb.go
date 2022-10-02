@@ -61,7 +61,6 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	gn.ItemID = itemID
 
 	for _, f := range fields {
-
 		if f.Value == nil {
 			continue
 		}
@@ -71,6 +70,9 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			gn.Fields = append(gn.Fields, f)
 		case TypeList:
 			for i, element := range f.Value.([]interface{}) {
+				if element == "" {
+					element = nil
+				}
 				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
 					MakeBaseGNode("", []Field{*f.Field}).relateLists()
@@ -234,6 +236,7 @@ func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
 	gn.SourceNode = srcNode
 	s := matchNode(srcNode)
 	wi, wh := where(gn, srcNode.Alias, srcNode.Alias)
+
 	s = append(s, wi...)
 	if len(wh) > 0 {
 		s = append(s, "WHERE")

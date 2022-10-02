@@ -16,6 +16,9 @@ admin:
 brain: 
 	go run ./cmd/relay-slack-brain/main.go
 
+events: 
+	go run ./cmd/relay-events/main.go
+
 keys:
 	go run ./cmd/relay-admin/main.go keygen private.pem
 

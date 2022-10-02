@@ -90,6 +90,7 @@ const (
 	MetaMultiChoice    = "multi"
 	MetaKeyHTML        = "html"
 	MetaKeyCalc        = "calc"
+	MetaKeyRollUp      = "rollup"
 )
 
 const (
@@ -98,8 +99,16 @@ const (
 	MetaLayoutUsers    = "users"
 	MetaLayoutDate     = "date"
 
-	MetaCalcAggr = "aggr"
-	MetaCalcSum  = "sum"
+	MetaCalcAggr   = "aggr"
+	MetaCalcSum    = "sum"
+	MetaCalcLatest = "latest"
+
+	MetaRollUpNever      = "never"
+	MetaRollUpAlways     = "always"
+	MetaRollUpDaily      = "daily"
+	MetaRollUpHourly     = "hourly"
+	MetaRollUpMinute     = "minute"
+	MetaRollUpChangeOver = "change_over"
 )
 
 //traits of the field
@@ -459,6 +468,13 @@ func (f Field) CalcFunc() Calculator {
 	return Unknown{}
 }
 
+func (f Field) RollUp() string {
+	if val, ok := f.Meta[MetaKeyRollUp]; ok {
+		return val
+	}
+	return MetaRollUpNever
+}
+
 func FieldsMap(entityFields []Field) map[string]interface{} {
 	params := map[string]interface{}{}
 	for _, f := range entityFields {
@@ -602,7 +618,7 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 			}
 
 		case int, int64:
-			dataType = graphdb.TypeDateTimeMillis
+			dataType = graphdb.TypeNumber
 		}
 
 		return graphdb.Field{
@@ -621,4 +637,12 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 			Value:      value,
 		}
 	}
+}
+
+func (f *Field) ChoicesMap() map[string]Choice {
+	choicesMap := make(map[string]Choice, 0)
+	for _, choice := range f.Choices {
+		choicesMap[choice.ID] = choice
+	}
+	return choicesMap
 }

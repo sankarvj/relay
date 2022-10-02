@@ -21,6 +21,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
+	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 	"go.opencensus.io/trace"
 )
 
@@ -200,12 +201,32 @@ func overdue(fields map[string]entity.Field, who string) *ruler.Filter {
 	return filter
 }
 
+func timeRange(key, duration string) graphdb.Field {
+	stTime, endTime := timeseries.Duration(duration)
+	return graphdb.Field{
+		Key:      key,
+		DataType: graphdb.TypeDateRange,
+		Min:      stTime,
+		Max:      endTime,
+	}
+}
+
 func relatable(f entity.Field) graphdb.Field {
 	return graphdb.Field{
 		Key:      f.Key,
 		Value:    []interface{}{""},
 		DataType: graphdb.TypeReference,
 		RefID:    f.RefID,
+		Field:    &graphdb.Field{},
+	}
+}
+
+func listable(f entity.Field) graphdb.Field {
+	return graphdb.Field{
+		Key:      f.Key,
+		Value:    []interface{}{""},
+		DataType: graphdb.TypeList,
+		RefID:    f.Key,
 		Field:    &graphdb.Field{},
 	}
 }

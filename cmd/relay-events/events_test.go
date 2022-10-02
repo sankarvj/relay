@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,21 +18,24 @@ func TestEvent(t *testing.T) {
 	sdb, teardown := tests.NewSecDbUnit(t)
 	defer teardown()
 
-	reqBody := map[string]interface{}{
-		"body": map[string]interface{}{
-			"module":     "page_views",
-			"identifier": "contacts:email:user@example.com",
-			"event":      "User Registered",
-			"count":      1,
-			"icon":       "🔥",
-			"notify":     true,
-			"tags": map[string]interface{}{
-				"email": "user@example.com",
-				"uid":   "uid1234",
-			},
+	body := map[string]interface{}{
+		"module":     "page_views",
+		"identifier": "contacts:email:user@example.com",
+		"event":      "User Registered",
+		"count":      1,
+		"icon":       "🔥",
+		"notify":     true,
+		"tags": map[string]interface{}{
+			"email": "user@example.com",
+			"uid":   "uid1234",
 		},
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	reqBody := map[string]interface{}{
+		"body": string(bodyBytes),
 		"headers": map[string]interface{}{
-			"Authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJyb2xlcyI6W10sImV4cCI6MjI2ODU5MDU0OSwiaWF0IjoxNjYzNzkwNTQ5LCJzdWIiOiIzY2YxNzI2Ni0zNDczLTQwMDYtOTg0Zi05MzI1MTIyNjc4YjcifQ.dpZqxQLSroBYC3uutVTFuLuFTBvFpKPqGuQVlhMNyS-zonjko6foQ_9vxlbZr6Ax5D5tBD1EXxJb0RuU0kAQ3L-eFAbwbRHnUkaTODGqh1fwQnuxqvzUm9-tnvqYzz7jM8iyw1y21tEyynBB9Zx6cOLJGRN5FojIlHrVQ7P4KTxeBRsgzphl9bV5-5Ge-Ec8_-fKtuwGKDrNWPVjU6qbIDlgGNVdTcJcYDco5_KUcuUAvKmc3LrvmB8oQPZb1byjc0JnNbIxC2cRnCLwiphoceYsnSwrbxUlyGNNG1uutFqsqQZca6aNx62X6TqSmaw-6Kt7KGVqg9sv4y9JUP8oRQ",
+			"authorization": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJyb2xlcyI6W10sImV4cCI6MjI2ODU5MDU0OSwiaWF0IjoxNjYzNzkwNTQ5LCJzdWIiOiIzY2YxNzI2Ni0zNDczLTQwMDYtOTg0Zi05MzI1MTIyNjc4YjcifQ.dpZqxQLSroBYC3uutVTFuLuFTBvFpKPqGuQVlhMNyS-zonjko6foQ_9vxlbZr6Ax5D5tBD1EXxJb0RuU0kAQ3L-eFAbwbRHnUkaTODGqh1fwQnuxqvzUm9-tnvqYzz7jM8iyw1y21tEyynBB9Zx6cOLJGRN5FojIlHrVQ7P4KTxeBRsgzphl9bV5-5Ge-Ec8_-fKtuwGKDrNWPVjU6qbIDlgGNVdTcJcYDco5_KUcuUAvKmc3LrvmB8oQPZb1byjc0JnNbIxC2cRnCLwiphoceYsnSwrbxUlyGNNG1uutFqsqQZca6aNx62X6TqSmaw-6Kt7KGVqg9sv4y9JUP8oRQ",
 		},
 	}
 
@@ -98,7 +102,7 @@ func TestEvent(t *testing.T) {
 
 		t.Log("\tAdd an first page visit event")
 		{
-			err := h.handleEvent(tests.Context(), reqBody)
+			_, err := h.handleEvent(tests.Context(), reqBody)
 			//err := h.processEvent(tests.Context(), schema.SeedAccountID, pvE.ID, pageVisits(), "", "")
 			if err != nil {
 				t.Fatalf("\tShould be able to create an event - %s", err)
@@ -107,7 +111,7 @@ func TestEvent(t *testing.T) {
 
 		t.Log("\tAdd an second page visit event")
 		{
-			err := h.handleEvent(tests.Context(), reqBody)
+			_, err := h.handleEvent(tests.Context(), reqBody)
 			//err := h.processEvent(tests.Context(), schema.SeedAccountID, pvE.ID, pageVisits(), "", "", db)
 			if err != nil {
 				t.Fatalf("\tShould be able to update an event - %s", err)

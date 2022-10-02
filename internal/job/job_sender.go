@@ -2,28 +2,26 @@ package job
 
 import (
 	"encoding/json"
-	"expvar"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
-)
-
-const (
-	queueURL = "https://sqs.us-east-1.amazonaws.com/191933142379/awseb-e-yhaas2daqe-stack-AWSEBWorkerQueue-io2v9Ty1Rlxh"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 func (j *Job) Stream(message *stream.Message) error {
-	build := expvar.Get("build")
+	build := util.ExpvarGet("build")
 	var err error
-	if build == nil || build.String() == `"dev"` {
+	if build != "prod" && build != "stage" {
 		err = j.Post(message)
 	} else {
 		err = queueSQS(message)
 	}
 	if err != nil {
+		log.Println("***> unexpected error occurred when queing message to SQS", err)
 		return err
 	}
 
@@ -31,22 +29,21 @@ func (j *Job) Stream(message *stream.Message) error {
 }
 
 func queueSQS(message *stream.Message) error {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1"), //TODO: don't hardcode take this param from the ENV
-	},
-	)
+	region := util.ExpvarGet("aws_region")
+	queueURL := util.ExpvarGet("aws_worker_sqs_url")
 
+	sess, err := session.NewSession(&aws.Config{
+		Region:   aws.String(region), //TODO: don't hardcode take this param from the ENV
+		Endpoint: aws.String(fmt.Sprintf("https://sqs.%s.amazonaws.com", region)),
+	})
 	if err != nil {
 		return err
 	}
-
-	// Create an SQS session.
 	svc := sqs.New(sess)
 
 	// Make message JSON
 	msg, err := json.Marshal(message)
 	if err != nil {
-		log.Println("***>***> queueSQS: unexpected/unhandled error occurred when sending the job to SQS. error:", err)
 		return err
 	}
 

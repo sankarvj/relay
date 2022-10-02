@@ -14,7 +14,8 @@ zip -r function.zip main configurations
 
 
 echo "Clean contents"
-rm -rf main
+rm -rf main 
+rm -rf configurations
 
 cd ../../
 echo "Your events function is ready!"

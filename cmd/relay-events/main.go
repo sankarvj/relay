@@ -3,22 +3,22 @@ package main
 import (
 	"context"
 	"crypto/rsa"
+	"encoding/json"
+	"expvar"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/ardanlabs/conf"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/event"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -35,23 +35,23 @@ type EventsHandler struct {
 	db            *sqlx.DB
 	sdb           *database.SecDB
 	authenticator *auth.Authenticator
+	log           *log.Logger
 }
 
-func main() {
-	eHandler = &EventsHandler{}
-	err := initialize(eHandler)
-	if err != nil {
-		log.Println(errors.Wrap(err, "initializarion error"))
+func newEventsHandler() *EventsHandler {
+	if eHandler == nil { // create if not exists already
+		eHandler = &EventsHandler{}
+		err := initialize(eHandler)
+		if err != nil {
+			eHandler.log.Println(errors.Wrap(err, "initializarion error"))
+		}
 	}
-	lambda.Start(eHandler.handleEvent)
+	return eHandler
 }
 
 func initialize(eHandler *EventsHandler) error {
-
-	log := log.New(os.Stdout, "RELAY EVENTS : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-	log.Println("main : initialization started")
-	// =========================================================================
-	// Configuration
+	eHandler.log = log.New(os.Stdout, "RELAY EVENTS : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	eHandler.log.Println("main : initialization started")
 
 	var cfg struct {
 		DB struct {
@@ -68,6 +68,10 @@ func initialize(eHandler *EventsHandler) error {
 			GoogleKeyFile      string `conf:"default:config/dev/relay-70013-firebase-adminsdk-cfun3-58caec85f0.json,env:AUTH_GOOGLE_KEY_FILE"`
 			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
 		}
+		Service struct {
+			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
+			WorkerSqsURL string `conf:"default:us-east-1,env:AWS_WORKER_SQS_URL"`
+		}
 		Build string `conf:"default:dev,env:BUILD"`
 	}
 
@@ -83,6 +87,14 @@ func initialize(eHandler *EventsHandler) error {
 		return errors.Wrap(err, "error: parsing config")
 	}
 
+	// Store Global Variables
+	expvar.NewString("build").Set(cfg.Build)
+	expvar.NewString("aws_region").Set(cfg.Service.Region)
+	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
+
+	// =========================================================================
+	// App Starting
+	eHandler.log.Printf("main : started : application initializing : version %q", cfg.Build)
 	dbConfig := database.Config{
 		User:       cfg.DB.User,
 		Password:   cfg.DB.Password,
@@ -93,24 +105,22 @@ func initialize(eHandler *EventsHandler) error {
 
 	//connect to db only if connection is nil
 	var err error
-	log.Println("main : started : initializing database")
+	eHandler.log.Println("main : started : initializing database")
 	if eHandler.db == nil {
 		eHandler.db, err = database.Open(dbConfig)
 		if err != nil {
 			return errors.Wrap(err, "connecting to primary db")
 		}
-		log.Println("main : completed : new db instance created")
-	} else {
-		log.Println("main : completed : old db instance reused")
+		eHandler.log.Println("main : completed : new db instance created")
 	}
 
-	log.Println("main : started : initializing authentication support")
+	eHandler.log.Println("main : started : initializing authentication support")
 	err = initializeAuth(eHandler, cfg.Auth.PrivateKeyFile, cfg.Auth.KeyID, cfg.Auth.GoogleKeyFile, cfg.Auth.GoogleClientSecret, cfg.Auth.Algorithm)
 	if err != nil {
-		return errors.Wrap(err, "main : errored : authentication support")
+		return errors.Wrap(err, "main : errored : initializing authentication support")
 	}
-	log.Println("main : completed : authentication support")
-	log.Println("main : initialization completed")
+	eHandler.log.Println("main : completed : initializing authentication support")
+	eHandler.log.Println("main : initialization completed")
 
 	return nil
 }
@@ -134,97 +144,73 @@ func initializeAuth(eHandler *EventsHandler, privateKeyFile, keyID, googleKeyFil
 	return nil
 }
 
-func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) error {
+func main() {
+	lambda.Start(newEventsHandler().handleEvent)
+}
+
+func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) (events.APIGatewayProxyResponse, error) {
+	eHandler.log.Println("handleEvent : started : parse payload")
 	payload, ok := event.(map[string]interface{})
 	if !ok {
-		return web.NewRequestError(errors.New("post body not exist"), http.StatusBadRequest)
+		eHandler.log.Println("handleEvent : errored : parse payload")
+		return newErrReponse(errors.New("post payload not exist"))
 	}
 
 	var body map[string]interface{}
 	if payload["body"] != nil {
-		body = payload["body"].(map[string]interface{})
+		jsonStr := payload["body"].(string)
+		err := json.Unmarshal([]byte(jsonStr), &body)
+		if err != nil {
+			eHandler.log.Println("handleEvent : errored : parse body")
+			return newErrReponse(errors.New("post body not in proper format"))
+		}
 	} else {
-		return web.NewRequestError(errors.New("post body not exist"), http.StatusBadRequest)
+		eHandler.log.Println("handleEvent : errored : parse body empty")
+		return newErrReponse(errors.New("post body not exist"))
 	}
 
 	headers := payload["headers"].(map[string]interface{})
-	token := headers["Authorization"]
+	token := headers["authorization"]
+	eHandler.log.Println("handleEvent : completed : parse payload")
 
+	eHandler.log.Println("handleEvent : started : authentication")
 	accountID, err := h.authenticate(token)
 	if err != nil {
-		return err
+		eHandler.log.Println("handleEvent : errored : authentication")
+		return newErrReponse(err)
 	}
-	fmt.Println("handleEvent : authentication successfull")
+	eHandler.log.Println("handleEvent : completed : authentication")
 
 	return h.processEvent(ctx, accountID, body)
 }
 
-func (h EventsHandler) processEvent(ctx context.Context, accountID string, body map[string]interface{}) error {
-	fmt.Println("processEvent : started")
+func (h EventsHandler) processEvent(ctx context.Context, accountID string, body map[string]interface{}) (events.APIGatewayProxyResponse, error) {
+	eHandler.log.Println("processEvent : started : save event")
 	identifier := strValue(body["identifier"])
 	entityName := strValue(body["module"])
 
-	//actual entity : page_view, events, errors, sign_ups, subscriptions
-	e, err := entity.RetrieveByName(ctx, accountID, entityName, h.db)
+	itEve, err := event.Process(ctx, accountID, entityName, body, eHandler.log, h.db)
 	if err != nil {
-		return err
+		return newErrReponse(err)
 	}
 
-	items, err := item.List(ctx, accountID, e.ID, h.db)
-	if err != nil {
-		return err
-	}
-
-	it := item.Item{}
-	if len(items) > 0 {
-		it = items[0]
-	}
-
-	itemFields := it.Fields()
-	if itemFields == nil {
-		itemFields = make(map[string]interface{}, 0)
-	}
-	namedFieldsMap := e.NamedFields()
-
-	for name, v := range body {
-		if f, ok := namedFieldsMap[name]; ok {
-			itemFields[f.Key] = f.CalcFunc().Calc(itemFields[f.Key], v)
-		}
-	}
-
-	if it.ID == "" {
-		it, err = createItem(ctx, h.db, accountID, e.ID, itemFields)
+	if itEve.OldItem == nil && itEve.NewItem != nil {
+		eHandler.log.Println("processEvent : started : sqs streaming")
+		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewItem.EntityID, itEve.NewItem.ID, itEve.NewItem.Fields(), nil, identifier))
 		if err != nil {
-			return err
+			eHandler.log.Println("processEvent : errored : sqs streaming", err)
 		}
-		job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, it.Fields(), nil, identifier))
-	} else {
-		updatedItem, err := item.UpdateFields(ctx, h.db, e.ID, it.ID, itemFields)
+		eHandler.log.Println("processEvent : completed : sqs streaming")
+	} else if itEve.OldItem != nil && itEve.NewItem != nil {
+		eHandler.log.Println("processEvent : started : sqs streaming")
+		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewItem.EntityID, itEve.NewItem.ID, itEve.NewItem.Fields(), itEve.OldItem.Fields(), identifier))
 		if err != nil {
-			return err
+			eHandler.log.Println("processEvent : errored : sqs streaming", err)
 		}
-		job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", e.ID, it.ID, updatedItem.Fields(), it.Fields(), identifier))
+		eHandler.log.Println("processEvent : completed : sqs streaming")
 	}
 
-	fmt.Println("processEvent : completed")
-
-	return nil
-}
-
-func createItem(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields map[string]interface{}) (item.Item, error) {
-	ni := item.NewItem{
-		ID:        uuid.New().String(),
-		Name:      nil,
-		AccountID: accountID,
-		EntityID:  entityID,
-		UserID:    nil,
-		Fields:    fields,
-	}
-	it, err := item.Create(ctx, db, ni, time.Now())
-	if err != nil {
-		return it, err
-	}
-	return it, nil
+	return newSuccessReponse("success")
 }
 
 func (h EventsHandler) authenticate(token interface{}) (string, error) {
@@ -258,4 +244,18 @@ func strValue(v interface{}) string {
 		return v.(string)
 	}
 	return ""
+}
+
+func newSuccessReponse(message string) (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{
+		Body:       message,
+		StatusCode: 200,
+	}, nil
+}
+
+func newErrReponse(err error) (events.APIGatewayProxyResponse, error) {
+	return events.APIGatewayProxyResponse{
+		Body:       err.Error(),
+		StatusCode: 500,
+	}, err
 }

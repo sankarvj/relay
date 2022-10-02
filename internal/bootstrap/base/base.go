@@ -75,6 +75,8 @@ type CoreAutomation struct {
 type CrmSample struct {
 	ContactItemMatt         item.Item
 	ContactItemNatasha      item.Item
+	CompanyItemStarkInd     item.Item
+	CompanyItemRandInd      item.Item
 	LeadStatusItemNew       item.Item
 	LeadStatusItemBadTiming item.Item
 	LeadStatusItemConnected item.Item

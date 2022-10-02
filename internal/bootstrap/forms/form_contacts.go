@@ -6,6 +6,7 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, companyEntityKey string, leadStatusEntityID, leadStatusEntityKey string) []entity.Field {
@@ -113,11 +114,15 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 			},
 			{
 				ID:           "4",
+				DisplayValue: "InActive",
+			},
+			{
+				ID:           "5",
 				DisplayValue: "Other",
 			},
 		},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -276,7 +281,7 @@ func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadSt
 		"email":           email,
 		"mobile_numbers":  []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
 		"nps_score":       randomdata.Number(100),
-		"lifecycle_stage": []interface{}{"1"},
+		"lifecycle_stage": []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
 		"owner":           []interface{}{},
 		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/avataaars/%s.svg", firstName),
 		"lead_status":     []interface{}{leadStatusItemID},

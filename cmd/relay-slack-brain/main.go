@@ -80,6 +80,10 @@ func run() error {
 			ServiceName   string  `conf:"default:relay-api"`
 			Probability   float64 `conf:"default:0.05"`
 		}
+		Service struct {
+			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
+			WorkerSqsURL string `conf:"default:us-east-1,env:AWS_WORKER_SQS_URL"`
+		}
 		Build string `conf:"default:dev,env:BUILD"`
 	}
 
@@ -95,11 +99,13 @@ func run() error {
 		return errors.Wrap(err, "parsing config")
 	}
 
+	// Store Global Variables
+	expvar.NewString("build").Set(cfg.Build)
+	expvar.NewString("aws_region").Set(cfg.Service.Region)
+	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
+
 	// =========================================================================
 	// App Starting
-
-	// Print the build version for our logs. Also expose it under /debug/vars.
-	expvar.NewString("build").Set(cfg.Build)
 	log.Printf("main : Started : Application initializing : version %q", cfg.Build)
 	defer log.Println("main : Completed")
 

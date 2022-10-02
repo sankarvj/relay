@@ -5,50 +5,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
-	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
-	"go.opencensus.io/trace"
 )
 
 // Check provides support for orchestration health checks.
 type Event struct {
 	db *sqlx.DB
-}
-
-// Create inserts a new team into the system.
-func (ev *Event) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Event.Create")
-	defer span.End()
-
-	accountID, entityID, _ := takeAEI(ctx, params, ev.db)
-	currentUserID, err := user.RetrieveCurrentUserID(ctx)
-	if err != nil {
-		return err
-	}
-
-	var ni item.NewItem
-	if err := web.Decode(r, &ni); err != nil {
-		return errors.Wrap(err, "")
-	}
-
-	ni.AccountID = accountID
-	ni.EntityID = entityID
-	ni.UserID = &currentUserID
-	ni.ID = uuid.New().String()
-
-	it, err := item.Create(ctx, ev.db, ni, time.Now())
-	if err != nil {
-		return errors.Wrapf(err, "Item: %+v", &it)
-	}
-
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
 }
 
 func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

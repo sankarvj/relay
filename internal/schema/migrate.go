@@ -30,6 +30,7 @@ var migrations = []darwin.Migration{
 		Version:     1,
 		Description: "Initial DB schema",
 		Script: `
+
 		CREATE TABLE accounts (
 			account_id    		UUID,
 			parent_account_id   UUID,
@@ -379,6 +380,34 @@ var migrations = []darwin.Migration{
 		);
 		CREATE INDEX idx_tokens_account_id
 		ON tokens(account_id);
+
+		CREATE TABLE timeseries (
+			timeseries_id           UUID,
+			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id      		    UUID REFERENCES entities ON DELETE CASCADE,
+			type    		        INTEGER DEFAULT 0,
+			identifier    		    TEXT,
+			tags					TEXT[],
+			event     		        TEXT,
+			description     		TEXT,
+			count                   INTEGER DEFAULT 0,
+			start_time              TIMESTAMP NOT NULL,
+			end_time                TIMESTAMP NOT NULL,
+			fieldsb          		JSONB,
+			PRIMARY KEY (timeseries_id)
+		);
+		CREATE INDEX idx_timeseries_start_time
+		ON timeseries(start_time);
+		CREATE INDEX idx_timeseries_end_time
+		ON timeseries(end_time);
+		CREATE INDEX idx_timeseries_entity_id
+		ON items(entity_id);
+		CREATE INDEX idx_timeseries_identifier
+		ON timeseries(identifier);
+		CREATE INDEX idx_timeseries_event
+		ON timeseries(event);
+		CREATE INDEX idx_timeseries_tags
+		ON timeseries(tags);
 		`,
 	},
 }

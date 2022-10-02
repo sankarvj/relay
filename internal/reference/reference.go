@@ -100,7 +100,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 									log.Printf("***> unexpected error occurred. when retriving reference nodes for field unit entity. continuing... error: %v\n", err)
 									return
 								}
-								choicesMaker(f, pv, nodeChoices(nodes))
+								ChoicesMaker(f, pv, nodeChoices(nodes))
 							case fmt.Sprintf("{{{%s.%s}}}", ActionSet, ByFlow):
 							}
 
@@ -153,7 +153,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for flows inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", flowChoices(flows))
+			ChoicesMaker(f, "", flowChoices(flows))
 		} else if e.Category == entity.CategoryNode { // temp flow handler
 
 		} else if e.Category == entity.CategoryChildUnit {
@@ -161,13 +161,13 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		} else if e.Category == entity.CategoryEmail {
 			refItems, err := item.EntityItems(ctx, accountID, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}
-			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		} else { // useful for auto-complete while viewing
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
@@ -175,7 +175,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string,
 				return
 			}
 
-			choicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
 		}
 	}
 
@@ -204,12 +204,12 @@ func evaluatedParentVal(pf *entity.Field, pv interface{}) string {
 	return evaluatedDependentValue
 }
 
-func choicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
+func ChoicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 	if f.Choices == nil {
 		f.Choices = make([]entity.Choice, 0)
 	}
 
-	mapOfChoices := choicesMap(f)
+	mapOfChoices := f.ChoicesMap()
 
 	for _, choicer := range choicers {
 		if choice, ok := mapOfChoices[f.RefID]; ok {
@@ -293,12 +293,4 @@ func removeDuplicateValues(intSlice []interface{}) []interface{} {
 		}
 	}
 	return list
-}
-
-func choicesMap(f *entity.Field) map[string]entity.Choice {
-	choicesMap := make(map[string]entity.Choice, 0)
-	for _, choice := range f.Choices {
-		choicesMap[choice.ID] = choice
-	}
-	return choicesMap
 }

@@ -28,6 +28,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/team"
+	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -411,54 +412,56 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 		m.Source = make(map[string][]string, 0)
 	}
 
-	identifierElements := strings.Split(m.Identifier, ":")
-	if len(identifierElements) == 3 {
-		conditionFields := make([]graphdb.Field, 0)
-		entityName := identifierElements[0]
-		fieldKey := identifierElements[1]
-		fieldValue := identifierElements[1]
-
-		e, err := entity.RetrieveByName(ctx, m.AccountID, entityName, j.DB)
-		if err != nil {
-			return err
-		}
-		exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
-		filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
-
-		fields, err := e.FilteredFields()
-		if err != nil {
-			return err
-		}
-
-		for _, f := range fields {
-			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
-			}
-		}
-
-		gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
-		result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
-		if err != nil {
-			return err
-		}
-
-		m.Source[e.ID] = util.ParseGraphResultWithStrIDs(result)
-	}
-
-	log.Println("m.Source ------------------------:: ", m.Source)
-
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	ts, err := timeseries.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
 	}
 
-	valueAddedFields := e.ValueAdd(it.Fields())
+	if ts.Identifier != nil {
+		identifierElements := strings.Split(*ts.Identifier, ":")
+		if len(identifierElements) == 3 {
+			conditionFields := make([]graphdb.Field, 0)
+			entityName := identifierElements[0]
+			fieldKey := identifierElements[1]
+			fieldValue := identifierElements[1]
+
+			e, err := entity.RetrieveByName(ctx, m.AccountID, entityName, j.DB)
+			if err != nil {
+				return err
+			}
+			exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
+			filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
+
+			fields, err := e.FilteredFields()
+			if err != nil {
+				return err
+			}
+
+			for _, f := range fields {
+				if condition, ok := filter.Conditions[f.Key]; ok {
+					conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
+				}
+			}
+
+			gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
+			result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
+			if err != nil {
+				return err
+			}
+
+			m.Source[e.ID] = util.ParseGraphResultWithStrIDs(result)
+		}
+	}
+
+	log.Println("m.Source ------------------------:: ", m.Source)
+
+	valueAddedFields := e.ValueAdd(ts.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
@@ -479,7 +482,6 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
 		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
 		if err != nil {
 			return err

@@ -6,7 +6,6 @@ import (
 )
 
 func pageViewEventEntityFields() []entity.Field {
-
 	urlFieldID := uuid.New().String()
 	urlField := entity.Field{
 		Key:         urlFieldID,
