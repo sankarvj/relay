@@ -414,21 +414,3 @@ func generateSystemUserJWT(ctx context.Context, accountID string, scope []string
 	}
 	return systemToken, nil
 }
-
-func createViewModelUser(u user.User) user.ViewModelUser {
-	return user.ViewModelUser{
-		Name:   *u.Name,
-		Avatar: *u.Avatar,
-		Email:  u.Email,
-		Phone:  *u.Phone,
-		Roles:  u.Roles,
-	}
-}
-
-type UserToken struct {
-	Token    string   `json:"token"`
-	Accounts []string `json:"accounts"`
-	Team     string   `json:"team"`
-	Entity   string   `json:"entity"`
-	Item     string   `json:"item"`
-}

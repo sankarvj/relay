@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
@@ -163,20 +162,4 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	draft.Delete(ctx, draftID, a.db)
 
 	return web.Respond(ctx, w, userToken, http.StatusCreated)
-}
-
-func createNewVerifiedUser(ctx context.Context, name, email string, roles []string, db *sqlx.DB) (user.User, error) {
-	nu := user.NewUser{
-		Name:            name,
-		Avatar:          util.String(""),
-		Email:           email,
-		Phone:           util.String(""),
-		Provider:        util.String("default"),
-		Password:        "",
-		PasswordConfirm: "",
-		Verified:        true,
-		Roles:           roles,
-	}
-	u, err := user.Create(ctx, db, nu, time.Now())
-	return u, err
 }

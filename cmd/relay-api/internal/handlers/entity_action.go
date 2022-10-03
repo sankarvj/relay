@@ -141,35 +141,3 @@ func (e *Entity) Associations(ctx context.Context, w http.ResponseWriter, r *htt
 
 	return web.Respond(ctx, w, viewModelChildren, http.StatusOK)
 }
-
-func createViewModelChildren(e entity.Entity, relationshipID string) ViewModelChildren {
-	return ViewModelChildren{
-		ID:             e.ID,
-		TeamID:         e.TeamID,
-		Name:           e.Name,
-		DisplayName:    e.DisplayName,
-		Category:       e.Category,
-		State:          e.State,
-		RelationshipID: relationshipID,
-	}
-}
-
-type ViewModelChildren struct {
-	ID             string `json:"id"`
-	TeamID         string `json:"team_id"`
-	Name           string `json:"name"`
-	DisplayName    string `json:"display_name"`
-	Category       int    `json:"category"`
-	State          int    `json:"state"`
-	RelationshipID string `json:"relationship_id"`
-}
-
-type Association struct {
-	DstEntityID    string `json:"dst_entity_id"`
-	RelationshipID string `json:"relationship_id"`
-	Remove         bool   `json:"remove"`
-}
-
-type AssociationReqBody struct {
-	AssociationReqs []Association `json:"association_reqs"`
-}

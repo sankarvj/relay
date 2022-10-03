@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -87,26 +86,10 @@ func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, 
 }
 
 func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (*rg.QueryResult, *rg.QueryResult, error) {
-	conditionFields := make([]graphdb.Field, 0)
 
-	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, s.exp)
-
-	if filter != nil {
-		e, err := entity.Retrieve(ctx, accountID, entityID, db)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		fields, err := e.FilteredFields()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		for _, f := range fields {
-			if condition, ok := filter.Conditions[f.Key]; ok {
-				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
-			}
-		}
+	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, s.exp, db, sdb)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if s.source != nil {
@@ -168,26 +151,6 @@ func listWithCountAsync(rp *redis.Pool, gSegment graphdb.GraphNode, page int, so
 	}
 
 	return segmentResult, countResult, err
-}
-
-type ItemResultBody struct {
-	Items      []item.Item    `json:"items"`
-	TotalCount map[string]int `json:"total_count"`
-}
-
-type FilterBody struct {
-	Name    string       `json:"name"`
-	Queries []node.Query `json:"queries"`
-}
-
-type Segmenter struct {
-	exp       string
-	sortby    string
-	direction string
-	page      int
-	doCount   bool
-	source    *graphdb.Field
-	useReturn bool //makes the get result in graphdb to use dst.alias instead of source.alias
 }
 
 func NewEmptySegmenter() *Segmenter {

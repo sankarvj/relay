@@ -248,22 +248,6 @@ func (f *Flow) UpdateStatus(ctx context.Context, w http.ResponseWriter, r *http.
 	return web.Respond(ctx, w, nil, http.StatusOK)
 }
 
-func createViewModelFlow(f flow.Flow, nodes []node.ViewModelNode) flow.ViewModelFlow {
-	return flow.ViewModelFlow{
-		ID:          f.ID,
-		EntityID:    f.EntityID,
-		Name:        f.Name,
-		Description: f.Description,
-		Expression:  f.Expression,
-		Mode:        f.Mode,
-		State:       f.State,
-		Type:        f.Type,
-		Status:      f.Status,
-		Nodes:       nodes,
-		Tokens:      f.Tokens(),
-	}
-}
-
 func itemIds(actFlows []flow.ActiveFlow) []interface{} {
 	ids := make([]interface{}, len(actFlows))
 	for i, aflow := range actFlows {
@@ -278,34 +262,6 @@ func entityIds(nodes []node.Node) []string {
 		ids[i] = n.ActorID
 	}
 	return ids
-}
-
-func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {
-	return node.ViewModelNode{
-		ID:             n.ID,
-		FlowID:         n.FlowID,
-		StageID:        n.StageID,
-		Name:           n.Name,
-		Description:    n.Description,
-		Expression:     n.Expression,
-		ParentNodeID:   n.ParentNodeID,
-		ActorID:        n.ActorID,
-		Weight:         n.Weight,
-		EntityName:     n.EntityName.String,
-		EntityCategory: int(n.EntityCategory.Int32),
-		Type:           n.Type,
-		Tokens:         n.Tokens(),
-		Actuals:        n.ActualsMap(),
-	}
-}
-
-func createViewModelActiveNode(n flow.ActiveNode) node.ViewModelActiveNode {
-	return node.ViewModelActiveNode{
-		ID:        n.NodeID,
-		IsActive:  n.IsActive,
-		Life:      n.Life,
-		CreatedAt: n.CreatedAt,
-	}
 }
 
 func nameOfType(typeOfNode int) string {

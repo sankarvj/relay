@@ -195,49 +195,6 @@ func memberResponse(e entity.Entity, items []item.Item, teamMap map[string]team.
 	return viewModelItems
 }
 
-func createViewModelMember(id string, fields map[string]entity.Field, teamMap map[string]team.Team) ViewModelMember {
-	return ViewModelMember{
-		ID:     id,
-		Name:   fields["name"].Value.(string),
-		Email:  fields["email"].Value.(string),
-		Avatar: fields["avatar"].Value.(string),
-		Teams:  populateTeams(fields["team_ids"].Value, teamMap),
-		Role:   fields["role"].Value.([]interface{}),
-	}
-}
-
-func recreateFields(vm ViewModelMember, namedKeys map[string]string) map[string]interface{} {
-	itemFields := make(map[string]interface{}, 0)
-	itemFields[namedKeys["name"]] = vm.Name
-	itemFields[namedKeys["user_id"]] = vm.UserID
-	itemFields[namedKeys["email"]] = vm.Email
-	itemFields[namedKeys["avatar"]] = vm.Avatar
-	itemFields[namedKeys["team_ids"]] = stripeTeamIds(vm.Teams)
-	itemFields[namedKeys["role"]] = vm.Role
-	return itemFields
-}
-
-type ViewModelMember struct {
-	ID     string        `json:"id"`
-	UserID string        `json:"user_id"`
-	Name   string        `json:"name"`
-	Email  string        `json:"email"`
-	Avatar string        `json:"avatar"`
-	Teams  []ViewTeam    `json:"teams"`
-	Role   []interface{} `json:"role"`
-}
-
-type ViewTeam struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type Cypher struct {
-	View   bool `json:"view"`
-	Edit   bool `json:"edit"`
-	Create bool `json:"create"`
-}
-
 func populateTeams(teamIds interface{}, teamMap map[string]team.Team) []ViewTeam {
 	vteams := make([]ViewTeam, 0)
 	if teamIds == nil {

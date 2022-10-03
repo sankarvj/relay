@@ -201,6 +201,13 @@ func overdue(fields map[string]entity.Field, who string) *ruler.Filter {
 	return filter
 }
 
+func otherField(key string) graphdb.Field {
+	return graphdb.Field{
+		Key:      key,
+		DataType: graphdb.TypeString,
+	}
+}
+
 func timeRange(key, duration string) graphdb.Field {
 	stTime, endTime := timeseries.Duration(duration)
 	return graphdb.Field{

@@ -187,6 +187,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES All CRM Entities Retrived")
 
+	err = addEvents(ctx, b)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES All CRM Event Entities Added")
+
 	err = addAssociations(ctx, b, contactEntity, companyEntity, dealEntity, emailsEntity, streamEntity, taskEntity)
 	if err != nil {
 		return err
@@ -283,7 +289,7 @@ func addAssociations(ctx context.Context, b *base.Base, conEid, comEid, deEid, e
 	return nil
 }
 
-func addProps(ctx context.Context, b *base.Base) error {
+func addEvents(ctx context.Context, b *base.Base) error {
 	_, err := b.EntityAdd(ctx, uuid.New().String(), "page_view", "Page View", entity.CategoryEvent, entity.StateTeamLevel, false, false, false, pageViewEventEntityFields())
 	if err != nil {
 		return err

@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -90,19 +89,6 @@ func userMap(ctx context.Context, connections []connection.Connection, db *sqlx.
 		Avatar: util.String("https://randomuser.me/api/portraits/thumb/lego/1.jpg"),
 	}
 	return userMap, nil
-}
-
-type ViewModelEvent struct {
-	EventID         string      `json:"event_id"`
-	EventEntity     string      `json:"event_entity"`
-	EventEntityName string      `json:"event_entity_name"`
-	UserAvatar      string      `json:"user_avatar"`
-	UserName        string      `json:"user_name"`
-	UserEmail       string      `json:"user_email"`
-	Action          interface{} `json:"action"` //lable:action - created, clicked, viewed, updated, etc
-	Title           interface{} `json:"title"`  //lable:title  - task, deal, amazon.com
-	Footer          interface{} `json:"footer"` //lable:footer - 8 times
-	Time            time.Time   `json:"time"`
 }
 
 func userkeys(oneMap map[string]bool) []string {

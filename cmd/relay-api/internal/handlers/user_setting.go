@@ -52,13 +52,3 @@ func (u *User) UpdateUserSetting(ctx context.Context, w http.ResponseWriter, r *
 
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
-
-func createViewModelUS(us user.UserSetting) user.ViewModelUserSetting {
-	return user.ViewModelUserSetting{
-		AccountID:           us.AccountID,
-		UserID:              us.UserID,
-		LayoutStyle:         us.LayoutStyle,
-		SelectedTeam:        us.SelectedTeam,
-		NotificationSetting: user.UnmarshalNotificationSettings(us.NotificationSetting),
-	}
-}

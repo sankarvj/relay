@@ -341,7 +341,8 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 		DisplayName: "Activity Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+		Who:         entity.WhoTitle,
 	}
 
 	activityDescFieldID := uuid.New().String()
@@ -351,7 +352,8 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 		DisplayName: "Description",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+		Who:         entity.WhoDesc,
 	}
 
 	timeOfEventFieldID := uuid.New().String()
@@ -371,6 +373,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 		DisplayName: "Icon",
 		DomType:     entity.DomImage,
 		DataType:    entity.TypeString,
+		Who:         entity.WhoIcon,
 	}
 
 	tagsFieldID := uuid.New().String()
@@ -400,6 +403,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 			Key:      "id",
 			Value:    "--",
 		},
+		Who: entity.WhoContacts,
 	}
 
 	companyFieldID := uuid.New().String()
@@ -416,12 +420,13 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 			Key:      "id",
 			Value:    "--",
 		},
+		Who: entity.WhoCompanies,
 	}
 
 	return []entity.Field{activityNameField, activityDescField, timeOfEventField, tagsField, contactsField, companyField, iconField}
 }
 
-func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1, contactID2, companyID1 string) map[string]interface{} {
+func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1, companyID1 string) map[string]interface{} {
 	actVals := map[string]interface{}{
 		"activity_name":        name,
 		"activity_desc":        desc,
@@ -441,7 +446,8 @@ func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		DisplayName: "Plan Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+		Who:         entity.WhoTitle,
 	}
 
 	planDescFieldID := uuid.New().String()
@@ -451,7 +457,8 @@ func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		DisplayName: "Description",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+		Who:         entity.WhoDesc,
 	}
 
 	timeOfEventFieldID := uuid.New().String()
@@ -471,6 +478,7 @@ func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		DisplayName: "Icon",
 		DomType:     entity.DomImage,
 		DataType:    entity.TypeString,
+		Who:         entity.WhoIcon,
 	}
 
 	reasonFieldID := uuid.New().String()
@@ -522,6 +530,7 @@ func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 			Key:      "id",
 			Value:    "--",
 		},
+		Who: entity.WhoContacts,
 	}
 
 	companyFieldID := uuid.New().String()
@@ -538,6 +547,7 @@ func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 			Key:      "id",
 			Value:    "--",
 		},
+		Who: entity.WhoCompanies,
 	}
 
 	return []entity.Field{planNameField, planDescField, timeOfEventField, reasonField, contactsField, companyField, iconField}

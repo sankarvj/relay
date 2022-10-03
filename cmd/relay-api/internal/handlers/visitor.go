@@ -228,34 +228,3 @@ func (v *Visitor) ChildItems(ctx context.Context, w http.ResponseWriter, r *http
 	response := ""
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
-
-func createViewModelVisitor(v visitor.Visitor, entityName, itemName string) ViewModelVisitor {
-	return ViewModelVisitor{
-		ID:         v.VistitorID,
-		TeamID:     v.TeamID,
-		Name:       v.Name,
-		Email:      v.Email,
-		EntityID:   v.EntityID,
-		ItemID:     v.ItemID,
-		EntityName: entityName,
-		ItemName:   itemName,
-		Active:     v.Active,
-		SignedIn:   v.SignedIn,
-		ExpireAt:   v.ExpireAt,
-	}
-}
-
-type ViewModelVisitor struct {
-	ID         string    `json:"id"`
-	TeamID     string    `json:"team_id"`
-	EntityID   string    `json:"entity_id"`
-	ItemID     string    `json:"item_id"`
-	Name       string    `json:"name"`
-	Email      string    `json:"email"`
-	EntityName string    `json:"entity_name"`
-	ItemName   string    `json:"item_name"`
-	Active     bool      `json:"active"`
-	SignedIn   bool      `json:"signed_in"`
-	ExpireAt   time.Time `json:"expire_at"`
-	Body       string    `json:"body"`
-}

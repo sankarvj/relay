@@ -94,23 +94,6 @@ func (n *Node) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelNode(*no), http.StatusOK)
 }
 
-func createViewModelNode(n node.Node) node.ViewModelNode {
-	return node.ViewModelNode{
-		ID:             n.ID,
-		FlowID:         n.FlowID,
-		StageID:        n.StageID,
-		Name:           nameOfType(n.Type),
-		Description:    n.Description,
-		Expression:     n.Expression,
-		ParentNodeID:   n.ParentNodeID,
-		ActorID:        n.ActorID,
-		EntityName:     "", //should I populate this?
-		EntityCategory: -1, //should I populate this?
-		Type:           n.Type,
-		Actuals:        n.ActualsMap(),
-	}
-}
-
 func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	//nn.ID = uuid.New().String() TODO:currently the view is creating it. Need to check
 	nn.FlowID = flowID

@@ -8,6 +8,9 @@ import (
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -176,4 +179,29 @@ func selectedTeam(ctx context.Context, accountID, teamID string, db *sqlx.DB) ([
 		seletedTeamID = oldTeamID
 	}
 	return teams, seletedTeamID, nil
+}
+
+func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, sdb *database.SecDB) ([]graphdb.Field, error) {
+	conditionFields := make([]graphdb.Field, 0)
+
+	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, exp)
+
+	if filter != nil {
+		e, err := entity.Retrieve(ctx, accountID, entityID, db)
+		if err != nil {
+			return nil, err
+		}
+
+		fields, err := e.FilteredFields()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, f := range fields {
+			if condition, ok := filter.Conditions[f.Key]; ok {
+				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
+			}
+		}
+	}
+	return conditionFields, nil
 }

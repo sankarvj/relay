@@ -217,6 +217,28 @@ func GetSum(rPool *redis.Pool, gn GraphNode, sumKey string) (*rg.QueryResult, er
 	return result, err
 }
 
+func GetGroupedCount(rPool *redis.Pool, gn GraphNode, groupById string) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	q := makeQuery(rPool, &gn)
+
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.`%s`", gn.SourceNode.Alias, gn.SourceNode.Alias, groupById))
+
+	result, err := graph.Query(q)
+	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s - err:%v\n", q, err)
+		return result, err
+	}
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	result.PrettyPrint()
+	return result, err
+}
+
 func Delete(rPool *redis.Pool, graphName, label, itemID string) error {
 	conn := rPool.Get()
 	defer conn.Close()

@@ -459,8 +459,6 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 		}
 	}
 
-	log.Println("m.Source ------------------------:: ", m.Source)
-
 	valueAddedFields := e.ValueAdd(ts.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 

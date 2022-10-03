@@ -362,44 +362,6 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
 }
 
-func createViewModelItem(i item.Item) ViewModelItem {
-	return ViewModelItem{
-		ID:        i.ID,
-		EntityID:  i.EntityID,
-		StageID:   i.StageID,
-		Name:      i.Name,
-		Type:      i.Type,
-		State:     i.State,
-		Fields:    i.Fields(),
-		Meta:      i.Meta(),
-		CreatedAt: i.CreatedAt,
-		UpdatedAt: i.UpdatedAt,
-	}
-}
-
-func itemResponse(items []item.Item) []ViewModelItem {
-	viewModelItems := make([]ViewModelItem, len(items))
-	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
-	}
-	return viewModelItems
-}
-
-// ViewModelItem represents the view model of item
-// (i.e) it has fields instead of attributes
-type ViewModelItem struct {
-	ID        string                 `json:"id"`
-	EntityID  string                 `json:"entity_id"`
-	StageID   *string                `json:"stage_id"`
-	Name      *string                `json:"name"`
-	Type      int                    `json:"type"`
-	State     int                    `json:"state"`
-	Fields    map[string]interface{} `json:"fields"`
-	Meta      map[string]interface{} `json:"meta"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt int64                  `json:"updated_at"`
-}
-
 // AEI accountID, entityID, itemID
 // entityID alone has a twist
 // Need to bring the same logic in the middleware too.

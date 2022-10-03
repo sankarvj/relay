@@ -5,10 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/event"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -102,11 +103,20 @@ func (ts *Timeseries) Count(ctx context.Context, w http.ResponseWriter, r *http.
 		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
 	}
 
-	conditionFields := make([]graphdb.Field, 0)
+	exp := r.URL.Query().Get("exp")
+	grouped, _ := strconv.ParseBool((r.URL.Query().Get("grouped")))
+	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, exp, ts.db, ts.sdb)
+	if err != nil {
+		return err
+	}
 	for _, f := range fields {
 		if f.Name == countByFieldName {
 			countByField = f
-			conditionFields = append(conditionFields, listable(f))
+			if countByField.IsReference() {
+				conditionFields = append(conditionFields, relatable(f))
+			} else if countByField.IsList() {
+				conditionFields = append(conditionFields, listable(f))
+			}
 		}
 	}
 
@@ -121,7 +131,13 @@ func (ts *Timeseries) Count(ctx context.Context, w http.ResponseWriter, r *http.
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
 
-	result, err := graphdb.GetCount(ts.sdb.GraphPool(), gSegment, true)
+	var result *redisgraph.QueryResult
+	if !grouped {
+		result, err = graphdb.GetCount(ts.sdb.GraphPool(), gSegment, true)
+	} else {
+		result, err = graphdb.GetGroupedCount(ts.sdb.GraphPool(), gSegment, countByField.Key)
+	}
+
 	if err != nil {
 		return errors.Wrapf(err, "WidgetGridThree: get status count")
 	}
@@ -157,8 +173,7 @@ func (ts *Timeseries) Sum(ctx context.Context, w http.ResponseWriter, r *http.Re
 			sumByField = f
 		}
 	}
-	tr := timeRange("system_created_at", duration)
-	conditionFields = append(conditionFields, tr)
+	conditionFields = append(conditionFields, timeRange("system_created_at", duration))
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
@@ -185,6 +200,54 @@ func (ts *Timeseries) Sum(ctx context.Context, w http.ResponseWriter, r *http.Re
 	return web.Respond(ctx, w, ch, http.StatusOK)
 }
 
+func (ts *Timeseries) GroupByCount(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	var countByField entity.Field
+	countByFieldName := params["count_by"]
+	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
+	if err != nil {
+		return err
+	}
+
+	fields, err := e.FilteredFields()
+	if err != nil {
+		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
+	}
+
+	conditionFields := make([]graphdb.Field, 0)
+	for _, f := range fields {
+		if f.Name == countByFieldName {
+			countByField = f
+			conditionFields = append(conditionFields, otherField(f.Key))
+		}
+	}
+
+	if countByField.IsReference() {
+		refItems, err := item.EntityItems(ctx, accountID, e.ID, ts.db)
+		if err != nil {
+			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
+		}
+		reference.ChoicesMaker(&countByField, "", reference.ItemChoices(&countByField, refItems, e.WhoFields()))
+	}
+
+	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
+	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
+
+	result, err := graphdb.GetCount(ts.sdb.GraphPool(), gSegment, true)
+	if err != nil {
+		return errors.Wrapf(err, "WidgetGridThree: get status count")
+	}
+	cr := counts(result)
+
+	ch := Chart{
+		Series: vmseriesFromMap(cr, countByField),
+		Title:  "Accounts by status",
+		Type:   "bar",
+	}
+
+	return web.Respond(ctx, w, ch, http.StatusOK)
+}
+
 func vmseries(tms []timeseries.Timeseries) []Series {
 	vmseries := make([]Series, len(tms))
 	for i, ts := range tms {
@@ -204,39 +267,6 @@ func vmseriesFromMap(m map[string]int, f entity.Field) []Series {
 		vmseries = append(vmseries, createVMSeriesFromMap(label, value))
 	}
 	return vmseries
-}
-
-func createVMSeries(ts timeseries.Timeseries) Series {
-	return Series{
-		ID:          ts.ID,
-		Event:       ts.Event,
-		Description: ts.Description,
-		Count:       ts.Count,
-		StartTime:   ts.StartTime,
-		EndTime:     ts.EndTime,
-	}
-}
-
-func createVMSeriesFromMap(label string, value int) Series {
-	return Series{
-		ID:    label,
-		Count: value,
-	}
-}
-
-type Series struct {
-	ID          string    `json:"timeseries_id"`
-	Event       string    `json:"event"`
-	Description string    `json:"description"`
-	Count       int       `json:"count"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-}
-
-type Chart struct {
-	Title  string   `json:"title"`
-	Type   string   `json:"type"`
-	Series []Series `json:"series"`
 }
 
 func strValue(v interface{}) string {

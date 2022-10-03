@@ -113,6 +113,8 @@ const (
 
 //traits of the field
 const (
+	WhoTitle         = "title"
+	WhoDesc          = "desc"
 	WhoStatus        = "status"
 	WhoReminder      = "reminder"
 	WhoDueBy         = "dueby"
@@ -122,6 +124,7 @@ const (
 	WhoFollower      = "follower"
 	WhoAvatar        = "avatar"
 	WhoImage         = "image"
+	WhoIcon          = "icon"
 	WhoEmail         = "email"
 	WhoAssetCategory = "asset_category"
 	WhoMessage       = "message"

@@ -92,4 +92,5 @@ const (
 	CategoryNotification       = 18
 	CategoryVisitorsInvitation = 19
 	CategorySubData            = 20
+	CategoryTimeseries         = 21
 )

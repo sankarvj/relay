@@ -149,17 +149,17 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 }
 
 func addEvents(ctx context.Context, b *base.Base) error {
-	_, err := b.EntityAdd(ctx, uuid.New().String(), "daily_active_users", "Daily Active Users", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
+	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDailyActiveUsers, "Daily Active Users", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), "page_visits", "Page Visits", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPageVisits, "Page Visits", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), "milestones", "Milestones or Goals", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMilestones, "Milestones or Goals", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,36 @@ func addProjects(ctx context.Context, b *base.Base, projectEntity, contactEntity
 }
 
 func addActivities(ctx context.Context, b *base.Base, activityEntity, contactEntity entity.Entity) error {
-	_, err := b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Invoice Created", "Invoice Feature Clicked", b.ContactItemMatt.ID, b.ContactItemNatasha.ID, b.CompanyItemStarkInd.ID), nil)
+
+	_, err := b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Flow Completed", "All the flows completed", b.ContactItemMatt.ID, b.CompanyItemStarkInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Checked Subscription Page", "Customer viewed subscription page", b.ContactItemMatt.ID, b.CompanyItemStarkInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Encountered Error", "Customer encountered an error", b.ContactItemMatt.ID, b.CompanyItemStarkInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Invoice Created", "Invoice feature is clicked and visited", b.ContactItemNatasha.ID, b.CompanyItemRandInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Invoice Created", "Invoice feature is clicked and visited", b.ContactItemMatt.ID, b.CompanyItemStarkInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Members Invited", "Few members are invited", b.ContactItemNatasha.ID, b.CompanyItemRandInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Data Populated", "Data populated for the first time", b.ContactItemNatasha.ID, b.CompanyItemRandInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	_, err = b.ItemAdd(ctx, activityEntity.ID, uuid.New().String(), b.UserID, ActivitiesVals(activityEntity, "Data Populated", "Data populated for the first time", b.ContactItemMatt.ID, b.CompanyItemStarkInd.ID), nil)
 	if err != nil {
 		return err
 	}
