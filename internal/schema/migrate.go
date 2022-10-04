@@ -408,6 +408,29 @@ var migrations = []darwin.Migration{
 		ON timeseries(event);
 		CREATE INDEX idx_timeseries_tags
 		ON timeseries(tags);
+
+
+		CREATE TABLE charts (
+			chart_id    			UUID,
+			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			entity_id      		    UUID REFERENCES entities ON DELETE CASCADE,
+			parent_entity_id        UUID,
+			user_id                 UUID,
+			name                    TEXT,
+			field					TEXT,
+			type    		        TEXT,
+			group    		        TEXT,
+			duration    		    TEXT,
+			state    		        INTEGER DEFAULT 0,
+			calc    		        INTEGER DEFAULT 0,
+			position    		    INTEGER DEFAULT 0,
+			created_at    	        TIMESTAMP,
+			PRIMARY KEY (chart_id)
+		);
+		CREATE INDEX idx_charts_account_id
+		ON charts(account_id);
+
+
 		`,
 	},
 }

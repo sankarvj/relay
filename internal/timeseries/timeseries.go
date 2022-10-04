@@ -83,11 +83,6 @@ func List(ctx context.Context, accountID, entityID string, startTime, endTime ti
 	ctx, span := trace.StartSpan(ctx, "internal.timeseries.List")
 	defer span.End()
 
-	log.Println("account_id ", accountID)
-	log.Println("entity_id ", entityID)
-	log.Println("startTime ", startTime)
-	log.Println("endTime ", endTime)
-
 	timeseries := []Timeseries{}
 	const q = `SELECT * FROM timeseries where account_id = $1 AND entity_id = $2 AND start_time > $3 AND end_time < $4`
 
@@ -96,6 +91,21 @@ func List(ctx context.Context, accountID, entityID string, startTime, endTime ti
 	}
 
 	return timeseries, nil
+}
+
+func Count(ctx context.Context, accountID, entityID string, startTime, endTime time.Time, db *sqlx.DB) (int, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.timeseries.Count")
+	defer span.End()
+
+	var count int
+	const q = `SELECT count(*) FROM timeseries where account_id = $1 AND entity_id = $2 AND start_time > $3 AND end_time < $4`
+	if err := db.GetContext(ctx, &count, q, accountID, entityID, startTime, endTime); err != nil {
+		if err == sql.ErrNoRows {
+			return count, nil
+		}
+		return count, errors.Wrapf(err, "selecting count")
+	}
+	return count, nil
 }
 
 func RetriveLatest(ctx context.Context, accountID, entityID string, identifier *string, db *sqlx.DB) ([]Timeseries, error) {
@@ -159,6 +169,8 @@ func Duration(duration string) (time.Time, time.Time) {
 	switch duration {
 	case "last_week":
 		stTime = endTime.AddDate(0, 0, -7)
+	case "last_24hrs":
+		stTime = endTime.AddDate(0, 0, -1)
 
 	}
 	return stTime.UTC(), endTime.UTC()

@@ -69,13 +69,21 @@ func (ts *Timeseries) Create(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Stream.List")
+	ctx, span := trace.StartSpan(ctx, "handlers.Timeseries.List")
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
 	startTime, endTime := timeseries.Duration(r.URL.Query().Get("duration"))
 
+	difference := startTime.Sub(endTime)
+	newStart := startTime.Add(difference)
+
 	series, err := timeseries.List(ctx, accountID, entityID, startTime, endTime, ts.db)
+	if err != nil {
+		return err
+	}
+
+	count, err := timeseries.Count(ctx, accountID, entityID, newStart, startTime, ts.db)
 	if err != nil {
 		return err
 	}
@@ -84,12 +92,73 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 		Series: vmseries(series),
 		Title:  "Daily active users",
 		Type:   "line",
+		Count:  change(len(series), count),
 	}
 
 	return web.Respond(ctx, w, ch, http.StatusOK)
 }
 
+func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Timeseries.Overview")
+	defer span.End()
+
+	newC, oldC, err := gridDAU(ctx, params["account_id"], entity.FixedEntityDailyActiveUsers, "last_24hrs", ts.db)
+	if err != nil {
+		return err
+	}
+
+	ch1 := Chart{
+		Title: "DAU",
+		Type:  "grid",
+		Count: change(newC, oldC),
+	}
+
+	lost, total, err := gridChrun(ctx, params["account_id"], params["team_id"], entity.FixedEntityContacts, "lifecycle_stage", "became_a_customer_date", "1", "last_24hrs", ts.db, ts.sdb)
+	if err != nil {
+		return err
+	}
+
+	ch2 := Chart{
+		Title: "Churn Rate",
+		Type:  "grid",
+		Count: rate(lost, total),
+	}
+
+	newcustomers, err := gridNewCustomers(ctx, params["account_id"], params["team_id"], entity.FixedEntityContacts, "", "became_a_customer_date", nil, "last_24hrs", ts.db, ts.sdb)
+	if err != nil {
+		return err
+	}
+
+	ch3 := Chart{
+		Title: "New Customer",
+		Type:  "grid",
+		Count: newcustomers,
+	}
+
+	dacc, err := delayedAccounts(ctx, params["account_id"], params["team_id"], entity.FixedEntityProjects, "end_time", entity.FixedEntityCompanies, "", ts.db, ts.sdb)
+	if err != nil {
+		return err
+	}
+
+	ch4 := Chart{
+		Title: "Accounts with delayed projects",
+		Type:  "grid",
+		Count: dacc,
+	}
+
+	grids := struct {
+		Grids []Chart `json:"grids"`
+	}{
+		Grids: []Chart{ch1, ch2, ch3, ch4},
+	}
+
+	return web.Respond(ctx, w, grids, http.StatusOK)
+}
+
 func (ts *Timeseries) Count(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	//duration := r.URL.Query().Get("duration")
+	source := r.URL.Query().Get("source")
+
 	var countByField entity.Field
 	countByFieldName := params["count_by"]
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
@@ -109,19 +178,21 @@ func (ts *Timeseries) Count(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		return err
 	}
+	if source != "" {
+		conditionFields = append(conditionFields, sourceble(source))
+	}
 	for _, f := range fields {
 		if f.Name == countByFieldName {
 			countByField = f
-			if countByField.IsReference() {
-				conditionFields = append(conditionFields, relatable(f))
-			} else if countByField.IsList() {
-				conditionFields = append(conditionFields, listable(f))
+			gf := countByField.MakeGraphFieldPlain()
+			if gf != nil {
+				conditionFields = append(conditionFields, *gf)
 			}
 		}
 	}
 
 	if countByField.IsReference() {
-		refItems, err := item.EntityItems(ctx, accountID, e.ID, ts.db)
+		refItems, err := item.EntityItems(ctx, accountID, countByField.RefID, ts.db)
 		if err != nil {
 			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 		}
@@ -156,6 +227,7 @@ func (ts *Timeseries) Sum(ctx context.Context, w http.ResponseWriter, r *http.Re
 	var sumByField entity.Field
 	sumByFieldName := params["sum_by"]
 	duration := r.URL.Query().Get("duration")
+	startTime, endTime := timeseries.Duration(duration)
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
 	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
 	if err != nil {
@@ -173,7 +245,7 @@ func (ts *Timeseries) Sum(ctx context.Context, w http.ResponseWriter, r *http.Re
 			sumByField = f
 		}
 	}
-	conditionFields = append(conditionFields, timeRange("system_created_at", duration))
+	conditionFields = append(conditionFields, timeRange("system_created_at", startTime, endTime))
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
@@ -274,4 +346,19 @@ func strValue(v interface{}) string {
 		return v.(string)
 	}
 	return ""
+}
+
+func change(count, oldCount int) int {
+	total := count + oldCount
+	if total == 0 {
+		return 0
+	}
+	return (count / total) * 100
+}
+
+func rate(change, total int) int {
+	if total == 0 {
+		return 0
+	}
+	return (change / total) * 100
 }

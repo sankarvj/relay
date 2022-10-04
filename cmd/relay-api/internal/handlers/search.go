@@ -165,11 +165,3 @@ func choiceResponse(key string, items []item.Item, whoMap map[string]string) []e
 	}
 	return choices
 }
-
-func ids(flows []flow.Flow) []string {
-	ids := make([]string, len(flows))
-	for i, flow := range flows {
-		ids[i] = flow.ID
-	}
-	return ids
-}

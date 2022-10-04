@@ -14,6 +14,7 @@ type DType string
 const (
 	TypeString         DType = "S"
 	TypeNumber               = "N"
+	TypeDate                 = "D"
 	TypeDateTime             = "T"
 	TypeDateRange            = "TR"
 	TypeDateTimeMillis       = "TM"

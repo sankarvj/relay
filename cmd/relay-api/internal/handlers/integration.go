@@ -123,7 +123,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 		c := calendar.Gcalendar{OAuthFile: i.authenticator.GoogleClientSecret, TokenJson: tokenJson}
 		err = c.Watch(calendarEntityItem.ID, discoveryID)
 		if err != nil {
-			err = errors.Wrapf(err, "Unable to watch event")
+			return errors.Wrapf(err, "Unable to watch event")
 		}
 
 		_, err = entity.SaveFixedEntityItem(ctx, accountID, teamID, currentUserID, entity.FixedEntityCalendar, "Google Calendar Config", discoveryID, integrationID, util.ConvertInterfaceToMap(calendarEntityItem), i.db)

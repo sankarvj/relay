@@ -109,10 +109,10 @@ func getGoneResult(ctx context.Context, accountID string, gOne *GridOne, exp str
 
 	for _, f := range fields {
 		if f.IsFlow() {
-			conditionFields = append(conditionFields, conditionable(f, gOne.SelectedFlow.ID))
+			conditionFields = append(conditionFields, conditionableRef(f, gOne.SelectedFlow.ID))
 		}
 		if f.IsNode() {
-			conditionFields = append(conditionFields, relatable(f))
+			conditionFields = append(conditionFields, *f.MakeGraphFieldPlain())
 		}
 	}
 

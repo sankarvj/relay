@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -14,8 +13,7 @@ import (
 
 //remove not needed.....
 type Stream struct {
-	db    *sqlx.DB
-	rPool *redis.Pool
+	db *sqlx.DB
 }
 
 func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

@@ -8,6 +8,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
@@ -144,6 +145,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:SAMPLES Subscriptions Item Created")
+
+	err = addCharts(ctx, b, activityEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:SAMPLES Charts Created")
 
 	return nil
 }
@@ -306,6 +313,44 @@ func addActivities(ctx context.Context, b *base.Base, activityEntity, contactEnt
 
 func addSubscriptions(ctx context.Context, b *base.Base, subscriptionEntity, contactEntity entity.Entity) error {
 	_, err := b.ItemAdd(ctx, subscriptionEntity.ID, uuid.New().String(), b.UserID, PlanVals(subscriptionEntity, "Lost a customer", "Lost a customer due to technical issues", b.ContactItemMatt.ID, b.ContactItemNatasha.ID, b.CompanyItemStarkInd.ID), nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addCharts(ctx context.Context, b *base.Base, dauEntity entity.Entity) error {
+	NoEntityID := "00000000-0000-0000-0000-000000000000"
+	err := b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "Contacts by stage", "lifecycle_stage", "pie", "normal", "last_week", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, b.CompanyEntity.ID, NoEntityID, "Accounts by health", "health", "pie", "normal", "last_week", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, b.CompanyEntity.ID, NoEntityID, "Accounts by health", "health", "bar", "normal", "last_week", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, dauEntity.ID, NoEntityID, "Daily active users", "", "line", "timeseries", "last_week", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, dauEntity.ID, NoEntityID, "Daily active users", "", "grid", "timeseries", "last_24hrs", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "Chrun rate", "life_cycle_stage", "grid", "normal", "last_24hrs", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+	err = b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "New Customer", "became_a_customer_date", "grid", "normal", "last_24hrs", chart.CalcCount)
+	if err != nil {
+		return err
+	}
+
+	err = b.ChartAdd(ctx, b.ProjectEntity.ID, b.CompanyEntity.ID, "Delayed Accounts", "end_time", "grid", "normal", "last_24hrs", chart.CalcCount)
 	if err != nil {
 		return err
 	}

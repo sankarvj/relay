@@ -107,6 +107,7 @@ type Chart struct {
 	Title  string   `json:"title"`
 	Type   string   `json:"type"`
 	Series []Series `json:"series"`
+	Count  int      `json:"count"`
 }
 
 type ItemResultBody struct {

@@ -256,14 +256,6 @@ func itemIds(actFlows []flow.ActiveFlow) []interface{} {
 	return ids
 }
 
-func entityIds(nodes []node.Node) []string {
-	ids := make([]string, len(nodes))
-	for i, n := range nodes {
-		ids[i] = n.ActorID
-	}
-	return ids
-}
-
 func nameOfType(typeOfNode int) string {
 	//TODO: Remove it here. Hanlde this in the UI
 	return ""

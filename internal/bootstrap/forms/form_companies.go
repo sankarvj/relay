@@ -4,6 +4,7 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
 func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
@@ -76,8 +77,8 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 		Key:         healthFieldID,
 		Name:        "health",
 		DisplayName: "Health",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeNumber,
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeList,
 		Choices: []entity.Choice{
 			{
 				ID:           "1",
@@ -99,6 +100,10 @@ func CompanyFields(ownerEntityID string, ownerEntityKey string) []entity.Field {
 				ID:           "5",
 				DisplayValue: "Cool",
 			},
+		},
+		Field: &entity.Field{
+			Key:      "id",
+			DataType: entity.TypeString,
 		},
 	}
 
@@ -132,7 +137,7 @@ func CompanyVals(companyEntity entity.Entity, name, website string) map[string]i
 		"country":         "USA",
 		"employees_count": randomdata.Number(200),
 		"revenue":         randomdata.Number(3000),
-		"health":          randomdata.Number(1, 5),
+		"health":          []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
 		"owner":           []interface{}{},
 	}
 

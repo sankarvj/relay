@@ -93,7 +93,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			// 	gn.Relations = append(gn.Relations, rn)
 			// }
 
-		case TypeDateTime: // converts the time to timestamp during upsert for easy filtering.
+		case TypeDateTime, TypeDate: // converts the time to timestamp during upsert for easy filtering.
 			if f.Value != nil && f.Value != "" {
 				t, err := util.ParseTime(f.Value.(string))
 				if err != nil {
@@ -181,6 +181,28 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 	} else {
 		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s)", gn.SourceNode.Alias))
 	}
+
+	result, err := graph.Query(q)
+	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s - err:%v\n", q, err)
+		return result, err
+	}
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	result.PrettyPrint()
+	return result, err
+}
+
+func GetFromParentCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	q := makeQuery(rPool, &gn)
+
+	q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(distinct %s)", gn.ReturnNode.Alias))
 
 	result, err := graph.Query(q)
 	if err != nil {

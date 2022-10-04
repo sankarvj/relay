@@ -26,6 +26,7 @@ func IsEntitySeeded(entityName string) bool {
 		entity.FixedEntityTask:             true,
 		entity.FixedEntityNote:             true,
 		entity.FixedEntityMeetings:         true,
+		entity.FixedEntityProjects:         true,
 		entity.FixedEntityTickets:          true,
 		entity.FixedEntityDeals:            true,
 		entity.FixedEntityStatus:           true,

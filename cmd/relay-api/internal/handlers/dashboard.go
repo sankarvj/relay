@@ -21,7 +21,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
-	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 	"go.opencensus.io/trace"
 )
 
@@ -135,7 +134,10 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	for _, f := range fields {
 		if f.Who == entity.WhoStatus {
 			statusField = f
-			conditionFields = append(conditionFields, relatable(f))
+			gf := statusField.MakeGraphFieldPlain()
+			if gf != nil {
+				conditionFields = append(conditionFields, *gf)
+			}
 		}
 	}
 
@@ -208,37 +210,32 @@ func otherField(key string) graphdb.Field {
 	}
 }
 
-func timeRange(key, duration string) graphdb.Field {
-	stTime, endTime := timeseries.Duration(duration)
+func timeRange(key string, stTime, endTime time.Time) graphdb.Field {
+	stInMillis := util.GetMilliSecondsStr(stTime)
+	endInMillis := util.GetMilliSecondsStr(endTime)
 	return graphdb.Field{
 		Key:      key,
 		DataType: graphdb.TypeDateRange,
-		Min:      stTime,
-		Max:      endTime,
+		Min:      stInMillis,
+		Max:      endInMillis,
+		Value:    fmt.Sprintf("%s-%s", stInMillis, endInMillis),
 	}
 }
 
-func relatable(f entity.Field) graphdb.Field {
+func sourceble(sourceEntityID string) graphdb.Field {
 	return graphdb.Field{
-		Key:      f.Key,
-		Value:    []interface{}{""},
-		DataType: graphdb.TypeReference,
-		RefID:    f.RefID,
-		Field:    &graphdb.Field{},
+		Value:     []interface{}{""},
+		DataType:  graphdb.TypeReference,
+		RefID:     sourceEntityID,
+		IsReverse: false,
+		Field: &graphdb.Field{
+			Key:      "id",
+			DataType: graphdb.TypeString,
+		},
 	}
 }
 
-func listable(f entity.Field) graphdb.Field {
-	return graphdb.Field{
-		Key:      f.Key,
-		Value:    []interface{}{""},
-		DataType: graphdb.TypeList,
-		RefID:    f.Key,
-		Field:    &graphdb.Field{},
-	}
-}
-
-func conditionable(f entity.Field, value interface{}) graphdb.Field {
+func conditionableRef(f entity.Field, value interface{}) graphdb.Field {
 	return graphdb.Field{
 		Key:      f.Key,
 		Value:    []interface{}{value},

@@ -214,6 +214,16 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 	}
 	fields = append(fields, becameACustomerDateField)
 
+	lostCustomerDateFieldID := uuid.New().String()
+	lostCustomerDateField := entity.Field{
+		Key:         lostCustomerDateFieldID,
+		Name:        "lost_customer_on",
+		DisplayName: "Lost customer on",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDate,
+	}
+	fields = append(fields, lostCustomerDateField)
+
 	totalRevenueFieldID := uuid.New().String()
 	totalRevenueField := entity.Field{
 		Key:         totalRevenueFieldID,

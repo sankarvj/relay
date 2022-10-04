@@ -642,6 +642,28 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 	}
 }
 
+func (f *Field) MakeGraphFieldPlain() *graphdb.Field {
+	if f.IsReference() {
+		return &graphdb.Field{
+			Key:      f.Key,
+			Value:    []interface{}{""},
+			DataType: graphdb.TypeReference,
+			RefID:    f.RefID,
+			Field:    &graphdb.Field{},
+		}
+	} else if f.IsList() {
+		return &graphdb.Field{
+			Key:      f.Key,
+			Value:    []interface{}{""},
+			DataType: graphdb.TypeList,
+			RefID:    f.Key,
+			Field:    &graphdb.Field{},
+		}
+	} else {
+		return nil
+	}
+}
+
 func (f *Field) ChoicesMap() map[string]Choice {
 	choicesMap := make(map[string]Choice, 0)
 	for _, choice := range f.Choices {
