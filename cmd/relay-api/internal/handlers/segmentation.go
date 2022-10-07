@@ -95,7 +95,6 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 	if s.source != nil {
 		conditionFields = append(conditionFields, *s.source)
 	}
-
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
 	gSegment.UseReturnNode = s.useReturn

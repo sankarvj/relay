@@ -70,12 +70,15 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			gn.Fields = append(gn.Fields, f)
 		case TypeList:
 			for i, element := range f.Value.([]interface{}) {
-				if element == "" {
-					element = nil
+				var value string
+				switch v := element.(type) {
+				case int:
+					value = util.ConvertIntToStr(v)
+				case string:
+					value = v
 				}
-				f.Field.Value = element
 				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
-					MakeBaseGNode("", []Field{*f.Field}).relateLists()
+					MakeBaseGNode(value, []Field{*f.Field}).relateLists()
 				gn.Relations = append(gn.Relations, rn)
 			}
 		case TypeReference:
@@ -163,6 +166,8 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 		log.Printf("*********> debug: internal.platform.graphdb : graphdb - query: %s - err:%v\n", q, err)
 		return result, err
 	}
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result query: %s\n", q)
 	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 	//result.PrettyPrint()
 	return result, err
@@ -190,7 +195,7 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 	}
 	//DEBUG LOG
 	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
 }

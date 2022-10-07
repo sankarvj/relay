@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -14,7 +15,7 @@ import (
 )
 
 func grapher(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, expression string) (interface{}, error) {
-	//log.Println("rule.engine.grapher:  query: ", expression)
+	log.Println("rule.engine.grapher:  query: ", expression)
 	if expression == node.MeEntity { //just like making grapher smart
 		currentUserID, err := user.RetrieveCurrentUserID(ctx)
 		if err != nil {

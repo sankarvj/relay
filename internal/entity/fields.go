@@ -592,14 +592,28 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 			},
 		}
 	} else if f.IsList() {
+		dataType := graphdb.TypeString
+		if strings.EqualFold(lexertoken.INSign, expression) || strings.EqualFold(lexertoken.NotINSign, expression) {
+			dataType = graphdb.TypeWist
+			switch v := value.(type) {
+			case string:
+				arr := strings.Split(strings.ReplaceAll(v, " ", ""), ",")
+				value = arr
+			case int:
+				vstr := util.ConvertIntToStr(v)
+				arr := strings.Split(strings.ReplaceAll(vstr, " ", ""), ",")
+				value = arr
+			}
+		}
 		return graphdb.Field{
 			Key:      f.Key,
-			Value:    []interface{}{value},
-			DataType: graphdb.DType(f.DataType),
+			Value:    []interface{}{""},
+			DataType: graphdb.TypeList,
 			Field: &graphdb.Field{
 				Expression: graphdb.Operator(expression),
 				Key:        "id",
-				DataType:   graphdb.DType(f.Field.DataType),
+				DataType:   dataType,
+				Value:      value,
 			},
 		}
 	} else if f.IsDateOrTime() { // populates min and max range with the time value. if `-` exists. Assumption: All the datetime segmentation values has this format start_time_in_millis-end_time_in_millis

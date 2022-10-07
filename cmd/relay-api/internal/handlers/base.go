@@ -199,6 +199,7 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 
 		for _, f := range fields {
 			if condition, ok := filter.Conditions[f.Key]; ok {
+				log.Printf("condition %+v", condition)
 				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
 			}
 		}
