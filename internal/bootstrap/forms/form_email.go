@@ -141,7 +141,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		DomType:     entity.DomMultiSelect,
 		Meta:        map[string]string{entity.MetaKeyHidden: "true"},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -155,7 +155,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		DomType:     entity.DomMultiSelect,
 		Meta:        map[string]string{entity.MetaKeyRequired: "true"},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -168,7 +168,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -181,7 +181,7 @@ func EmailFields(emailConfigEntityID string, emailConfigOwnerFieldKey string) []
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

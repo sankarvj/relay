@@ -65,7 +65,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -274,7 +274,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DomType:     entity.DomMultiSelect,
 		Meta:        map[string]string{entity.MetaKeyCalc: entity.MetaCalcAggr},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

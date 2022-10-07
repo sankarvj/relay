@@ -194,7 +194,7 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 		return result, err
 	}
 	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
 	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
@@ -216,8 +216,8 @@ func GetFromParentCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error
 		return result, err
 	}
 	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
 }
@@ -260,8 +260,8 @@ func GetGroupedCount(rPool *redis.Pool, gn GraphNode, groupById string) (*rg.Que
 		return result, err
 	}
 	//DEBUG LOG
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
-	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
 }
@@ -281,9 +281,6 @@ func Delete(rPool *redis.Pool, graphName, label, itemID string) error {
 }
 
 func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
-
-	log.Printf("gn--> %+v", gn)
-
 	srcNode := gn.justNode()
 	gn.SourceNode = srcNode
 	s := matchNode(srcNode)

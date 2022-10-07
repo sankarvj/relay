@@ -126,7 +126,7 @@ func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *data
 	return vmseriesFromMap(counts(result), filterByField), nil
 }
 
-func grids(ctx context.Context, charts []chart.Chart, exp string, db *sqlx.DB, sdb *database.SecDB) (map[string]Grid, error) {
+func grids(ctx context.Context, charts []chart.Chart, exp string, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (map[string]Grid, error) {
 	gridResMap := make(map[string]Grid, 0)
 	var err error
 	for _, ch := range charts {
@@ -134,12 +134,12 @@ func grids(ctx context.Context, charts []chart.Chart, exp string, db *sqlx.DB, s
 			var newcount, oldcount int
 			switch ch.GetDType() {
 			case string(chart.DTypeDefault):
-				newcount, oldcount, err = gridDefault(ctx, ch.AccountID, ch.EntityID, ch.Duration, ch, db, sdb)
+				newcount, oldcount, err = gridDefault(ctx, ch.AccountID, ch.EntityID, ch.Duration, ch, loc, db, sdb)
 				if err != nil {
 					return nil, err
 				}
 			case string(chart.DTypeTimeseries):
-				newcount, oldcount, err = gridTimeseries(ctx, ch.AccountID, ch.EntityID, ch.Duration, db)
+				newcount, oldcount, err = gridTimeseries(ctx, ch.AccountID, ch.EntityID, ch.Duration, loc, db)
 				if err != nil {
 					return nil, err
 				}
@@ -154,8 +154,8 @@ func grids(ctx context.Context, charts []chart.Chart, exp string, db *sqlx.DB, s
 	return gridResMap, nil
 }
 
-func gridTimeseries(ctx context.Context, accountID, entityID, duration string, db *sqlx.DB) (int, int, error) {
-	startTime, endTime, lastStart := timeseries.Duration(duration)
+func gridTimeseries(ctx context.Context, accountID, entityID, duration string, loc *time.Location, db *sqlx.DB) (int, int, error) {
+	startTime, endTime, lastStart := timeseries.DurationWithZone(duration, loc)
 
 	countNew, err := timeseries.Count(ctx, accountID, entityID, startTime, endTime, db)
 	if err != nil {
@@ -168,8 +168,8 @@ func gridTimeseries(ctx context.Context, accountID, entityID, duration string, d
 	return countNew, countOld, nil
 }
 
-func gridDefault(ctx context.Context, accountID, entityID, duration string, ch chart.Chart, db *sqlx.DB, sdb *database.SecDB) (int, int, error) {
-	stTime, endTime, lastStart := timeseries.Duration(duration)
+func gridDefault(ctx context.Context, accountID, entityID, duration string, ch chart.Chart, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (int, int, error) {
+	stTime, endTime, lastStart := timeseries.DurationWithZone(duration, loc)
 	series, err := list(ctx, ch, ch.GetExp(), stTime, endTime, db, sdb)
 	if err != nil {
 		return 0, 0, err

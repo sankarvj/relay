@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -69,13 +70,17 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 	defer span.End()
 
 	accountID := params["account_id"]
+	zone, _ := util.ParseTime(r.URL.Query().Get("zone"))
+	loc := time.FixedZone(zone.Zone())
+	exp := r.URL.Query().Get("exp")
+	log.Println("browser loc", loc)
 
 	charts, err := chart.List(ctx, accountID, "", ts.db)
 	if err != nil {
 		return err
 	}
 
-	gridResMap, err := grids(ctx, charts, "", ts.db, ts.sdb)
+	gridResMap, err := grids(ctx, charts, exp, loc, ts.db, ts.sdb)
 	if err != nil {
 		return err
 	}
@@ -88,13 +93,17 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 	defer span.End()
 
 	exp := r.URL.Query().Get("exp")
+	duration := r.URL.Query().Get("duration")
+	zone, _ := util.ParseTime(r.URL.Query().Get("zone"))
 
 	ch, err := chart.Retrieve(ctx, params["account_id"], params["chart_id"], ts.db)
 	if err != nil {
 		return err
 	}
-
-	startTime, endTime, lastStart := timeseries.Duration(ch.Duration)
+	if duration != "undefined" && duration != "" {
+		ch.Duration = duration
+	}
+	startTime, endTime, lastStart := timeseries.DurationWithZone(ch.Duration, time.FixedZone(zone.Zone()))
 
 	var vmc VMChart
 	var series []timeseries.Timeseries
@@ -105,12 +114,8 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 		if err != nil {
 			return err
 		}
-		log.Println("series ", series)
-		log.Println("count ", count)
-
 		vmc = createViewModelChart(*ch, vmseries(series), len(series), change(len(series), count))
 	case string(chart.DTypeDefault):
-
 		series, err := list(ctx, *ch, exp, startTime, endTime, ts.db, ts.sdb)
 		if err != nil {
 			return err

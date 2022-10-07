@@ -164,12 +164,37 @@ func (t Timeseries) Fields() map[string]interface{} {
 }
 
 func Duration(duration string) (time.Time, time.Time, time.Time) {
-	endTime := time.Now()
+	loc, _ := time.LoadLocation("UTC")
+	return DurationWithZone(duration, loc)
+}
+
+func DurationWithZone(duration string, zone *time.Location) (time.Time, time.Time, time.Time) {
+	t := time.Now().In(zone)
+	endTime := t
 	stTime := endTime
 	switch duration {
+	case "last_hr":
+		stTime = endTime.Add(-time.Hour * 1)
+	case "last_6hr":
+		stTime = endTime.Add(-time.Hour * 6)
+	case "last_24hrs":
+		stTime = endTime.Add(-time.Hour * 24)
+	case "today":
+		stTime = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+	case "yesterday":
+		stTime = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+		stTime = stTime.Add(-time.Hour * 24)
+	case "this_week":
+		stTime = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+		stTime = endTime.AddDate(0, 0, int(t.Weekday()))
 	case "last_week":
 		stTime = endTime.AddDate(0, 0, -7)
-	case "last_24hrs":
+	case "this_month":
+		stTime = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local)
+		stTime = endTime.AddDate(0, 0, -t.Day())
+	case "last_month":
+		stTime = endTime.AddDate(0, 0, -30)
+	case "last_6month":
 		stTime = endTime.AddDate(0, 0, -1)
 	}
 	difference := stTime.Sub(endTime)

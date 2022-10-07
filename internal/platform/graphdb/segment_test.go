@@ -90,7 +90,7 @@ var (
 			Key:      fieldID1,
 			DataType: graphdb.TypeList,
 			Field: &graphdb.Field{
-				Key:      "element",
+				Key:      "id",
 				DataType: graphdb.TypeString,
 			},
 		},
@@ -118,7 +118,7 @@ var (
 			Value:        []interface{}{"white", "blue"},
 			UnlinkOffset: 2, // this will remove blue and add white. Yellow will persist
 			Field: &graphdb.Field{
-				Key:      "element",
+				Key:      "id",
 				DataType: graphdb.TypeString,
 			},
 		},
@@ -185,7 +185,7 @@ var (
 			Value:    []interface{}{"yellow"},
 			Field: &graphdb.Field{
 				Expression: "=",
-				Key:        "element",
+				Key:        "id",
 				DataType:   graphdb.TypeString,
 			},
 		},

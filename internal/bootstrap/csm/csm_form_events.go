@@ -63,7 +63,7 @@ func events(calc, rollup string) []entity.Field {
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

@@ -384,7 +384,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

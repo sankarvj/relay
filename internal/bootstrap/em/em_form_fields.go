@@ -59,7 +59,7 @@ func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEnt
 		DataType:    entity.TypeList,
 		DomType:     entity.DomMultiSelect,
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -229,7 +229,7 @@ func PayrollFields() []entity.Field {
 			},
 		},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

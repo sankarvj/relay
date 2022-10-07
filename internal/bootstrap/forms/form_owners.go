@@ -63,7 +63,7 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 			},
 		},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
@@ -77,7 +77,7 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		DomType:     entity.DomMultiSelect,
 		Meta:        map[string]string{entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}

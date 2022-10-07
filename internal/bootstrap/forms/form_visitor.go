@@ -44,7 +44,7 @@ func VisitorInvitationFields() []entity.Field {
 			},
 		},
 		Field: &entity.Field{
-			Key:      "element",
+			Key:      "id",
 			DataType: entity.TypeString,
 		},
 	}
