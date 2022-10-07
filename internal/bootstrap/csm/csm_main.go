@@ -29,21 +29,21 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCSM:BOOT Projects Entity Created")
 
 	// add entity - meetings
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, true, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.ProjectEntity.ID, b.ContactEntity.Key("email"), b.ContactEntity.Key("first_name"), b.CompanyEntity.Key("name"), b.ProjectEntity.Key("project_name")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMeetings, "Meetings", entity.CategoryMeeting, entity.StateTeamLevel, false, false, false, MeetingFields(b.ContactEntity.ID, b.CompanyEntity.ID, b.ProjectEntity.ID, b.ContactEntity.Key("email"), b.ContactEntity.Key("first_name"), b.CompanyEntity.Key("name"), b.ProjectEntity.Key("project_name")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - activities
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, false, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Activities Entity Created")
 
 	// add entity - plan
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySubscriptions, "Subscriptions", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, PlanFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySubscriptions, "Subscriptions", entity.CategoryEvent, entity.StateAccountLevel, false, false, false, PlanFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Subscriptions Item Created")
 
-	err = addCharts(ctx, b, activityEntity)
+	err = addCharts(ctx, b, activityEntity, planEntity)
 	if err != nil {
 		return err
 	}
@@ -156,17 +156,18 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 }
 
 func addEvents(ctx context.Context, b *base.Base) error {
-	_, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDailyActiveUsers, "Daily Active Users", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
+	var err error
+	b.DAUEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDailyActiveUsers, "Daily Active Users", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPageVisits, "Page Visits", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPageVisits, "Page Visits", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMilestones, "Milestones or Goals", entity.CategoryTimeseries, entity.StateAccountLevel, false, true, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMilestones, "Milestones or Goals", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
 	if err != nil {
 		return err
 	}
@@ -319,38 +320,44 @@ func addSubscriptions(ctx context.Context, b *base.Base, subscriptionEntity, con
 	return nil
 }
 
-func addCharts(ctx context.Context, b *base.Base, dauEntity entity.Entity) error {
-	NoEntityID := "00000000-0000-0000-0000-000000000000"
-	err := b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "Contacts by stage", "lifecycle_stage", "pie", "normal", "last_week", chart.CalcCount)
+func addCharts(ctx context.Context, b *base.Base, activityEntity, planEntity entity.Entity) error {
+
+	err := chart.BuildNewChart(b.AccountID, b.UserID, b.DAUEntity.ID, "Daily active users", "", chart.TypeLine).SetAsTimeseries().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = b.ChartAdd(ctx, b.CompanyEntity.ID, NoEntityID, "Accounts by health", "health", "pie", "normal", "last_week", chart.CalcCount)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "Contacts by stage", "lifecycle_stage", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = b.ChartAdd(ctx, b.CompanyEntity.ID, NoEntityID, "Accounts by health", "health", "bar", "normal", "last_week", chart.CalcCount)
-	if err != nil {
-		return err
-	}
-	err = b.ChartAdd(ctx, dauEntity.ID, NoEntityID, "Daily active users", "", "line", "timeseries", "last_week", chart.CalcCount)
-	if err != nil {
-		return err
-	}
-	err = b.ChartAdd(ctx, dauEntity.ID, NoEntityID, "Daily active users", "", "grid", "timeseries", "last_24hrs", chart.CalcCount)
-	if err != nil {
-		return err
-	}
-	err = b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "Chrun rate", "life_cycle_stage", "grid", "normal", "last_24hrs", chart.CalcCount)
-	if err != nil {
-		return err
-	}
-	err = b.ChartAdd(ctx, b.ContactEntity.ID, NoEntityID, "New Customer", "became_a_customer_date", "grid", "normal", "last_24hrs", chart.CalcCount)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.CompanyEntity.ID, "Accounts by health bar", "health", chart.TypeBar).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	err = b.ChartAdd(ctx, b.ProjectEntity.ID, b.CompanyEntity.ID, "Delayed Accounts", "end_time", "grid", "normal", "last_24hrs", chart.CalcCount)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.DAUEntity.ID, "DAU", "", chart.TypeGrid).SetAsTimeseries().SetDurationLast24hrs().SetCalcSum().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "Chrun rate", "lifecycle_stage", chart.TypeGrid).AddDateField("lost_customer_on").SetDurationLast24hrs().SetCalcRate().SetGrpLogicID().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "New Customer", "", chart.TypeGrid).AddDateField("became_a_customer_date").SetDurationLast24hrs().SetCalcSum().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	exp := fmt.Sprintf("{{%s.%s}} bf {%s}", b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now")
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Delayed Accounts", "end_time", chart.TypeGrid).AddExp(exp).AddSource(b.CompanyEntity.ID).SetDurationLast24hrs().SetCalcSum().SetGrpLogicParent().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
+	err = chart.BuildNewChart(b.AccountID, b.UserID, activityEntity.ID, "Activities", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, planEntity.ID, "Cancellations", "reason", chart.TypeRod).SetDurationAllTime().SetGrpLogicID().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}

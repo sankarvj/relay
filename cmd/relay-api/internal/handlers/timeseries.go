@@ -5,22 +5,18 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/event"
-	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 	"go.opencensus.io/trace"
 )
@@ -72,252 +68,84 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 	ctx, span := trace.StartSpan(ctx, "handlers.Timeseries.List")
 	defer span.End()
 
-	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	startTime, endTime := timeseries.Duration(r.URL.Query().Get("duration"))
+	accountID := params["account_id"]
 
-	difference := startTime.Sub(endTime)
-	newStart := startTime.Add(difference)
-
-	series, err := timeseries.List(ctx, accountID, entityID, startTime, endTime, ts.db)
+	charts, err := chart.List(ctx, accountID, "", ts.db)
 	if err != nil {
 		return err
 	}
 
-	count, err := timeseries.Count(ctx, accountID, entityID, newStart, startTime, ts.db)
+	gridResMap, err := grids(ctx, charts, "", ts.db, ts.sdb)
 	if err != nil {
 		return err
 	}
 
-	ch := Chart{
-		Series: vmseries(series),
-		Title:  "Daily active users",
-		Type:   "line",
-		Count:  change(len(series), count),
+	return web.Respond(ctx, w, createViewModelCharts(charts, gridResMap), http.StatusOK)
+}
+
+func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Timeseries.Chart")
+	defer span.End()
+
+	exp := r.URL.Query().Get("exp")
+
+	ch, err := chart.Retrieve(ctx, params["account_id"], params["chart_id"], ts.db)
+	if err != nil {
+		return err
 	}
 
-	return web.Respond(ctx, w, ch, http.StatusOK)
+	startTime, endTime, lastStart := timeseries.Duration(ch.Duration)
+
+	var vmc VMChart
+	var series []timeseries.Timeseries
+	switch ch.GetDType() {
+	case string(chart.DTypeTimeseries):
+		series, err = timeseries.List(ctx, ch.AccountID, ch.EntityID, startTime, endTime, ts.db)
+		count, err := timeseries.Count(ctx, ch.AccountID, ch.EntityID, lastStart, startTime, ts.db)
+		if err != nil {
+			return err
+		}
+		log.Println("series ", series)
+		log.Println("count ", count)
+
+		vmc = createViewModelChart(*ch, vmseries(series), len(series), change(len(series), count))
+	case string(chart.DTypeDefault):
+
+		series, err := list(ctx, *ch, exp, startTime, endTime, ts.db, ts.sdb)
+		if err != nil {
+			return err
+		}
+		vmc = createViewModelChartNoChange(*ch, series, 0)
+	}
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, vmc, http.StatusOK)
 }
 
 func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Timeseries.Overview")
-	defer span.End()
-
-	newC, oldC, err := gridDAU(ctx, params["account_id"], entity.FixedEntityDailyActiveUsers, "last_24hrs", ts.db)
-	if err != nil {
-		return err
-	}
-
-	ch1 := Chart{
-		Title: "DAU",
-		Type:  "grid",
-		Count: change(newC, oldC),
-	}
-
-	lost, total, err := gridChrun(ctx, params["account_id"], params["team_id"], entity.FixedEntityContacts, "lifecycle_stage", "became_a_customer_date", "1", "last_24hrs", ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-
-	ch2 := Chart{
-		Title: "Churn Rate",
-		Type:  "grid",
-		Count: rate(lost, total),
-	}
-
-	newcustomers, err := gridNewCustomers(ctx, params["account_id"], params["team_id"], entity.FixedEntityContacts, "", "became_a_customer_date", nil, "last_24hrs", ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-
-	ch3 := Chart{
-		Title: "New Customer",
-		Type:  "grid",
-		Count: newcustomers,
-	}
-
-	dacc, err := delayedAccounts(ctx, params["account_id"], params["team_id"], entity.FixedEntityProjects, "end_time", entity.FixedEntityCompanies, "", ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-
-	ch4 := Chart{
-		Title: "Accounts with delayed projects",
-		Type:  "grid",
-		Count: dacc,
-	}
-
-	grids := struct {
-		Grids []Chart `json:"grids"`
-	}{
-		Grids: []Chart{ch1, ch2, ch3, ch4},
-	}
-
-	return web.Respond(ctx, w, grids, http.StatusOK)
-}
-
-func (ts *Timeseries) Count(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	//duration := r.URL.Query().Get("duration")
-	source := r.URL.Query().Get("source")
-
-	var countByField entity.Field
-	countByFieldName := params["count_by"]
-	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
-	if err != nil {
-		return err
-	}
-
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
-	}
-
 	exp := r.URL.Query().Get("exp")
-	grouped, _ := strconv.ParseBool((r.URL.Query().Get("grouped")))
-	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, exp, ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-	if source != "" {
-		conditionFields = append(conditionFields, sourceble(source))
-	}
-	for _, f := range fields {
-		if f.Name == countByFieldName {
-			countByField = f
-			gf := countByField.MakeGraphFieldPlain()
-			if gf != nil {
-				conditionFields = append(conditionFields, *gf)
-			}
-		}
-	}
-
-	if countByField.IsReference() {
-		refItems, err := item.EntityItems(ctx, accountID, countByField.RefID, ts.db)
-		if err != nil {
-			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
-		}
-		reference.ChoicesMaker(&countByField, "", reference.ItemChoices(&countByField, refItems, e.WhoFields()))
-	}
-
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
-
-	var result *redisgraph.QueryResult
-	if !grouped {
-		result, err = graphdb.GetCount(ts.sdb.GraphPool(), gSegment, true)
-	} else {
-		result, err = graphdb.GetGroupedCount(ts.sdb.GraphPool(), gSegment, countByField.Key)
-	}
-
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: get status count")
-	}
-	cr := counts(result)
-
-	ch := Chart{
-		Series: vmseriesFromMap(cr, countByField),
-		Title:  "Accounts by status",
-		Type:   "bar",
-	}
-
-	return web.Respond(ctx, w, ch, http.StatusOK)
-}
-
-func (ts *Timeseries) Sum(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	var sumByField entity.Field
-	sumByFieldName := params["sum_by"]
-	duration := r.URL.Query().Get("duration")
-	startTime, endTime := timeseries.Duration(duration)
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
+	charts, err := chart.List(ctx, accountID, entityID, ts.db)
 	if err != nil {
 		return err
 	}
 
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
-	}
+	vmCharts := make([]VMChart, 0)
+	for _, ch := range charts {
+		stTime, endTime, _ := timeseries.Duration(ch.Duration)
 
-	conditionFields := make([]graphdb.Field, 0)
-	for _, f := range fields {
-		if f.Name == sumByFieldName {
-			sumByField = f
-		}
-	}
-	conditionFields = append(conditionFields, timeRange("system_created_at", startTime, endTime))
-
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetSum(ts.sdb.GraphPool(), gSegment, sumByField.Key)
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: get status sum")
-	}
-	cr := counts(result)
-
-	if sumByField.IsReference() {
-		refItems, err := item.EntityItems(ctx, accountID, e.ID, ts.db)
+		series, err := list(ctx, ch, exp, stTime, endTime, ts.db, ts.sdb)
 		if err != nil {
-			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
+			return err
 		}
-		reference.ChoicesMaker(&sumByField, "", reference.ItemChoices(&sumByField, refItems, e.WhoFields()))
-	}
-	ch := Chart{
-		Series: vmseriesFromMap(cr, sumByField),
-		Title:  "Sum of NPS",
-		Type:   "pie",
+		vmc := createViewModelChartNoChange(ch, series, 0)
+		vmCharts = append(vmCharts, vmc)
 	}
 
-	return web.Respond(ctx, w, ch, http.StatusOK)
-}
-
-func (ts *Timeseries) GroupByCount(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	var countByField entity.Field
-	countByFieldName := params["count_by"]
-	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
-	if err != nil {
-		return err
-	}
-
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
-	}
-
-	conditionFields := make([]graphdb.Field, 0)
-	for _, f := range fields {
-		if f.Name == countByFieldName {
-			countByField = f
-			conditionFields = append(conditionFields, otherField(f.Key))
-		}
-	}
-
-	if countByField.IsReference() {
-		refItems, err := item.EntityItems(ctx, accountID, e.ID, ts.db)
-		if err != nil {
-			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
-		}
-		reference.ChoicesMaker(&countByField, "", reference.ItemChoices(&countByField, refItems, e.WhoFields()))
-	}
-
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetCount(ts.sdb.GraphPool(), gSegment, true)
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: get status count")
-	}
-	cr := counts(result)
-
-	ch := Chart{
-		Series: vmseriesFromMap(cr, countByField),
-		Title:  "Accounts by status",
-		Type:   "bar",
-	}
-
-	return web.Respond(ctx, w, ch, http.StatusOK)
+	return web.Respond(ctx, w, vmCharts, http.StatusOK)
 }
 
 func vmseries(tms []timeseries.Timeseries) []Series {
@@ -332,11 +160,12 @@ func vmseriesFromMap(m map[string]int, f entity.Field) []Series {
 	mapOfChoices := f.ChoicesMap()
 
 	vmseries := make([]Series, 0)
-	for label, value := range m {
-		if val, ok := mapOfChoices[label]; ok {
+	for id, value := range m {
+		label := id // this line fixes for group with name
+		if val, ok := mapOfChoices[id]; ok {
 			label = util.ConvertIntfToStr(val.DisplayValue)
 		}
-		vmseries = append(vmseries, createVMSeriesFromMap(label, value))
+		vmseries = append(vmseries, createVMSeriesFromMap(id, label, value))
 	}
 	return vmseries
 }
@@ -346,19 +175,4 @@ func strValue(v interface{}) string {
 		return v.(string)
 	}
 	return ""
-}
-
-func change(count, oldCount int) int {
-	total := count + oldCount
-	if total == 0 {
-		return 0
-	}
-	return (count / total) * 100
-}
-
-func rate(change, total int) int {
-	if total == 0 {
-		return 0
-	}
-	return (change / total) * 100
 }

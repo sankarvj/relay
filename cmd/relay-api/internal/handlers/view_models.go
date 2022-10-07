@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
@@ -76,6 +77,37 @@ type UserToken struct {
 	Item     string   `json:"item"`
 }
 
+func createViewModelCharts(charts []chart.Chart, gridResMap map[string]Grid) []VMChart {
+	vmCharts := make([]VMChart, 0)
+	for _, ch := range charts {
+		count := 0
+		change := 0
+		if grid, ok := gridResMap[ch.ID]; ok {
+			count = grid.Count
+			change = grid.Change
+		}
+		vmCharts = append(vmCharts, createViewModelChart(ch, []Series{}, count, change))
+	}
+	return vmCharts
+}
+
+func createViewModelChartNoChange(c chart.Chart, series []Series, count int) VMChart {
+	return createViewModelChart(c, series, count, -1000000)
+}
+
+func createViewModelChart(c chart.Chart, series []Series, count, change int) VMChart {
+	return VMChart{
+		ID:       c.ID,
+		Title:    c.Name,
+		Type:     c.Type,
+		DataType: c.GetDType(),
+		Duration: c.Duration,
+		Series:   series,
+		Count:    count,
+		Change:   change,
+	}
+}
+
 func createVMSeries(ts timeseries.Timeseries) Series {
 	return Series{
 		ID:          ts.ID,
@@ -87,11 +119,23 @@ func createVMSeries(ts timeseries.Timeseries) Series {
 	}
 }
 
-func createVMSeriesFromMap(label string, value int) Series {
+func createVMSeriesFromMap(id, label string, value int) Series {
 	return Series{
-		ID:    label,
+		ID:    id,
+		Label: label,
 		Count: value,
 	}
+}
+
+type VMChart struct {
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Type     string   `json:"type"`
+	DataType string   `json:"data_type"`
+	Duration string   `json:"duration"`
+	Series   []Series `json:"series"`
+	Count    int      `json:"count"`
+	Change   int      `json:"change"`
 }
 
 type Series struct {
@@ -101,13 +145,17 @@ type Series struct {
 	Count       int       `json:"count"`
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
+	Label       string    `json:"label"`
 }
 
-type Chart struct {
-	Title  string   `json:"title"`
-	Type   string   `json:"type"`
-	Series []Series `json:"series"`
-	Count  int      `json:"count"`
+type Grid struct {
+	Count   int `json:"count"`
+	Change  int `json:"change"`
+	Insight int `json:"insight"`
+}
+
+type GridsResponse struct {
+	Grids []VMChart `json:"grids"`
 }
 
 type ItemResultBody struct {

@@ -598,7 +598,7 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 			DataType: graphdb.DType(f.DataType),
 			Field: &graphdb.Field{
 				Expression: graphdb.Operator(expression),
-				Key:        "element",
+				Key:        "id",
 				DataType:   graphdb.DType(f.Field.DataType),
 			},
 		}

@@ -276,6 +276,9 @@ func Delete(rPool *redis.Pool, graphName, label, itemID string) error {
 }
 
 func makeQuery(rPool *redis.Pool, gn *GraphNode) string {
+
+	log.Printf("gn--> %+v", gn)
+
 	srcNode := gn.justNode()
 	gn.SourceNode = srcNode
 	s := matchNode(srcNode)

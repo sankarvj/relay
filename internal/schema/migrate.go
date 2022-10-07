@@ -414,16 +414,13 @@ var migrations = []darwin.Migration{
 			chart_id    			UUID,
 			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id      		    UUID REFERENCES entities ON DELETE CASCADE,
-			parent_entity_id        UUID,
 			user_id                 UUID,
 			name                    TEXT,
-			field					TEXT,
 			type    		        TEXT,
-			group    		        TEXT,
 			duration    		    TEXT,
 			state    		        INTEGER DEFAULT 0,
-			calc    		        INTEGER DEFAULT 0,
 			position    		    INTEGER DEFAULT 0,
+			metab          		    JSONB,
 			created_at    	        TIMESTAMP,
 			PRIMARY KEY (chart_id)
 		);

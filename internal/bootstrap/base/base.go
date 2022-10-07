@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
-	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -59,6 +58,7 @@ type CoreEntity struct {
 	TaskEntity        entity.Entity
 	DealEntity        entity.Entity
 	ProjectEntity     entity.Entity
+	DAUEntity         entity.Entity
 }
 
 type CoreItem struct {
@@ -348,25 +348,4 @@ func (b *Base) LayoutAdd(ctx context.Context, name, entityID string, fields map[
 
 	_, err := layout.Create(ctx, b.DB, nl, time.Now())
 	return err
-}
-
-func (b *Base) ChartAdd(ctx context.Context, entityID, parentEntityID, name, field, chartType, group, duration string, calc int) error {
-	nc := chart.NewChart{
-		AccountID:      b.AccountID,
-		EntityID:       entityID,
-		ParentEntityID: entityID,
-		UserID:         b.UserID,
-		Name:           name,
-		Field:          field,
-		Type:           chartType,
-		Duration:       duration,
-		Group:          group,
-		Calc:           calc,
-	}
-
-	err := chart.Create(ctx, b.DB, nc, time.Now())
-	if err != nil {
-		return err
-	}
-	return nil
 }

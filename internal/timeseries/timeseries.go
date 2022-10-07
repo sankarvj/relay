@@ -163,7 +163,7 @@ func (t Timeseries) Fields() map[string]interface{} {
 	return fields
 }
 
-func Duration(duration string) (time.Time, time.Time) {
+func Duration(duration string) (time.Time, time.Time, time.Time) {
 	endTime := time.Now()
 	stTime := endTime
 	switch duration {
@@ -171,7 +171,8 @@ func Duration(duration string) (time.Time, time.Time) {
 		stTime = endTime.AddDate(0, 0, -7)
 	case "last_24hrs":
 		stTime = endTime.AddDate(0, 0, -1)
-
 	}
-	return stTime.UTC(), endTime.UTC()
+	difference := stTime.Sub(endTime)
+	lastStart := stTime.Add(difference)
+	return stTime.UTC(), endTime.UTC(), lastStart.UTC()
 }

@@ -3,6 +3,8 @@ package chart
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,19 +18,19 @@ var (
 	ErrChartNotFound = errors.New("Chart not found")
 )
 
-func List(ctx context.Context, accountID, group string, db *sqlx.DB) ([]Chart, error) {
+func List(ctx context.Context, accountID, entityID string, db *sqlx.DB) ([]Chart, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.List")
 	defer span.End()
 
 	charts := []Chart{}
-	if group == "" {
+	if entityID == "" {
 		const q = `SELECT * FROM charts where account_id = $1 LIMIT 50`
 		if err := db.SelectContext(ctx, &charts, q, accountID); err != nil {
 			return charts, errors.Wrap(err, "selecting charts for an account")
 		}
 	} else {
-		const q = `SELECT * FROM charts where account_id = $1 AND group = $2 LIMIT 50`
-		if err := db.SelectContext(ctx, &charts, q, accountID, group); err != nil {
+		const q = `SELECT * FROM charts where account_id = $1 AND entity_id = $2 LIMIT 50`
+		if err := db.SelectContext(ctx, &charts, q, accountID, entityID); err != nil {
 			return charts, errors.Wrap(err, "selecting charts for an account with group")
 		}
 	}
@@ -39,29 +41,32 @@ func List(ctx context.Context, accountID, group string, db *sqlx.DB) ([]Chart, e
 func Create(ctx context.Context, db *sqlx.DB, nc NewChart, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.Create")
 	defer span.End()
+
+	metaBytes, err := json.Marshal(nc.Meta)
+	if err != nil {
+		return errors.Wrap(err, "encode meta to bytes in chart")
+	}
+
 	t := Chart{
-		ID:             uuid.New().String(),
-		AccountID:      nc.AccountID,
-		EntityID:       nc.EntityID,
-		ParentEntityID: nc.ParentEntityID,
-		UserID:         nc.UserID,
-		Field:          nc.Field,
-		Name:           nc.Name,
-		Type:           nc.Type,
-		Group:          nc.Group,
-		Duration:       nc.Duration,
-		State:          nc.State,
-		Calc:           nc.Calc,
-		Position:       nc.Position,
-		CreatedAt:      now.UTC(),
+		ID:        uuid.New().String(),
+		AccountID: nc.AccountID,
+		EntityID:  nc.EntityID,
+		UserID:    nc.UserID,
+		Name:      nc.Name,
+		Type:      nc.Type,
+		Duration:  nc.Duration,
+		State:     nc.State,
+		Position:  nc.Position,
+		Metab:     string(metaBytes),
+		CreatedAt: now.UTC(),
 	}
 
 	const q = `INSERT INTO charts
-		(chart_id, account_id, entity_id, parent_entity_id, user_id, field, name, type, group, duration, state, calc, position, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
-	_, err := db.ExecContext(
+		(chart_id, account_id, entity_id, user_id, name, type, duration, state, position, metab, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+	_, err = db.ExecContext(
 		ctx, q,
-		t.ID, t.AccountID, t.EntityID, t.ParentEntityID, t.UserID, t.Field, t.Name, t.Type, t.Group, t.Duration, t.State, t.Calc, t.Position,
+		t.ID, t.AccountID, t.EntityID, t.UserID, t.Name, t.Type, t.Duration, t.State, t.Position, t.Metab,
 		t.CreatedAt,
 	)
 	if err != nil {
@@ -84,7 +89,7 @@ func Delete(ctx context.Context, db *sqlx.DB, chartID string) error {
 	return nil
 }
 
-func Retrieve(ctx context.Context, db *sqlx.DB, accountID, chartID string) (*Chart, error) {
+func Retrieve(ctx context.Context, accountID, chartID string, db *sqlx.DB) (*Chart, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.Retrieve")
 	defer span.End()
 
@@ -99,4 +104,140 @@ func Retrieve(ctx context.Context, db *sqlx.DB, accountID, chartID string) (*Cha
 	}
 
 	return &c, nil
+}
+
+func (c Chart) Meta() map[string]string {
+	meta := make(map[string]string, 0)
+	if c.Metab == "" {
+		return meta
+	}
+	if err := json.Unmarshal([]byte(c.Metab), &meta); err != nil {
+		log.Printf("***> unexpected error occurred when unmarshalling meta for chart: %v error: %v\n", c.ID, err)
+	}
+	return meta
+}
+
+func (c Chart) GetGroupByLogic() string {
+	if val, ok := c.Meta()[MetaGroupByLogic]; ok {
+		return val
+	}
+	return string(GroupLogicNone)
+}
+
+func (c Chart) GetCalc() string {
+	if val, ok := c.Meta()[MetaCalcKey]; ok {
+		return val
+	}
+	return string(CalcCount)
+}
+
+func (c Chart) GetSource() string {
+	if val, ok := c.Meta()[MetaSourceKey]; ok {
+		return val
+	}
+	return ""
+}
+
+func (c Chart) GetField() string {
+	if val, ok := c.Meta()[MetaFieldKey]; ok {
+		return val
+	}
+	return ""
+}
+
+func (c Chart) GetDType() string {
+	if val, ok := c.Meta()[MetaDataType]; ok {
+		return val
+	}
+	return string(DTypeDefault)
+}
+
+func (c Chart) GetExp() string {
+	if val, ok := c.Meta()[MetaExp]; ok {
+		return val
+	}
+	return ""
+}
+
+func (c Chart) GetDate() string {
+	if val, ok := c.Meta()[MetaDateField]; ok {
+		return val
+	}
+	return ""
+}
+
+func BuildNewChart(accountID, userID, entityID, name, fieldName string, chartType Type) *NewChart {
+	NoEntityID := "00000000-0000-0000-0000-000000000000"
+	return &NewChart{
+		AccountID: accountID,
+		EntityID:  entityID,
+		UserID:    userID,
+		Name:      name,
+		Type:      string(chartType),
+		Duration:  string(LastWeek),
+		Meta: map[string]string{
+			MetaSourceKey:    NoEntityID,
+			MetaFieldKey:     fieldName,
+			MetaDataType:     string(DTypeDefault),
+			MetaCalcKey:      string(CalcCount),
+			MetaGroupByLogic: string(GroupLogicNone),
+		},
+	}
+}
+
+func (ch *NewChart) AddSource(source string) *NewChart {
+	ch.Meta[MetaSourceKey] = source
+	return ch
+}
+func (ch *NewChart) AddDateField(fieldDate string) *NewChart {
+	ch.Meta[MetaDateField] = fieldDate
+	return ch
+}
+func (ch *NewChart) AddExp(exp string) *NewChart {
+	ch.Meta[MetaExp] = exp
+	return ch
+}
+
+func (ch *NewChart) SetGrpLogicID() *NewChart {
+	ch.Meta[MetaGroupByLogic] = string(GroupLogicID)
+	return ch
+}
+func (ch *NewChart) SetGrpLogicField() *NewChart {
+	ch.Meta[MetaGroupByLogic] = string(GroupLogicField)
+	return ch
+}
+func (ch *NewChart) SetGrpLogicParent() *NewChart {
+	ch.Meta[MetaGroupByLogic] = string(GroupLogicParent)
+	return ch
+}
+
+func (ch *NewChart) SetAsTimeseries() *NewChart {
+	ch.Meta[MetaDataType] = string(DTypeTimeseries)
+	return ch
+}
+
+func (ch *NewChart) SetDurationAllTime() *NewChart {
+	ch.Duration = string(AllTime)
+	return ch
+}
+func (ch *NewChart) SetDurationLast24hrs() *NewChart {
+	ch.Duration = string(Last24Hrs)
+	return ch
+}
+
+func (ch *NewChart) SetCalcRate() *NewChart {
+	ch.Meta[MetaCalcKey] = string(CalcRate)
+	return ch
+}
+func (ch *NewChart) SetCalcSum() *NewChart {
+	ch.Meta[MetaCalcKey] = string(CalcSum)
+	return ch
+}
+
+func (ch *NewChart) Add(ctx context.Context, db *sqlx.DB) error {
+	err := Create(ctx, db, *ch, time.Now())
+	if err != nil {
+		return err
+	}
+	return nil
 }
