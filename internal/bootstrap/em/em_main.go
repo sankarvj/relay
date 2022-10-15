@@ -98,6 +98,15 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Employee Entity Created")
+
+	// add entity - tasks
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityETask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, TaskEFields(employeeEntity.ID, employeeEntity.Key("first_name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, ownerKey))
+	if err != nil {
+		fmt.Println("\tEM:BOOT Employee Task Entity Created ERR")
+		return err
+	}
+	fmt.Println("\tEM:BOOT Employee Task Entity Created")
+
 	// add entity - asset-catagory
 	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.AssetCategory())
 	if err != nil {
@@ -319,7 +328,7 @@ func AddAssociations(ctx context.Context, b *base.Base, payrollEid, salaryEid, e
 
 func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) error {
 
-	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityTask)
+	taskEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityETask)
 	if err != nil {
 		return err
 	}

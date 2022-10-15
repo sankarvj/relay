@@ -38,6 +38,7 @@ const (
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
 	//not fixed yet known entities
+	FixedEntityETask            = "employee_tasks"
 	FixedEntityTask             = "tasks"
 	FixedEntityNote             = "notes"
 	FixedEntityMeetings         = "meetings"

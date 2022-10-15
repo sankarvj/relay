@@ -15,9 +15,11 @@ type Relationship struct {
 type Bond struct {
 	RelationshipID string  `db:"relationship_id" json:"relationship_id"`
 	ParentRelID    *string `db:"parent_rel_id" json:"parent_rel_id"`
+	Name           string  `db:"name" json:"name"`
 	DisplayName    string  `db:"display_name" json:"display_name"`
 	Category       int     `db:"category" json:"category"`
 	EntityID       string  `db:"entity_id" json:"entity_id"`
+	IsPublic       bool    `db:"is_public" json:"is_public"`
 	Type           RType   `db:"type" json:"type"`
 	Position       int64   `db:"position" json:"position"`
 }

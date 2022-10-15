@@ -199,7 +199,7 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) 
 	defer span.End()
 
 	var bonds []Bond
-	const q = `SELECT r.relationship_id, r.parent_rel_id, e.display_name, e.category, e.entity_id, r.type, r.position FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3) AND r.dst_entity_id = $4 AND r.type = $5`
+	const q = `SELECT r.relationship_id, r.parent_rel_id, e.name, e.display_name, e.category, e.entity_id, e.is_public, r.type, r.position FROM relationships as r join entities as e on e.entity_id = r.src_entity_id WHERE e.account_id = $1 AND (e.team_id = $2 OR e.state = $3) AND r.dst_entity_id = $4 AND r.type = $5`
 
 	// can't import entity.StateAccountLevel due to cyclic import error hence hardcoded -- 1
 	stateAccountLevel := 1

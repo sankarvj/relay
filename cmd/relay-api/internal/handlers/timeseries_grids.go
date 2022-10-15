@@ -12,11 +12,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 )
 
-func list(ctx context.Context, ch chart.Chart, exp string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
+func list(ctx context.Context, ch chart.Chart, exp, baseItem string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
 	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db)
 	if err != nil {
 		return nil, err
@@ -35,6 +36,11 @@ func list(ctx context.Context, ch chart.Chart, exp string, stTime, endTime time.
 	//add source condition if source exists
 	if source != entity.NoEntityID && source != ch.EntityID {
 		conditionFields = append(conditionFields, sourceble(source))
+	}
+
+	//must add base condition if base exists - very important.
+	if ch.BaseEntityID != chart.NoBaseEntityID && util.NotEmpty(baseItem) {
+		conditionFields = append(conditionFields, sourcebleItem(ch.BaseEntityID, baseItem))
 	}
 
 	var filterByField entity.Field
@@ -170,7 +176,7 @@ func gridTimeseries(ctx context.Context, accountID, entityID, duration string, l
 
 func gridDefault(ctx context.Context, accountID, entityID, duration string, ch chart.Chart, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (int, int, error) {
 	stTime, endTime, lastStart := timeseries.DurationWithZone(duration, loc)
-	series, err := list(ctx, ch, ch.GetExp(), stTime, endTime, db, sdb)
+	series, err := list(ctx, ch, ch.GetExp(), "", stTime, endTime, db, sdb)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -179,8 +185,12 @@ func gridDefault(ctx context.Context, accountID, entityID, duration string, ch c
 		if len(series) > 0 {
 			return series[0].Count, 0, nil
 		}
+	case string(chart.CalcCount):
+		if len(series) > 0 {
+			return series[0].Count, 0, nil
+		}
 	case string(chart.CalcRate):
-		oldseries, err := list(ctx, ch, ch.GetExp(), lastStart, stTime, db, sdb)
+		oldseries, err := list(ctx, ch, ch.GetExp(), "", lastStart, stTime, db, sdb)
 		if err != nil {
 			return 0, 0, err
 		}

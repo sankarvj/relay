@@ -324,7 +324,7 @@ func addAutomation(ctx context.Context, b *base.Base) error {
 		FlowType: flow.FlowTypeEventCreate,
 		Nodes: []*base.CoreNode{
 			{
-				Name:       "Invite contact as users to the portal",
+				Name:       "Invite associated contacts of the project to access his record in the portal",
 				ActorID:    b.InviteEntity.ID,
 				ActorName:  "Projects",
 				TemplateID: inviteTemplate.ID,

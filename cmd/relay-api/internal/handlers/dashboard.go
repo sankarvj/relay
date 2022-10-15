@@ -235,6 +235,19 @@ func sourceble(sourceEntityID string) graphdb.Field {
 	}
 }
 
+func sourcebleItem(sourceEntityID, sourceItemID string) graphdb.Field {
+	return graphdb.Field{
+		Value:     []interface{}{sourceItemID},
+		DataType:  graphdb.TypeReference,
+		RefID:     sourceEntityID,
+		IsReverse: false,
+		Field: &graphdb.Field{
+			Key:      "id",
+			DataType: graphdb.TypeString,
+		},
+	}
+}
+
 func conditionableRef(f entity.Field, value interface{}) graphdb.Field {
 	return graphdb.Field{
 		Key:      f.Key,

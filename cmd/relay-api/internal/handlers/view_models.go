@@ -98,8 +98,10 @@ func createViewModelChartNoChange(c chart.Chart, series []Series, count int) VMC
 func createViewModelChart(c chart.Chart, series []Series, count, change int) VMChart {
 	return VMChart{
 		ID:       c.ID,
+		EntityID: c.EntityID,
 		Title:    c.Name,
 		Type:     c.Type,
+		Field:    c.GetField(),
 		DataType: c.GetDType(),
 		Duration: c.Duration,
 		Series:   series,
@@ -129,7 +131,9 @@ func createVMSeriesFromMap(id, label string, value int) Series {
 
 type VMChart struct {
 	ID       string   `json:"id"`
+	EntityID string   `json:"entity_id"`
 	Title    string   `json:"title"`
+	Field    string   `json:"field"`
 	Type     string   `json:"type"`
 	DataType string   `json:"data_type"`
 	Duration string   `json:"duration"`

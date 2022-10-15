@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +13,9 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/event"
+	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/mid"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -73,9 +76,9 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 	zone, _ := util.ParseTime(r.URL.Query().Get("zone"))
 	loc := time.FixedZone(zone.Zone())
 	exp := r.URL.Query().Get("exp")
-	log.Println("browser loc", loc)
+	baseEntityID := params["entity_id"]
 
-	charts, err := chart.List(ctx, accountID, "", ts.db)
+	charts, err := chart.List(ctx, accountID, baseEntityID, "", ts.db)
 	if err != nil {
 		return err
 	}
@@ -100,6 +103,13 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		return err
 	}
+	if util.NotEmpty(params["entity_id"]) && util.NotEmpty(params["item_id"]) {
+		//TODO remove middleware logic from here....
+		//checking this here because we are using the ch.BaseEntityID directly inside list
+		if params["entity_id"] != ch.BaseEntityID {
+			return mid.ErrForbidden
+		}
+	}
 	if duration != "undefined" && duration != "" {
 		ch.Duration = duration
 	}
@@ -116,7 +126,7 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		vmc = createViewModelChart(*ch, vmseries(series), len(series), change(len(series), count))
 	case string(chart.DTypeDefault):
-		series, err := list(ctx, *ch, exp, startTime, endTime, ts.db, ts.sdb)
+		series, err := list(ctx, *ch, exp, params["item_id"], startTime, endTime, ts.db, ts.sdb)
 		if err != nil {
 			return err
 		}
@@ -133,7 +143,7 @@ func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *ht
 	//duration := r.URL.Query().Get("duration")
 	exp := r.URL.Query().Get("exp")
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	charts, err := chart.List(ctx, accountID, entityID, ts.db)
+	charts, err := chart.List(ctx, accountID, chart.NoBaseEntityID, entityID, ts.db)
 	if err != nil {
 		return err
 	}
@@ -142,7 +152,7 @@ func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *ht
 	for _, ch := range charts {
 		stTime, endTime, _ := timeseries.Duration(ch.Duration)
 
-		series, err := list(ctx, ch, exp, stTime, endTime, ts.db, ts.sdb)
+		series, err := list(ctx, ch, exp, "", stTime, endTime, ts.db, ts.sdb)
 		if err != nil {
 			return err
 		}
@@ -151,6 +161,53 @@ func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *ht
 	}
 
 	return web.Respond(ctx, w, vmCharts, http.StatusOK)
+}
+
+//TODO Worst non-generic way of implementation...rewrite this block
+func (ts *Timeseries) CSMOverview(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	//duration := r.URL.Query().Get("duration")
+	exp := r.URL.Query().Get("exp")
+	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
+	ch, err := chart.Retrieve(ctx, accountID, params["chart_id"], ts.db)
+	if err != nil {
+		return err
+	}
+	//remove middleware logic from here....
+	if entityID != ch.EntityID {
+		return mid.ErrForbidden
+	}
+
+	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
+	if err != nil {
+		return err
+	}
+
+	baseEntityID := r.URL.Query().Get("be")
+	baseEntity, err := entity.Retrieve(ctx, accountID, baseEntityID, ts.db)
+	if err != nil {
+		return err
+	}
+	baseItemID := r.URL.Query().Get("bi")
+	baseItem, err := item.Retrieve(ctx, baseEntityID, baseItemID, ts.db)
+	if err != nil {
+		return err
+	}
+	assCompanies := baseEntity.Key("associated_companies")
+	val := baseItem.Fields()[assCompanies]
+
+	stTime, endTime, _ := timeseries.Duration(ch.Duration)
+
+	exp1 := fmt.Sprintf("{{%s.%s}} in {%s}", entityID, e.Key("associated_companies"), util.ConvertIntfToCommaSepString(val))
+	exp = util.AddExpression(exp, exp1)
+	log.Println("exp ", exp)
+	series, err := list(ctx, *ch, exp, "", stTime, endTime, ts.db, ts.sdb)
+	if err != nil {
+		return err
+	}
+	log.Println("series ", series)
+	vmc := createViewModelChartNoChange(*ch, series, 0)
+
+	return web.Respond(ctx, w, vmc, http.StatusOK)
 }
 
 func vmseries(tms []timeseries.Timeseries) []Series {

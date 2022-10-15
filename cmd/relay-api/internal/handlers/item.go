@@ -53,6 +53,8 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	direction := r.URL.Query().Get("direction")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
+	log.Println("exp ----> ", exp)
+
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
 		return err

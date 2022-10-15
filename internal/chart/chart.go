@@ -18,19 +18,23 @@ var (
 	ErrChartNotFound = errors.New("Chart not found")
 )
 
-func List(ctx context.Context, accountID, entityID string, db *sqlx.DB) ([]Chart, error) {
+func List(ctx context.Context, accountID, baseEntityID, entityID string, db *sqlx.DB) ([]Chart, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.List")
 	defer span.End()
 
+	if baseEntityID == "" || baseEntityID == "undefined" {
+		baseEntityID = NoBaseEntityID
+	}
+
 	charts := []Chart{}
 	if entityID == "" {
-		const q = `SELECT * FROM charts where account_id = $1 LIMIT 50`
-		if err := db.SelectContext(ctx, &charts, q, accountID); err != nil {
+		const q = `SELECT * FROM charts where account_id = $1 AND base_entity_id = $2 LIMIT 50`
+		if err := db.SelectContext(ctx, &charts, q, accountID, baseEntityID); err != nil {
 			return charts, errors.Wrap(err, "selecting charts for an account")
 		}
 	} else {
-		const q = `SELECT * FROM charts where account_id = $1 AND entity_id = $2 LIMIT 50`
-		if err := db.SelectContext(ctx, &charts, q, accountID, entityID); err != nil {
+		const q = `SELECT * FROM charts where account_id = $1 AND entity_id = $2 AND base_entity_id = $3 LIMIT 50`
+		if err := db.SelectContext(ctx, &charts, q, accountID, entityID, baseEntityID); err != nil {
 			return charts, errors.Wrap(err, "selecting charts for an account with group")
 		}
 	}
@@ -48,25 +52,26 @@ func Create(ctx context.Context, db *sqlx.DB, nc NewChart, now time.Time) error 
 	}
 
 	t := Chart{
-		ID:        uuid.New().String(),
-		AccountID: nc.AccountID,
-		EntityID:  nc.EntityID,
-		UserID:    nc.UserID,
-		Name:      nc.Name,
-		Type:      nc.Type,
-		Duration:  nc.Duration,
-		State:     nc.State,
-		Position:  nc.Position,
-		Metab:     string(metaBytes),
-		CreatedAt: now.UTC(),
+		ID:           uuid.New().String(),
+		AccountID:    nc.AccountID,
+		EntityID:     nc.EntityID,
+		BaseEntityID: nc.BaseEntityID,
+		UserID:       nc.UserID,
+		Name:         nc.Name,
+		Type:         nc.Type,
+		Duration:     nc.Duration,
+		State:        nc.State,
+		Position:     nc.Position,
+		Metab:        string(metaBytes),
+		CreatedAt:    now.UTC(),
 	}
 
 	const q = `INSERT INTO charts
-		(chart_id, account_id, entity_id, user_id, name, type, duration, state, position, metab, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		(chart_id, account_id, entity_id, base_entity_id, user_id, name, type, duration, state, position, metab, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 	_, err = db.ExecContext(
 		ctx, q,
-		t.ID, t.AccountID, t.EntityID, t.UserID, t.Name, t.Type, t.Duration, t.State, t.Position, t.Metab,
+		t.ID, t.AccountID, t.EntityID, t.BaseEntityID, t.UserID, t.Name, t.Type, t.Duration, t.State, t.Position, t.Metab,
 		t.CreatedAt,
 	)
 	if err != nil {
@@ -169,12 +174,13 @@ func (c Chart) GetDate() string {
 func BuildNewChart(accountID, userID, entityID, name, fieldName string, chartType Type) *NewChart {
 	NoEntityID := "00000000-0000-0000-0000-000000000000"
 	return &NewChart{
-		AccountID: accountID,
-		EntityID:  entityID,
-		UserID:    userID,
-		Name:      name,
-		Type:      string(chartType),
-		Duration:  string(LastWeek),
+		AccountID:    accountID,
+		EntityID:     entityID,
+		BaseEntityID: NoBaseEntityID, // this is useful to categorize charts based on entity.
+		UserID:       userID,
+		Name:         name,
+		Type:         string(chartType),
+		Duration:     string(LastWeek),
 		Meta: map[string]string{
 			MetaSourceKey:    NoEntityID,
 			MetaFieldKey:     fieldName,
@@ -216,6 +222,11 @@ func (ch *NewChart) SetAsTimeseries() *NewChart {
 	return ch
 }
 
+func (ch *NewChart) SetAsCustom() *NewChart {
+	ch.Meta[MetaDataType] = string(DTypeCustom)
+	return ch
+}
+
 func (ch *NewChart) SetDurationAllTime() *NewChart {
 	ch.Duration = string(AllTime)
 	return ch
@@ -231,6 +242,11 @@ func (ch *NewChart) SetCalcRate() *NewChart {
 }
 func (ch *NewChart) SetCalcSum() *NewChart {
 	ch.Meta[MetaCalcKey] = string(CalcSum)
+	return ch
+}
+
+func (ch *NewChart) SetBaseEntityID(baseEntityID string) *NewChart {
+	ch.BaseEntityID = baseEntityID // useful for filtering.
 	return ch
 }
 

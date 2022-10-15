@@ -91,6 +91,22 @@ func ConvertToNumber(in interface{}) interface{} {
 	}
 }
 
+func ConvertIntfToCommaSepString(in interface{}) string {
+	log.Printf("in %+v", in)
+	switch v := in.(type) {
+	default:
+		return in.(string)
+	case int, int64, float64:
+		return ConvertIntToStr(v.(int))
+	case []interface{}:
+		strArr := make([]string, 0)
+		for _, ev := range v {
+			strArr = append(strArr, ev.(string))
+		}
+		return strings.Join(strArr[:], ",")
+	}
+}
+
 func ConvertIntfToStr(intf interface{}) string {
 	if intf != nil {
 		return intf.(string)
@@ -308,4 +324,8 @@ func ExpvarGet(key string) string {
 		return strings.Trim(val.String(), "\"")
 	}
 	return ""
+}
+
+func NotEmpty(param string) bool {
+	return param != "00000000-0000-0000-0000-000000000000" && param != "" && param != "undefined" && param != "nil"
 }

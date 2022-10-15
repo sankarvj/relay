@@ -20,6 +20,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 	"go.opencensus.io/trace"
@@ -28,7 +29,7 @@ import (
 // ErrForbidden is returned when an authenticated user does not have a
 // sufficient role for an action.
 var ErrForbidden = web.NewRequestError(
-	errors.New("you are not authorized for doing that action"),
+	errors.New("you_are_not_authorized_for_doing_that_action"),
 	http.StatusForbidden,
 )
 
@@ -151,6 +152,7 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 					return web.NewRequestError(err, http.StatusForbidden)
 				}
 			} else if hasRoleVisitor(usr.Roles) {
+				baseEntityID := r.URL.Query().Get("be")
 				entityID := params["entity_id"]
 				itemID := params["item_id"]
 				vl, err := visitor.ListByEmail(ctx, accountID, usr.Email, db)
@@ -165,6 +167,24 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 						break
 					}
 				}
+				//re-evaluate with the base entityID
+				if !hasAccess {
+					for _, vi := range vl {
+						if vi.AccountID == accountID && vi.EntityID == baseEntityID && vi.ItemID == itemID {
+							bonds, err := relationship.List(ctx, db, accountID, params["team_id"], entityID)
+							if err != nil {
+								return web.NewRequestError(err, http.StatusInternalServerError)
+							}
+							for _, bond := range bonds {
+								if bond.EntityID == entityID && bond.IsPublic {
+									hasAccess = true
+									break
+								}
+							}
+						}
+					}
+				}
+
 				if !hasAccess {
 					err := errors.New("module_not_associated_with_this_visitor") // value used in the UI dont change the string message.
 					return web.NewRequestError(err, http.StatusForbidden)
@@ -298,4 +318,15 @@ func hmac256(secret, data string) string {
 	// Get result and encode as hexadecimal string
 	return hex.EncodeToString(h.Sum(nil))
 
+}
+
+func getBaseEntity(entityIDformat string) (string, string) {
+	parts := strings.Split(entityIDformat, "#")
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	} else if len(parts) == 1 {
+		return "", parts[0]
+	} else {
+		return "", entityIDformat
+	}
 }

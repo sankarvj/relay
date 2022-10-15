@@ -28,8 +28,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	// Register user management and authentication endpoints.
 	u := User{
 		db:            db,
-		authenticator: authenticator,
 		sdb:           sdb,
+		authenticator: authenticator,
 	}
 
 	// users login token
@@ -249,9 +249,10 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 		authenticator: authenticator,
 	}
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/timeseries", ts.Create)
-	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/timeseries", ts.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
-	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/timeseries/:chart_id", ts.Chart, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
-	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries", ts.Overview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries", ts.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/timeseries/:chart_id", ts.Chart, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/overview", ts.Overview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/overview/:chart_id", ts.CSMOverview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser, auth.RoleVisitor), mid.HasAccountAccess(db))
 
 	return app
 }

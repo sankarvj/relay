@@ -64,6 +64,16 @@ func AddWorkflows(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
+	err = b.AddSegments(ctx, b.ContactEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = b.AddSegments(ctx, b.CompanyEntity.ID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\tCRM:SAMPLES Sample Segments Created For Contacts/Companies/Deals")
 	return nil
 }
 
@@ -347,8 +357,8 @@ func addCharts(ctx context.Context, b *base.Base, activityEntity, planEntity ent
 	if err != nil {
 		return err
 	}
-	exp := fmt.Sprintf("{{%s.%s}} bf {%s}", b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now")
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Delayed Accounts", "end_time", chart.TypeGrid).AddExp(exp).AddSource(b.CompanyEntity.ID).SetDurationLast24hrs().SetCalcSum().SetGrpLogicParent().Add(ctx, b.DB)
+	exp1 := fmt.Sprintf("{{%s.%s}} bf {%s}", b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now")
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Delayed Accounts", "end_time", chart.TypeGrid).AddExp(exp1).AddSource(b.CompanyEntity.ID).SetDurationLast24hrs().SetCalcSum().SetGrpLogicParent().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
@@ -361,5 +371,39 @@ func addCharts(ctx context.Context, b *base.Base, activityEntity, planEntity ent
 	if err != nil {
 		return err
 	}
+
+	//Charts for project
+	overdueEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now")
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	openEXP := fmt.Sprintf("{{%s.%s}} in {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks Open", "", chart.TypeGrid).AddExp(openEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Current Phase", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Project Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
+	err = chart.BuildNewChart(b.AccountID, b.UserID, activityEntity.ID, "Goals", "activity_name", chart.TypeRod).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks", "status", chart.TypePie).SetBaseEntityID(b.ProjectEntity.ID).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

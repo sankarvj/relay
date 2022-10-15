@@ -414,6 +414,7 @@ var migrations = []darwin.Migration{
 			chart_id    			UUID,
 			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id      		    UUID REFERENCES entities ON DELETE CASCADE,
+			base_entity_id      	UUID,
 			user_id                 UUID,
 			name                    TEXT,
 			type    		        TEXT,

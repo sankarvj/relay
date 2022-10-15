@@ -5,7 +5,12 @@ import (
 )
 
 const (
+	NoBaseEntityID = "00000000-0000-0000-0000-000000000000"
+)
+
+const (
 	MetaSourceKey    = "source"
+	MetaBaseItemKey  = "base_item"
 	MetaFieldKey     = "field"
 	MetaDataType     = "data_type"
 	MetaCalcKey      = "calc"
@@ -39,13 +44,15 @@ const (
 	TypeBar  Type = "bar"
 	TypeGrid Type = "grid"
 	TypeRod  Type = "rod"
+	TypeList Type = "list"
 )
 
 type DType string
 
 const (
-	DTypeTimeseries DType = "timeseries"
 	DTypeDefault    DType = "default"
+	DTypeTimeseries DType = "timeseries"
+	DTypeCustom     DType = "custom"
 )
 
 type Duration string
@@ -57,27 +64,29 @@ const (
 )
 
 type Chart struct {
-	ID        string    `db:"chart_id" json:"id"`
-	AccountID string    `db:"account_id" json:"account_id"`
-	EntityID  string    `db:"entity_id" json:"entity_id"`
-	UserID    string    `db:"user_id" json:"user_id"`
-	Name      string    `db:"name" json:"name"`
-	Type      string    `db:"type" json:"type"`
-	Duration  string    `db:"duration" json:"duration"`
-	State     int       `db:"state" json:"state"`
-	Position  int       `db:"position" json:"position"`
-	Metab     string    `db:"metab" json:"metab"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID           string    `db:"chart_id" json:"id"`
+	AccountID    string    `db:"account_id" json:"account_id"`
+	EntityID     string    `db:"entity_id" json:"entity_id"`
+	BaseEntityID string    `db:"base_entity_id" json:"base_entity_id"`
+	UserID       string    `db:"user_id" json:"user_id"`
+	Name         string    `db:"name" json:"name"`
+	Type         string    `db:"type" json:"type"`
+	Duration     string    `db:"duration" json:"duration"`
+	State        int       `db:"state" json:"state"`
+	Position     int       `db:"position" json:"position"`
+	Metab        string    `db:"metab" json:"metab"`
+	CreatedAt    time.Time `db:"created_at" json:"created_at"`
 }
 
 type NewChart struct {
-	AccountID string            `json:"account_id"`
-	EntityID  string            `json:"entity_id"`
-	UserID    string            `json:"user_id"`
-	Name      string            `json:"name"`
-	Type      string            `json:"type"`
-	Duration  string            `json:"duration"`
-	State     int               `json:"state"`
-	Position  int               `json:"position"`
-	Meta      map[string]string `json:"meta"`
+	AccountID    string            `json:"account_id"`
+	EntityID     string            `json:"entity_id"`
+	BaseEntityID string            `json:"base_entity_id"`
+	UserID       string            `json:"user_id"`
+	Name         string            `json:"name"`
+	Type         string            `json:"type"`
+	Duration     string            `json:"duration"`
+	State        int               `json:"state"`
+	Position     int               `json:"position"`
+	Meta         map[string]string `json:"meta"`
 }
