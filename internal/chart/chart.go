@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"go.opencensus.io/trace"
 )
 
@@ -23,11 +24,18 @@ func List(ctx context.Context, accountID, baseEntityID, entityID string, db *sql
 	defer span.End()
 
 	if baseEntityID == "" || baseEntityID == "undefined" {
-		baseEntityID = NoBaseEntityID
+		baseEntityID = entity.NoEntityID
 	}
 
+	if entityID == "" || entityID == "undefined" {
+		entityID = entity.NoEntityID
+	}
+
+	log.Println("baseEntityID ", baseEntityID)
+	log.Println("entityID ", entityID)
+
 	charts := []Chart{}
-	if entityID == "" {
+	if entityID == entity.NoEntityID {
 		const q = `SELECT * FROM charts where account_id = $1 AND base_entity_id = $2 LIMIT 50`
 		if err := db.SelectContext(ctx, &charts, q, accountID, baseEntityID); err != nil {
 			return charts, errors.Wrap(err, "selecting charts for an account")
@@ -176,7 +184,7 @@ func BuildNewChart(accountID, userID, entityID, name, fieldName string, chartTyp
 	return &NewChart{
 		AccountID:    accountID,
 		EntityID:     entityID,
-		BaseEntityID: NoBaseEntityID, // this is useful to categorize charts based on entity.
+		BaseEntityID: entity.NoEntityID, // this is useful to categorize charts based on entity.
 		UserID:       userID,
 		Name:         name,
 		Type:         string(chartType),

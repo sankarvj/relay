@@ -45,28 +45,32 @@ type Base struct {
 
 // These entites must be created or loaded before adding a new product
 type CoreEntity struct {
-	OwnerEntity       entity.Entity
-	EmailsEntity      entity.Entity
-	EmailConfigEntity entity.Entity
-	FlowEntity        entity.Entity
-	NodeEntity        entity.Entity
-	StatusEntity      entity.Entity
-	TypeEntity        entity.Entity
-	InviteEntity      entity.Entity
-	ContactEntity     entity.Entity
-	CompanyEntity     entity.Entity
-	TaskEntity        entity.Entity
-	DealEntity        entity.Entity
-	ProjectEntity     entity.Entity
-	DAUEntity         entity.Entity
+	OwnerEntity          entity.Entity
+	EmailsEntity         entity.Entity
+	EmailConfigEntity    entity.Entity
+	FlowEntity           entity.Entity
+	NodeEntity           entity.Entity
+	StatusEntity         entity.Entity
+	ApprovalStatusEntity entity.Entity
+	TypeEntity           entity.Entity
+	InviteEntity         entity.Entity
+	ContactEntity        entity.Entity
+	CompanyEntity        entity.Entity
+	TaskEntity           entity.Entity
+	DealEntity           entity.Entity
+	ProjectEntity        entity.Entity
+	DAUEntity            entity.Entity
 }
 
 type CoreItem struct {
-	StatusItemOpened  item.Item
-	StatusItemClosed  item.Item
-	StatusItemOverDue item.Item
-	TypeItemEmail     item.Item
-	TypeItemTodo      item.Item
+	StatusItemOpened              item.Item
+	StatusItemClosed              item.Item
+	StatusItemOverDue             item.Item
+	ApprovalStatusWaiting         item.Item
+	ApprovalStatusChangeRequested item.Item
+	ApprovalStatusApproved        item.Item
+	TypeItemEmail                 item.Item
+	TypeItemTodo                  item.Item
 }
 
 type CoreAutomation struct {
@@ -163,7 +167,7 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 	}
 
 	// add entity - stream
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, false, false, false, forms.StreamFields())
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, false, false, false, forms.StreamFields(b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}

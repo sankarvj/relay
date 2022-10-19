@@ -146,13 +146,11 @@ func run() error {
 		err = migrate(dbConfig)
 	case "seed":
 		err = seed(db, sdb, authenticator)
-	case "crmadd":
+	case "crpadd":
 		err = bootstrap.BootCRM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
-	case "csmadd":
+	case "cspadd":
 		err = bootstrap.BootCSM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
-	case "pmadd":
-		err = bootstrap.BootPM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
-	case "emadd":
+	case "empadd":
 		err = bootstrap.BootEM(schema.SeedAccountID, schema.SeedUserID1, db, sdb, cfg.Auth.GoogleKeyFile)
 	case "useradd":
 		err = useradd(db, schema.SeedAccountID, cfg.Args.Num(1), cfg.Args.Num(2))

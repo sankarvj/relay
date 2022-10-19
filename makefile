@@ -28,17 +28,14 @@ migrate:
 seed: migrate
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 seed
 
-crm:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 crmadd
+crp:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 crpadd
 
-csm:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 csmadd
+csp:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 cspadd
 
-pm:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 pmadd
-
-em:
-	go run ./cmd/relay-admin/main.go --db-disable-tls=1 emadd
+emp:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 empadd
 
 relay-api:
 	docker build \

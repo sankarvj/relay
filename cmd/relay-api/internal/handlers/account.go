@@ -42,6 +42,11 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accName := r.URL.Query().Get("name")
+	for _, v := range account.ExistingSubDomains {
+		if accName == v {
+			return web.Respond(ctx, w, false, http.StatusOK)
+		}
+	}
 	if accName == "" {
 		return web.Respond(ctx, w, false, http.StatusOK)
 	}

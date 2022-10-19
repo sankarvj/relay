@@ -5,10 +5,6 @@ import (
 )
 
 const (
-	NoBaseEntityID = "00000000-0000-0000-0000-000000000000"
-)
-
-const (
 	MetaSourceKey    = "source"
 	MetaBaseItemKey  = "base_item"
 	MetaFieldKey     = "field"

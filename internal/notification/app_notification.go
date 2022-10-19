@@ -17,6 +17,7 @@ import (
 
 type AppNotification struct {
 	AccountID      string
+	AccountDomain  string
 	TeamID         string
 	UserID         string
 	EntityID       string
@@ -40,16 +41,17 @@ type Specifics struct {
 	DirtyFields map[string]string
 }
 
-func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB) AppNotification {
+func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB) AppNotification {
 	appNotif := AppNotification{
-		AccountID: accountID,
-		TeamID:    teamID,
-		UserID:    userID,
-		EntityID:  entityID,
-		ItemID:    itemID,
-		Followers: make([]entity.UserEntity, 0),
-		Assignees: make([]entity.UserEntity, 0),
-		BaseIds:   make([]string, 0), //events filter use case. check README for more info
+		AccountID:     accountID,
+		AccountDomain: accountDomain,
+		TeamID:        teamID,
+		UserID:        userID,
+		EntityID:      entityID,
+		ItemID:        itemID,
+		Followers:     make([]entity.UserEntity, 0),
+		Assignees:     make([]entity.UserEntity, 0),
+		BaseIds:       make([]string, 0), //events filter use case. check README for more info
 	}
 
 	for baseEntityID, baseItemIDs := range source {
@@ -72,7 +74,7 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 							continue
 						}
 						if f.Who == entity.WhoAssignee {
-							appNotif.AddAssignees(ctx, accountID, f.Value.([]interface{}), db)
+							appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
 						}
 					}
 				}
@@ -125,7 +127,13 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 		}
 
 		if f.Who == entity.WhoAssignee {
-			appNotif.AddAssignees(ctx, accountID, f.Value.([]interface{}), db)
+			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
+			if _, ok := dirtyFields[f.Key]; ok {
+				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
+			}
+		}
+		if f.Who == entity.WhoFollower {
+			appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
 			if _, ok := dirtyFields[f.Key]; ok {
 				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
 			}
@@ -141,8 +149,8 @@ func appNotificationBuilder(ctx context.Context, accountID, teamID, userID, enti
 	return appNotif
 }
 
-func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID string, assignees []interface{}, db *sqlx.DB) {
-	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
+func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db)
 	if err != nil {
 		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 	}
@@ -153,6 +161,21 @@ func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID str
 			continue
 		}
 		appNotif.Assignees = append(appNotif.Assignees, *userItem)
+	}
+}
+
+func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db)
+	if err != nil {
+		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+	}
+	for _, assignee := range assignees {
+		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db)
+		if err != nil {
+			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
+			continue
+		}
+		appNotif.Followers = append(appNotif.Followers, *userItem)
 	}
 }
 
@@ -207,7 +230,7 @@ func (appNotif AppNotification) Send(ctx context.Context, assignee entity.UserEn
 		To:        []interface{}{assignee.Email},
 		Subject:   appNotif.Subject,
 		Body:      appNotif.Body,
-		MagicLink: auth.SimpleLink(appNotif.AccountID, appNotif.TeamID, appNotif.EntityID, appNotif.ItemID),
+		MagicLink: auth.SimpleLink(appNotif.AccountID, appNotif.AccountDomain, appNotif.TeamID, appNotif.EntityID, appNotif.ItemID),
 	}
 	err1 := emailNotif.Send(ctx, notificationType, db)
 	if err1 != nil {

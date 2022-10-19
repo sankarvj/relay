@@ -14,7 +14,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/csm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
-	"gitlab.com/vjsideprojects/relay/internal/bootstrap/pm"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -76,6 +75,11 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, firebaseSD
 	err = BootstrapStatusEntity(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "status bootstrap failed")
+	}
+
+	err = BootstrapApprovalStatusEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "approval status bootstrap failed")
 	}
 
 	err = BootstrapVisitorInviteEntity(ctx, b)
@@ -223,6 +227,35 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
+func BootstrapApprovalStatusEntity(ctx context.Context, b *base.Base) error {
+	var err error
+	// add entity - approval status
+	fields := forms.ApprovalStatusFields()
+	b.ApprovalStatusEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityApprovalStatus, "Approval Status", entity.CategoryChildUnit, entity.StateAccountLevel, false, false, true, fields)
+	if err != nil {
+		return err
+	}
+
+	// add status item - waiting
+	b.ApprovalStatusWaiting, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNone, "Waiting for approval", "#fb667e"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - change requested
+	b.ApprovalStatusChangeRequested, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNeg, "Change requested", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - approved
+	b.ApprovalStatusApproved, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpDone, "Approved", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tBOOT Approval Status Entity With It's Three Approval Statuses Items Created")
+
+	return nil
+}
+
 func BootstrapVisitorInviteEntity(ctx context.Context, b *base.Base) error {
 	// add entity - task
 	fields := forms.VisitorInvitationFields()
@@ -259,7 +292,7 @@ func BootCRM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCRM)
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCRP)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `team` insertion failed")
 	}
@@ -302,7 +335,7 @@ func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCSM)
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCSP)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CSM `team` insertion failed")
 	}
@@ -345,7 +378,7 @@ func BootEM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebase
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamEM)
+	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamEMP)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:EM `team` insertion failed")
 	}
@@ -367,37 +400,37 @@ func BootEM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebase
 	return nil
 }
 
-func BootPM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
-	fmt.Printf("\nBootstrap:PM STARTED for the accountID %s\n", accountID)
+// func BootPM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
+// 	fmt.Printf("\nBootstrap:PM STARTED for the accountID %s\n", accountID)
 
-	ctx := context.Background()
-	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamPM)
-	if err != nil {
-		return errors.Wrap(err, "\t\t\tBootstrap:PM `team` insertion failed")
-	}
-	fmt.Println("\t\t\tBootstrap:PM `team` added")
+// 	ctx := context.Background()
+// 	teamID := uuid.New().String()
+// 	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamPM)
+// 	if err != nil {
+// 		return errors.Wrap(err, "\t\t\tBootstrap:PM `team` insertion failed")
+// 	}
+// 	fmt.Println("\t\t\tBootstrap:PM `team` added")
 
-	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
+// 	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
 
-	//boot
-	fmt.Println("\t\t\tBootstrap:PM `boot` functions started")
-	err = pm.Boot(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "\t\t\tBootstrap:PM `boot` functions failed")
-	}
-	fmt.Println("\t\t\tBootstrap:PM `boot` functions completed successfully")
+// 	//boot
+// 	fmt.Println("\t\t\tBootstrap:PM `boot` functions started")
+// 	err = pm.Boot(ctx, b)
+// 	if err != nil {
+// 		return errors.Wrap(err, "\t\t\tBootstrap:PM `boot` functions failed")
+// 	}
+// 	fmt.Println("\t\t\tBootstrap:PM `boot` functions completed successfully")
 
-	//samples
-	fmt.Println("Bootstrap:PM `samples` functions started")
-	err = pm.AddSamples(ctx, b)
-	if err != nil {
-		return errors.Wrap(err, "\t\t\tBootstrap:PM `samples` functions failed")
-	}
-	fmt.Println("\t\t\tBootstrap:PM `samples` functions completed successfully")
+// 	//samples
+// 	fmt.Println("Bootstrap:PM `samples` functions started")
+// 	err = pm.AddSamples(ctx, b)
+// 	if err != nil {
+// 		return errors.Wrap(err, "\t\t\tBootstrap:PM `samples` functions failed")
+// 	}
+// 	fmt.Println("\t\t\tBootstrap:PM `samples` functions completed successfully")
 
-	//all done
-	fmt.Printf("\nBootstrap:PM ENDED successfully for the accountID: %s\n", accountID)
+// 	//all done
+// 	fmt.Printf("\nBootstrap:PM ENDED successfully for the accountID: %s\n", accountID)
 
-	return nil
-}
+// 	return nil
+// }

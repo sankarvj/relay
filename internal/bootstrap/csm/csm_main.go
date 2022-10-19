@@ -22,7 +22,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT ConComTask Entity Created")
 
 	// add entity - project
-	b.ProjectEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("email"), b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id")))
+	b.ProjectEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityProjects, "Projects", entity.CategoryData, entity.StateTeamLevel, false, true, false, ProjectFields(b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name"), b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name"), b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id")))
 	if err != nil {
 		return err
 	}
@@ -34,6 +34,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
+
+	// add entity - approvals
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityApprovals, "Approvals", entity.CategoryApprovals, entity.StateTeamLevel, false, false, false, forms.ApprovalsFields(b.ApprovalStatusEntity.ID, b.ApprovalStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - activities
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, false, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
@@ -114,7 +121,12 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	err = addAssociations(ctx, b, projectEntity, emailsEntity, streamEntity, taskEntity)
+	approvalsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityApprovals)
+	if err != nil {
+		return err
+	}
+
+	err = addAssociations(ctx, b, projectEntity, emailsEntity, streamEntity, taskEntity, approvalsEntity)
 	if err != nil {
 		return err
 	}
@@ -185,7 +197,7 @@ func addEvents(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
-func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, streamEID, taskEID entity.Entity) error {
+func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, streamEID, taskEID, approvalsEID entity.Entity) error {
 
 	//project email association
 	_, err := b.AssociationAdd(ctx, proEid.ID, emailEid.ID)
@@ -195,6 +207,12 @@ func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, stream
 
 	//project task association
 	_, err = b.AssociationAdd(ctx, proEid.ID, taskEID.ID)
+	if err != nil {
+		return err
+	}
+
+	//task approvals association
+	_, err = b.AssociationAdd(ctx, taskEID.ID, approvalsEID.ID)
 	if err != nil {
 		return err
 	}
@@ -374,20 +392,20 @@ func addCharts(ctx context.Context, b *base.Base, activityEntity, planEntity ent
 
 	//Charts for project
 	overdueEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now")
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 	openEXP := fmt.Sprintf("{{%s.%s}} in {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID)
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks Open", "", chart.TypeGrid).AddExp(openEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Open", "", chart.TypeGrid).AddExp(openEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Current Phase", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Stage", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Project Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}

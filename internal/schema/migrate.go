@@ -75,6 +75,7 @@ var migrations = []darwin.Migration{
 			draft_id    		UUID,
 			account_name        TEXT,
 			business_email      TEXT,
+			host                TEXT,
 			teams 				TEXT[],
 			created_at    		TIMESTAMP,
 			updated_at    		BIGINT,

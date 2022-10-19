@@ -778,7 +778,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		if err != nil {
 			return err
 		}
-		err = notification.JoinInvitation(accountID, acc.Name, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, sdb)
+		err = notification.JoinInvitation(accountID, acc.Name, acc.Domain, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, sdb)
 		if err != nil {
 			return errors.Wrap(err, "unable to invite members")
 		}
@@ -801,13 +801,18 @@ func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFiel
 
 func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, itemUpdatedAt int64, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string][]string, notificationType notification.NotificationType) error {
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
-	if e.Category == entity.CategoryNotification {
+	if e.Category == entity.CategoryNotification { // skip notification when a notification is created :P
 		return nil
+	}
+
+	acc, err := account.Retrieve(ctx, j.DB, accountID)
+	if err != nil {
+		return err
 	}
 
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	appNotifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, accountID, e.TeamID, e.ID, itemID, itemCreatorID, itemUpdatedAt, e.ValueAdd(newFields), dirtyFields, source, notificationType, j.DB, j.FirebaseSDKPath)
+	appNotifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, acc.ID, acc.Domain, e.TeamID, e.ID, itemID, itemCreatorID, itemUpdatedAt, e.ValueAdd(newFields), dirtyFields, source, notificationType, j.DB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}

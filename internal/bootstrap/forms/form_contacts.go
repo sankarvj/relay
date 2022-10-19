@@ -293,7 +293,7 @@ func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadSt
 		"nps_score":       randomdata.Number(100),
 		"lifecycle_stage": []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
 		"owner":           []interface{}{},
-		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/avataaars/%s.svg", firstName),
+		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", firstName),
 		"lead_status":     []interface{}{leadStatusItemID},
 	}
 

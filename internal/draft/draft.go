@@ -49,17 +49,18 @@ func Create(ctx context.Context, nd NewDraft, now time.Time, db *sqlx.DB) (Draft
 		ID:            uuid.New().String(),
 		AccountName:   nd.AccountName,
 		BusinessEmail: nd.BusinessEmail,
+		Host:          nd.Host,
 		Teams:         nd.Teams,
 		CreatedAt:     now.UTC(),
 		UpdatedAt:     now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO drafts
-		(draft_id, account_name, business_email, teams, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(draft_id, account_name, business_email, host, teams, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := db.ExecContext(
 		ctx, q,
-		d.ID, d.AccountName, d.BusinessEmail, d.Teams,
+		d.ID, d.AccountName, d.BusinessEmail, d.Host, d.Teams,
 		d.CreatedAt, d.UpdatedAt,
 	)
 	if err != nil {

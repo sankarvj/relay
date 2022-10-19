@@ -2,7 +2,11 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -94,6 +98,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	nc := account.NewAccount{
 		ID:      accountID,
 		Name:    dft.AccountName,
+		Domain:  hostname(dft.AccountName, dft.Host),
 		DraftID: dft.ID,
 	}
 
@@ -127,7 +132,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
-	if util.Contains(dft.Teams, draft.TeamCRM) {
+	if util.Contains(dft.Teams, draft.TeamCRP) {
 		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -135,7 +140,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, draft.TeamCSM) {
+	if util.Contains(dft.Teams, draft.TeamCSP) {
 		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -143,16 +148,8 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, draft.TeamEM) {
+	if util.Contains(dft.Teams, draft.TeamEMP) {
 		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			account.Delete(ctx, a.db, acc.ID)
-			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-		}
-	}
-
-	if util.Contains(dft.Teams, draft.TeamPM) {
-		err = bootstrap.BootPM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
@@ -162,4 +159,18 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	draft.Delete(ctx, draftID, a.db)
 
 	return web.Respond(ctx, w, userToken, http.StatusCreated)
+}
+
+func hostname(accName, input string) string {
+	log.Println("hostname input ", input)
+	url, err := url.Parse(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+	hostname := url.Hostname()
+	for _, subDomain := range account.ExistingSubDomains {
+		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
+	}
+
+	return fmt.Sprintf("%s.%s", strings.ToLower(accName), hostname)
 }

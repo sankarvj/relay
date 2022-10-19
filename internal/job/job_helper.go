@@ -56,7 +56,7 @@ func launchUser(ctx context.Context, draftID, accountName, requester, usrName, u
 	if err != nil {
 		return err
 	}
-	return notification.WelcomeInvitation(draftID, dr.Teams, accountName, requester, usrName, usrEmail, db, sdb)
+	return notification.WelcomeInvitation(draftID, dr.Teams, accountName, dr.Host, requester, usrName, usrEmail, db, sdb)
 }
 
 func compare(ctx context.Context, db *sqlx.DB, accountID, relationshipID string, f, of entity.Field) []interface{} {

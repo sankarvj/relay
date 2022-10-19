@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
-	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -35,15 +36,31 @@ type Notification interface {
 	Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error
 }
 
-func WelcomeInvitation(draftID string, teams []string, accountName, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
-	ctx := context.Background()
-
-	workBaseDomain := "workbaseone.com"
-	if len(teams) == 1 {
-		workBaseDomain = draft.TeamDomainMap[teams[0]]
+func hostname(accName, input string) string {
+	url, err := url.Parse(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+	hostname := url.Hostname()
+	for _, subDomain := range account.ExistingSubDomains {
+		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
 	}
 
-	magicLink, err := auth.CreateMagicLaunchLink(workBaseDomain, draftID, accountName, usrEmail, sdb)
+	return fmt.Sprintf("%s.%s", strings.ToLower(accName), hostname)
+}
+
+func WelcomeInvitation(draftID string, apps []string, accountName, host, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
+	ctx := context.Background()
+	app := "base"
+	for _, ap := range apps {
+		if ap != "base" {
+			app = ap
+		}
+	}
+
+	workBaseDomain := hostname(accountName, host)
+
+	magicLink, err := auth.CreateMagicLaunchLink(app, workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -60,14 +77,10 @@ func WelcomeInvitation(draftID string, teams []string, accountName, requester, u
 	return emailNotif.Send(ctx, TypeWelcome, db)
 }
 
-func JoinInvitation(accountID, accountName string, teams []string, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, sdb *database.SecDB) error {
+func JoinInvitation(accountID, accountName, accDomain string, teams []string, requester, usrName, usrEmail string, memberID string, db *sqlx.DB, sdb *database.SecDB) error {
 	ctx := context.Background()
-	workBaseDomain := "workbaseone.com"
-	if len(teams) == 1 {
-		workBaseDomain = draft.TeamDomainMap[teams[0]]
-	}
 
-	magicLink, err := auth.CreateMagicLink(workBaseDomain, accountID, usrName, usrEmail, memberID, sdb)
+	magicLink, err := auth.CreateMagicLink(accountID, accDomain, usrName, usrEmail, memberID, sdb)
 	if err != nil {
 		log.Println("***>***> JoinInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -100,7 +113,7 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *data
 	}
 
 	usrName := util.NameInEmail(v.Email)
-	magicLink, err := auth.CreateVisitorMagicLink(accountID, usrName, v.Email, visitorID, v.Token, sdb)
+	magicLink, err := auth.CreateVisitorMagicLink(accountID, a.Domain, usrName, v.Email, visitorID, v.Token, sdb)
 	if err != nil {
 		log.Println("***>***> VisitorInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
 		return err
@@ -118,8 +131,8 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *data
 	return emailNotif.Send(ctx, TypeVisitorInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, teamID, entityID, itemID string, itemCreatorID *string, itemUpdatedAt int64, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
-	appNotif := appNotificationBuilder(ctx, accountID, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db)
+func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, accDomain, teamID, entityID, itemID string, itemCreatorID *string, itemUpdatedAt int64, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
+	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db)
 	appNotif.CreatedAt = itemUpdatedAt
 
 	switch notificationType {

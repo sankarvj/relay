@@ -71,6 +71,7 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		}
 	}
 	if localTesting {
+		log.Println("Magic Link: ", templateData.MagicLink)
 		return nil
 	}
 

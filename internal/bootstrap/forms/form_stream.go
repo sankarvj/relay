@@ -5,7 +5,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func StreamFields() []entity.Field {
+func StreamFields(ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 	titleFieldID := uuid.New().String()
 	titleField := entity.Field{
 		Key:         titleFieldID,
@@ -26,7 +26,24 @@ func StreamFields() []entity.Field {
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
 	}
 
-	return []entity.Field{titleField, messageField}
+	followersFieldID := uuid.New().String()
+	followerField := entity.Field{
+		Key:         followersFieldID,
+		Name:        "followers",
+		DisplayName: "Followers",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoFollower,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntitySearchKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{titleField, messageField, followerField}
 }
 
 func StreamVals(streamEntity entity.Entity, title, message, file string) map[string]interface{} {

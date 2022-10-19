@@ -31,7 +31,6 @@ func (usrInfo *UserInfo) encode() []byte {
 }
 
 func (usrInfo *UserInfo) UnmarshalJSON(data []byte) error {
-
 	type Alias UserInfo
 	usInfo := &struct {
 		*Alias
@@ -53,12 +52,12 @@ func GenerateRandomToken(n int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-func SimpleLink(accountID, teamID, entityID, itemID string) string {
-	magicLink := fmt.Sprintf("https://workbaseone.com/v1/accounts/%s/teams/%s/entities/%s/items/%s", accountID, teamID, entityID, itemID)
+func SimpleLink(accountID, accountDomain, teamID, entityID, itemID string) string {
+	magicLink := fmt.Sprintf("https://%s/v1/accounts/%s/teams/%s/entities/%s/items/%s", accountDomain, accountID, teamID, entityID, itemID)
 	return magicLink
 }
 
-func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string, sdb *database.SecDB) (string, error) {
+func CreateMagicLink(accountID, accDomain, name, emailAddress, memId string, sdb *database.SecDB) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -76,14 +75,12 @@ func CreateMagicLink(workBaseDomain, accountID, name, emailAddress, memId string
 		return "", err
 	}
 
-	magicLink := fmt.Sprintf("https://%s/home/join?token=%v", workBaseDomain, token)
-
-	log.Println("join magicLink-------> ", magicLink)
+	magicLink := fmt.Sprintf("https://%s/home/join?token=%v", accDomain, token)
 
 	return magicLink, nil
 }
 
-func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token string, sdb *database.SecDB) (string, error) {
+func CreateVisitorMagicLink(accountID, accDomain, name, emailAddress, visitorID, token string, sdb *database.SecDB) (string, error) {
 
 	userInfo := UserInfo{
 		Name:      name,
@@ -97,14 +94,12 @@ func CreateVisitorMagicLink(accountID, name, emailAddress, visitorID, token stri
 		return "", err
 	}
 
-	magicLink := fmt.Sprintf("https://workbaseone.com/home/visit?token=%v", token)
-
-	log.Println("join magicLink-------> ", magicLink)
+	magicLink := fmt.Sprintf("https://%s/home/visit?token=%s", accDomain, token)
 
 	return magicLink, nil
 }
 
-func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, sdb *database.SecDB) (string, error) {
+func CreateMagicLaunchLink(app, domain, draftID, accountName, emailAddress string, sdb *database.SecDB) (string, error) {
 	token, err := GenerateRandomToken(32)
 	if err != nil {
 		return "", err
@@ -121,7 +116,7 @@ func CreateMagicLaunchLink(domain, draftID, accountName, emailAddress string, sd
 		return "", errors.Wrap(err, "redis connection error")
 	}
 
-	magicLink := fmt.Sprintf("https://%s/home/launch?token=%v", domain, token)
+	magicLink := fmt.Sprintf("https://%s/home/launch?token=%s&app=%s", domain, token, app)
 
 	return magicLink, nil
 }

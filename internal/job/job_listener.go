@@ -110,7 +110,7 @@ func (J *Job) AddMember(accountID, memberID, userName, userEmail, body string, d
 	}
 
 	requester := fmt.Sprintf("Admin from %s", a.Name)
-	err = notification.JoinInvitation(accountID, a.Name, team.Names(teams), requester, userName, userEmail, memberID, db, sdb)
+	err = notification.JoinInvitation(accountID, a.Name, a.Domain, team.Names(teams), requester, userName, userEmail, memberID, db, sdb)
 	return err
 }
 

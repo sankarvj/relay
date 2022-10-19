@@ -9,7 +9,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -83,10 +82,20 @@ func userMap(ctx context.Context, connections []connection.Connection, db *sqlx.
 	for _, u := range users {
 		userMap[u.ID] = &u
 	}
-	userMap[schema.SeedSystemUserID] = &user.User{
-		ID:     schema.SeedSystemUserID,
+	userMap[user.UUID_SYSTEM_USER] = &user.User{
+		ID:     user.UUID_SYSTEM_USER,
 		Name:   util.String("System"),
-		Avatar: util.String("https://randomuser.me/api/portraits/thumb/lego/1.jpg"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/system.svg"),
+	}
+	userMap[user.UUID_ENGINE_USER] = &user.User{
+		ID:     user.UUID_ENGINE_USER,
+		Name:   util.String("Automation"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/workflow.svg"),
+	}
+	userMap[user.UUID_ANONYMOUS_USER] = &user.User{
+		ID:     user.UUID_ANONYMOUS_USER,
+		Name:   util.String("Anonymous"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/anonymous.svg"),
 	}
 	return userMap, nil
 }

@@ -136,7 +136,6 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoEndTime,
-		Meta:        map[string]string{entity.MetaKeyRow: "true"},
 	}
 
 	pipeFieldID := uuid.New().String()

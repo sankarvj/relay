@@ -93,4 +93,5 @@ const (
 	CategoryVisitorsInvitation = 19
 	CategorySubData            = 20
 	CategoryTimeseries         = 21
+	CategoryApprovals          = 22
 )

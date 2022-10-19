@@ -73,12 +73,14 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 	defer span.End()
 
 	accountID := params["account_id"]
+	entityID := params["entity_id"]
 	zone, _ := util.ParseTime(r.URL.Query().Get("zone"))
 	loc := time.FixedZone(zone.Zone())
 	exp := r.URL.Query().Get("exp")
-	baseEntityID := params["entity_id"]
+	baseEntityID := r.URL.Query().Get("be")
+	//baseItemID := r.URL.Query().Get("bi")
 
-	charts, err := chart.List(ctx, accountID, baseEntityID, "", ts.db)
+	charts, err := chart.List(ctx, accountID, baseEntityID, entityID, ts.db)
 	if err != nil {
 		return err
 	}
@@ -98,15 +100,17 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 	exp := r.URL.Query().Get("exp")
 	duration := r.URL.Query().Get("duration")
 	zone, _ := util.ParseTime(r.URL.Query().Get("zone"))
+	baseEntityID := r.URL.Query().Get("be")
+	baseItemID := r.URL.Query().Get("bi")
 
 	ch, err := chart.Retrieve(ctx, params["account_id"], params["chart_id"], ts.db)
 	if err != nil {
 		return err
 	}
-	if util.NotEmpty(params["entity_id"]) && util.NotEmpty(params["item_id"]) {
+	if util.NotEmpty(baseEntityID) && util.NotEmpty(baseItemID) {
 		//TODO remove middleware logic from here....
 		//checking this here because we are using the ch.BaseEntityID directly inside list
-		if params["entity_id"] != ch.BaseEntityID {
+		if baseEntityID != ch.BaseEntityID {
 			return mid.ErrForbidden
 		}
 	}
@@ -126,7 +130,7 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		vmc = createViewModelChart(*ch, vmseries(series), len(series), change(len(series), count))
 	case string(chart.DTypeDefault):
-		series, err := list(ctx, *ch, exp, params["item_id"], startTime, endTime, ts.db, ts.sdb)
+		series, err := list(ctx, *ch, exp, baseItemID, startTime, endTime, ts.db, ts.sdb)
 		if err != nil {
 			return err
 		}
@@ -143,7 +147,7 @@ func (ts *Timeseries) Overview(ctx context.Context, w http.ResponseWriter, r *ht
 	//duration := r.URL.Query().Get("duration")
 	exp := r.URL.Query().Get("exp")
 	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	charts, err := chart.List(ctx, accountID, chart.NoBaseEntityID, entityID, ts.db)
+	charts, err := chart.List(ctx, accountID, entity.NoEntityID, entityID, ts.db)
 	if err != nil {
 		return err
 	}

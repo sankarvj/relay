@@ -267,7 +267,7 @@ func addNotification(ctx context.Context, accountID, entityID, itemID, userID, m
 			continue
 		}
 		if f.Who == entity.WhoAssignee {
-			appNotif.AddAssignees(ctx, accountID, f.Value.([]interface{}), db)
+			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
 		}
 	}
 

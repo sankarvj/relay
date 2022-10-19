@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -62,6 +63,8 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	log.Printf("choices %+v", choices)
+
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
@@ -72,6 +75,7 @@ func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key strin
 		return nil, err
 	}
 	items, err := itemsResp(ctx, db, accountID, result)
+
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +144,9 @@ func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, te
 
 func choiceResponse(key string, items []item.Item, whoMap map[string]string) []entity.Choice {
 	choices := make([]entity.Choice, 0)
+	log.Printf("items %+v", items)
+	log.Printf("whoMap %+v", whoMap)
+	log.Printf("key %+v", key)
 	for _, item := range items {
 		//display
 		displayV := item.Fields()[key]

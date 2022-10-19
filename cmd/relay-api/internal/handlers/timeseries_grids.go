@@ -17,7 +17,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 )
 
-func list(ctx context.Context, ch chart.Chart, exp, baseItem string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
+func list(ctx context.Context, ch chart.Chart, exp, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
 	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db)
 	if err != nil {
 		return nil, err
@@ -39,8 +39,8 @@ func list(ctx context.Context, ch chart.Chart, exp, baseItem string, stTime, end
 	}
 
 	//must add base condition if base exists - very important.
-	if ch.BaseEntityID != chart.NoBaseEntityID && util.NotEmpty(baseItem) {
-		conditionFields = append(conditionFields, sourcebleItem(ch.BaseEntityID, baseItem))
+	if ch.BaseEntityID != entity.NoEntityID && util.NotEmpty(baseItemID) {
+		conditionFields = append(conditionFields, sourcebleItem(ch.BaseEntityID, baseItemID))
 	}
 
 	var filterByField entity.Field
