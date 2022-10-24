@@ -14,6 +14,7 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		DisplayName: "User ID",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
+		Who:         entity.WhoIdentifier,
 	}
 
 	nameFieldID := uuid.New().String()
@@ -60,6 +61,14 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 			{
 				ID:           "USER",
 				DisplayValue: "USER",
+			},
+			{
+				ID:           "MEMBER",
+				DisplayValue: "MEMBER",
+			},
+			{
+				ID:           "VISITOR",
+				DisplayValue: "VISITOR",
 			},
 		},
 		Field: &entity.Field{

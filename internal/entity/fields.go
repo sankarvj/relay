@@ -14,11 +14,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
-const (
-	Verb    = "verb"
-	VerbKey = "uuid-00-verb"
-)
-
 //DType defines the data type of field
 type DType string
 
@@ -75,29 +70,33 @@ const (
 )
 
 const (
-	MetaKeyDisplayGex  = "display_gex"
-	MetaKeyEmailGex    = "email_gex"
-	MetaKeyAvatarGex   = "avatar_gex"
-	MetaKeyHidden      = "hidden"
-	MetaKeyUnique      = "unique"
-	MetaKeyRequired    = "required"
-	MetaKeyLayout      = "layout"
-	MetaKeyFlow        = "flow"
-	MetaKeyNode        = "node"
-	MetaKeyConfig      = "config"
-	MetaKeyLoadChoices = "load_choices"
-	MetaKeyRow         = "row"
-	MetaMultiChoice    = "multi"
-	MetaKeyHTML        = "html"
-	MetaKeyCalc        = "calc"
-	MetaKeyRollUp      = "rollup"
+	MetaKeyDisplayGex   = "display_gex"
+	MetaKeyDisplayIDGex = "display_id_gex"
+	MetaKeyEmailGex     = "email_gex"
+	MetaKeyAvatarGex    = "avatar_gex"
+	MetaKeyHidden       = "hidden"
+	MetaKeyUnique       = "unique"
+	MetaKeyRequired     = "required"
+	MetaKeyLayout       = "layout"
+	MetaKeyFlow         = "flow"
+	MetaKeyNode         = "node"
+	MetaKeyConfig       = "config"
+	MetaKeyLoadChoices  = "load_choices"
+	MetaKeyRow          = "row"
+	MetaMultiChoice     = "multi"
+	MetaKeyHTML         = "html"
+	MetaKeyCalc         = "calc"
+	MetaKeyRollUp       = "rollup"
 )
 
 const (
-	MetaLayoutTitle    = "title"
-	MetaLayoutSubTitle = "sub-title"
-	MetaLayoutUsers    = "users"
-	MetaLayoutDate     = "date"
+	MetaLayoutIdentifier = "identifier"
+	MetaLayoutTitle      = "title"
+	MetaLayoutSubTitle   = "sub-title"
+	MetaLayoutColor      = "color"
+	MetaLayoutVerb       = "verb"
+	MetaLayoutUsers      = "users"
+	MetaLayoutDate       = "date"
 
 	MetaCalcAggr   = "aggr"
 	MetaCalcSum    = "sum"
@@ -130,6 +129,9 @@ const (
 	WhoMessage       = "message"
 	WhoContacts      = "contacts"
 	WhoCompanies     = "companies"
+	WhoIdentifier    = "identifier"
+	WhoVerb          = "verb"
+	WhoColor         = "color"
 )
 
 // Field represents structural format of attributes in entity
@@ -175,6 +177,7 @@ type Choice struct {
 	Default      bool        `json:"default"`
 	Verb         string      `json:"verb"` // are we still using this??
 	Avatar       interface{} `json:"avatar"`
+	Color        string      `json:"color"`
 }
 
 type Dependent struct {
@@ -273,6 +276,20 @@ func (e Entity) WhoFields() map[string]string {
 
 	for _, f := range fields {
 		tmp[f.Who] = f.Key
+	}
+
+	return tmp
+}
+
+func (e Entity) Layouts() map[string]string {
+	tmp := make(map[string]string, 0)
+	fields, err := unmarshalFields(e.Fieldsb)
+	if err != nil {
+		return tmp
+	}
+
+	for _, f := range fields {
+		tmp[f.Meta[MetaKeyLayout]] = f.Key
 	}
 
 	return tmp
@@ -434,6 +451,13 @@ func (f Field) EmailGex() string {
 		return val
 	}
 	return ""
+}
+
+func (f Field) IsIdentifierLayout() bool {
+	if val, ok := f.Meta[MetaKeyLayout]; ok {
+		return val == MetaLayoutIdentifier
+	}
+	return false
 }
 
 func (f Field) IsTitleLayout() bool {

@@ -414,3 +414,47 @@ func generateSystemUserJWT(ctx context.Context, accountID string, scope []string
 	}
 	return systemToken, nil
 }
+
+func userMap(ctx context.Context, userIDs map[string]bool, db *sqlx.DB) (map[string]*user.User, error) {
+	userMap := make(map[string]*user.User, 0)
+
+	users, err := user.BulkRetrieveUsers(ctx, userkeys(userIDs), db)
+	if err != nil {
+		return userMap, err
+	}
+
+	for _, u := range users {
+		userMap[u.ID] = &u
+	}
+	userMap[user.UUID_SYSTEM_USER] = &user.User{
+		ID:     user.UUID_SYSTEM_USER,
+		Name:   util.String("System"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/system.svg"),
+	}
+	userMap[user.UUID_ENGINE_USER] = &user.User{
+		ID:     user.UUID_ENGINE_USER,
+		Name:   util.String("Automation"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/workflow.svg"),
+	}
+	userMap[user.UUID_ANONYMOUS_USER] = &user.User{
+		ID:     user.UUID_ANONYMOUS_USER,
+		Name:   util.String("Anonymous"),
+		Avatar: util.String("https://avatars.dicebear.com/api/bottts/anonymous.svg"),
+	}
+	return userMap, nil
+}
+
+func userkeys(oneMap map[string]bool) []string {
+	keys := make([]string, 0, len(oneMap))
+	for k := range oneMap {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func userAvatarNameEmail(u *user.User) (string, string, string) {
+	if u != nil {
+		return *u.Avatar, *u.Name, u.Email
+	}
+	return "", "", ""
+}

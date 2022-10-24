@@ -7,9 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
-	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 // Check provides support for orchestration health checks.
@@ -33,7 +31,11 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		next = ""
 	}
 
-	uMap, err := userMap(ctx, connections, ev.db)
+	userIDs := make(map[string]bool, 0)
+	for _, c := range connections {
+		userIDs[c.UserID] = true
+	}
+	uMap, err := userMap(ctx, userIDs, ev.db)
 	if err != nil {
 		return errors.Wrap(err, "forming users map")
 	}
@@ -66,51 +68,4 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
-}
-
-func userMap(ctx context.Context, connections []connection.Connection, db *sqlx.DB) (map[string]*user.User, error) {
-	userMap := make(map[string]*user.User, 0)
-	userIDs := make(map[string]bool, 0)
-	for _, c := range connections {
-		userIDs[c.UserID] = true
-	}
-	users, err := user.BulkRetrieveUsers(ctx, userkeys(userIDs), db)
-	if err != nil {
-		return userMap, err
-	}
-
-	for _, u := range users {
-		userMap[u.ID] = &u
-	}
-	userMap[user.UUID_SYSTEM_USER] = &user.User{
-		ID:     user.UUID_SYSTEM_USER,
-		Name:   util.String("System"),
-		Avatar: util.String("https://avatars.dicebear.com/api/bottts/system.svg"),
-	}
-	userMap[user.UUID_ENGINE_USER] = &user.User{
-		ID:     user.UUID_ENGINE_USER,
-		Name:   util.String("Automation"),
-		Avatar: util.String("https://avatars.dicebear.com/api/bottts/workflow.svg"),
-	}
-	userMap[user.UUID_ANONYMOUS_USER] = &user.User{
-		ID:     user.UUID_ANONYMOUS_USER,
-		Name:   util.String("Anonymous"),
-		Avatar: util.String("https://avatars.dicebear.com/api/bottts/anonymous.svg"),
-	}
-	return userMap, nil
-}
-
-func userkeys(oneMap map[string]bool) []string {
-	keys := make([]string, 0, len(oneMap))
-	for k := range oneMap {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
-func userAvatarNameEmail(u *user.User) (string, string, string) {
-	if u != nil {
-		return *u.Avatar, *u.Name, u.Email
-	}
-	return "", "", ""
 }

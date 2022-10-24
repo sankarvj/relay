@@ -36,6 +36,9 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Meetings Entity Created")
 
 	// add entity - approvals
+	fmt.Println("\tCRM:BOOT Approvals Entity Started")
+	fmt.Println("\tb.ApprovalStatusEntity.ID", b.ApprovalStatusEntity.ID)
+	fmt.Println("\tb.ApprovalStatusEntity.Key", b.ApprovalStatusEntity.Key("name"))
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityApprovals, "Approvals", entity.CategoryApprovals, entity.StateTeamLevel, false, false, false, forms.ApprovalsFields(b.ApprovalStatusEntity.ID, b.ApprovalStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err

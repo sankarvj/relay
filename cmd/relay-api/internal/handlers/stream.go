@@ -32,8 +32,13 @@ func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
+	userIDs := make(map[string]bool, 0)
+	for _, item := range items {
+		userIDs[*item.UserID] = true
+	}
+	uMap, _ := userMap(ctx, userIDs, st.db)
 	fields := e.FieldsIgnoreError()
-	viewModelItems := itemResponse(items)
+	viewModelItems := itemResponse(items, uMap)
 
 	response := struct {
 		Items  []ViewModelItem        `json:"items"`

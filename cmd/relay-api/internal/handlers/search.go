@@ -50,13 +50,14 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			return err
 		}
 		whoMap := e.WhoFields()
-		choices = choiceResponse(key, items, whoMap)
+		layouts := e.Layouts()
+		choices = choiceResponse(key, items, whoMap, layouts)
 	} else {
 		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
 		if e.Field(key).DataType == entity.TypeList {
 			choices, err = likeSearchElements(ctx, accountID, e.ID, exp, i.db, i.sdb)
 		} else {
-			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoFields(), i.db, i.sdb)
+			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoFields(), e.Layouts(), i.db, i.sdb)
 		}
 		if err != nil {
 			return err
@@ -68,7 +69,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
-func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key string, whoMap map[string]string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
+func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key string, whoMap, layoutMap map[string]string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
 	result, _, err := NewSegmenter(exp).
 		segment(ctx, accountID, entityID, db, sdb)
 	if err != nil {
@@ -79,7 +80,7 @@ func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key strin
 	if err != nil {
 		return nil, err
 	}
-	return choiceResponse(key, items, whoMap), nil
+	return choiceResponse(key, items, whoMap, layoutMap), nil
 }
 
 func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
@@ -142,16 +143,25 @@ func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, te
 	return choices, nil
 }
 
-func choiceResponse(key string, items []item.Item, whoMap map[string]string) []entity.Choice {
+func choiceResponse(key string, items []item.Item, whoMap map[string]string, layoutMap map[string]string) []entity.Choice {
 	choices := make([]entity.Choice, 0)
 	log.Printf("items %+v", items)
 	log.Printf("whoMap %+v", whoMap)
 	log.Printf("key %+v", key)
 	for _, item := range items {
+		log.Printf("item %+v", item)
 		//display
-		displayV := item.Fields()[key]
+		var displayV interface{}
+		if key != "" {
+			displayV = item.Fields()[key]
+		}
+		// if key is not passed. Choose the title layout
 		if displayV == nil {
-			displayV = item.Name
+			if keyOfDis, ok := layoutMap[entity.MetaLayoutTitle]; ok {
+				if title, ok := item.Fields()[keyOfDis]; ok {
+					displayV = title.(string)
+				}
+			}
 		}
 
 		//avatar
@@ -160,7 +170,6 @@ func choiceResponse(key string, items []item.Item, whoMap map[string]string) []e
 			if aval, ok := item.Fields()[ava]; ok {
 				avatar = aval.(string)
 			}
-
 		}
 
 		choice := entity.Choice{

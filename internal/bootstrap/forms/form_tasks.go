@@ -7,14 +7,24 @@ import (
 
 func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, nodeEntityID, statusEntityID, statusEntityKey string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 
+	nameFieldID := uuid.New().String()
+	nameField := entity.Field{
+		Key:         nameFieldID,
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+	}
+
 	descFieldID := uuid.New().String()
 	descField := entity.Field{
 		Key:         descFieldID,
 		Name:        "desc",
-		DisplayName: "Notes",
+		DisplayName: "Description",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title", entity.MetaKeyHTML: "true"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyHTML: "true"},
 	}
 
 	contactFieldID := uuid.New().String()
@@ -122,5 +132,5 @@ func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	return []entity.Field{descField, statusField, contactField, companyField, dueByField, reminderField, stageField, ownerField}
+	return []entity.Field{nameField, descField, statusField, contactField, companyField, dueByField, reminderField, stageField, ownerField}
 }

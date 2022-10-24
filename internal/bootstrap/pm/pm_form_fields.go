@@ -9,7 +9,7 @@ func AgileTaskStatusFields() []entity.Field {
 	verbFieldID := uuid.New().String()
 	verbField := entity.Field{
 		Key:         verbFieldID,
-		Name:        entity.Verb,
+		Name:        "verb",
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
@@ -49,7 +49,7 @@ func AgileTaskPriorityFields() []entity.Field {
 	verbFieldID := uuid.New().String()
 	verbField := entity.Field{
 		Key:         verbFieldID,
-		Name:        entity.Verb,
+		Name:        "verb",
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
@@ -89,7 +89,7 @@ func AgileTypeFields() []entity.Field {
 	verbFieldID := uuid.New().String()
 	verbField := entity.Field{
 		Key:         verbFieldID,
-		Name:        entity.Verb,
+		Name:        "verb",
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,

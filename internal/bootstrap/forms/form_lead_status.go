@@ -6,13 +6,15 @@ import (
 )
 
 func LeadStatusFields() []entity.Field {
+	verbFieldID := uuid.New().String()
 	verbField := entity.Field{
-		Key:         entity.VerbKey, // we use this value inside the code. don't change it
-		Name:        entity.Verb,
+		Key:         verbFieldID,
+		Name:        "verb",
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "verb"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutVerb},
+		Who:         entity.WhoVerb,
 	}
 
 	nameFieldID := uuid.New().String()
@@ -22,7 +24,7 @@ func LeadStatusFields() []entity.Field {
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	colorFieldID := uuid.New().String()
@@ -32,7 +34,7 @@ func LeadStatusFields() []entity.Field {
 		DisplayName: "Color",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "color"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutColor},
 	}
 
 	return []entity.Field{verbField, nameField, colorField}
@@ -40,10 +42,10 @@ func LeadStatusFields() []entity.Field {
 
 func LeadStatusVals(statusEntity entity.Entity, verb, name, color string) map[string]interface{} {
 	statusVals := map[string]interface{}{
+		"verb":  verb,
 		"name":  name,
 		"color": color,
 	}
 	itemVals := keyMap(statusEntity.NamedKeys(), statusVals)
-	itemVals[entity.VerbKey] = verb
 	return itemVals
 }

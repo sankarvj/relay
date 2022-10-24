@@ -31,6 +31,7 @@ type Item struct {
 	Name      *string   `db:"name" json:"name"`
 	Fieldsb   string    `db:"fieldsb" json:"fieldsb"`
 	Metab     *string   `db:"metab" json:"metab"`
+	IsPublic  bool      `db:"is_public" json:"is_public"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt int64     `db:"updated_at" json:"updated_at"`
 }

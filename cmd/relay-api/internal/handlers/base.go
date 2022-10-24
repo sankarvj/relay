@@ -181,12 +181,40 @@ func selectedTeam(ctx context.Context, accountID, teamID string, db *sqlx.DB) ([
 	return teams, seletedTeamID, nil
 }
 
+func addInnerCondition(approvalEntityID, approvalStatusEntityID, approvalStatusKey, approalStatusVal string) graphdb.Field {
+	return graphdb.Field{
+		Value:     []interface{}{""},
+		DataType:  graphdb.TypeReference,
+		RefID:     approvalEntityID,
+		IsReverse: false,
+		Field: &graphdb.Field{
+			Key:       approvalStatusKey,
+			RefID:     approvalStatusEntityID,
+			DataType:  graphdb.TypeReference,
+			Value:     []interface{}{""},
+			IsReverse: false,
+			Field: &graphdb.Field{
+				Expression: graphdb.Operator("eq"),
+				Key:        "id",
+				DataType:   graphdb.TypeString,
+				Value:      approalStatusVal,
+			},
+		},
+	}
+}
+
 func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, sdb *database.SecDB) ([]graphdb.Field, error) {
 	conditionFields := make([]graphdb.Field, 0)
 
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, exp)
 
 	if filter != nil {
+
+		for k, _ := range filter.Conditions {
+			cn := addInnerCondition("31e71825-7edb-48e4-8033-75327caf1c0c", "1a544ec8-c45a-48de-a309-c4827132dba9", k, "0bace3d7-7cd8-4ffe-a74d-1c44597819d1")
+			conditionFields = append(conditionFields, cn)
+		}
+
 		e, err := entity.Retrieve(ctx, accountID, entityID, db)
 		if err != nil {
 			return nil, err

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -23,6 +24,7 @@ func grapher(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, e
 		return memberID(ctx, db, accountID, currentUserID)
 	}
 	elements := strings.Split(expression, ".")
+	log.Println("elements -- ", elements)
 	return elements[1], nil
 }
 

@@ -148,7 +148,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		valueAddedFields = appendSystemProps(it, valueAddedFields)
 		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
 		if err != nil {
 			return err
@@ -226,7 +226,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 
 	//graph
 	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		valueAddedFields = appendSystemProps(it, valueAddedFields)
 		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
 		if err != nil {
 			return err
@@ -391,7 +391,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 	//safely deleting the empty string...
 	delete(m.Source, "")
 	if m.State < stream.StateRedis {
-		valueAddedFields = appendTimers(it.CreatedAt, util.ConvertMilliToTime(it.UpdatedAt), it.UserID, valueAddedFields)
+		valueAddedFields = appendSystemProps(it, valueAddedFields)
 		err = j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, nil, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on actOnRedisGraph. error: ", err)
@@ -822,8 +822,7 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 		return err
 	}
 	valueAddedFields := notifEntity.ValueAdd(appNotifItem.Fields())
-
-	valueAddedFields = appendTimers(appNotifItem.CreatedAt, util.ConvertMilliToTime(appNotifItem.UpdatedAt), appNotifItem.UserID, valueAddedFields)
+	valueAddedFields = appendSystemProps(*appNotifItem, valueAddedFields)
 	err = j.actOnRedisGraph(ctx, appNotifItem.AccountID, appNotifItem.EntityID, appNotifItem.ID, nil, valueAddedFields, j.DB, j.SDB)
 	if err != nil {
 		return err
@@ -865,21 +864,25 @@ func connectionType(baseEntityID, entityID string, relationShips []relationship.
 	return typeOfConnection
 }
 
-func appendTimers(createdAt, updatedAt time.Time, userID *string, valueAddedFields []entity.Field) []entity.Field {
+func appendSystemProps(it item.Item, valueAddedFields []entity.Field) []entity.Field {
 
 	createdAtField := entity.Field{
 		Key:   "system_created_at",
-		Value: util.GetMilliSecondsFloat(createdAt),
+		Value: util.GetMilliSecondsFloat(it.CreatedAt),
 	}
 	updatedAtField := entity.Field{
 		Key:   "system_updated_at",
-		Value: util.GetMilliSecondsFloat(updatedAt),
+		Value: util.GetMilliSecondsFloat(util.ConvertMilliToTime(it.UpdatedAt)),
 	}
-	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField)
-	if userID != nil {
+	isPubilcField := entity.Field{
+		Key:   "system_is_public",
+		Value: it.IsPublic,
+	}
+	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField, isPubilcField)
+	if it.UserID != nil {
 		createdByField := entity.Field{
 			Key:   "system_created_by",
-			Value: *userID,
+			Value: *it.UserID,
 		}
 		valueAddedFields = append(valueAddedFields, createdByField)
 	}

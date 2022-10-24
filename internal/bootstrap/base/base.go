@@ -154,6 +154,12 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
+	// retrive Approval Status entity
+	b.ApprovalStatusEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityApprovalStatus)
+	if err != nil {
+		return err
+	}
+
 	// retrive Invite entity
 	b.InviteEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityVisitorInvite)
 	if err != nil {

@@ -133,6 +133,7 @@ var migrations = []darwin.Migration{
 			name             TEXT,
 			fieldsb          JSONB,
 			metab            JSONB,
+			is_public	     BOOLEAN DEFAULT FALSE,
 			created_at       TIMESTAMP,
 			updated_at       BIGINT,
 			PRIMARY KEY (item_id)
@@ -428,8 +429,6 @@ var migrations = []darwin.Migration{
 		);
 		CREATE INDEX idx_charts_account_id
 		ON charts(account_id);
-
-
 		`,
 	},
 }

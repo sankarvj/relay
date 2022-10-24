@@ -207,18 +207,18 @@ func BootstrapStatusEntity(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	// add status item - open
-	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNone, "Open", "#fb667e"), nil)
+	// add status item - in-progess
+	b.StatusItemOpened, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNone, "In-progress", "#FFEF82"), nil)
 	if err != nil {
 		return err
 	}
-	// add status item - closed
-	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpDone, "Closed", "#66fb99"), nil)
+	// add status item - completed
+	b.StatusItemClosed, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpDone, "Completed", "#B4E197"), nil)
 	if err != nil {
 		return err
 	}
-	// add status item - overdue
-	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNeg, "OverDue", "#66fb99"), nil)
+	// add status item - blocked
+	b.StatusItemOverDue, err = b.ItemAdd(ctx, b.StatusEntity.ID, uuid.New().String(), b.UserID, forms.StatusVals(b.StatusEntity, entity.FuExpNeg, "Blocked", "#FF8C8C"), nil)
 	if err != nil {
 		return err
 	}
@@ -237,17 +237,17 @@ func BootstrapApprovalStatusEntity(ctx context.Context, b *base.Base) error {
 	}
 
 	// add status item - waiting
-	b.ApprovalStatusWaiting, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNone, "Waiting for approval", "#fb667e"), nil)
+	b.ApprovalStatusWaiting, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNone, "Waiting for approval", "waiting_for_approval", "#79DAE8"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - change requested
-	b.ApprovalStatusChangeRequested, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNeg, "Change requested", "#66fb99"), nil)
+	b.ApprovalStatusChangeRequested, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpNeg, "Change requested", "change_requested", "#FFEF82"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - approved
-	b.ApprovalStatusApproved, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpDone, "Approved", "#66fb99"), nil)
+	b.ApprovalStatusApproved, err = b.ItemAdd(ctx, b.ApprovalStatusEntity.ID, uuid.New().String(), b.UserID, forms.ApprovalStatusVals(b.ApprovalStatusEntity, entity.FuExpDone, "Approved", "approved", "#B4E197"), nil)
 	if err != nil {
 		return err
 	}

@@ -257,10 +257,15 @@ func createViewModelItem(i item.Item) ViewModelItem {
 	}
 }
 
-func itemResponse(items []item.Item) []ViewModelItem {
+func itemResponse(items []item.Item, uMap map[string]*user.User) []ViewModelItem {
 	viewModelItems := make([]ViewModelItem, len(items))
 	for i, item := range items {
 		viewModelItems[i] = createViewModelItem(item)
+		if item.UserID != nil {
+			avatar, name, _ := userAvatarNameEmail(uMap[*item.UserID])
+			viewModelItems[i].UserAvatar = avatar
+			viewModelItems[i].UserName = name
+		}
 	}
 	return viewModelItems
 }
@@ -268,16 +273,18 @@ func itemResponse(items []item.Item) []ViewModelItem {
 // ViewModelItem represents the view model of item
 // (i.e) it has fields instead of attributes
 type ViewModelItem struct {
-	ID        string                 `json:"id"`
-	EntityID  string                 `json:"entity_id"`
-	StageID   *string                `json:"stage_id"`
-	Name      *string                `json:"name"`
-	Type      int                    `json:"type"`
-	State     int                    `json:"state"`
-	Fields    map[string]interface{} `json:"fields"`
-	Meta      map[string]interface{} `json:"meta"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt int64                  `json:"updated_at"`
+	ID         string                 `json:"id"`
+	EntityID   string                 `json:"entity_id"`
+	StageID    *string                `json:"stage_id"`
+	Name       *string                `json:"name"`
+	UserName   string                 `json:"user_name"`
+	UserAvatar string                 `json:"user_avatar"`
+	Type       int                    `json:"type"`
+	State      int                    `json:"state"`
+	Fields     map[string]interface{} `json:"fields"`
+	Meta       map[string]interface{} `json:"meta"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  int64                  `json:"updated_at"`
 }
 
 func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {

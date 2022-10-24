@@ -372,7 +372,7 @@ func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *s
 	for _, i := range refItems {
 		statusFields := statusEntity.ValueAdd(i.Fields())
 		for _, statusField := range statusFields {
-			if statusField.Name == Verb && statusField.Value == FuExpDone {
+			if statusField.Who == WhoVerb && statusField.Value == FuExpDone {
 				return i.ID, nil
 			}
 		}

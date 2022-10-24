@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -52,8 +51,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	groupby := r.URL.Query().Get("groupby")
 	direction := r.URL.Query().Get("direction")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
-
-	log.Println("exp ----> ", exp)
 
 	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
 	if err != nil {
@@ -139,14 +136,15 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	//NOT SO GOOD - DOING THIS IS TO SHOW THE LIST OF ENTITIES IN THE ITEMS LIST PAGE FOR UI NAVIGATION
-	entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{entity.CategoryData}, i.db)
-	if err != nil {
-		return err
-	}
-
-	viewModelEntities := make([]entity.ViewModelEntity, len(entities))
-	for i, entt := range entities {
-		viewModelEntities[i] = createViewModelEntity(entt)
+	viewModelEntities := make([]entity.ViewModelEntity, 0)
+	if page == 0 {
+		entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{entity.CategoryData}, i.db)
+		if err != nil {
+			return err
+		}
+		for _, entt := range entities {
+			viewModelEntities = append(viewModelEntities, createViewModelEntity(entt))
+		}
 	}
 
 	response := struct {
@@ -187,7 +185,13 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		return err
 	}
-	viewModelItems := itemResponse(items)
+
+	userIDs := make(map[string]bool, 0)
+	for _, item := range items {
+		userIDs[*item.UserID] = true
+	}
+	uMap, _ := userMap(ctx, userIDs, i.db)
+	viewModelItems := itemResponse(items, uMap)
 
 	response := struct {
 		Items    []ViewModelItem        `json:"items"`
@@ -219,8 +223,6 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &ni); err != nil {
 		return errors.Wrap(err, "")
 	}
-
-	log.Printf("ni ------------->>>>>>>>>>>>>>>>>>>>> %+v", ni)
 
 	//retriving the existing item don't change the order of execution
 	existingItem, err := item.Retrieve(ctx, entityID, itemID, i.db)
@@ -323,8 +325,12 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
+	uMap := make(map[string]*user.User, 0)
+	if it.UserID != nil {
+		uMap, _ = userMap(ctx, map[string]bool{*it.UserID: true}, i.db)
+	}
 
-	viewModelItems := itemResponse([]item.Item{it})
+	viewModelItems := itemResponse([]item.Item{it}, uMap)
 	if len(viewModelItems) == 0 {
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}

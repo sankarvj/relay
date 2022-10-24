@@ -6,13 +6,25 @@ import (
 )
 
 func ApprovalStatusFields() []entity.Field {
+	verbFieldID := uuid.New().String()
 	verbField := entity.Field{
-		Key:         entity.VerbKey, // we use this value inside the code. don't change it
-		Name:        entity.Verb,
+		Key:         verbFieldID,
+		Name:        "verb",
 		DisplayName: "Verb (Internal field)",
 		DomType:     entity.DomNotApplicable,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "verb"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutVerb},
+		Who:         entity.WhoVerb,
+	}
+
+	identifierFieldID := uuid.New().String()
+	identifierField := entity.Field{
+		Key:         identifierFieldID,
+		Name:        "identifier",
+		DisplayName: "Identifier (Internal field)",
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+		Who:         entity.WhoIdentifier,
 	}
 
 	nameFieldID := uuid.New().String()
@@ -22,7 +34,7 @@ func ApprovalStatusFields() []entity.Field {
 		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	colorFieldID := uuid.New().String()
@@ -32,18 +44,20 @@ func ApprovalStatusFields() []entity.Field {
 		DisplayName: "Color",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "color"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutColor},
+		Who:         entity.WhoColor,
 	}
 
-	return []entity.Field{verbField, nameField, colorField}
+	return []entity.Field{verbField, identifierField, nameField, colorField}
 }
 
-func ApprovalStatusVals(approvalStatusEntity entity.Entity, verb, name, color string) map[string]interface{} {
+func ApprovalStatusVals(approvalStatusEntity entity.Entity, verb, name, identifier, color string) map[string]interface{} {
 	statusVals := map[string]interface{}{
-		"name":  name,
-		"color": color,
+		"verb":       verb,
+		"name":       name,
+		"identifier": identifier,
+		"color":      color,
 	}
 	itemVals := keyMap(approvalStatusEntity.NamedKeys(), statusVals)
-	itemVals[entity.VerbKey] = verb
 	return itemVals
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -62,7 +63,13 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	if err != nil {
 		return nil, nil, err
 	}
-	viewModelItems := itemResponse(itemResultBody.Items)
+	//adding users
+	userIDs := make(map[string]bool, 0)
+	for _, item := range itemResultBody.Items {
+		userIDs[*item.UserID] = true
+	}
+	uMap, _ := userMap(ctx, userIDs, db)
+	viewModelItems := itemResponse(itemResultBody.Items, uMap)
 	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, sourceMap, db, job.NewJabEngine())
 	return viewModelItems, itemResultBody.TotalCount, nil
 }
@@ -86,12 +93,11 @@ func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, 
 }
 
 func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (*rg.QueryResult, *rg.QueryResult, error) {
-
 	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, s.exp, db, sdb)
 	if err != nil {
 		return nil, nil, err
 	}
-
+	log.Println("conditionFields --- ", conditionFields)
 	if s.source != nil {
 		conditionFields = append(conditionFields, *s.source)
 	}
