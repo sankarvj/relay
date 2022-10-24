@@ -181,13 +181,13 @@ func (ts *Timeseries) CSMOverview(ctx context.Context, w http.ResponseWriter, r 
 		return mid.ErrForbidden
 	}
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db, ts.sdb)
 	if err != nil {
 		return err
 	}
 
 	baseEntityID := r.URL.Query().Get("be")
-	baseEntity, err := entity.Retrieve(ctx, accountID, baseEntityID, ts.db)
+	baseEntity, err := entity.Retrieve(ctx, accountID, baseEntityID, ts.db, ts.sdb)
 	if err != nil {
 		return err
 	}

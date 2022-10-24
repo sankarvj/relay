@@ -26,7 +26,7 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	term := r.URL.Query().Get("t")
 	fi := r.URL.Query().Get("fi")
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db, i.sdb)
 	if err != nil {
 		return err
 	}

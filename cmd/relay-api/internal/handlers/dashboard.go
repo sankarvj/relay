@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -72,7 +71,7 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 			gridOne.SelectedEntityFields = gridOne.SelectedEntity.FieldsIgnoreError()
 		}
 	} else {
-		e, err := entity.Retrieve(ctx, accountID, entityID, d.db)
+		e, err := entity.Retrieve(ctx, accountID, entityID, d.db, d.sdb)
 		if err != nil {
 			return err
 		}
@@ -118,7 +117,7 @@ func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp s
 	return getGoneResult(ctx, accountID, gOne, exp, db, sdb)
 }
 
-func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID string, db *sqlx.DB, rPool *redis.Pool) error {
+func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID string, db *sqlx.DB, sdb *database.SecDB) error {
 	conditionFields := make([]graphdb.Field, 0)
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, "tasks")
 	if err != nil {
@@ -144,11 +143,11 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
 
-	result, err := graphdb.GetCount(rPool, gSegment, true)
+	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
 	if err != nil {
 		return errors.Wrapf(err, "WidgetGridThree: get status count")
 	}
-	gThree.gridResult(ctx, accountID, teamID, statusField, counts(result), db)
+	gThree.gridResult(ctx, accountID, teamID, statusField, counts(result), db, sdb)
 	log.Println("three result", result)
 	return nil
 }
@@ -266,8 +265,8 @@ func (gOne *GridOne) gridResult(ctx context.Context, resultMap map[string]int, d
 	}
 }
 
-func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID string, f entity.Field, resultMap map[string]int, db *sqlx.DB) {
-	e, _ := entity.Retrieve(ctx, accountID, f.RefID, db)
+func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID string, f entity.Field, resultMap map[string]int, db *sqlx.DB, sdb *database.SecDB) {
+	e, _ := entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
 	refItems, _ := item.EntityItems(ctx, accountID, e.ID, db)
 
 	choicer := reference.ItemChoices(&f, refItems, e.WhoFields())

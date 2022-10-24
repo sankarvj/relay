@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -51,7 +52,7 @@ func DailyWatch(ctx context.Context, accountID, teamID, oAuthFile, topic string,
 	return nil
 }
 
-func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, replyToID string, db *sqlx.DB) (*string, error) {
+func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, replyToID string, db *sqlx.DB, sdb *database.SecDB) (*string, error) {
 
 	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedMailFields)
 
@@ -63,7 +64,7 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 
 	//fetch e-mail integration config id from the from field of the mail
 	var emailConfigEntityItem entity.EmailConfigEntity
-	_, err := entity.RetrieveUnmarshalledItem(ctx, accountID, fromField.RefID, fromFieldValue, &emailConfigEntityItem, db)
+	_, err := entity.RetrieveUnmarshalledItem(ctx, accountID, fromField.RefID, fromFieldValue, &emailConfigEntityItem, db, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +86,10 @@ func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAdde
 	return messageID, nil
 }
 
-func Destruct(ctx context.Context, accountID, entityID, itemID string, db *sqlx.DB) error {
+func Destruct(ctx context.Context, accountID, entityID, itemID string, db *sqlx.DB, sdb *database.SecDB) error {
 
 	var emailConfigEntityItem entity.EmailConfigEntity
-	_, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &emailConfigEntityItem, db)
+	_, err := entity.RetrieveUnmarshalledItem(ctx, accountID, entityID, itemID, &emailConfigEntityItem, db, sdb)
 	if err != nil {
 		return err
 	}

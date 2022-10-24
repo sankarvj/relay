@@ -18,7 +18,7 @@ import (
 )
 
 func list(ctx context.Context, ch chart.Chart, exp, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
-	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db)
+	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db, sdb)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func list(ctx context.Context, ch chart.Chart, exp, baseItemID string, stTime, e
 }
 
 func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
-	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db)
+	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db, sdb)
 	if err != nil {
 		return nil, err
 	}

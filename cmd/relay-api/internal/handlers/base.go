@@ -55,7 +55,7 @@ func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) s
 	return ls
 }
 
-func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper, db *sqlx.DB) error {
+func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper, db *sqlx.DB, sdb *database.SecDB) error {
 	//If true, pass the values needed for the view
 	var viewModelFlows []flow.ViewModelFlow
 	var viewModelNodes []node.ViewModelNode
@@ -78,7 +78,7 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 		}
 
 	} else if p.sourceEntityID != "" && p.sourceItemID != "" { //child stages. ex: tasks created in the deal stages
-		e, err := entity.Retrieve(ctx, accountID, p.sourceEntityID, db)
+		e, err := entity.Retrieve(ctx, accountID, p.sourceEntityID, db, sdb)
 		if err != nil {
 			return err
 		}
@@ -181,7 +181,7 @@ func selectedTeam(ctx context.Context, accountID, teamID string, db *sqlx.DB) ([
 	return teams, seletedTeamID, nil
 }
 
-func addInnerCondition(approvalEntityID, approvalStatusEntityID, approvalStatusKey, approalStatusVal string) graphdb.Field {
+func addInnerCondition(approvalEntityID, approvalStatusEntityID, approvalStatusKey string, approalStatusVal interface{}) graphdb.Field {
 	return graphdb.Field{
 		Value:     []interface{}{""},
 		DataType:  graphdb.TypeReference,
@@ -209,13 +209,7 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 	filter := job.NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, exp)
 
 	if filter != nil {
-
-		for k, _ := range filter.Conditions {
-			cn := addInnerCondition("31e71825-7edb-48e4-8033-75327caf1c0c", "1a544ec8-c45a-48de-a309-c4827132dba9", k, "0bace3d7-7cd8-4ffe-a74d-1c44597819d1")
-			conditionFields = append(conditionFields, cn)
-		}
-
-		e, err := entity.Retrieve(ctx, accountID, entityID, db)
+		e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 		if err != nil {
 			return nil, err
 		}
@@ -225,9 +219,23 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 			return nil, err
 		}
 
-		for _, f := range fields {
-			if condition, ok := filter.Conditions[f.Key]; ok {
+		fieldsMap := entity.KeyedFieldsObjMap(fields)
+
+		for k, condition := range filter.Conditions {
+			if f, ok := fieldsMap[k]; ok && e.ID == condition.EntityID {
 				conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
+			} else {
+				eIn, err := entity.Retrieve(ctx, accountID, condition.EntityID, db, sdb)
+				if err != nil {
+					return nil, err
+				}
+
+				fieldsMapIn := entity.KeyedFieldsObjMap(eIn.FieldsIgnoreError())
+				if f, ok := fieldsMapIn[k]; ok {
+					cn := addInnerCondition(condition.EntityID, f.RefID, k, condition.Term)
+					conditionFields = append(conditionFields, cn)
+				}
+
 			}
 		}
 	}

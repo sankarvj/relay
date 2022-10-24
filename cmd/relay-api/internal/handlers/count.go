@@ -64,7 +64,7 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 	}
 
 	conditionFieldsForAll := makeConditionFieldForAll(countBody.IDs, dstEntity, statusField)
-	doneID, _ := entity.DiscoverDoneStatusID(ctx, accountID, statusField.RefID, db)
+	doneID, _ := entity.DiscoverDoneStatusID(ctx, accountID, statusField.RefID, db, sdb)
 	conditionFieldsForDone := makeConditionFieldForDone(countBody.IDs, doneID, dstEntity, statusField)
 
 	gSegmentA := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFieldsForAll)

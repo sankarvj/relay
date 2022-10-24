@@ -16,6 +16,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/team"
@@ -26,6 +27,7 @@ import (
 // Entity represents the Entity API method handler set.
 type Entity struct {
 	db            *sqlx.DB
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
@@ -107,7 +109,7 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, e.db)
-	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db)
+	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db, e.sdb)
 	if err != nil {
 		return err
 	}
@@ -135,6 +137,7 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &entity)
 	}
+	e.sdb.SetEntity(entity.ID, entity.Encode())
 
 	return web.Respond(ctx, w, entity, http.StatusCreated)
 }

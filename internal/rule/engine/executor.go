@@ -26,7 +26,7 @@ func (ruleResult *RuleResult) executePosCase(ctx context.Context, eng *Engine, n
 		err = eng.executeInvite(ctx, n, db, sdb)
 	case node.Hook:
 		var result map[string]interface{}
-		result, err = executeHook(ctx, db, n)
+		result, err = executeHook(ctx, db, sdb, n)
 		executionResponse[node.GlobalEntityData] = result
 	case node.Decision:
 		err = nil
@@ -54,8 +54,8 @@ func (ruleResult *RuleResult) executeNegCase(ctx context.Context, eng *Engine, n
 	return nil
 }
 
-func valueAdd(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) ([]entity.Field, error) {
-	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+func valueAdd(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID, itemID string) ([]entity.Field, error) {
+	e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return []entity.Field{}, err
 	}

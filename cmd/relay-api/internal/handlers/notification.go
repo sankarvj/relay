@@ -71,7 +71,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, n.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, n.db, n.sdb)
 	if err != nil {
 		return err
 	}

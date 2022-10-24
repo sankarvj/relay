@@ -21,7 +21,7 @@ import (
 
 func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, sdb *database.SecDB) error {
 
-	e, err := entity.Retrieve(ctx, n.AccountID, n.Meta.EntityID, db)
+	e, err := entity.Retrieve(ctx, n.AccountID, n.Meta.EntityID, db, sdb)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 		return err
 	}
 
-	visitorInvitationFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+	visitorInvitationFields, err := valueAdd(ctx, db, sdb, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
@@ -39,9 +39,9 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 	namedFieldsObj := entity.NamedFieldsObjMap(visitorInvitationFields)
 	body := namedFieldsObj["body"].Value.(string)
 	role := namedFieldsObj["role"].Value.([]interface{})
-	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, n.VariablesMap())
+	body = eng.RunExpRenderer(ctx, db, sdb, n.AccountID, body, n.VariablesMap())
 	email := namedFieldsObj["email"].Value.(string)
-	email = eng.RunExpRenderer(ctx, db, n.AccountID, email, n.VariablesMap())
+	email = eng.RunExpRenderer(ctx, db, sdb, n.AccountID, email, n.VariablesMap())
 
 	emails := strings.Split(email, ",")
 	for _, email := range emails {

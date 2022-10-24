@@ -21,12 +21,12 @@ import (
 func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Printf("internal.rule.engine.executeData %s - %s \n", n.ActorID, n.ActualsItemID())
 	// value add the fields with the template item provided in the actuals.
-	valueAddedFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+	valueAddedFields, err := valueAdd(ctx, db, sdb, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
 
-	eng.evaluateFieldValues(ctx, db, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
+	eng.evaluateFieldValues(ctx, db, sdb, n.AccountID, valueAddedFields, n.VariablesMap(), n.StageID)
 
 	templateItem := item.NewItem{
 		ID:        uuid.New().String(),
@@ -51,9 +51,9 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 		// update the trigger entity/item if the actor/trigger are same
 		// when a deal is updated change the status of the deal
 		if n.ActorID == n.Meta.EntityID {
-			err = eng.updateItemFields(ctx, n.AccountID, n.ActorID, actualItemID, templateItem, db)
+			err = eng.updateItemFields(ctx, n.AccountID, n.ActorID, actualItemID, templateItem, db, sdb)
 		} else { // when a deal is updated, make changes it all of its related contact.
-			err = eng.updateRelatedItems(ctx, n.AccountID, n.Meta.EntityID, n.Meta.ItemID, n.ActorID, templateItem, "", db)
+			err = eng.updateRelatedItems(ctx, n.AccountID, n.Meta.EntityID, n.Meta.ItemID, n.ActorID, templateItem, "", db, sdb)
 		}
 
 	}
@@ -61,9 +61,9 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 	return err
 }
 
-func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityID, actorItemID string, templateItem item.NewItem, db *sqlx.DB) error {
+func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityID, actorItemID string, templateItem item.NewItem, db *sqlx.DB, sdb *database.SecDB) error {
 
-	e, err := entity.Retrieve(ctx, accountID, actorEntityID, db)
+	e, err := entity.Retrieve(ctx, accountID, actorEntityID, db, sdb)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
 		return err
@@ -97,7 +97,7 @@ func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityI
 	return nil
 }
 
-func (eng *Engine) updateRelatedItems(ctx context.Context, accountID, srcEntityID, srcItemID, actorEntityID string, templateItem item.NewItem, next string, db *sqlx.DB) error {
+func (eng *Engine) updateRelatedItems(ctx context.Context, accountID, srcEntityID, srcItemID, actorEntityID string, templateItem item.NewItem, next string, db *sqlx.DB, sdb *database.SecDB) error {
 	var err error
 	connectedItems, err := connection.AllChild(ctx, db, accountID, srcEntityID, srcItemID, actorEntityID, next)
 	if err != nil {
@@ -105,7 +105,7 @@ func (eng *Engine) updateRelatedItems(ctx context.Context, accountID, srcEntityI
 	}
 
 	for _, childItem := range connectedItems { //each contact needs to get updated with the template.
-		err = eng.updateItemFields(ctx, accountID, actorEntityID, childItem.DstItemID, templateItem, db)
+		err = eng.updateItemFields(ctx, accountID, actorEntityID, childItem.DstItemID, templateItem, db, sdb)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func (eng *Engine) updateRelatedItems(ctx context.Context, accountID, srcEntityI
 
 	if len(connectedItems) == 1000 {
 		next = connectedItems[len(connectedItems)-1].ConnectionID
-		err = eng.updateRelatedItems(ctx, accountID, srcEntityID, srcItemID, actorEntityID, templateItem, next, db)
+		err = eng.updateRelatedItems(ctx, accountID, srcEntityID, srcItemID, actorEntityID, templateItem, next, db, sdb)
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func itemFields(fields []entity.Field) map[string]interface{} {
 	return params
 }
 
-func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, accountID string, fields []entity.Field, vars map[string]interface{}, stageID string) {
+func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID string, fields []entity.Field, vars map[string]interface{}, stageID string) {
 	for i := 0; i < len(fields); i++ {
 		var field = &fields[i]
 
@@ -144,7 +144,7 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, account
 			if field.Value != nil {
 				evalatedVals := make([]interface{}, 0)
 				for _, v := range field.Value.([]interface{}) {
-					output := eng.RunFieldExpRenderer(ctx, db, accountID, v.(string), vars)
+					output := eng.RunFieldExpRenderer(ctx, db, sdb, accountID, v.(string), vars)
 					if output != nil {
 						rt := reflect.TypeOf(output)
 						switch rt.Kind() {
@@ -167,7 +167,7 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, account
 			if field.Value != nil {
 				switch v := field.Value.(type) {
 				case string:
-					field.Value = eng.RunFieldExpRenderer(ctx, db, accountID, v, vars)
+					field.Value = eng.RunFieldExpRenderer(ctx, db, sdb, accountID, v, vars)
 				}
 
 			}

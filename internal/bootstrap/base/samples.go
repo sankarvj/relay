@@ -85,7 +85,7 @@ func (b *Base) AddWorkflows(ctx context.Context, cwf *CoreWorkflow) error {
 }
 
 func (b *Base) AddSegments(ctx context.Context, entityID string) error {
-	e, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
+	e, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB, b.SecDB)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (b *Base) AddEmails(ctx context.Context, contactEntityID string, contactEnt
 }
 
 func (b *Base) AddLayouts(ctx context.Context, name, entityID string) error {
-	e, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
+	e, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB, b.SecDB)
 	if err != nil {
 		return err
 	}

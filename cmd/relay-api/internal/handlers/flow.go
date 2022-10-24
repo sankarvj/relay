@@ -14,6 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
@@ -24,6 +25,7 @@ import (
 // Flow represents the journey
 type Flow struct {
 	db            *sqlx.DB
+	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 }
 
@@ -92,7 +94,7 @@ func (f *Flow) FlowTrails(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], f.db)
+	e, err := entity.Retrieve(ctx, params["account_id"], params["entity_id"], f.db, f.sdb)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 func validateItemCreate(ctx context.Context, accountID, entityID string, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) *ErrorResponse {
-	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "item create validation failed"))
 	}

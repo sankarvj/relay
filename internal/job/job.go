@@ -72,7 +72,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemCreated ***<***<")
 	ctx := context.Background()
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -84,7 +84,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 	}
 
 	valueAddedFields := e.ValueAdd(it.Fields())
-	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
+	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
 	m.State = ls.State
@@ -163,7 +163,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemUpdated ***<***<")
 	ctx := context.Background()
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred when retriving entity inside job. error:", err)
 		return err
@@ -240,7 +240,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 func (j *Job) eventItemReminded(m *stream.Message) error {
 	ctx := context.Background()
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -252,7 +252,7 @@ func (j *Job) eventItemReminded(m *stream.Message) error {
 	}
 
 	valueAddedFields := e.ValueAdd(it.Fields())
-	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
+	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	//act on notifications
 	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeReminder)
@@ -267,7 +267,7 @@ func (j *Job) eventItemDeleted(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemDeleted ***<***<")
 	ctx := context.Background()
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -282,7 +282,7 @@ func (j *Job) eventItemDeleted(m *stream.Message) error {
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
 	m.State = ls.State
 
-	err = destructOnIntegrations(ctx, m.AccountID, e, it, j.DB)
+	err = destructOnIntegrations(ctx, m.AccountID, e, it, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred on destructOnIntegrations. error: ", err)
 	}
@@ -320,14 +320,14 @@ func (j *Job) eventEmailConvAdded(m *stream.Message) error {
 		return err
 	}
 
-	emailEntity, err := entity.Retrieve(ctx, cv.AccountID, cv.EntityID, j.DB)
+	emailEntity, err := entity.Retrieve(ctx, cv.AccountID, cv.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred on retriving the entity on job. error:", err)
 		return err
 	}
 
 	var emailItem entity.EmailEntity
-	_, err = entity.RetrieveUnmarshalledItem(ctx, m.AccountID, m.EntityID, m.ItemID, &emailItem, j.DB)
+	_, err = entity.RetrieveUnmarshalledItem(ctx, m.AccountID, m.EntityID, m.ItemID, &emailItem, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred on retriving the parent entity on job. error:", err)
 		return err
@@ -336,7 +336,7 @@ func (j *Job) eventEmailConvAdded(m *stream.Message) error {
 	//TODO push to job
 	replyTo := emailItem.MessageID
 	valueAddedFields := emailEntity.ValueAdd(cv.PayloadMap())
-	msgID, err := email.SendMail(ctx, m.AccountID, m.EntityID, m.ItemID, valueAddedFields, replyTo, j.DB)
+	msgID, err := email.SendMail(ctx, m.AccountID, m.EntityID, m.ItemID, valueAddedFields, replyTo, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventEmailConvAdded: unexpected/unhandled error occurred while sending mail. error:", err)
 	}
@@ -352,7 +352,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 	log.Println("***>***> Reached EventChatConvAdded ***<***<")
 	ctx := context.Background()
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -412,7 +412,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 		m.Source = make(map[string][]string, 0)
 	}
 
-	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB)
+	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
 		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -460,7 +460,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 	}
 
 	valueAddedFields := e.ValueAdd(ts.Fields())
-	reference.UpdateChoicesWrapper(ctx, j.DB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
+	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
 	m.State = ls.State
@@ -754,7 +754,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		convType := conversation.TypeEmailReceived
 		if emailItem.MessageID == "" { //sent
 			convType = conversation.TypeEmailSent
-			msgID, err := email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, "", db)
+			msgID, err := email.SendMail(ctx, accountID, e.ID, it.ID, valueAddedFields, "", db, sdb)
 			if err != nil {
 				return err
 			}
@@ -812,12 +812,12 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.
-	appNotifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, acc.ID, acc.Domain, e.TeamID, e.ID, itemID, itemCreatorID, itemUpdatedAt, e.ValueAdd(newFields), dirtyFields, source, notificationType, j.DB, j.FirebaseSDKPath)
+	appNotifItem, err := notification.OnAnItemLevelEvent(ctx, userID, e.Category, e.DisplayName, acc.ID, acc.Domain, e.TeamID, e.ID, itemID, itemCreatorID, itemUpdatedAt, e.ValueAdd(newFields), dirtyFields, source, notificationType, j.DB, j.SDB, j.FirebaseSDKPath)
 	if err != nil {
 		return err
 	}
 
-	notifEntity, err := entity.Retrieve(ctx, appNotifItem.AccountID, appNotifItem.EntityID, j.DB)
+	notifEntity, err := entity.Retrieve(ctx, appNotifItem.AccountID, appNotifItem.EntityID, j.DB, j.SDB)
 	if err != nil {
 		return err
 	}
@@ -830,11 +830,11 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 	return nil
 }
 
-func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB) error {
+func destructOnIntegrations(ctx context.Context, accountID string, e entity.Entity, it item.Item, db *sqlx.DB, sdb *database.SecDB) error {
 	var err error
 	switch e.Category {
 	case entity.CategoryEmailConfig:
-		err = email.Destruct(ctx, accountID, e.ID, it.ID, db)
+		err = email.Destruct(ctx, accountID, e.ID, it.ID, db, sdb)
 	case entity.CategoryCalendar:
 		//calendar destruct yet to be implemented
 	}

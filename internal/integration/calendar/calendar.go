@@ -10,6 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	intg "gitlab.com/vjsideprojects/relay/internal/integration"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/calendar"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -95,9 +96,9 @@ func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemI
 	return nil
 }
 
-func calendarConfigItem(ctx context.Context, discovery discovery.Discover, db *sqlx.DB) (entity.CaldendarEntity, entity.UpdaterFunc, error) {
+func calendarConfigItem(ctx context.Context, discovery discovery.Discover, db *sqlx.DB, sdb *database.SecDB) (entity.CaldendarEntity, entity.UpdaterFunc, error) {
 	var calendarEntity entity.CaldendarEntity
-	valueAddedFields, updateFunc, err := entity.RetrieveFixedItem(ctx, discovery.AccountID, discovery.EntityID, discovery.ItemID, db)
+	valueAddedFields, updateFunc, err := entity.RetrieveFixedItem(ctx, discovery.AccountID, discovery.EntityID, discovery.ItemID, db, sdb)
 	if err != nil {
 		return calendarEntity, updateFunc, err
 	}

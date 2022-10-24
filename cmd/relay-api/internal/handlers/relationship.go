@@ -59,7 +59,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		relatedEntityID = relation.DstEntityID
 	}
 
-	e, err := entity.Retrieve(ctx, accountID, relatedEntityID, rs.db)
+	e, err := entity.Retrieve(ctx, accountID, relatedEntityID, rs.db, rs.sdb)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	piper := Piper{Viable: true}
 	if ls == entity.MetaRenderPipe && page == 0 {
 		piper.sourceEntityID, piper.sourceItemID = sourceEntityID, sourceItemID
-		err := pipeKanban(ctx, accountID, e, &piper, rs.db)
+		err := pipeKanban(ctx, accountID, e, &piper, rs.db, rs.sdb)
 		if err != nil {
 			return err
 		}

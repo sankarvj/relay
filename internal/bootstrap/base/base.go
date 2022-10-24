@@ -245,7 +245,7 @@ func (b *Base) TemplateAddWithOutMeta(ctx context.Context, entityID, itemID, use
 }
 
 func (b *Base) TemplateAdd(ctx context.Context, entityID, itemID, userID string, fields map[string]interface{}, meta map[string]interface{}, source map[string][]string) (item.Item, error) {
-	ce, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB)
+	ce, err := entity.Retrieve(ctx, b.AccountID, entityID, b.DB, b.SecDB)
 	if err != nil {
 		return item.Item{}, err
 	}

@@ -31,7 +31,7 @@ func (m *Member) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	accountID, entityID, _ := takeAEI(ctx, params, m.db)
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, m.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, m.db, m.sdb)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	//current entity
-	e, err := entity.Retrieve(ctx, accountID, entityID, m.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, m.db, m.sdb)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	//current entity
-	e, err := entity.Retrieve(ctx, accountID, entityID, m.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, m.db, m.sdb)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "problem reteriving owner entity")
 	}
 
-	userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID, m.db)
+	userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID, m.db, m.sdb)
 	if err != nil {
 		return errors.Wrap(err, "member id does not exist")
 	}

@@ -11,19 +11,20 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/net"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
-func worker(ctx context.Context, db *sqlx.DB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
+func worker(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID string, expression string, input map[string]interface{}) (interface{}, error) {
 	log.Printf("internal.rule.engine.worker running expression: %s\n", expression)
 	entityID := ruler.FetchEntityID(expression)
 	if entityID == node.GlobalEntity { //global entity stops here.
 		return input, nil
 	} else if entityID == node.SelfEntity { //self entity stops here
-		return evaluate(ctx, db, accountID, expression, buildResultant(node.SelfEntity, input)), nil
+		return evaluate(ctx, db, sdb, accountID, expression, buildResultant(node.SelfEntity, input)), nil
 	} else if entityID == node.MeEntity { //replace with currentuser_id
 		currentUserID, err := user.RetrieveCurrentUserID(ctx)
 		if err != nil {
@@ -34,7 +35,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 		return ruler.FetchItemID(expression), nil
 	}
 	//TODO cache entity
-	e, err := entity.Retrieve(ctx, accountID, entityID, db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return map[string]interface{}{}, err
 	}
@@ -58,7 +59,7 @@ func worker(ctx context.Context, db *sqlx.DB, accountID string, expression strin
 		result = map[string]interface{}{"error": err}
 	}
 
-	finalResult := evaluate(ctx, db, accountID, expression, buildResultant(e.ID, result))
+	finalResult := evaluate(ctx, db, sdb, accountID, expression, buildResultant(e.ID, result))
 	return finalResult, nil
 }
 
@@ -108,7 +109,7 @@ func buildResultant(entityID string, result map[string]interface{}) map[string]i
 }
 
 //Evaluate evaluates the expression with the coresponding map
-func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, response map[string]interface{}) interface{} {
+func evaluate(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, expression string, response map[string]interface{}) interface{} {
 	var realValue interface{}
 	elements := strings.Split(expression, ".")
 
@@ -134,7 +135,7 @@ func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, re
 
 		switch t := response[element].(type) {
 		case []interface{}:
-			realValue = superBugger(ctx, db, accountID, entityID, fieldKey, response[element], superBug)
+			realValue = superBugger(ctx, db, sdb, accountID, entityID, fieldKey, response[element], superBug)
 			response[superBug] = realValue
 		case map[string]interface{}:
 			response = t
@@ -144,11 +145,11 @@ func evaluate(ctx context.Context, db *sqlx.DB, accountID, expression string, re
 }
 
 //Not so useful as of now
-func superBugger(ctx context.Context, db *sqlx.DB, accountID, entityID, fieldKey string, response interface{}, suberBug string) string {
+func superBugger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID, fieldKey string, response interface{}, suberBug string) string {
 	output := ""
 	switch t := response.(type) {
 	case []interface{}:
-		e, err := entity.Retrieve(ctx, accountID, entityID, db)
+		e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 		if err != nil {
 			log.Printf("***> unexpected error occurred on superBugger when retriving entity  - error: %v ", err)
 			return ""
@@ -162,7 +163,7 @@ func superBugger(ctx context.Context, db *sqlx.DB, accountID, entityID, fieldKey
 		}
 
 		if len(itemIds) > 0 {
-			e, err = entity.Retrieve(ctx, accountID, f.RefID, db)
+			e, err = entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
 			if err != nil {
 				log.Printf("***> unexpected error occurred on superBugger when retriving entity  - error: %v ", err)
 				return ""

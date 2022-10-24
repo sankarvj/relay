@@ -70,7 +70,7 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	}
 	uMap, _ := userMap(ctx, userIDs, db)
 	viewModelItems := itemResponse(itemResultBody.Items, uMap)
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, sourceMap, db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, itemResultBody.Items, sourceMap, db, sdb, job.NewJabEngine())
 	return viewModelItems, itemResultBody.TotalCount, nil
 }
 

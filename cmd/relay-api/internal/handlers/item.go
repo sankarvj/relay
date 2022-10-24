@@ -52,7 +52,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	direction := r.URL.Query().Get("direction")
 	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db, i.sdb)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		piper.Tokens = make(map[string]string, 0)
 		piper.Exps = make(map[string]string, 0)
 		piper.CountMap = make(map[string]map[string]int, 0)
-		choicers, err := groupBy(ctx, groupby, e, i.db)
+		choicers, err := groupBy(ctx, groupby, e, i.db, i.sdb)
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		}
 	} else if piper.LS == entity.MetaRenderPipe && page == 0 {
 		piper.Viable = true
-		err := pipeKanban(ctx, accountID, e, &piper, i.db)
+		err := pipeKanban(ctx, accountID, e, &piper, i.db, i.sdb)
 		if err != nil {
 			return err
 		}
@@ -175,7 +175,7 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
 	state := util.ConvertStrToInt(params["state"])
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db, i.sdb)
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	baseItemID := r.URL.Query().Get("bi")
 	populateBR, _ := strconv.ParseBool(r.URL.Query().Get("bp")) // blue print
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, i.db, i.sdb)
 	if err != nil {
 		return err
 	}
@@ -335,7 +335,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
 
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, i.sdb, job.NewJabEngine())
 
 	itemDetail := struct {
 		Entity entity.ViewModelEntity `json:"entity"`

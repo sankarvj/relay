@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/engine"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
@@ -35,7 +36,7 @@ If the items count is more than 1, we will just update the value for the current
 If the items count is equal to 1, we will populate all the available choices if the referenced entity is child unit.
 **/
 
-func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.Item, srcMap map[string]interface{}, db *sqlx.DB, eng *engine.Engine) {
+func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fields []entity.Field, items []item.Item, srcMap map[string]interface{}, db *sqlx.DB, sdb *database.SecDB, eng *engine.Engine) {
 
 	//populate base entity only in the blue print case
 	var be entity.Entity
@@ -44,7 +45,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 		for k := range srcMap {
 			keys = append(keys, k)
 		}
-		be, _ = entity.Retrieve(ctx, accountID, keys[0], db)
+		be, _ = entity.Retrieve(ctx, accountID, keys[0], db, sdb)
 	}
 
 	refIds := populateExistingItemIds(items, fields)
@@ -59,7 +60,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 			}
 			ids = append(ids, srcItemID)
 		}
-		updateChoices(ctx, db, accountID, entityID, f, ids, eng)
+		updateChoices(ctx, db, sdb, accountID, entityID, f, ids, eng)
 
 		//updating base choices for blue print case
 		if len(items) > 0 && items[0].State == item.StateBluePrint {
@@ -139,10 +140,10 @@ func populateExistingItemIds(items []item.Item, fields []entity.Field) map[strin
 //updateChoices won't pull all the choices available to that reference entity in the list view.
 //updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
 //updateChoices should work differently in the detail use-case
-func updateChoices(ctx context.Context, db *sqlx.DB, accountID, entityID string, f *entity.Field, refIDs []interface{}, eng *engine.Engine) {
+func updateChoices(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID string, f *entity.Field, refIDs []interface{}, eng *engine.Engine) {
 
 	if f.IsReference() && f.RefID != "" && !f.IsNotApplicable() {
-		e, err := entity.Retrieve(ctx, accountID, f.RefID, db)
+		e, err := entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
 		if err != nil {
 			log.Printf("***> unexpected error occurred when retriving entity inside updating choices error: %v.\n continuing...", err)
 			return
@@ -270,14 +271,14 @@ func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
 }
 
 //UpdateChoicesWrapper updates only the choices for reference fields
-func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, accountID, entityID string, valueAddedFields []entity.Field, eng *engine.Engine) {
+func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID string, valueAddedFields []entity.Field, eng *engine.Engine) {
 	for i := 0; i < len(valueAddedFields); i++ {
 		if valueAddedFields[i].IsReference() {
 			var refIds []interface{}
 			if valueAddedFields[i].Value != nil {
 				refIds = valueAddedFields[i].Value.([]interface{})
 			}
-			updateChoices(ctx, db, accountID, entityID, &valueAddedFields[i], refIds, eng)
+			updateChoices(ctx, db, sdb, accountID, entityID, &valueAddedFields[i], refIds, eng)
 		}
 	}
 }

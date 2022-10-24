@@ -31,7 +31,7 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	//current entity
-	ce, err := entity.Retrieve(ctx, accountID, entityID, i.db)
+	ce, err := entity.Retrieve(ctx, accountID, entityID, i.db, i.sdb)
 	if err != nil {
 		return err
 	}

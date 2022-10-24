@@ -131,8 +131,8 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *data
 	return emailNotif.Send(ctx, TypeVisitorInvitation, db)
 }
 
-func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, accDomain, teamID, entityID, itemID string, itemCreatorID *string, itemUpdatedAt int64, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (*item.Item, error) {
-	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db)
+func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, accDomain, teamID, entityID, itemID string, itemCreatorID *string, itemUpdatedAt int64, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) (*item.Item, error) {
+	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db, sdb)
 	appNotif.CreatedAt = itemUpdatedAt
 
 	switch notificationType {

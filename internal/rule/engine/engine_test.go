@@ -61,6 +61,8 @@ func TestRuleRenderer(t *testing.T) {
 	tests.SeedData(t, db)
 	tests.SeedEntity(t, db)
 	defer teardown()
+	sdb, teardown2 := tests.NewSecDbUnit(t)
+	defer teardown2()
 	t.Log("Given the need to run the engine to render the template values.")
 	{
 		t.Log("\twhen running a engine for the given contact - default case")
@@ -75,7 +77,7 @@ func TestRuleRenderer(t *testing.T) {
 				Job: &job.Job{},
 			}
 
-			content := eng.RunExpRenderer(tests.Context(), db, schema.SeedAccountID, exp, vars)
+			content := eng.RunExpRenderer(tests.Context(), db, sdb, schema.SeedAccountID, exp, vars)
 			if content != "" {
 				t.Logf("\t%s\tshould evaluate the expression with content %s", tests.Success, content)
 			}

@@ -75,7 +75,7 @@ func (v *Visitor) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	e, err := entity.Retrieve(ctx, accountID, visitor.EntityID, v.db)
+	e, err := entity.Retrieve(ctx, accountID, visitor.EntityID, v.db, v.sdb)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 )
@@ -257,8 +258,8 @@ func RetriveFixedItemByCategory(ctx context.Context, accountID, teamID, entityCa
 	return entityFields, updateFields(accountID, fixedEntity.ID, it.ID, entityFields), nil
 }
 
-func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB) ([]Field, UpdaterFunc, error) {
-	preDefinedEntity, err := Retrieve(ctx, accountID, preDefinedEntityID, db)
+func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, db *sqlx.DB, sdb *database.SecDB) ([]Field, UpdaterFunc, error) {
+	preDefinedEntity, err := Retrieve(ctx, accountID, preDefinedEntityID, db, sdb)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -273,8 +274,8 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 	return entityFields, updateFields(accountID, preDefinedEntity.ID, it.ID, entityFields), err
 }
 
-func RetrieveUnmarshalledItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, marshalItem interface{}, db *sqlx.DB) (UpdaterFunc, error) {
-	valueAddedConfigFields, upFunc, err := RetrieveFixedItem(ctx, accountID, preDefinedEntityID, itemID, db)
+func RetrieveUnmarshalledItem(ctx context.Context, accountID, preDefinedEntityID, itemID string, marshalItem interface{}, db *sqlx.DB, sdb *database.SecDB) (UpdaterFunc, error) {
+	valueAddedConfigFields, upFunc, err := RetrieveFixedItem(ctx, accountID, preDefinedEntityID, itemID, db, sdb)
 	if err != nil {
 		return upFunc, err
 	}
@@ -349,12 +350,12 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 	return it, nil
 }
 
-func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID string, anyEntityItem interface{}, db *sqlx.DB) (string, error) {
+func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID string, anyEntityItem interface{}, db *sqlx.DB, sdb *database.SecDB) (string, error) {
 	dis, err := discovery.Retrieve(ctx, accountID, entityID, discoveryID, db)
 	if err != nil {
 		return "", err
 	}
-	valueAddedConfigFields, _, err := RetrieveFixedItem(ctx, dis.AccountID, dis.EntityID, dis.ItemID, db)
+	valueAddedConfigFields, _, err := RetrieveFixedItem(ctx, dis.AccountID, dis.EntityID, dis.ItemID, db, sdb)
 	if err != nil {
 		return "", err
 	}
@@ -362,8 +363,8 @@ func DiscoverAnyEntityItem(ctx context.Context, accountID, entityID, discoveryID
 	return dis.ItemID, ParseFixedEntity(valueAddedConfigFields, anyEntityItem)
 }
 
-func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *sqlx.DB) (string, error) {
-	statusEntity, err := Retrieve(ctx, accountID, entityID, db)
+func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (string, error) {
+	statusEntity, err := Retrieve(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		return "", err
 	}
@@ -406,13 +407,13 @@ func namedFieldsMap(entityFields []Field) map[string]interface{} {
 	return params
 }
 
-func RetriveUserItem(ctx context.Context, accountID, ownerEntityID, memberID string, db *sqlx.DB) (*UserEntity, error) {
+func RetriveUserItem(ctx context.Context, accountID, ownerEntityID, memberID string, db *sqlx.DB, sdb *database.SecDB) (*UserEntity, error) {
 	if memberID == "" {
 		return nil, errors.New("memberID is empty. Cannot retrive user item")
 	}
 
 	var userEntityItem UserEntity
-	valueAddedFields, _, err := RetrieveFixedItem(ctx, accountID, ownerEntityID, memberID, db)
+	valueAddedFields, _, err := RetrieveFixedItem(ctx, accountID, ownerEntityID, memberID, db, sdb)
 	if err != nil {
 		return nil, err
 	}

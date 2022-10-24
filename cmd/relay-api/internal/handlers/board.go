@@ -7,10 +7,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
 
-func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.DB) ([]reference.Choicer, error) {
+func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.DB, sdb *database.SecDB) ([]reference.Choicer, error) {
 	var choicers []reference.Choicer
 	var groupByField *entity.Field
 	fields := enty.FieldsIgnoreError()
@@ -23,7 +24,7 @@ func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.
 	}
 
 	if groupByField != nil && groupByField.IsReference() {
-		e, err := entity.Retrieve(ctx, enty.AccountID, groupByField.RefID, db)
+		e, err := entity.Retrieve(ctx, enty.AccountID, groupByField.RefID, db, sdb)
 		if err != nil {
 			return choicers, err
 		}

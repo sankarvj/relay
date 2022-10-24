@@ -11,6 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
@@ -41,7 +42,7 @@ type Specifics struct {
 	DirtyFields map[string]string
 }
 
-func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB) AppNotification {
+func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB) AppNotification {
 	appNotif := AppNotification{
 		AccountID:     accountID,
 		AccountDomain: accountDomain,
@@ -55,7 +56,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 	}
 
 	for baseEntityID, baseItemIDs := range source {
-		baseEntity, berr := entity.Retrieve(ctx, accountID, baseEntityID, db)
+		baseEntity, berr := entity.Retrieve(ctx, accountID, baseEntityID, db, sdb)
 		appNotif.BaseEntityName = baseEntity.DisplayName
 		for i, baseItemID := range baseItemIDs {
 			//making baseID for filtering notifications per item (events).
@@ -67,14 +68,14 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 					appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 
 					//adding base item follower and assignees
-					appNotif.AddFollower(ctx, accountID, it.UserID, db)
+					appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)
 					baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
 					for _, f := range baseValueAddedFields {
 						if f.Value == nil {
 							continue
 						}
 						if f.Who == entity.WhoAssignee {
-							appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
+							appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
 						}
 					}
 				}
@@ -84,7 +85,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 
 	appNotif.DirtyFields = make(map[string]string, 0)
 	if itemCreatorID != nil && *itemCreatorID != user.UUID_SYSTEM_USER && *itemCreatorID != userID {
-		appNotif.AddFollower(ctx, accountID, itemCreatorID, db)
+		appNotif.AddFollower(ctx, accountID, itemCreatorID, db, sdb)
 	}
 
 	switch userID {
@@ -127,13 +128,13 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		}
 
 		if f.Who == entity.WhoAssignee {
-			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
+			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
 			if _, ok := dirtyFields[f.Key]; ok {
 				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
 			}
 		}
 		if f.Who == entity.WhoFollower {
-			appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
+			appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
 			if _, ok := dirtyFields[f.Key]; ok {
 				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
 			}
@@ -149,13 +150,13 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 	return appNotif
 }
 
-func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB) {
-	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db)
+func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB, sdb *database.SecDB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db, sdb)
 	if err != nil {
 		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 	}
 	for _, assignee := range assignees {
-		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db)
+		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db, sdb)
 		if err != nil {
 			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 			continue
@@ -164,13 +165,13 @@ func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, as
 	}
 }
 
-func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB) {
-	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db)
+func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB, sdb *database.SecDB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db, sdb)
 	if err != nil {
 		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 	}
 	for _, assignee := range assignees {
-		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db)
+		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db, sdb)
 		if err != nil {
 			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 			continue
@@ -179,7 +180,7 @@ func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, as
 	}
 }
 
-func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID string, itemCreatorID *string, db *sqlx.DB) {
+func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID string, itemCreatorID *string, db *sqlx.DB, sdb *database.SecDB) {
 	creator, err := user.RetrieveUser(ctx, db, *itemCreatorID)
 	if err != nil {
 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
@@ -189,7 +190,7 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 		}
 		if memberID, ok := creator.AccountsB()[accountID]; ok {
-			userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db)
+			userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db, sdb)
 			if err != nil {
 				log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
 			} else {

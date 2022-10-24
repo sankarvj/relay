@@ -37,7 +37,7 @@ func (f *Form) Adder(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrap(err, "")
 	}
 
-	e, err := entity.Retrieve(ctx, accountID, entityID, f.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, f.db, f.sdb)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (f *Form) Render(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	defer span.End()
 
 	accountID, entityID, itemID := takeAEI(ctx, params, f.db)
-	e, err := entity.Retrieve(ctx, accountID, entityID, f.db)
+	e, err := entity.Retrieve(ctx, accountID, entityID, f.db, f.sdb)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (f *Form) Render(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return web.NewRequestError(err, http.StatusForbidden)
 	}
 
-	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{}, map[string]interface{}{}, f.db, job.NewJabEngine())
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{}, map[string]interface{}{}, f.db, f.sdb, job.NewJabEngine())
 
 	itemMeta := it.Meta()
 	itemFields := it.Fields()

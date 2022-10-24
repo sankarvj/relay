@@ -18,6 +18,8 @@ type Condition struct {
 	Term       interface{} `json:"term"`
 	Expression string      `json:"expression"`
 	DataType   DType       `json:"d_type"`
+	EntityID   string      `json:"entity_id"`
+	Key        string      `json:"key"`
 }
 
 //ExpressionType returns the type of expression
@@ -448,13 +450,15 @@ func (r *Ruler) makeGraph() error {
 	//log.Printf("internal.platform.ruleengine.services.ruler : `query:` execute left_rule_item: %v | right_rule_item: %v | op: %+v | isAND: %t\n", r.RuleItem.left, r.RuleItem.right, r.RuleItem.operation, r.RuleItem.isANDOp)
 
 	if r.RuleItem.left != nil && r.RuleItem.right != nil && r.RuleItem.operation != nil {
+		elements := strings.Split(r.RuleItem.left.(string), ".")
 		condition := Condition{
 			Expression: r.RuleItem.operator,
 			DataType:   dtype(findDT(r.RuleItem.right)),
 			Term:       r.RuleItem.right,
+			EntityID:   elements[0],
+			Key:        elements[1],
 		}
-		key := r.RuleItem.left.(string)
-		r.filter.Conditions[key] = condition
+		r.filter.Conditions[condition.Key] = condition
 	} else {
 		//Its in the middle. Don't execute
 		return nil

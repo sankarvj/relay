@@ -7,11 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/integration/email"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
-func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n node.Node) error {
-	mailFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node) error {
+	mailFields, err := valueAdd(ctx, db, sdb, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}
@@ -33,8 +34,8 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n 
 
 	variables := n.VariablesMap()
 
-	subject = eng.RunExpRenderer(ctx, db, n.AccountID, subject, variables)
-	body = eng.RunExpRenderer(ctx, db, n.AccountID, body, variables)
+	subject = eng.RunExpRenderer(ctx, db, sdb, n.AccountID, subject, variables)
+	body = eng.RunExpRenderer(ctx, db, sdb, n.AccountID, body, variables)
 
 	log.Printf("mailFields --> %+v", mailFields)
 
@@ -49,6 +50,6 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, n 
 		}
 	}
 
-	_, err = email.SendMail(ctx, n.AccountID, n.ActorID, n.ActualsItemID(), mailFields, "", db)
+	_, err = email.SendMail(ctx, n.AccountID, n.ActorID, n.ActualsItemID(), mailFields, "", db, sdb)
 	return err
 }

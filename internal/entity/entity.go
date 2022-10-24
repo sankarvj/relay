@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
 )
@@ -199,15 +201,24 @@ func UpdateMarkers(ctx context.Context, db *sqlx.DB, aID, eID string, isPublic, 
 }
 
 // Retrieve gets the specified entity from the database.
-func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB) (Entity, error) {
+func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (Entity, error) {
+
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Retrieve")
 	defer span.End()
 
+	var e Entity
 	if _, err := uuid.Parse(entityID); err != nil {
 		return Entity{}, err
 	}
 
-	var e Entity
+	encodedEntity, err := sdb.RetriveEntity(entityID)
+	if err == nil {
+		err = json.Unmarshal([]byte(encodedEntity), &e)
+		if err == nil {
+			return e, err
+		}
+	}
+
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND entity_id = $2`
 	if err := db.GetContext(ctx, &e, q, accountID, entityID); err != nil {
 		if err == sql.ErrNoRows {
@@ -274,4 +285,13 @@ func FetchIDs(entities []Entity) []string {
 
 func removeIndex(s []interface{}, index int) []interface{} {
 	return append(s[:index], s[index+1:]...)
+}
+
+func (entity *Entity) Encode() []byte {
+	json, err := json.Marshal(entity)
+	if err != nil {
+		log.Println("***> unexpected/unhandled error in internal.platform.conversation. when marshaling message. error:", err)
+	}
+
+	return json
 }

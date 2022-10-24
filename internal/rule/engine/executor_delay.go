@@ -12,7 +12,7 @@ import (
 )
 
 func (eng *Engine) executeDelay(ctx context.Context, n node.Node, rulesetResponse map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) error {
-	entityFields, err := valueAdd(ctx, db, n.AccountID, n.ActorID, n.ActualsItemID())
+	entityFields, err := valueAdd(ctx, db, sdb, n.AccountID, n.ActorID, n.ActualsItemID())
 	if err != nil {
 		return err
 	}

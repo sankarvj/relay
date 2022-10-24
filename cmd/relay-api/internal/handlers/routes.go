@@ -112,6 +112,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 
 	e := Entity{
 		db:            db,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register entities management endpoints.
@@ -172,6 +173,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 
 	f := Flow{
 		db:            db,
+		sdb:           sdb,
 		authenticator: authenticator,
 	}
 	// Register items management endpoints.

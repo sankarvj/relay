@@ -35,7 +35,7 @@ func (e *Entity) ShareTeam(ctx context.Context, w http.ResponseWriter, r *http.R
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, e.db)
-	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db)
+	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db, e.sdb)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (e *Entity) RemoveTeam(ctx context.Context, w http.ResponseWriter, r *http.
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, e.db)
-	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db)
+	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db, e.sdb)
 	if err != nil {
 		return err
 	}

@@ -235,8 +235,8 @@ func createViewModelConversation(cnu conv.ConversationUsr, accName string) conv.
 	return vmc
 }
 
-func addNotification(ctx context.Context, accountID, entityID, itemID, userID, message string, firebaseSDKPath string, db *sqlx.DB) error {
-	baseEntity, err := entity.Retrieve(ctx, accountID, entityID, db)
+func addNotification(ctx context.Context, accountID, entityID, itemID, userID, message string, firebaseSDKPath string, db *sqlx.DB, sdb *database.SecDB) error {
+	baseEntity, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
 	if err != nil {
 		log.Println("***>***> addNotification: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
@@ -260,14 +260,14 @@ func addNotification(ctx context.Context, accountID, entityID, itemID, userID, m
 	titleField := entity.TitleField(baseEntity.FieldsIgnoreError())
 	appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 	//adding base item follower and assignees
-	appNotif.AddFollower(ctx, accountID, it.UserID, db)
+	appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)
 	baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
 	for _, f := range baseValueAddedFields {
 		if f.Value == nil {
 			continue
 		}
 		if f.Who == entity.WhoAssignee {
-			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db)
+			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
 		}
 	}
 

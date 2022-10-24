@@ -8,6 +8,7 @@ import (
 
 const (
 	SocketNameSpace = "SocketAuth"
+	EntityNameSpace = "Entity"
 )
 
 type SecDB struct {
@@ -71,4 +72,23 @@ func (sdb *SecDB) GetUserToken(key string) (string, error) {
 	defer conn.Close()
 	return redis.String(conn.Do("GET", key))
 
+}
+
+func (sdb *SecDB) SetEntity(key string, encodedEntity []byte) error {
+	conn := sdb.redisCachePool.Get()
+	defer conn.Close()
+
+	err := conn.Send("SET", fmt.Sprintf("%s:%s", EntityNameSpace, key), encodedEntity)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("EXPIRE", fmt.Sprintf("%s:%s", EntityNameSpace, key), 25)
+	return err
+}
+
+func (sdb *SecDB) RetriveEntity(key string) (string, error) {
+	conn := sdb.redisCachePool.Get()
+	defer conn.Close()
+	return redis.String(conn.Do("GET", fmt.Sprintf("%s:%s", EntityNameSpace, key)))
 }

@@ -111,7 +111,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 
 	}
 
-	valueAddedConfigFields, updaterFunc, err := entity.RetrieveFixedItem(ctx, sub.AccountID, sub.EntityID, sub.ItemID, g.db)
+	valueAddedConfigFields, updaterFunc, err := entity.RetrieveFixedItem(ctx, sub.AccountID, sub.EntityID, sub.ItemID, g.db, g.sdb)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, sdb *d
 
 	fmt.Printf("UniqueDomainID: %s \n MessageID: %s \n From: %s \n InReplyTo: %s \n References: %s \n ReplyTo: %s \n", uniqueDomainID, messageID, from, replyTo, references, email.ReplyTo)
 	var emailConfigEntityItem entity.EmailConfigEntity
-	eConfigItemID, err := entity.DiscoverAnyEntityItem(ctx, "", "", uniqueDomainID, &emailConfigEntityItem, db)
+	eConfigItemID, err := entity.DiscoverAnyEntityItem(ctx, "", "", uniqueDomainID, &emailConfigEntityItem, db, sdb)
 	if err != nil {
 		return err
 	}

@@ -32,7 +32,7 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, sdb *database.S
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker:
-			if result, err := worker(ctx, db, n.AccountID, work.Expression, n.VariablesMap()); err != nil {
+			if result, err := worker(ctx, db, sdb, n.AccountID, work.Expression, n.VariablesMap()); err != nil {
 				return nil, err
 			} else {
 				work.InboundRespCh <- result
@@ -54,7 +54,7 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, sdb *database.S
 }
 
 //RunExpRenderer run the expression and returns evaluated string
-func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) string {
+func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) string {
 	var lexedContent string
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, ruler.Parse, signalsChan)
@@ -62,7 +62,7 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker: //input:executes this when it finds the {{}}
-			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
+			if result, err := worker(ctx, db, sdb, accountID, work.Expression, variables); err != nil {
 				return err.Error()
 			} else {
 				work.InboundRespCh <- result
@@ -81,7 +81,7 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp
 
 //RunFieldExpRenderer is same as RunExpRenderer but it evaluate the single value and return
 //Added this new func to handle to evalution of expressions for the reference field which returns array of string. Instead of string
-func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, accountID, exp string, variables map[string]interface{}) interface{} {
+func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) interface{} {
 	var lexedContent interface{}
 	signalsChan := make(chan ruler.Work)
 	go ruler.Run(exp, ruler.Compute, signalsChan)
@@ -89,7 +89,7 @@ func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, accountID
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker: //input:executes this when it finds the {{}}
-			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
+			if result, err := worker(ctx, db, sdb, accountID, work.Expression, variables); err != nil {
 				return err.Error()
 			} else {
 				work.InboundRespCh <- result
@@ -138,7 +138,7 @@ func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, sdb *database
 	for work := range signalsChan {
 		switch work.Type {
 		case ruler.Worker: //input:executes this when it finds the {{}}
-			if result, err := worker(ctx, db, accountID, work.Expression, variables); err != nil {
+			if result, err := worker(ctx, db, sdb, accountID, work.Expression, variables); err != nil {
 				log.Println("***> unexpected error occurred when evaluting the expression. error: ", err)
 				return false
 			} else {
