@@ -22,7 +22,7 @@ func (e *Entity) Mark(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "")
 	}
 
-	err := entity.UpdateMarkers(ctx, e.db, accountID, entityID, ve.IsPublic, ve.IsCore, ve.IsShared, time.Now())
+	err := entity.UpdateMarkers(ctx, e.db, e.sdb, accountID, entityID, ve.IsPublic, ve.IsCore, ve.IsShared, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Mark Entity: %+v", &ve)
 	}
@@ -46,7 +46,7 @@ func (e *Entity) ShareTeam(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	enty.SharedTeamIds = ve.SharedTeamIds
 
-	err = entity.UpdateSharedTeam(ctx, e.db, accountID, entityID, enty.SharedTeamIds, time.Now())
+	err = entity.UpdateSharedTeam(ctx, e.db, e.sdb, accountID, entityID, enty.SharedTeamIds, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "unexpected error when sharing an entity with team: %s", params["shared_team_id"])
 	}
@@ -71,7 +71,7 @@ func (e *Entity) RemoveTeam(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	enty.SharedTeamIds = updatedTeamIds
 
-	err = entity.UpdateSharedTeam(ctx, e.db, accountID, enty.ID, enty.SharedTeamIds, time.Now())
+	err = entity.UpdateSharedTeam(ctx, e.db, e.sdb, accountID, enty.ID, enty.SharedTeamIds, time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "unexpected error when removing an entity from shared team: %s", params["shared_team_id"])
 	}

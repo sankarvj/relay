@@ -14,6 +14,8 @@ import (
 func TestDataEntity(t *testing.T) {
 	db, teardown := tests.NewUnit(t)
 	defer teardown()
+	sdb, teardown1 := tests.NewSecDbUnit(t)
+	defer teardown1()
 	tests.SeedData(t, db)
 
 	t.Log(" Given the need to create and update an data entity.")
@@ -70,7 +72,7 @@ func TestDataEntity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("\tShould be able to marshal the fields - %s", err)
 			}
-			err = entity.Update(tests.Context(), db, schema.SeedAccountID, "00000000-0000-0000-0001-000000000000", string(input), time.Now())
+			err = entity.Update(tests.Context(), db, sdb, schema.SeedAccountID, "00000000-0000-0000-0001-000000000000", string(input), time.Now())
 			if err != nil {
 				t.Fatalf("\tShould be able to update an entity - %s", err)
 			}

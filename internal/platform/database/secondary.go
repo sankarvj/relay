@@ -92,3 +92,9 @@ func (sdb *SecDB) RetriveEntity(key string) (string, error) {
 	defer conn.Close()
 	return redis.String(conn.Do("GET", fmt.Sprintf("%s:%s", EntityNameSpace, key)))
 }
+
+func (sdb *SecDB) ResetEntity(key string) (string, error) {
+	conn := sdb.redisCachePool.Get()
+	defer conn.Close()
+	return redis.String(conn.Do("DELETE", fmt.Sprintf("%s:%s", EntityNameSpace, key)))
+}

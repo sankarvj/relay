@@ -158,7 +158,7 @@ func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "encode fields to input")
 	}
 
-	err = entity.Update(ctx, e.db, accountID, entityID, string(input), time.Now())
+	err = entity.Update(ctx, e.db, e.sdb, accountID, entityID, string(input), time.Now())
 	if err != nil {
 		return errors.Wrapf(err, "Entity: %+v", &ve)
 	}

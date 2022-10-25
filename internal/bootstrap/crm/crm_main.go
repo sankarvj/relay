@@ -29,7 +29,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) error {
 	} else if err == nil {
 		// update entity - companies with crm team-id
 		companyEntity.SharedTeamIds = append(companyEntity.SharedTeamIds, b.TeamID)
-		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, companyEntity.ID, companyEntity.SharedTeamIds, time.Now())
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.SecDB, b.AccountID, companyEntity.ID, companyEntity.SharedTeamIds, time.Now())
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) error {
 	} else if err == nil {
 		// update entity - contacts with crm team-id
 		contactEntity.SharedTeamIds = append(contactEntity.SharedTeamIds, b.TeamID)
-		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, contactEntity.ID, contactEntity.SharedTeamIds, time.Now())
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.SecDB, b.AccountID, contactEntity.ID, contactEntity.SharedTeamIds, time.Now())
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ func CreateContactCompanyTaskEntity(ctx context.Context, b *base.Base) error {
 	} else if err == nil {
 		// update entity - tasks with crm team-id
 		taskEntity.SharedTeamIds = append(taskEntity.SharedTeamIds, b.TeamID)
-		err = entity.UpdateSharedTeam(ctx, b.DB, b.AccountID, taskEntity.ID, taskEntity.SharedTeamIds, time.Now())
+		err = entity.UpdateSharedTeam(ctx, b.DB, b.SecDB, b.AccountID, taskEntity.ID, taskEntity.SharedTeamIds, time.Now())
 		if err != nil {
 			return err
 		}

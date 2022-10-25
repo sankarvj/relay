@@ -188,7 +188,7 @@ func (b *Base) EntityFieldsUpdate(ctx context.Context, entityID string, fields [
 	}
 
 	fmt.Printf("\t\tEntity '%s' Updated With Fields\n", entityID)
-	return entity.Update(ctx, b.DB, b.AccountID, entityID, string(input), time.Now())
+	return entity.Update(ctx, b.DB, b.SecDB, b.AccountID, entityID, string(input), time.Now())
 }
 
 func (b *Base) EntityAdd(ctx context.Context, entityID, name, displayName string, category, state int, public, core, shared bool, fields []entity.Field) (entity.Entity, error) {

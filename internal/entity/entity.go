@@ -144,7 +144,7 @@ func Create(ctx context.Context, db *sqlx.DB, n NewEntity, now time.Time) (Entit
 }
 
 // Update replaces a item document in the database.
-func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fieldsB string, now time.Time) error {
+func Update(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID string, fieldsB string, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.Update")
 	defer span.End()
 
@@ -163,12 +163,13 @@ func Update(ctx context.Context, db *sqlx.DB, accountID, entityID string, fields
 	if err != nil {
 		return err
 	}
+	sdb.ResetEntity(entityID)
 
 	//TODO: do it in the same transaction.
 	return relationship.ReBonding(ctx, db, accountID, entityID, refFields(updatedFields))
 }
 
-func UpdateSharedTeam(ctx context.Context, db *sqlx.DB, aID, eID string, teamIds pq.StringArray, now time.Time) error {
+func UpdateSharedTeam(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, aID, eID string, teamIds pq.StringArray, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateSharedTeam")
 	defer span.End()
 
@@ -179,11 +180,12 @@ func UpdateSharedTeam(ctx context.Context, db *sqlx.DB, aID, eID string, teamIds
 	_, err := db.ExecContext(ctx, q, aID, eID,
 		teamIds, now.Unix(),
 	)
+	sdb.ResetEntity(eID)
 
 	return err
 }
 
-func UpdateMarkers(ctx context.Context, db *sqlx.DB, aID, eID string, isPublic, isCore, isShared bool, now time.Time) error {
+func UpdateMarkers(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, aID, eID string, isPublic, isCore, isShared bool, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateMarkers")
 	defer span.End()
 
@@ -196,6 +198,8 @@ func UpdateMarkers(ctx context.Context, db *sqlx.DB, aID, eID string, isPublic, 
 	_, err := db.ExecContext(ctx, q, aID, eID,
 		isPublic, isCore, isShared, now.Unix(),
 	)
+
+	sdb.ResetEntity(eID)
 
 	return err
 }
@@ -227,6 +231,8 @@ func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb 
 
 		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityID)
 	}
+
+	sdb.SetEntity(e.ID, e.Encode())
 
 	return e, nil
 }
