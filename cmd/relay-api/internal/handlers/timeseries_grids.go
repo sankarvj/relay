@@ -17,7 +17,11 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 )
 
-func list(ctx context.Context, ch chart.Chart, exp, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
+func list(ctx context.Context, ch chart.Chart, exp string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
+	return listwb(ctx, ch, exp, NoEntityID, NoEntityID, stTime, endTime, db, sdb)
+}
+
+func listwb(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
 	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db, sdb)
 	if err != nil {
 		return nil, err
@@ -39,8 +43,8 @@ func list(ctx context.Context, ch chart.Chart, exp, baseItemID string, stTime, e
 	}
 
 	//must add base condition if base exists - very important.
-	if ch.BaseEntityID != entity.NoEntityID && util.NotEmpty(baseItemID) {
-		conditionFields = append(conditionFields, sourcebleItem(ch.BaseEntityID, baseItemID))
+	if util.NotEmpty(baseEntityID) && util.NotEmpty(baseItemID) {
+		conditionFields = append(conditionFields, sourcebleItem(baseEntityID, baseItemID))
 	}
 
 	var filterByField entity.Field
@@ -132,8 +136,8 @@ func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *data
 	return vmseriesFromMap(counts(result), filterByField), nil
 }
 
-func grids(ctx context.Context, charts []chart.Chart, exp string, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (map[string]Grid, error) {
-	gridResMap := make(map[string]Grid, 0)
+func grids(ctx context.Context, charts []chart.Chart, exp string, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (map[string]EagerLoader, error) {
+	gridResMap := make(map[string]EagerLoader, 0)
 	var err error
 	for _, ch := range charts {
 		if ch.Type == string(chart.TypeGrid) {
@@ -150,9 +154,10 @@ func grids(ctx context.Context, charts []chart.Chart, exp string, loc *time.Loca
 					return nil, err
 				}
 			}
-			gridResMap[ch.ID] = Grid{
+			gridResMap[ch.ID] = EagerLoader{
 				Count:  newcount,
 				Change: change(newcount, oldcount),
+				Series: []Series{},
 			}
 		}
 	}
@@ -176,7 +181,7 @@ func gridTimeseries(ctx context.Context, accountID, entityID, duration string, l
 
 func gridDefault(ctx context.Context, accountID, entityID, duration string, ch chart.Chart, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (int, int, error) {
 	stTime, endTime, lastStart := timeseries.DurationWithZone(duration, loc)
-	series, err := list(ctx, ch, ch.GetExp(), "", stTime, endTime, db, sdb)
+	series, err := list(ctx, ch, ch.GetExp(), stTime, endTime, db, sdb)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -190,7 +195,7 @@ func gridDefault(ctx context.Context, accountID, entityID, duration string, ch c
 			return series[0].Count, 0, nil
 		}
 	case string(chart.CalcRate):
-		oldseries, err := list(ctx, ch, ch.GetExp(), "", lastStart, stTime, db, sdb)
+		oldseries, err := list(ctx, ch, ch.GetExp(), lastStart, stTime, db, sdb)
 		if err != nil {
 			return 0, 0, err
 		}

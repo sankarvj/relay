@@ -49,13 +49,14 @@ type ViewModelVisitor struct {
 	Body       string    `json:"body"`
 }
 
-func createViewModelUser(u user.User) user.ViewModelUser {
+func createViewModelUser(u user.User, accountID string) user.ViewModelUser {
 	return user.ViewModelUser{
-		Name:   *u.Name,
-		Avatar: *u.Avatar,
-		Email:  u.Email,
-		Phone:  *u.Phone,
-		Roles:  u.Roles,
+		Name:     *u.Name,
+		Avatar:   *u.Avatar,
+		Email:    u.Email,
+		MemberID: u.MemberID(accountID),
+		Phone:    *u.Phone,
+		Roles:    u.Roles,
 	}
 }
 
@@ -77,16 +78,18 @@ type UserToken struct {
 	Item     string   `json:"item"`
 }
 
-func createViewModelCharts(charts []chart.Chart, gridResMap map[string]Grid) []VMChart {
+func createViewModelCharts(charts []chart.Chart, eagerLoader map[string]EagerLoader) []VMChart {
 	vmCharts := make([]VMChart, 0)
 	for _, ch := range charts {
 		count := 0
 		change := 0
-		if grid, ok := gridResMap[ch.ID]; ok {
-			count = grid.Count
-			change = grid.Change
+		series := []Series{}
+		if el, ok := eagerLoader[ch.ID]; ok {
+			count = el.Count
+			change = el.Change
+			series = el.Series
 		}
-		vmCharts = append(vmCharts, createViewModelChart(ch, []Series{}, count, change))
+		vmCharts = append(vmCharts, createViewModelChart(ch, series, count, change))
 	}
 	return vmCharts
 }
@@ -99,7 +102,7 @@ func createViewModelChart(c chart.Chart, series []Series, count, change int) VMC
 	return VMChart{
 		ID:       c.ID,
 		EntityID: c.EntityID,
-		Title:    c.Name,
+		Title:    c.DisplayName,
 		Type:     c.Type,
 		Field:    c.GetField(),
 		DataType: c.GetDType(),
@@ -107,6 +110,7 @@ func createViewModelChart(c chart.Chart, series []Series, count, change int) VMC
 		Series:   series,
 		Count:    count,
 		Change:   change,
+		Icon:     c.GetCalc(),
 	}
 }
 
@@ -140,6 +144,7 @@ type VMChart struct {
 	Series   []Series `json:"series"`
 	Count    int      `json:"count"`
 	Change   int      `json:"change"`
+	Icon     string   `json:"icon"`
 }
 
 type Series struct {
@@ -152,10 +157,11 @@ type Series struct {
 	Label       string    `json:"label"`
 }
 
-type Grid struct {
-	Count   int `json:"count"`
-	Change  int `json:"change"`
-	Insight int `json:"insight"`
+type EagerLoader struct {
+	Count   int      `json:"count"`
+	Change  int      `json:"change"`
+	Insight int      `json:"insight"`
+	Series  []Series `json:"series"`
 }
 
 type GridsResponse struct {

@@ -78,7 +78,7 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		teamID,
 		teams,
 		viewModelEntities,
-		createViewModelUser(*cu),
+		createViewModelUser(*cu, acc.ID),
 		createViewModelUS(cus),
 	}
 

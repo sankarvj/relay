@@ -412,13 +412,32 @@ var migrations = []darwin.Migration{
 		ON timeseries(tags);
 
 
+		CREATE TABLE dashboards (
+			dashboard_id    	    UUID,
+			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id                 UUID REFERENCES teams ON DELETE CASCADE,
+		    entity_id      	        UUID,
+			user_id                 UUID,
+			name                    TEXT,
+			type    		        TEXT,
+			metab          		    JSONB,
+			created_at    	        TIMESTAMP,
+			PRIMARY KEY (dashboard_id)
+		);
+		CREATE INDEX idx_dashboards_account_id
+		ON dashboards(account_id);
+		CREATE INDEX idx_dashboards_entity_id
+		ON dashboards(entity_id);
+
+
 		CREATE TABLE charts (
 			chart_id    			UUID,
 			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
+			team_id                 UUID REFERENCES teams ON DELETE CASCADE,
 			entity_id      		    UUID REFERENCES entities ON DELETE CASCADE,
-			base_entity_id      	UUID,
-			user_id                 UUID,
+			dashboard_id      	    UUID REFERENCES dashboards ON DELETE CASCADE,
 			name                    TEXT,
+			display_name            TEXT,
 			type    		        TEXT,
 			duration    		    TEXT,
 			state    		        INTEGER DEFAULT 0,
@@ -429,6 +448,8 @@ var migrations = []darwin.Migration{
 		);
 		CREATE INDEX idx_charts_account_id
 		ON charts(account_id);
+		CREATE INDEX idx_charts_dashboard_id
+		ON charts(dashboard_id);
 		`,
 	},
 }

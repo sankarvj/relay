@@ -194,7 +194,7 @@ func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult,
 		return result, err
 	}
 	//DEBUG LOG
-	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
 	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
@@ -216,7 +216,7 @@ func GetFromParentCount(rPool *redis.Pool, gn GraphNode) (*rg.QueryResult, error
 		return result, err
 	}
 	//DEBUG LOG
-	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - parent count query: %s\n", q)
 	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
@@ -238,6 +238,7 @@ func GetSum(rPool *redis.Pool, gn GraphNode, sumKey string) (*rg.QueryResult, er
 		return result, err
 	}
 	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - sum query: %s\n", q)
 	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
 
 	result.PrettyPrint()
@@ -260,7 +261,7 @@ func GetGroupedCount(rPool *redis.Pool, gn GraphNode, groupById string) (*rg.Que
 		return result, err
 	}
 	//DEBUG LOG
-	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s\n", q)
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - grouped count query: %s\n", q)
 	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
 	result.PrettyPrint()
 	return result, err
@@ -671,7 +672,7 @@ func deleteEncode(e *rg.Edge, relationAlias string) string {
 
 var operatorMap = map[string]string{
 	lexertoken.EqualSign:    "=",
-	lexertoken.NotEqualSign: "!=",
+	lexertoken.NotEqualSign: "<>",
 	lexertoken.GTSign:       ">",
 	lexertoken.LTSign:       "<",
 	lexertoken.LikeSign:     "STARTS WITH",

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/connection"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -59,6 +60,7 @@ type CoreEntity struct {
 	TaskEntity           entity.Entity
 	DealEntity           entity.Entity
 	ProjectEntity        entity.Entity
+	NotificationEntity   entity.Entity
 	DAUEntity            entity.Entity
 }
 
@@ -148,26 +150,22 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 		return err
 	}
 
-	// retrive Status entity
-	b.StatusEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
-	if err != nil {
-		return err
-	}
-
-	// retrive Approval Status entity
-	b.ApprovalStatusEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityApprovalStatus)
-	if err != nil {
-		return err
-	}
-
 	// retrive Invite entity
 	b.InviteEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityVisitorInvite)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("Loaded existing entities. Adding new entities...")
+
 	// add entity - emails
 	b.EmailsEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmails, "Emails", entity.CategoryEmail, entity.StateTeamLevel, false, false, false, forms.EmailFields(b.EmailConfigEntity.ID, b.EmailConfigEntity.Key("email")))
+	if err != nil {
+		return err
+	}
+
+	// retrive Notification Entity
+	b.NotificationEntity, err = entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityNotification)
 	if err != nil {
 		return err
 	}
@@ -176,6 +174,18 @@ func (b *Base) LoadFixedEntities(ctx context.Context) error {
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStream, "Streams", entity.CategoryStream, entity.StateTeamLevel, false, false, false, forms.StreamFields(b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
+	}
+
+	// add entity - status
+	err = bootstrapStatusEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "status bootstrap failed")
+	}
+
+	// add entity - approval status
+	err = bootstrapApprovalStatusEntity(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "approval status bootstrap failed")
 	}
 
 	return nil

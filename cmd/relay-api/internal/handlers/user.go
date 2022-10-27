@@ -77,7 +77,7 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	return web.Respond(ctx, w, createViewModelUser(*usr), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelUser(*usr, ""), http.StatusOK)
 }
 
 // Create inserts a new user into the system.

@@ -9,13 +9,18 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/chart"
+	"gitlab.com/vjsideprojects/relay/internal/dashboard"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
 func Boot(ctx context.Context, b *base.Base) error {
-	b.LoadFixedEntities(ctx)
+	err := b.LoadFixedEntities(ctx)
+	if err != nil {
+		fmt.Println("\tCSP:BOOT LoadFixedEntities failed")
+		return err
+	}
 
-	err := crm.CreateContactCompanyTaskEntity(ctx, b)
+	err = crm.CreateContactCompanyTaskEntity(ctx, b)
 	if err != nil {
 		return err
 	}
@@ -171,7 +176,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tCRM:SAMPLES Subscriptions Item Created")
 
-	err = addCharts(ctx, b, activityEntity, planEntity)
+	err = addDashboards(ctx, b, activityEntity, planEntity, approvalsEntity)
 	if err != nil {
 		return err
 	}
@@ -263,7 +268,7 @@ func addContacts(ctx context.Context, b *base.Base, contactEntity, taskEntity en
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Tasks Items Created For Matt & Natasha")
+	fmt.Println("\tCSP:SAMPLES Tasks Items Created For Matt & Natasha")
 
 	return nil
 }
@@ -351,77 +356,145 @@ func addSubscriptions(ctx context.Context, b *base.Base, subscriptionEntity, con
 	return nil
 }
 
-func addCharts(ctx context.Context, b *base.Base, activityEntity, planEntity entity.Entity) error {
+func addDashboards(ctx context.Context, b *base.Base, activityEntity, planEntity, approvalsEntity entity.Entity) error {
 
-	err := chart.BuildNewChart(b.AccountID, b.UserID, b.DAUEntity.ID, "Daily active users", "", chart.TypeLine).SetAsTimeseries().Add(ctx, b.DB)
+	homeDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, entity.NoEntityID, "Overview").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "Contacts by stage", "lifecycle_stage", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
+	err = addHomeCharts(ctx, b, homeDashID, activityEntity, planEntity)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.CompanyEntity.ID, "Accounts by health bar", "health", chart.TypeBar).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
+	fmt.Println("\tCSP:Dashboard Overview Created")
+	projDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, b.ProjectEntity.ID, "Project Overview").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = addProjectCharts(ctx, b, projDashID, activityEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:Dashboard Project Overview Created")
+	myDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, b.NotificationEntity.ID, "My Dashboard").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = addMyCharts(ctx, b, myDashID, approvalsEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:Dashboard My Dashboard Created")
+
+	return nil
+}
+
+func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, activityEntity, planEntity entity.Entity) error {
+	//charts for home dashboard
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "daily_active_users", "Daily active users", "", chart.TypeLine).SetAsTimeseries().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ContactEntity.ID, "contacts_stage", "Contacts stage", "lifecycle_stage", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.CompanyEntity.ID, "accounts_health", "Accounts health", "health", chart.TypeBar).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.DAUEntity.ID, "DAU", "", chart.TypeGrid).SetAsTimeseries().SetDurationLast24hrs().SetCalcSum().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "dau", "DAU", "", chart.TypeGrid).SetAsTimeseries().SetDurationLast24hrs().SetCalcSum().SetIcon("hand-doing-okay-gesture.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "Chrun rate", "lifecycle_stage", chart.TypeGrid).AddDateField("lost_customer_on").SetDurationLast24hrs().SetCalcRate().SetGrpLogicID().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ContactEntity.ID, "chrun_rate", "Chrun rate", "lifecycle_stage", chart.TypeGrid).AddDateField("lost_customer_on").SetDurationLast24hrs().SetCalcRate().SetGrpLogicID().SetIcon("face-with-_x_-eyes-.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ContactEntity.ID, "New Customer", "", chart.TypeGrid).AddDateField("became_a_customer_date").SetDurationLast24hrs().SetCalcSum().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ContactEntity.ID, "new_customer", "New Customer", "", chart.TypeGrid).AddDateField("became_a_customer_date").SetDurationLast24hrs().SetCalcSum().SetIcon("spotted-sweater-girl-with-wand-torso.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 	exp1 := fmt.Sprintf("{{%s.%s}} bf {%s}", b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now")
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Delayed Accounts", "end_time", chart.TypeGrid).AddExp(exp1).AddSource(b.CompanyEntity.ID).SetDurationLast24hrs().SetCalcSum().SetGrpLogicParent().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "delayed", "Delayed", "end_time", chart.TypeGrid).AddExp(exp1).AddSource(b.CompanyEntity.ID).SetDurationLast24hrs().SetCalcSum().SetGrpLogicParent().SetIcon("round-wall-clock.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	err = chart.BuildNewChart(b.AccountID, b.UserID, activityEntity.ID, "Activities", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Activities", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, planEntity.ID, "Cancellations", "reason", chart.TypeRod).SetDurationAllTime().SetGrpLogicID().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, planEntity.ID, "cancellations", "Cancellations", "reason", chart.TypeRod).SetDurationAllTime().SetGrpLogicID().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	//Charts for project
+func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, activityEntity entity.Entity) error {
+
+	//charts for projects
 	overdueEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now")
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue", "Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 	openEXP := fmt.Sprintf("{{%s.%s}} in {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID)
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Open", "", chart.TypeGrid).AddExp(openEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "open", "Open", "", chart.TypeGrid).AddExp(openEXP).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Stage", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "stage", "Stage", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.ProjectEntity.ID, "Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetBaseEntityID(b.ProjectEntity.ID).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "status", "Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	err = chart.BuildNewChart(b.AccountID, b.UserID, activityEntity.ID, "Goals", "activity_name", chart.TypeRod).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Tasks", "status", chart.TypePie).SetBaseEntityID(b.ProjectEntity.ID).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "tasks", "Tasks", "status", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.UserID, b.TaskEntity.ID, "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetBaseEntityID(b.ProjectEntity.ID).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue_tasks", "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addMyCharts(ctx context.Context, b *base.Base, dashboardID string, approvalsEntity entity.Entity) error {
+	//charts for notifications me
+	paOnMeExp := fmt.Sprintf("{{%s.%s}} in {%s,%s} && {{%s.%s}} in {{me}}", approvalsEntity.ID, approvalsEntity.Key("status"), b.ApprovalStatusWaiting.ID, b.ApprovalStatusChangeRequested.ID, approvalsEntity.ID, approvalsEntity.Key("assignees"))
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, approvalsEntity.ID, "my_pending_approvals", "My Pending Approvals", "", chart.TypeCard).AddExp(paOnMeExp).SetDurationAllTime().SetGrpLogicID().SetIcon("vertical-traffic-lights.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	overdueOnMeEXP := fmt.Sprintf("{{%s.%s}} !eq {%s} && {{%s.%s}} bf {%s} && {{%s.%s}} in {{me}}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now", b.TaskEntity.ID, b.TaskEntity.Key("assignees"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_overdue_tasks", "My Overdue Tasks", "", chart.TypeCard).AddExp(overdueOnMeEXP).SetDurationAllTime().SetIcon("round-wall-clock-yellow.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	openOnMeEXP := fmt.Sprintf("{{%s.%s}} in {%s} && {{%s.%s}} in {{me}}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID, b.TaskEntity.ID, b.TaskEntity.Key("assignees"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_open_tasks", "My Open Tasks", "", chart.TypeCard).AddExp(openOnMeEXP).SetDurationAllTime().SetIcon("round-wall-clock.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	overdueProjOnMeEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s} && {{%s.%s}} in {{me}}", b.ProjectEntity.ID, b.ProjectEntity.Key("status"), b.StatusItemClosed.ID, b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now", b.ProjectEntity.ID, b.ProjectEntity.Key("owner"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_overdue_projects", "My Overdue Projects", "", chart.TypeCard).AddExp(overdueProjOnMeEXP).SetDurationAllTime().SetIcon("timetable-icon.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	openProjOnMeEXP := fmt.Sprintf("{{%s.%s}} in {%s} && {{%s.%s}} in {{me}}", b.ProjectEntity.ID, b.ProjectEntity.Key("status"), b.StatusItemOpened.ID, b.ProjectEntity.ID, b.ProjectEntity.Key("owner"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_open_projects", "My Open Projects", "", chart.TypeCard).AddExp(openProjOnMeEXP).SetDurationAllTime().SetIcon("aim-board-with-stand.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"go.opencensus.io/trace"
 )
 
@@ -19,32 +18,27 @@ var (
 	ErrChartNotFound = errors.New("Chart not found")
 )
 
-func List(ctx context.Context, accountID, baseEntityID, entityID string, db *sqlx.DB) ([]Chart, error) {
+func ListByDashID(ctx context.Context, accountID, teamID, dashboardID string, db *sqlx.DB) ([]Chart, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.List")
 	defer span.End()
 
-	if baseEntityID == "" || baseEntityID == "undefined" {
-		baseEntityID = entity.NoEntityID
+	charts := []Chart{}
+	const q = `SELECT * FROM charts where account_id = $1 AND team_id = $2 AND dashboard_id = $3 LIMIT 50`
+	if err := db.SelectContext(ctx, &charts, q, accountID, teamID, dashboardID); err != nil {
+		return charts, errors.Wrap(err, "selecting charts for an account by dashboardID")
 	}
 
-	if entityID == "" || entityID == "undefined" {
-		entityID = entity.NoEntityID
-	}
+	return charts, nil
+}
 
-	log.Println("baseEntityID ", baseEntityID)
-	log.Println("entityID ", entityID)
+func ListByEntityID(ctx context.Context, accountID, teamID, entityID string, db *sqlx.DB) ([]Chart, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.chart.List")
+	defer span.End()
 
 	charts := []Chart{}
-	if entityID == entity.NoEntityID {
-		const q = `SELECT * FROM charts where account_id = $1 AND base_entity_id = $2 LIMIT 50`
-		if err := db.SelectContext(ctx, &charts, q, accountID, baseEntityID); err != nil {
-			return charts, errors.Wrap(err, "selecting charts for an account")
-		}
-	} else {
-		const q = `SELECT * FROM charts where account_id = $1 AND entity_id = $2 AND base_entity_id = $3 LIMIT 50`
-		if err := db.SelectContext(ctx, &charts, q, accountID, entityID, baseEntityID); err != nil {
-			return charts, errors.Wrap(err, "selecting charts for an account with group")
-		}
+	const q = `SELECT * FROM charts where account_id = $1 AND team_id = $2 AND entity_id = $3 LIMIT 50`
+	if err := db.SelectContext(ctx, &charts, q, accountID, teamID, entityID); err != nil {
+		return charts, errors.Wrap(err, "selecting charts for an account by entityID")
 	}
 
 	return charts, nil
@@ -60,26 +54,27 @@ func Create(ctx context.Context, db *sqlx.DB, nc NewChart, now time.Time) error 
 	}
 
 	t := Chart{
-		ID:           uuid.New().String(),
-		AccountID:    nc.AccountID,
-		EntityID:     nc.EntityID,
-		BaseEntityID: nc.BaseEntityID,
-		UserID:       nc.UserID,
-		Name:         nc.Name,
-		Type:         nc.Type,
-		Duration:     nc.Duration,
-		State:        nc.State,
-		Position:     nc.Position,
-		Metab:        string(metaBytes),
-		CreatedAt:    now.UTC(),
+		ID:          uuid.New().String(),
+		AccountID:   nc.AccountID,
+		TeamID:      nc.TeamID,
+		DashboardID: nc.DashboardID,
+		EntityID:    nc.EntityID,
+		Name:        nc.Name,
+		DisplayName: nc.DisplayName,
+		Type:        nc.Type,
+		Duration:    nc.Duration,
+		State:       nc.State,
+		Position:    nc.Position,
+		Metab:       string(metaBytes),
+		CreatedAt:   now.UTC(),
 	}
 
 	const q = `INSERT INTO charts
-		(chart_id, account_id, entity_id, base_entity_id, user_id, name, type, duration, state, position, metab, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		(chart_id, account_id, team_id, dashboard_id, entity_id, name, display_name, type, duration, state, position, metab, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 	_, err = db.ExecContext(
 		ctx, q,
-		t.ID, t.AccountID, t.EntityID, t.BaseEntityID, t.UserID, t.Name, t.Type, t.Duration, t.State, t.Position, t.Metab,
+		t.ID, t.AccountID, t.TeamID, t.DashboardID, t.EntityID, t.Name, t.DisplayName, t.Type, t.Duration, t.State, t.Position, t.Metab,
 		t.CreatedAt,
 	)
 	if err != nil {
@@ -89,13 +84,13 @@ func Create(ctx context.Context, db *sqlx.DB, nc NewChart, now time.Time) error 
 	return nil
 }
 
-func Delete(ctx context.Context, db *sqlx.DB, chartID string) error {
+func Delete(ctx context.Context, db *sqlx.DB, accountID, teamID, dashboardID, chartID string) error {
 	ctx, span := trace.StartSpan(ctx, "internal.chart.Delete")
 	defer span.End()
 
-	const q = `DELETE FROM charts WHERE chart_id = $1`
+	const q = `DELETE FROM charts WHERE account_id = $1 AND team_id = $2 AND dashboard_id = $3 AND chart_id = $4`
 
-	if _, err := db.ExecContext(ctx, q, chartID); err != nil {
+	if _, err := db.ExecContext(ctx, q, accountID, teamID, dashboardID, chartID); err != nil {
 		return errors.Wrapf(err, "chart delete")
 	}
 
@@ -144,6 +139,13 @@ func (c Chart) GetCalc() string {
 	return string(CalcCount)
 }
 
+func (c Chart) GetIcon() string {
+	if val, ok := c.Meta()[MetaIconKey]; ok {
+		return val
+	}
+	return "stacked_bar_chart"
+}
+
 func (c Chart) GetSource() string {
 	if val, ok := c.Meta()[MetaSourceKey]; ok {
 		return val
@@ -179,16 +181,17 @@ func (c Chart) GetDate() string {
 	return ""
 }
 
-func BuildNewChart(accountID, userID, entityID, name, fieldName string, chartType Type) *NewChart {
+func BuildNewChart(accountID, teamID, dashboardID, entityID, name, displayName, fieldName string, chartType Type) *NewChart {
 	NoEntityID := "00000000-0000-0000-0000-000000000000"
 	return &NewChart{
-		AccountID:    accountID,
-		EntityID:     entityID,
-		BaseEntityID: entity.NoEntityID, // this is useful to categorize charts based on entity.
-		UserID:       userID,
-		Name:         name,
-		Type:         string(chartType),
-		Duration:     string(LastWeek),
+		AccountID:   accountID,
+		TeamID:      teamID,
+		DashboardID: dashboardID, // this is useful to categorize charts based on entity.
+		EntityID:    entityID,
+		Name:        name,
+		DisplayName: displayName,
+		Type:        string(chartType),
+		Duration:    string(LastWeek),
 		Meta: map[string]string{
 			MetaSourceKey:    NoEntityID,
 			MetaFieldKey:     fieldName,
@@ -253,8 +256,8 @@ func (ch *NewChart) SetCalcSum() *NewChart {
 	return ch
 }
 
-func (ch *NewChart) SetBaseEntityID(baseEntityID string) *NewChart {
-	ch.BaseEntityID = baseEntityID // useful for filtering.
+func (ch *NewChart) SetIcon(icon string) *NewChart {
+	ch.Meta[MetaIconKey] = icon
 	return ch
 }
 
@@ -264,4 +267,13 @@ func (ch *NewChart) Add(ctx context.Context, db *sqlx.DB) error {
 		return err
 	}
 	return nil
+}
+
+func (c Chart) Identified(identifiers []string) bool {
+	for _, identifier := range identifiers {
+		if identifier == c.Name {
+			return true
+		}
+	}
+	return false
 }

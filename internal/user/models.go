@@ -69,11 +69,12 @@ type NewUser struct {
 }
 
 type ViewModelUser struct {
-	Name   string   `json:"name"`
-	Avatar string   `json:"avatar"`
-	Email  string   `json:"email"`
-	Phone  string   `json:"phone"`
-	Roles  []string `json:"roles"`
+	Name     string   `json:"name"`
+	Avatar   string   `json:"avatar"`
+	Email    string   `json:"email"`
+	MemberID string   `json:"member_id"`
+	Phone    string   `json:"phone"`
+	Roles    []string `json:"roles"`
 }
 
 // UpdateUser defines what information may be provided to modify an existing

@@ -366,6 +366,14 @@ func (u User) AccountsB() map[string]interface{} {
 	return accounts
 }
 
+func (u User) MemberID(accountID string) string {
+	memberID := u.AccountsB()[accountID]
+	if memberID != nil {
+		return memberID.(string)
+	}
+	return ""
+}
+
 func (u User) RemoveAccount(accountID string) map[string]interface{} {
 	accounts := u.AccountsB()
 	delete(accounts, accountID)
