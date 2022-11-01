@@ -93,7 +93,7 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 		conditionFields = append(conditionFields, gf)
 	}
 
-	gSegment := graphdb.BuildGNode(e.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(e.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
 	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 	if err != nil {
 		return nil, err

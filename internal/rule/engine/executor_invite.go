@@ -169,7 +169,7 @@ func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email s
 	}
 	conditionFields = append(conditionFields, gf)
 
-	gSegment := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFields)
 	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
 	if err != nil {
 		return nil, err

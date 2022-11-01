@@ -60,6 +60,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		DataType:    entity.TypeReference,
 		RefID:       statusEntityID,
 		RefType:     entity.RefTypeStraight,
+		Who:         entity.WhoStatus,
 		Meta:        map[string]string{entity.MetaKeyDisplayGex: statusEntityKey},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
@@ -78,7 +79,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		RefID:       ownerEntityID,
 		RefType:     entity.RefTypeStraight,
 		Who:         entity.WhoAssignee,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaMultiChoice: "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaMultiChoice: "true", entity.MetaKeyLayout: entity.MetaLayoutUsers},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -136,6 +137,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoEndTime,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutDate},
 	}
 
 	pipeFieldID := uuid.New().String()

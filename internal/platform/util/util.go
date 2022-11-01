@@ -92,7 +92,6 @@ func ConvertToNumber(in interface{}) interface{} {
 }
 
 func ConvertIntfToCommaSepString(in interface{}) string {
-	log.Printf("in %+v", in)
 	switch v := in.(type) {
 	default:
 		return in.(string)

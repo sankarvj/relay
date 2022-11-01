@@ -7,6 +7,7 @@ docker build \
 		--build-arg VCS_REF=`git rev-parse HEAD` \
 		--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
 		.
+ 
 docker build \
 		-f dockerfile.metrics \
 		-t gcr.io/relay-project/metrics-amd64:1.0 \

@@ -296,3 +296,17 @@ func removeDuplicateValues(intSlice []interface{}) []interface{} {
 	}
 	return list
 }
+
+func LoadRefFieldChoices(ctx context.Context, accountID string, f *entity.Field, db *sqlx.DB, sdb *database.SecDB) {
+	statusE, err := entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
+	if err != nil {
+		return
+	}
+	if statusE.Category == entity.CategoryChildUnit {
+		refItems, err := item.EntityItems(ctx, accountID, statusE.ID, db)
+		if err != nil {
+			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
+		}
+		ChoicesMaker(f, "", ItemChoices(f, refItems, statusE.WhoFields()))
+	}
+}

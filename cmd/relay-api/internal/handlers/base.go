@@ -18,11 +18,7 @@ import (
 )
 
 type Piper struct {
-	Viable         bool                       `json:"viable"`
-	Group          bool                       `json:"group"`
-	LS             string                     `json:"layout_style"`
 	NodeKey        string                     `json:"node_key"`
-	Flows          []flow.ViewModelFlow       `json:"flows"`
 	Nodes          []node.ViewModelNode       `json:"nodes"`
 	Items          map[string][]ViewModelItem `json:"items"`
 	Tokens         map[string]string          `json:"tokens"`
@@ -30,29 +26,6 @@ type Piper struct {
 	CountMap       map[string]map[string]int  `json:"count_map"`
 	sourceEntityID string
 	sourceItemID   string
-}
-
-func setRenderer(ctx context.Context, ls string, e entity.Entity, db *sqlx.DB) string {
-	if ls == entity.MetaRenderPipe && !e.IsPipeLayout() {
-		log.Println("***> ***> ***>Set renderer1")
-		err := e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderPipe})
-		if err != nil {
-			log.Println("***> unexpected error occurred in internal.handlers.item. when setting pipe renderer", err)
-		}
-	} else if ls == entity.MetaRenderList && e.IsPipeLayout() {
-		log.Println("***> ***> ***>Set renderer2")
-		err := e.UpdateMeta(ctx, db, map[string]interface{}{entity.MetaRender: entity.MetaRenderList})
-		if err != nil {
-			log.Println("***> unexpected error occurred in internal.handlers.item. when setting list renderer", err)
-		}
-	} else {
-		if e.IsPipeLayout() {
-			ls = entity.MetaRenderPipe
-		} else {
-			ls = entity.MetaRenderList
-		}
-	}
-	return ls
 }
 
 func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper, db *sqlx.DB, sdb *database.SecDB) error {
@@ -101,7 +74,6 @@ func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper
 
 	log.Println("viewModelNodes ", viewModelNodes)
 
-	p.Flows = viewModelFlows
 	p.Nodes = viewModelNodes
 	p.Items = make(map[string][]ViewModelItem, 0)
 

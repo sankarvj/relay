@@ -14,6 +14,7 @@ const (
 	MetaGroupByLogic = "group_by_logic"
 	MetaExp          = "exp"
 	MetaDateField    = "date"
+	MetaAdvancedMap  = "advanced_map"
 )
 
 type Calc string

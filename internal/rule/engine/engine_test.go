@@ -313,9 +313,9 @@ var (
 	}
 
 	contactFields = graphdb.FillFieldValues(contactEntityFields, contactProperties)
-	gpb1          = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode(contactItemID, contactFields)
+	gpb1          = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode(contactItemID, contactFields)
 	dealFields    = graphdb.FillFieldValues(dealEntityFields, dealProperties)
-	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false).MakeBaseGNode(dealItemID, dealFields)
+	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false, nil).MakeBaseGNode(dealItemID, dealFields)
 	//refer segment_test.go more complex conditions
 	conditionFields = []graphdb.Field{
 		{
@@ -325,7 +325,7 @@ var (
 			Value:      "50",
 		},
 	}
-	gSegment   = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode("", conditionFields)
+	gSegment   = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode("", conditionFields)
 	jsonB, _   = gSegment.JsonB()
 	expression = fmt.Sprintf("<<%s>>", jsonB)
 )

@@ -162,13 +162,13 @@ var (
 	}
 
 	taskFields01  = graphdb.FillFieldValues(taskEntityFields, taskProperties1)
-	gpb01         = graphdb.BuildGNode(accountID, taskEntityID1, false).MakeBaseGNode(taskItemID1, taskFields01)
+	gpb01         = graphdb.BuildGNode(accountID, taskEntityID1, false, nil).MakeBaseGNode(taskItemID1, taskFields01)
 	taskFields02  = graphdb.FillFieldValues(taskEntityFields, taskProperties2)
-	gpb02         = graphdb.BuildGNode(accountID, taskEntityID1, false).MakeBaseGNode(taskItemID2, taskFields02)
+	gpb02         = graphdb.BuildGNode(accountID, taskEntityID1, false, nil).MakeBaseGNode(taskItemID2, taskFields02)
 	contactFields = graphdb.FillFieldValues(contactEntityFields, contactProperties)
-	gpb1          = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode(contactItemID, contactFields)
+	gpb1          = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode(contactItemID, contactFields)
 	dealFields    = graphdb.FillFieldValues(dealEntityFields, dealProperties)
-	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false).MakeBaseGNode(dealItemID, dealFields)
+	gpb2          = graphdb.BuildGNode(accountID, dealEntityID, false, nil).MakeBaseGNode(dealItemID, dealFields)
 )
 
 var (
@@ -241,7 +241,7 @@ var (
 		},
 	}
 
-	gSegment = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode("", conditionFields)
+	gSegment = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode("", conditionFields)
 
 	conditionFieldsWithIN = []graphdb.Field{
 		{
@@ -252,7 +252,7 @@ var (
 		},
 	}
 
-	gSegment1 = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode("", conditionFieldsWithIN)
+	gSegment1 = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode("", conditionFieldsWithIN)
 
 	conditionFieldsForCount = []graphdb.Field{
 		{
@@ -290,7 +290,7 @@ var (
 		// },
 	}
 
-	gSegment2 = graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode("", conditionFieldsForCount)
+	gSegment2 = graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode("", conditionFieldsForCount)
 )
 
 func TestGraph(t *testing.T) {
@@ -369,7 +369,7 @@ func TestGraph(t *testing.T) {
 
 		t.Log("\twhen updating the existing contact item to the graph")
 		{
-			updateNameGbp := graphdb.BuildGNode(accountID, contactEntityID, false).MakeBaseGNode(contactItemID, updatedFields)
+			updateNameGbp := graphdb.BuildGNode(accountID, contactEntityID, false, nil).MakeBaseGNode(contactItemID, updatedFields)
 			err := graphdb.UpsertNode(sdb.GraphPool(), updateNameGbp)
 			if err != nil {
 				t.Fatalf("\t%s should update the exisiting node(item) with %s - %s", tests.Failed, Name2, err)

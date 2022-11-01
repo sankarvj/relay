@@ -73,15 +73,13 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
-	piper := Piper{Viable: true}
+	piper := Piper{}
 	if ls == entity.MetaRenderPipe && page == 0 {
 		piper.sourceEntityID, piper.sourceItemID = sourceEntityID, sourceItemID
 		err := pipeKanban(ctx, accountID, e, &piper, rs.db, rs.sdb)
 		if err != nil {
 			return err
 		}
-		piper.Viable = true
-		piper.LS = entity.MetaRenderPipe
 
 		piper.Items = make(map[string][]ViewModelItem, 0)
 		for _, vmi := range viewModelItems {

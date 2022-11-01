@@ -71,7 +71,7 @@ func listwb(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseItemID s
 	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(ch.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(ch.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
 	var result *redisgraph.QueryResult
 	switch groupedLogic {
 	case string(chart.GroupLogicID):
@@ -127,7 +127,7 @@ func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *data
 
 	conditionFields = append(conditionFields, timeRange("system_created_at", startTime, endTime))
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(ch.AccountID, ch.EntityID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(ch.AccountID, ch.EntityID, false, nil).MakeBaseGNode("", conditionFields)
 	result, err := graphdb.GetSum(sdb.GraphPool(), gSegment, filterByField.Key)
 	if err != nil {
 		return nil, err

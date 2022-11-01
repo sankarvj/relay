@@ -277,7 +277,6 @@ func (e Entity) WhoFields() map[string]string {
 	for _, f := range fields {
 		tmp[f.Who] = f.Key
 	}
-
 	return tmp
 }
 
@@ -287,11 +286,9 @@ func (e Entity) Layouts() map[string]string {
 	if err != nil {
 		return tmp
 	}
-
 	for _, f := range fields {
 		tmp[f.Meta[MetaKeyLayout]] = f.Key
 	}
-
 	return tmp
 }
 
@@ -309,6 +306,19 @@ func (e Entity) Field(key string) Field {
 		return Field{}
 	}
 	return KeyedFieldsObjMap(fields)[key]
+}
+
+func (e Entity) WhoField(who string) Field {
+	fields, err := e.Fields()
+	if err != nil {
+		return Field{}
+	}
+	for _, f := range fields {
+		if f.Who == who {
+			return f
+		}
+	}
+	return Field{}
 }
 
 func (e Entity) FlowField() *Field {

@@ -44,15 +44,22 @@ type GraphNode struct {
 	unlink        bool
 	isReverse     bool
 	Optional      bool
+	LabelAliasMap map[string]string
+	RootGraphNode *GraphNode
 }
 
-func BuildGNode(graphName, label string, unlink bool) GraphNode {
+func BuildGNode(graphName, label string, unlink bool, aliasMap map[string]string) GraphNode {
+	if aliasMap == nil {
+		aliasMap = make(map[string]string, 0)
+	}
+
 	gn := GraphNode{
-		GraphName: graphName,
-		Label:     label,
-		Fields:    []Field{},
-		Relations: make([]GraphNode, 0),
-		unlink:    unlink,
+		GraphName:     graphName,
+		Label:         label,
+		Fields:        []Field{},
+		Relations:     make([]GraphNode, 0),
+		unlink:        unlink,
+		LabelAliasMap: aliasMap,
 	}
 	return gn
 }
@@ -77,7 +84,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 				case string:
 					value = v
 				}
-				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i)).
+				rn := BuildGNode(gn.GraphName, f.Key, f.doUnlink(i), gn.LabelAliasMap).
 					MakeBaseGNode(value, []Field{*f.Field}).relateLists()
 				gn.Relations = append(gn.Relations, rn)
 			}
@@ -85,7 +92,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 			//TODO: handle cyclic looping
 			for i, rItemID := range f.Value.([]interface{}) {
 				rEntityID := f.RefID
-				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i)).
+				rn := BuildGNode(gn.GraphName, rEntityID, f.doUnlink(i), gn.LabelAliasMap).
 					MakeBaseGNode(rItemID.(string), []Field{*f.Field}).relateRefs(f.IsReverse)
 				gn.Relations = append(gn.Relations, rn)
 			}
@@ -267,6 +274,32 @@ func GetGroupedCount(rPool *redis.Pool, gn GraphNode, groupById string) (*rg.Que
 	return result, err
 }
 
+func GetGroupedIDPlusFieldCount(rPool *redis.Pool, gn GraphNode, groupById string, useReturn bool) (*rg.QueryResult, error) {
+	conn := rPool.Get()
+	defer conn.Close()
+	graph := graph(gn.GraphName, conn)
+
+	q := makeQuery(rPool, &gn)
+
+	if useReturn {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.ReturnNode.Alias, gn.SourceNode.Alias, gn.LabelAliasMap[groupById]))
+	} else {
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.SourceNode.Alias, gn.ReturnNode.Alias, gn.LabelAliasMap[groupById]))
+	}
+
+	result, err := graph.Query(q)
+	if err != nil {
+		//DEBUG LOG
+		log.Printf("*********> debug: internal.platform.graphdb : graphdb - count query: %s - err:%v\n", q, err)
+		return result, err
+	}
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - grouped count query: %s\n", q)
+	//log.Printf("*********> debug: internal.platform.graphdb : graphdb - count result: %v\n", result)
+	result.PrettyPrint()
+	return result, err
+}
+
 func Delete(rPool *redis.Pool, graphName, label, itemID string) error {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -319,7 +352,7 @@ func where(gn *GraphNode, alias, srcAlias string) ([]string, []string) {
 			case operatorMap[lexertoken.NotINSign]: //to support `WHERE NOT qvHZjOKbzM.`id` IN ["0ce398f5-8d85-4436-af0f-b884d18ecc5a"]`
 				f.Expression = lexertoken.INSign
 				f.WithAlias = fmt.Sprintf("NOT %s", f.WithAlias)
-				gn.Optional = true
+				gn.Optional = false
 			}
 
 			switch f.DataType {
@@ -556,7 +589,7 @@ func unlinkEdge(unlinkAlias string, e *rg.Edge) []string {
 }
 
 func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string, rev bool) GraphNode {
-	rn := BuildGNode(gn.GraphName, parentEntityID, false).
+	rn := BuildGNode(gn.GraphName, parentEntityID, false, gn.LabelAliasMap).
 		MakeBaseGNode(parentItemID, []Field{}).relateRefs(rev)
 	gn.Relations = append(gn.Relations, rn)
 	return gn
@@ -580,7 +613,9 @@ func (gn GraphNode) justNode() *rg.Node {
 	if gn.ItemID != "" { //useful for almost all the cases except the segmentation use-case
 		properties[quote(FieldIdKey)] = gn.ItemID
 	}
-	return rg.NodeNew(quote(gn.Label), rg.RandomString(10), properties)
+	alias := rg.RandomString(10)
+	gn.LabelAliasMap[gn.Label] = alias
+	return rg.NodeNew(quote(gn.Label), alias, properties)
 }
 
 //useful during the upsert.

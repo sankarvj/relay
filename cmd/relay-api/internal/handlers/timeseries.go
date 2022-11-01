@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,9 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/dashboard"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/event"
-	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
-	"gitlab.com/vjsideprojects/relay/internal/mid"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -84,9 +81,6 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 	baseEntityID := r.URL.Query().Get("be")
 	//baseItemID := r.URL.Query().Get("bi")
 
-	log.Println("entityID ---- ", entityID)
-	log.Println("baseEntityID ---- ", baseEntityID)
-
 	// for home dash, project(item-detail) dash & my dash
 	// * entity_id should be NoEntityID for all the three cases
 	// * base_entity_id should be NoEntityID for home dash
@@ -121,22 +115,25 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 		return err
 	}
 
+	filteredCharts := make([]chart.Chart, 0)
+	identifiers := make([]string, 0)
+	for _, ch := range charts {
+		if ch.IdentifiedAlready(identifiers) { //skip loading charts with same name twice
+			continue
+		} else {
+			identifiers = append(identifiers, ch.Name)
+			filteredCharts = append(filteredCharts, ch)
+		}
+	}
+
 	//populate charts if said so...
 	if eagerLoad {
-		identifiers := make([]string, 0)
-		for _, ch := range charts {
-			if ch.Identified(identifiers) { //skip loading charts with same name twice
-				continue
-			} else {
-				identifiers = append(identifiers, ch.Name)
-			}
+		for _, ch := range filteredCharts {
+
 			//overloading the existing chart exp with the additional expression
-			log.Println("exp::::::::::", exp)
 			wholeExp := util.AddExpression(exp, ch.GetExp())
-			log.Println("exp::::::::::", wholeExp)
 			stTime, endTime, _ := timeseries.Duration(ch.Duration)
 			series, err := list(ctx, ch, wholeExp, stTime, endTime, ts.db, ts.sdb)
-			log.Printf("series::::::::: %+v\n", series)
 			if err != nil {
 				return err
 			}
@@ -148,7 +145,7 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 		}
 	}
 
-	return web.Respond(ctx, w, createViewModelCharts(charts, eagerLoader), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelCharts(filteredCharts, eagerLoader), http.StatusOK)
 }
 
 func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -198,51 +195,6 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 	return web.Respond(ctx, w, vmc, http.StatusOK)
 }
 
-//TODO Worst non-generic way of implementation...rewrite this block
-func (ts *Timeseries) CSMOverview(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	//duration := r.URL.Query().Get("duration")
-	exp := r.URL.Query().Get("exp")
-	accountID, entityID, _ := takeAEI(ctx, params, ts.db)
-	ch, err := chart.Retrieve(ctx, accountID, params["chart_id"], ts.db)
-	if err != nil {
-		return err
-	}
-	//remove middleware logic from here....
-	if entityID != ch.EntityID {
-		return mid.ErrForbidden
-	}
-
-	e, err := entity.Retrieve(ctx, accountID, entityID, ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-
-	baseEntityID := r.URL.Query().Get("be")
-	baseEntity, err := entity.Retrieve(ctx, accountID, baseEntityID, ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-	baseItemID := r.URL.Query().Get("bi")
-	baseItem, err := item.Retrieve(ctx, baseEntityID, baseItemID, ts.db)
-	if err != nil {
-		return err
-	}
-	assCompanies := baseEntity.Key("associated_companies")
-	val := baseItem.Fields()[assCompanies]
-
-	stTime, endTime, _ := timeseries.Duration(ch.Duration)
-
-	baseExp := fmt.Sprintf("{{%s.%s}} in {%s}", entityID, e.Key("associated_companies"), util.ConvertIntfToCommaSepString(val))
-	exp = util.AddExpression(exp, baseExp)
-	series, err := list(ctx, *ch, exp, stTime, endTime, ts.db, ts.sdb)
-	if err != nil {
-		return err
-	}
-	vmc := createViewModelChartNoChange(*ch, series, 0)
-
-	return web.Respond(ctx, w, vmc, http.StatusOK)
-}
-
 func (ts *Timeseries) OnMe(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.OnMe")
 	defer span.End()
@@ -288,10 +240,14 @@ func vmseriesFromMap(m map[string]int, f entity.Field) []Series {
 	vmseries := make([]Series, 0)
 	for id, value := range m {
 		label := id // this line fixes for group with name
+		color := "#eaeaea"
+		verb := entity.FuExpNone
 		if val, ok := mapOfChoices[id]; ok {
 			label = util.ConvertIntfToStr(val.DisplayValue)
+			color = val.Color
+			verb = val.Verb
 		}
-		vmseries = append(vmseries, createVMSeriesFromMap(id, label, value))
+		vmseries = append(vmseries, createPartialVMSeries(id, label, color, verb, value))
 	}
 	return vmseries
 }

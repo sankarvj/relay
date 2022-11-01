@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
 
@@ -21,25 +20,14 @@ const (
 )
 
 //UpdateMeta patches the meta data right now it is used to save the UI render info (pipe/list)
-func (e *Entity) UpdateMeta(ctx context.Context, db *sqlx.DB, meta map[string]interface{}) error {
+func (e *Entity) UpdateMeta(ctx context.Context, db *sqlx.DB) error {
 	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateMeta")
 	defer span.End()
-
-	existingMeta := e.Meta()
-	for key, value := range meta {
-		existingMeta[key] = value
-	}
-	input, err := json.Marshal(existingMeta)
-	if err != nil {
-		return errors.Wrap(err, "encode meta to input")
-	}
-	metab := string(input)
-	e.Metab = &metab
 
 	const q = `UPDATE entities SET
 		"metab" = $3 
 		WHERE account_id = $1 AND entity_id = $2`
-	_, err = db.ExecContext(ctx, q, e.AccountID, e.ID,
+	_, err := db.ExecContext(ctx, q, e.AccountID, e.ID,
 		e.Metab,
 	)
 	return err
@@ -56,14 +44,12 @@ func (e Entity) Meta() map[string]interface{} {
 	return meta
 }
 
-func (e Entity) IsPipeLayout() bool {
+func (e Entity) Layout() string {
 	metaHash := e.Meta()
 	if val, ok := metaHash[MetaRender]; ok {
-		if val == "pipe" {
-			return true
-		}
+		return val.(string)
 	}
-	return false
+	return MetaRenderList
 }
 
 func (e *Entity) AddTag(ctx context.Context, db *sqlx.DB, tag string, position int) error {

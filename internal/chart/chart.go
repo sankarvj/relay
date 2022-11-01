@@ -181,6 +181,15 @@ func (c Chart) GetDate() string {
 	return ""
 }
 
+func (c Chart) GetAdvancedMap() map[string]string {
+	if jsonStrOfMap, ok := c.Meta()[MetaAdvancedMap]; ok {
+		x := map[string]string{}
+		json.Unmarshal([]byte(jsonStrOfMap), &x)
+		return x
+	}
+	return map[string]string{}
+}
+
 func BuildNewChart(accountID, teamID, dashboardID, entityID, name, displayName, fieldName string, chartType Type) *NewChart {
 	NoEntityID := "00000000-0000-0000-0000-000000000000"
 	return &NewChart{
@@ -261,6 +270,16 @@ func (ch *NewChart) SetIcon(icon string) *NewChart {
 	return ch
 }
 
+//not do good way
+func (ch *NewChart) AddAdvancedMap(m map[string]string) *NewChart {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return ch
+	}
+	ch.Meta[MetaAdvancedMap] = string(b)
+	return ch
+}
+
 func (ch *NewChart) Add(ctx context.Context, db *sqlx.DB) error {
 	err := Create(ctx, db, *ch, time.Now())
 	if err != nil {
@@ -269,7 +288,7 @@ func (ch *NewChart) Add(ctx context.Context, db *sqlx.DB) error {
 	return nil
 }
 
-func (c Chart) Identified(identifiers []string) bool {
+func (c Chart) IdentifiedAlready(identifiers []string) bool {
 	for _, identifier := range identifiers {
 		if identifier == c.Name {
 			return true

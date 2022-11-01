@@ -193,6 +193,8 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		SharedTeamIds: e.SharedTeamIds,
 		CreatedAt:     e.CreatedAt,
 		UpdatedAt:     e.UpdatedAt,
+		HasFlow:       e.FlowField() != nil,
+		LayoutStyle:   e.Layout(),
 	}
 }
 
@@ -225,4 +227,39 @@ func categories(categoryID string) []int {
 
 	ids = append(ids, i)
 	return ids
+}
+
+func (e *Entity) UpdateLS(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Entity.UpdateLS")
+	defer span.End()
+
+	ls := params["ls"]
+	accountID, entityID, _ := takeAEI(ctx, params, e.db)
+	enty, err := entity.Retrieve(ctx, accountID, entityID, e.db, e.sdb)
+	if err != nil {
+		return err
+	}
+	existingMeta := enty.Meta()
+	existingMeta[entity.MetaRender] = ls
+	input, err := json.Marshal(existingMeta)
+	if err != nil {
+		return errors.Wrap(err, "encode meta to input")
+	}
+	metab := string(input)
+	enty.Metab = &metab
+	if ls == entity.MetaRenderPipe {
+		err := enty.UpdateMeta(ctx, e.db)
+		if err != nil {
+			return err
+		}
+		return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusOK)
+	} else if ls == entity.MetaRenderList {
+		err := enty.UpdateMeta(ctx, e.db)
+		if err != nil {
+			return err
+		}
+		return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusOK)
+	} else {
+		return web.Respond(ctx, w, "failure", http.StatusBadRequest)
+	}
 }

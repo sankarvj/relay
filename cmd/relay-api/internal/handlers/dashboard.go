@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -30,12 +31,10 @@ type Dashboard struct {
 }
 
 type GridOne struct {
-	AvailableEntities    []entity.Entity      `json:"available_entities"`
-	SelectedEntity       *entity.Entity       `json:"selected_entity"`
-	SelectedEntityFields []entity.Field       `json:"selected_entity_fields"`
-	AvailableFlows       []flow.ViewModelFlow `json:"available_flows"`
-	SelectedFlow         *flow.ViewModelFlow  `json:"selected_flow"`
-	Stages               []ViewModelStage     `json:"stages"`
+	SelectedEntityID string               `json:"selected_entity_id"`
+	SelectedFlowID   string               `json:"selected_flow_id"`
+	Flows            []flow.ViewModelFlow `json:"flows"`
+	Stages           []ViewModelStage     `json:"stages"`
 }
 
 type GridTwo struct {
@@ -53,68 +52,74 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 	accountID := params["account_id"]
 	teamID := params["team_id"]
 	entityID := r.URL.Query().Get("entity_id")
+	flowID := r.URL.Query().Get("flow_id")
 	exp := r.URL.Query().Get("exp")
 
-	gridOne := GridOne{AvailableEntities: make([]entity.Entity, 0)}
-	if entityID == "" {
-		entities, err := entity.AccountEntities(ctx, accountID, []int{entity.CategoryData}, d.db)
-		if err != nil {
-			return err
-		}
-		for _, e := range entities {
-			if e.FlowField() != nil {
-				gridOne.AvailableEntities = append(gridOne.AvailableEntities, e)
-			}
-		}
-		if len(gridOne.AvailableEntities) > 0 {
-			gridOne.SelectedEntity = &gridOne.AvailableEntities[0]
-			gridOne.SelectedEntityFields = gridOne.SelectedEntity.FieldsIgnoreError()
-		}
-	} else {
-		e, err := entity.Retrieve(ctx, accountID, entityID, d.db, d.sdb)
-		if err != nil {
-			return err
-		}
-		gridOne.SelectedEntity = &e
-		gridOne.SelectedEntityFields = e.FieldsIgnoreError()
+	gridOne := &GridOne{}
+	e, err := entity.Retrieve(ctx, accountID, entityID, d.db, d.sdb)
+	if err != nil {
+		return err
+	}
+	gridOne.SelectedEntityID = e.ID
+
+	if e.FlowField() == nil {
+		return errors.Errorf("Cannot load grid one without flow field")
 	}
 
-	err := gridOne.WidgetGridOne(ctx, accountID, teamID, exp, d.db, d.sdb)
+	if !util.NotEmpty(flowID) {
+		err = gridOne.populateFlows(ctx, accountID, teamID, d.db)
+		if err != nil {
+			return err
+		}
+	} else {
+		gridOne.SelectedFlowID = flowID
+	}
+
+	err = gridOne.populateStages(ctx, accountID, teamID, d.db)
 	if err != nil {
 		return err
 	}
 
-	overview := struct {
+	err = gridOne.itemCountPerStage(ctx, accountID, exp, e.FieldsIgnoreError(), d.db, d.sdb)
+	if err != nil {
+		return err
+	}
+
+	err = gridOne.taskCountPerStage(ctx, accountID, teamID, d.db, d.sdb)
+	if err != nil {
+		return err
+	}
+
+	response := struct {
 		GOne GridOne `json:"g_one"`
 	}{
-		gridOne,
+		*gridOne,
 	}
-	return web.Respond(ctx, w, overview, http.StatusOK)
+	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func (gOne *GridOne) WidgetGridOne(ctx context.Context, accountID, teamID, exp string, db *sqlx.DB, sdb *database.SecDB) error {
-	if gOne.SelectedEntity != nil && gOne.SelectedEntity.FlowField() != nil { //main stages. ex: deal stages
-		flows, err := flow.List(ctx, []string{gOne.SelectedEntity.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
-		if err != nil {
-			return err
-		}
-
-		gOne.AvailableFlows = make([]flow.ViewModelFlow, len(flows))
-		for i, flow := range flows {
-			gOne.AvailableFlows[i] = createViewModelFlow(flow, nil)
-		}
-
-		if len(flows) > 0 {
-			vmf := createViewModelFlow(flows[0], nil)
-			gOne.SelectedFlow = &vmf
-			gOne.Stages, err = viewModelStages(ctx, accountID, gOne.SelectedFlow.ID, db)
-			if err != nil {
-				return err
-			}
+func (gOne *GridOne) populateFlows(ctx context.Context, accountID, teamID string, db *sqlx.DB) error {
+	flows, err := flow.List(ctx, []string{gOne.SelectedEntityID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
+	if err != nil {
+		return err
+	}
+	gOne.Flows = make([]flow.ViewModelFlow, len(flows))
+	for i, flow := range flows {
+		gOne.Flows[i] = createViewModelFlow(flow, nil)
+		if i == 0 {
+			gOne.SelectedFlowID = flow.ID
 		}
 	}
+	return nil
+}
 
-	return getGoneResult(ctx, accountID, gOne, exp, db, sdb)
+func (gOne *GridOne) populateStages(ctx context.Context, accountID, teamID string, db *sqlx.DB) error {
+	var err error
+	gOne.Stages, err = loadStages(ctx, accountID, gOne.SelectedFlowID, db)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID string, db *sqlx.DB, sdb *database.SecDB) error {
@@ -141,7 +146,7 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false).MakeBaseGNode("", conditionFields)
+	gSegment := graphdb.BuildGNode(accountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
 
 	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
 	if err != nil {
@@ -265,6 +270,37 @@ func (gOne *GridOne) gridResult(ctx context.Context, resultMap map[string]int, d
 	}
 }
 
+func (gOne *GridOne) taskCountForEachStage(ctx context.Context, statusField entity.Field, result *rg.QueryResult, db *sqlx.DB) {
+	response := make(map[string][]Series, 0)
+	if result == nil {
+		return
+	}
+	for result.Next() { // Next returns true until the iterator is depleted.
+		// Get the current Record.
+
+		r := result.Record()
+
+		stageID := r.GetByIndex(1).(string)
+		statusID := r.GetByIndex(2).(string)
+
+		choice := statusField.ChoicesMap()[statusID]
+		if _, ok := response[stageID]; !ok {
+			response[stageID] = make([]Series, 0)
+		}
+
+		switch v := r.GetByIndex(0).(type) {
+		case int:
+			response[stageID] = append(response[stageID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
+		case float64:
+			response[stageID] = append(response[stageID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, int(v)))
+		}
+	}
+
+	for i := 0; i < len(gOne.Stages); i++ {
+		gOne.Stages[i].Series = response[gOne.Stages[i].ID]
+	}
+}
+
 func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID string, f entity.Field, resultMap map[string]int, db *sqlx.DB, sdb *database.SecDB) {
 	e, _ := entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
 	refItems, _ := item.EntityItems(ctx, accountID, e.ID, db)
@@ -294,7 +330,7 @@ func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID strin
 	}
 }
 
-func viewModelStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]ViewModelStage, error) {
+func loadStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]ViewModelStage, error) {
 	nodes, err := node.NodeActorsList(ctx, accountID, flowID, db)
 	if err != nil {
 		return nil, err
@@ -321,10 +357,11 @@ func createViewModelStage(n node.NodeActor) ViewModelStage {
 }
 
 type ViewModelStage struct {
-	ID          string `json:"id"`
-	FlowID      string `json:"flow_id"`
-	StageID     string `json:"stage_id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Value       string `json:"value"`
+	ID          string   `json:"id"`
+	FlowID      string   `json:"flow_id"`
+	StageID     string   `json:"stage_id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Value       string   `json:"value"`
+	Series      []Series `json:"series"`
 }

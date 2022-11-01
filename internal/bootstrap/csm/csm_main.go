@@ -65,7 +65,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Subscriptions Entity Created")
 
 	return nil
-
 }
 
 func AddWorkflows(ctx context.Context, b *base.Base) error {
@@ -455,7 +454,15 @@ func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, act
 		return err
 	}
 
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	advActivityMap := map[string]string{
+		"associated_companies": activityEntity.Key("associated_companies"),
+		"associated_contacts":  activityEntity.Key("associated_contacts"),
+	}
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "activity_name", chart.TypeRod).
+		AddAdvancedMap(advActivityMap).
+		SetDurationAllTime().
+		SetGrpLogicField().
+		Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
@@ -464,6 +471,14 @@ func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, act
 		return err
 	}
 	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue_tasks", "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "project_phase", "Project Phase", "pipeline_stage", chart.TypePie).
+		SetDurationAllTime().
+		SetGrpLogicID().
+		Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}

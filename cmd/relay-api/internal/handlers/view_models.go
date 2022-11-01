@@ -110,7 +110,8 @@ func createViewModelChart(c chart.Chart, series []Series, count, change int) VMC
 		Series:   series,
 		Count:    count,
 		Change:   change,
-		Icon:     c.GetCalc(),
+		Icon:     c.GetIcon(),
+		Advanced: c.GetAdvancedMap(),
 	}
 }
 
@@ -125,26 +126,29 @@ func createVMSeries(ts timeseries.Timeseries) Series {
 	}
 }
 
-func createVMSeriesFromMap(id, label string, value int) Series {
+func createPartialVMSeries(id, label, color, verb string, value int) Series {
 	return Series{
 		ID:    id,
 		Label: label,
+		Color: color,
 		Count: value,
+		Verb:  verb,
 	}
 }
 
 type VMChart struct {
-	ID       string   `json:"id"`
-	EntityID string   `json:"entity_id"`
-	Title    string   `json:"title"`
-	Field    string   `json:"field"`
-	Type     string   `json:"type"`
-	DataType string   `json:"data_type"`
-	Duration string   `json:"duration"`
-	Series   []Series `json:"series"`
-	Count    int      `json:"count"`
-	Change   int      `json:"change"`
-	Icon     string   `json:"icon"`
+	ID       string            `json:"id"`
+	EntityID string            `json:"entity_id"`
+	Title    string            `json:"title"`
+	Field    string            `json:"field"`
+	Type     string            `json:"type"`
+	DataType string            `json:"data_type"`
+	Duration string            `json:"duration"`
+	Series   []Series          `json:"series"`
+	Count    int               `json:"count"`
+	Change   int               `json:"change"`
+	Icon     string            `json:"icon"`
+	Advanced map[string]string `json:"advanced"`
 }
 
 type Series struct {
@@ -155,6 +159,8 @@ type Series struct {
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
 	Label       string    `json:"label"`
+	Color       string    `json:"color"`
+	Verb        string    `json:"verb"`
 }
 
 type EagerLoader struct {

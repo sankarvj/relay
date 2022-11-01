@@ -449,7 +449,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 				}
 			}
 
-			gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false).MakeBaseGNode("", conditionFields)
+			gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
 			result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
 			if err != nil {
 				return err
@@ -559,7 +559,7 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 	}
 
-	gpbNode := graphdb.BuildGNode(accountID, entityID, false).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
+	gpbNode := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
 	if j.baseEntityID != "" && len(j.baseItemIDs) > 0 {
 
 		relationShips, err := relationship.RetionshipType(ctx, db, accountID, j.baseEntityID, entityID)

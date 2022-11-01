@@ -46,6 +46,8 @@ type ViewModelEntity struct {
 	SharedTeamIds []string  `json:"shared_team_ids"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     int64     `json:"updated_at"`
+	HasFlow       bool      `json:"has_flow"`
+	LayoutStyle   string    `json:"layout_style"` //list/pipe
 }
 
 // NewEntity has information needed to creat new entity

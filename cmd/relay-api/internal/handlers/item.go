@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,25 +59,35 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 	fields := e.FieldsIgnoreError()
 
+	piper := Piper{
+		Items: make(map[string][]ViewModelItem, 0),
+	}
+
 	if !util.IsEmpty(viewID) {
 		fl, err := flow.Retrieve(ctx, viewID, i.db)
 		if err != nil {
 			return err
 		}
+
+		if fl.Mode == flow.FlowModePipeLine { //case: kanban view
+			ff := e.FlowField()
+			fl.Expression = fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, ff.Key, fl.ID)
+			piper.Nodes, err = nodeStages(ctx, accountID, fl.ID, i.db)
+			if err != nil {
+				return err
+			}
+		}
+
 		exp = ""
 		exp = util.AddExpression(exp, fl.Expression)
 	}
 
-	piper := Piper{Viable: e.FlowField() != nil}
-	if page == 0 {
-		piper.LS = setRenderer(ctx, ls, e, i.db)
-	}
+	log.Println("exp--- ", exp)
 
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
 
 	if groupby != "" && page == 0 {
-		piper.LS = entity.MetaRenderGroup
 		piper.Items = make(map[string][]ViewModelItem, 0)
 		piper.Tokens = make(map[string]string, 0)
 		piper.Exps = make(map[string]string, 0)
@@ -104,13 +115,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			piper.Tokens[choicer.ID] = choicer.Name
 			piper.Exps[choicer.ID] = newExp
 		}
-	} else if piper.LS == entity.MetaRenderPipe && page == 0 {
-		piper.Viable = true
-		err := pipeKanban(ctx, accountID, e, &piper, i.db, i.sdb)
-		if err != nil {
-			return err
-		}
-
+	} else if ls == entity.MetaRenderPipe {
 		for _, node := range piper.Nodes {
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
