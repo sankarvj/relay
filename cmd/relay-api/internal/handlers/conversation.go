@@ -257,7 +257,7 @@ func addNotification(ctx context.Context, accountID, entityID, itemID, userID, m
 		Assignees: make([]entity.UserEntity, 0),
 		BaseIds:   make([]string, 0), //events filter use case. check README for more info
 	}
-	titleField := entity.TitleField(baseEntity.FieldsIgnoreError())
+	titleField := entity.TitleField(baseEntity.EasyFields())
 	appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 	//adding base item follower and assignees
 	appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)

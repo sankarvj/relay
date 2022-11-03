@@ -12,7 +12,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
-	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 )
@@ -26,58 +25,6 @@ type Piper struct {
 	CountMap       map[string]map[string]int  `json:"count_map"`
 	sourceEntityID string
 	sourceItemID   string
-}
-
-func pipeKanban(ctx context.Context, accountID string, e entity.Entity, p *Piper, db *sqlx.DB, sdb *database.SecDB) error {
-	//If true, pass the values needed for the view
-	var viewModelFlows []flow.ViewModelFlow
-	var viewModelNodes []node.ViewModelNode
-	if e.FlowField() != nil { //main stages. ex: deal stages
-		flows, err := flow.List(ctx, []string{e.ID}, flow.FlowModePipeLine, flow.FlowTypeAll, db)
-		if err != nil {
-			return err
-		}
-
-		viewModelFlows = make([]flow.ViewModelFlow, len(flows))
-		for i, flow := range flows {
-			viewModelFlows[i] = createViewModelFlow(flow, nil)
-		}
-
-		if len(flows) > 0 {
-			viewModelNodes, err = nodeStages(ctx, accountID, flows[0].ID, db)
-			if err != nil {
-				return err
-			}
-		}
-
-	} else if p.sourceEntityID != "" && p.sourceItemID != "" { //child stages. ex: tasks created in the deal stages
-		e, err := entity.Retrieve(ctx, accountID, p.sourceEntityID, db, sdb)
-		if err != nil {
-			return err
-		}
-		it, err := item.Retrieve(ctx, p.sourceEntityID, p.sourceItemID, db)
-		if err != nil {
-			return err
-		}
-		f := e.FlowField()
-		if f != nil {
-			flowIDs := it.Fields()[f.Key]
-			if flowIDs != nil {
-				flowID := flowIDs.([]interface{})[0]
-				viewModelNodes, err = nodeStages(ctx, accountID, flowID.(string), db)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	log.Println("viewModelNodes ", viewModelNodes)
-
-	p.Nodes = viewModelNodes
-	p.Items = make(map[string][]ViewModelItem, 0)
-
-	return nil
 }
 
 func nodeStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]node.ViewModelNode, error) {
@@ -186,12 +133,9 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 			return nil, err
 		}
 
-		fields, err := e.FilteredFields()
-		if err != nil {
-			return nil, err
-		}
+		fields := e.OnlyVisibleFields()
 
-		fieldsMap := entity.KeyedFieldsObjMap(fields)
+		fieldsMap := entity.KeyMap(fields)
 
 		for k, condition := range filter.Conditions {
 			if f, ok := fieldsMap[k]; ok && e.ID == condition.EntityID {
@@ -202,7 +146,7 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 					return nil, err
 				}
 
-				fieldsMapIn := entity.KeyedFieldsObjMap(eIn.FieldsIgnoreError())
+				fieldsMapIn := entity.KeyMap(eIn.EasyFields())
 				if f, ok := fieldsMapIn[k]; ok {
 					cn := addInnerCondition(condition.EntityID, f.RefID, k, condition.Term)
 					conditionFields = append(conditionFields, cn)

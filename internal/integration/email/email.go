@@ -54,7 +54,7 @@ func DailyWatch(ctx context.Context, accountID, teamID, oAuthFile, topic string,
 
 func SendMail(ctx context.Context, accountID, entityID, itemID string, valueAddedMailFields []entity.Field, replyToID string, db *sqlx.DB, sdb *database.SecDB) (*string, error) {
 
-	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedMailFields)
+	namedFieldsObj := entity.NameMap(valueAddedMailFields)
 
 	fromField := namedFieldsObj["from"]
 	toField := namedFieldsObj["to"]

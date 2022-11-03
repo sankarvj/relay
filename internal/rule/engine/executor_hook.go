@@ -16,7 +16,7 @@ func executeHook(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.N
 		return map[string]interface{}{}, err
 	}
 
-	result, err := retriveAPIEntityResult(e.FieldsIgnoreError())
+	result, err := retriveAPIEntityResult(e.EasyFields())
 	log.Printf("rule.engine.executor_hook: result: %s and err: %v\n", result, err)
 	return result, err
 }

@@ -43,7 +43,7 @@ func Process(ctx context.Context, accountID, entityName string, body map[string]
 
 	tsFields := oldTS.Fields()
 	tsNamedFields := make(map[string]interface{}, 0)
-	namedFieldsMap := e.NamedFields()
+	namedFieldsMap := e.NameMapWrapper()
 	for name, v := range body {
 		if f, ok := namedFieldsMap[name]; ok {
 

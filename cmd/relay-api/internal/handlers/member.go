@@ -82,7 +82,7 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	namedKeys := entity.NamedKeysMap(e.FieldsIgnoreError())
+	namedKeys := entity.NameKeyMap(e.EasyFields())
 
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
@@ -107,7 +107,7 @@ func (m *Member) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return err
 	}
 
-	newMember := createViewModelMember(it.ID, entity.NamedFieldsObjMap(e.ValueAdd(it.Fields())), teams)
+	newMember := createViewModelMember(it.ID, entity.NameMap(e.ValueAdd(it.Fields())), teams)
 	return web.Respond(ctx, w, newMember, http.StatusCreated)
 
 }
@@ -136,7 +136,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	namedKeys := entity.NamedKeysMap(e.FieldsIgnoreError())
+	namedKeys := entity.NameKeyMap(e.EasyFields())
 
 	updatedFields := recreateFields(vm, namedKeys)
 	it, err := item.UpdateFields(ctx, m.db, entityID, memberID, updatedFields)
@@ -190,7 +190,7 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 func memberResponse(e entity.Entity, items []item.Item, teamMap map[string]team.Team) []ViewModelMember {
 	viewModelItems := make([]ViewModelMember, len(items))
 	for i, item := range items {
-		viewModelItems[i] = createViewModelMember(item.ID, entity.NamedFieldsObjMap(e.ValueAdd(item.Fields())), teamMap)
+		viewModelItems[i] = createViewModelMember(item.ID, entity.NameMap(e.ValueAdd(item.Fields())), teamMap)
 	}
 	return viewModelItems
 }

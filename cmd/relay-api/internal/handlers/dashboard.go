@@ -80,7 +80,7 @@ func (d *Dashboard) Overview(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
-	err = gridOne.itemCountPerStage(ctx, accountID, exp, e.FieldsIgnoreError(), d.db, d.sdb)
+	err = gridOne.itemCountPerStage(ctx, accountID, exp, e.EasyFields(), d.db, d.sdb)
 	if err != nil {
 		return err
 	}
@@ -129,10 +129,7 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 		return errors.Wrapf(err, "WidgetGridThree: entity retieve error")
 	}
 
-	fields, err := e.FilteredFields()
-	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: fields retieve error")
-	}
+	fields := e.OnlyVisibleFields()
 
 	var statusField entity.Field
 	for _, f := range fields {
@@ -168,9 +165,9 @@ func (d *Dashboard) Dashboard(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 	conditionFields := make([]graphdb.Field, 0)
-	whoFieldsMap := entity.WhoFieldsMap(fields)
+	whoFieldsMap := entity.WhoMap(fields)
 
 	filter := overdue(whoFieldsMap, entity.WhoDueBy)
 
@@ -283,7 +280,7 @@ func (gOne *GridOne) taskCountForEachStage(ctx context.Context, statusField enti
 		stageID := r.GetByIndex(1).(string)
 		statusID := r.GetByIndex(2).(string)
 
-		choice := statusField.ChoicesMap()[statusID]
+		choice := statusField.ChoiceMap()[statusID]
 		if _, ok := response[stageID]; !ok {
 			response[stageID] = make([]Series, 0)
 		}
@@ -305,7 +302,7 @@ func (gThree *GridThree) gridResult(ctx context.Context, accountID, teamID strin
 	e, _ := entity.Retrieve(ctx, accountID, f.RefID, db, sdb)
 	refItems, _ := item.EntityItems(ctx, accountID, e.ID, db)
 
-	choicer := reference.ItemChoices(&f, refItems, e.WhoFields())
+	choicer := reference.ItemChoices(&f, refItems, e.WhoKeyMap())
 	gThree.Choices = make([]entity.Choice, 0)
 
 	for i := 0; i < len(choicer); i++ {

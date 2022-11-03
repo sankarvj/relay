@@ -46,6 +46,6 @@ func LeadStatusVals(statusEntity entity.Entity, verb, name, color string) map[st
 		"name":  name,
 		"color": color,
 	}
-	itemVals := keyMap(statusEntity.NamedKeys(), statusVals)
+	itemVals := keyMap(statusEntity.NameKeyMapWrapper(), statusVals)
 	return itemVals
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 var (
 	// ErrNoEdgeNodesToAssociate will returned when there is no edge nodes are available for making the relation with source node
 	ErrNoEdgeNodesToAssociate = errors.New("There is no edge nodes to associate with")
+	mutex                     = &sync.RWMutex{}
 )
 
 func graph(graphName string, conn redis.Conn) rg.Graph {
@@ -281,10 +283,13 @@ func GetGroupedIDPlusFieldCount(rPool *redis.Pool, gn GraphNode, groupById strin
 
 	q := makeQuery(rPool, &gn)
 
+	mutex.RLock()
+	alias := gn.LabelAliasMap[groupById]
+	mutex.RUnlock()
 	if useReturn {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.ReturnNode.Alias, gn.SourceNode.Alias, gn.LabelAliasMap[groupById]))
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.ReturnNode.Alias, gn.SourceNode.Alias, alias))
 	} else {
-		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.SourceNode.Alias, gn.ReturnNode.Alias, gn.LabelAliasMap[groupById]))
+		q = fmt.Sprintf("%s %s", q, fmt.Sprintf("RETURN COUNT(%s), %s.id, %s.id", gn.SourceNode.Alias, gn.ReturnNode.Alias, alias))
 	}
 
 	result, err := graph.Query(q)
@@ -614,7 +619,9 @@ func (gn GraphNode) justNode() *rg.Node {
 		properties[quote(FieldIdKey)] = gn.ItemID
 	}
 	alias := rg.RandomString(10)
+	mutex.Lock()
 	gn.LabelAliasMap[gn.Label] = alias
+	mutex.Unlock()
 	return rg.NodeNew(quote(gn.Label), alias, properties)
 }
 

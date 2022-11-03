@@ -243,7 +243,6 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 
 	if len(itemIds) == 0 {
 		fields := make(map[string]interface{}, 0)
-		e.FilteredFields()
 		name := "System Generated"
 		fields[e.Key("first_name")] = util.NameInEmail(value)
 		fields[e.Key("email")] = value

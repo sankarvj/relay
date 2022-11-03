@@ -49,15 +49,15 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			return err
 		}
-		whoMap := e.WhoFields()
-		layouts := e.Layouts()
+		whoMap := e.WhoKeyMap()
+		layouts := e.LayoutKeyMap()
 		choices = choiceResponse(key, items, whoMap, layouts)
 	} else {
 		exp := fmt.Sprintf("{{%s.%s}} lk {%s}", e.ID, key, term)
 		if e.Field(key).DataType == entity.TypeList {
 			choices, err = likeSearchElements(ctx, accountID, e.ID, exp, i.db, i.sdb)
 		} else {
-			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoFields(), e.Layouts(), i.db, i.sdb)
+			choices, err = likeSearchRefItems(ctx, accountID, e.ID, exp, key, e.WhoKeyMap(), e.LayoutKeyMap(), i.db, i.sdb)
 		}
 		if err != nil {
 			return err

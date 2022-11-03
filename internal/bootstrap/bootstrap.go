@@ -214,7 +214,7 @@ func CurrentOwner(ctx context.Context, db *sqlx.DB, accountID, teamID string) (s
 	if err != nil {
 		return "", "", err
 	}
-	return ownerEntity.ID, entity.NamedKeysMap(ownerFields)["email"], nil
+	return ownerEntity.ID, entity.NameKeyMap(ownerFields)["email"], nil
 }
 
 // THE TEAM SPECIFIC BOOTS

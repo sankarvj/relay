@@ -82,7 +82,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 	}
 	updatedFields := existingItem.Fields()
 
-	whoMap := e.WhoFields()
+	whoMap := e.WhoKeyMap()
 
 	if memberID, ok := currentUser.AccountsB()[accountID]; ok {
 		followers := updatedFields[whoMap[entity.WhoFollower]]

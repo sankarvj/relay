@@ -15,7 +15,7 @@ import (
 func taskVals(actorEntity entity.Entity, desc, contactID string) map[string]interface{} {
 
 	taskVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(actorEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(actorEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
@@ -190,7 +190,7 @@ func ProjVals(projectEntity entity.Entity, name string, contactID1, contactID2, 
 		"pipeline_stage":       []interface{}{},
 		"associated_companies": []interface{}{},
 	}
-	return forms.KeyMap(projectEntity.NamedKeys(), projVals)
+	return forms.KeyMap(projectEntity.NameKeyMapWrapper(), projVals)
 }
 
 func MeetingFields(contactEntityID, companyEntityID, projectEntityID string, contactEntityEmailFieldID, contactEntityFirstNameFieldID, companyEntityNameFieldID, projectEntityNameFieldID string) []entity.Field {
@@ -436,7 +436,7 @@ func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1,
 		"associated_contacts":  []interface{}{contactID1},
 		"associated_companies": []interface{}{companyID1},
 	}
-	return forms.KeyMap(activityEntity.NamedKeys(), actVals)
+	return forms.KeyMap(activityEntity.NameKeyMapWrapper(), actVals)
 }
 
 func PlanFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string) []entity.Field {
@@ -563,5 +563,5 @@ func PlanVals(planEntity entity.Entity, name, desc string, contactID1, contactID
 		"associated_contacts":  []interface{}{contactID1},
 		"associated_companies": []interface{}{companyID1},
 	}
-	return forms.KeyMap(planEntity.NamedKeys(), planVals)
+	return forms.KeyMap(planEntity.NameKeyMapWrapper(), planVals)
 }

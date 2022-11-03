@@ -155,7 +155,7 @@ func superBugger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountI
 			return ""
 		}
 
-		f := e.FieldByKey(fieldKey)
+		f := e.Field(fieldKey)
 
 		itemIds := make([]interface{}, 0)
 		if suberBug == node.EmailEntityData {
@@ -174,7 +174,7 @@ func superBugger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountI
 				return ""
 			}
 
-			emailFields := e.EmailFields()
+			emailFields := e.OnlyEmailFields()
 			for _, it := range items {
 				for _, ef := range emailFields {
 					email := it.Fields()[ef.Key]

@@ -47,6 +47,6 @@ func StatusVals(statusEntity entity.Entity, verb, name, color string) map[string
 		"name":  name,
 		"color": color,
 	}
-	itemVals := keyMap(statusEntity.NamedKeys(), statusVals)
+	itemVals := keyMap(statusEntity.NameKeyMapWrapper(), statusVals)
 	return itemVals
 }

@@ -16,7 +16,7 @@ func (eng *Engine) executeEmailMayBeRemoved(ctx context.Context, db *sqlx.DB, sd
 	if err != nil {
 		return err
 	}
-	namedFieldsObj := entity.NamedFieldsObjMap(mailFields)
+	namedFieldsObj := entity.NameMap(mailFields)
 	var (
 		subject string
 		body    string

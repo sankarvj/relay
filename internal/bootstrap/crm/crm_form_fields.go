@@ -14,7 +14,7 @@ import (
 func TaskVals(actorEntity entity.Entity, desc, contactID string) map[string]interface{} {
 
 	taskVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(actorEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(actorEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
@@ -286,7 +286,7 @@ func DealVals(dealEntity entity.Entity, name string, amount int, contactID1, con
 		"pipeline_stage":       []interface{}{},
 		"close_date":           util.FormatTimeGo(time.Now()),
 	}
-	return forms.KeyMap(dealEntity.NamedKeys(), dealVals)
+	return forms.KeyMap(dealEntity.NameKeyMapWrapper(), dealVals)
 }
 
 func NoteFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, dealEntityID, dealEntityKey string) []entity.Field {
@@ -356,7 +356,7 @@ func NoteVals(noteEntity entity.Entity, desc, contactID string) map[string]inter
 		"desc":                desc,
 		"associated_contacts": []interface{}{contactID},
 	}
-	return forms.KeyMap(noteEntity.NamedKeys(), noteVals)
+	return forms.KeyMap(noteEntity.NameKeyMapWrapper(), noteVals)
 }
 
 func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey, statusEntityID, statusEntityKey string) []entity.Field {
@@ -429,5 +429,5 @@ func TicketVals(ticketEntity entity.Entity, name, statusID string) map[string]in
 		"associated_companies": []interface{}{},
 		"status":               []interface{}{statusID},
 	}
-	return forms.KeyMap(ticketEntity.NamedKeys(), ticketVals)
+	return forms.KeyMap(ticketEntity.NameKeyMapWrapper(), ticketVals)
 }

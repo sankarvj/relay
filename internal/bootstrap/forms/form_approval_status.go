@@ -58,6 +58,6 @@ func ApprovalStatusVals(approvalStatusEntity entity.Entity, verb, name, identifi
 		"identifier": identifier,
 		"color":      color,
 	}
-	itemVals := keyMap(approvalStatusEntity.NamedKeys(), statusVals)
+	itemVals := keyMap(approvalStatusEntity.NameKeyMapWrapper(), statusVals)
 	return itemVals
 }

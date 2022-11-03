@@ -34,10 +34,10 @@ func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entit
 	ni.Fields = make(map[string]interface{}, 0)
 
 	actualItemFields := childEntity.ValueAdd(childItem.Fields())
-	namedActualFields := entity.MetaFieldsObjMap(actualItemFields)
+	namedActualFields := entity.MetaMap(actualItemFields)
 
-	activityFields := ae.FieldsIgnoreError()
-	namedActivityFields := entity.NamedFieldsObjMap(activityFields)
+	activityFields := ae.EasyFields()
+	namedActivityFields := entity.NameMap(activityFields)
 
 	ni.Fields[namedActivityFields["activity-name"].Key] = childEntity.Name
 	ni.Fields[namedActivityFields["activity-action"].Key] = namedActualFields["title"].Value

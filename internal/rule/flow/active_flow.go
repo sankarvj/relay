@@ -51,7 +51,7 @@ func UpdateAF(ctx context.Context, db *sqlx.DB, af ActiveFlow) error {
 		"node_id" = $3, 
 		"is_active" = $4,
 		"life" = $5,
-		"updated_At" = $6 
+		"updated_at" = $6 
 		WHERE item_id = $1 AND flow_id = $2` //should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, af.ItemID, af.FlowID,
 		af.NodeID, af.IsActive, af.Life, af.UpdatedAt,

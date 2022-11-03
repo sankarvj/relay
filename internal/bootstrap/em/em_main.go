@@ -15,7 +15,7 @@ import (
 func Boot(ctx context.Context, b *base.Base) error {
 	b.LoadFixedEntities(ctx)
 	b.OwnerEntity.Fields()
-	ownerKey := b.OwnerEntity.NamedKeys()["email"]
+	ownerKey := b.OwnerEntity.NameKeyMapWrapper()["email"]
 	fmt.Println("\tEM:BOOT Owner Entity Retrived")
 
 	itemIDMap := make(map[string]string, 0)
@@ -25,7 +25,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	roleEntityKey := rolesEntity.NamedKeys()["role"]
+	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
 	fmt.Println("\tEM:BOOT Role Entity Created")
 
 	// add role item - Intern
@@ -114,13 +114,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tEM:BOOT Asset Catagory Entity Created")
 	// add entity - assets
-	assetCatagoryTitleField := entity.TitleField(assetCatagoryEntity.FieldsIgnoreError())
+	assetCatagoryTitleField := entity.TitleField(assetCatagoryEntity.EasyFields())
 	assetEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssets, "Assets", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, forms.AssetFields(assetCatagoryEntity.ID, assetCatagoryTitleField.Key))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Assets Entity Created")
-	assetsFieldsNamedKeysMap := assetEntity.NamedKeys()
+	assetsFieldsNamedKeysMap := assetEntity.NameKeyMapWrapper()
 	// add asset item - Macbook Pro
 	itemIDMap["macbook_pro"] = uuid.New().String()
 	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["macbook_pro"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "Macbook Pro", []interface{}{}), nil)
@@ -153,7 +153,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	statusFieldsNamedKeysMap := assetStatusEntity.NamedKeys()
+	statusFieldsNamedKeysMap := assetStatusEntity.NameKeyMapWrapper()
 	// add status item - Request-received
 	itemIDMap["status_received"] = uuid.New().String()
 	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, itemIDMap["status_received"], b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Request Received", "#fb667e"), nil)
@@ -188,8 +188,8 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Asset Status Entity Created")
 
 	// add entity - asset request
-	assetStatusTitleField := entity.TitleField(assetStatusEntity.FieldsIgnoreError())
-	assetTitleField := entity.TitleField(assetEntity.FieldsIgnoreError())
+	assetStatusTitleField := entity.TitleField(assetStatusEntity.EasyFields())
+	assetTitleField := entity.TitleField(assetEntity.EasyFields())
 	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
 	if err != nil {
 		return err
@@ -203,13 +203,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tEM:BOOT Service Catagory Entity Created")
 	// add entity - services
-	serviceCatagoryTitleField := entity.TitleField(serviceCatagoryEntity.FieldsIgnoreError())
+	serviceCatagoryTitleField := entity.TitleField(serviceCatagoryEntity.EasyFields())
 	serviceEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServices, "Services", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, forms.ServiceFields(serviceCatagoryEntity.ID, serviceCatagoryTitleField.Key))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Services Entity Created")
-	servicesFieldsNamedKeysMap := serviceEntity.NamedKeys()
+	servicesFieldsNamedKeysMap := serviceEntity.NameKeyMapWrapper()
 	// add service item - Git Access
 	itemIDMap["git"] = uuid.New().String()
 	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["git"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Git access", []interface{}{}), nil)
@@ -248,7 +248,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 	fmt.Println("\tEM:BOOT Services Created")
 	// add entity - service request
-	serviceTitleField := entity.TitleField(serviceEntity.FieldsIgnoreError())
+	serviceTitleField := entity.TitleField(serviceEntity.EasyFields())
 	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
 	if err != nil {
 		return err
@@ -403,7 +403,7 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 		return err
 	}
 
-	namedKeysMap := employeeEntity.NamedKeys()
+	namedKeysMap := employeeEntity.NameKeyMapWrapper()
 
 	cp := &base.CoreWorkflow{
 		Name:    "Employee Lifecycle",

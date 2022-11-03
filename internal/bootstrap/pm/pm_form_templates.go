@@ -10,7 +10,7 @@ import (
 
 func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	taskVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
@@ -27,10 +27,10 @@ func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Ent
 
 func inviteTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	inviteVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var associatedContactKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.Name == "contact" {
 			associatedContactKey = f.Key
 		}

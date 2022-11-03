@@ -36,7 +36,7 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 		return err
 	}
 
-	namedFieldsObj := entity.NamedFieldsObjMap(visitorInvitationFields)
+	namedFieldsObj := entity.NameMap(visitorInvitationFields)
 	body := namedFieldsObj["body"].Value.(string)
 	role := namedFieldsObj["role"].Value.([]interface{})
 	body = eng.RunExpRenderer(ctx, db, sdb, n.AccountID, body, n.VariablesMap())
@@ -101,7 +101,7 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 		return err
 	}
 
-	namedKeys := entity.NamedFieldsObjMap(e.FieldsIgnoreError())
+	namedKeys := entity.NameMap(e.EasyFields())
 
 	items, err := checkIfMemberAlreadyExist(ctx, nv.AccountID, e.ID, nv.Email, namedKeys, db, sdb)
 	if err != nil {

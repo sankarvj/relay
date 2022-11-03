@@ -74,7 +74,7 @@ func (eng *Engine) updateItemFields(ctx context.Context, accountID, actorEntityI
 		return err
 	}
 
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 	itemFields := it.Fields()
 
 	for _, f := range fields {

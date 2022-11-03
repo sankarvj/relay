@@ -39,7 +39,7 @@ func validateItemCreate(ctx context.Context, accountID, entityID string, values 
 }
 
 func validateRequired(ctx context.Context, e entity.Entity, values map[string]interface{}) (map[string]ErrorPayload, error) {
-	fields := e.RequiredFields()
+	fields := e.OnlyRequiredFields()
 	if len(fields) == 0 {
 		return nil, nil
 	}
@@ -63,7 +63,7 @@ func validateRequired(ctx context.Context, e entity.Entity, values map[string]in
 func validateUniquness(ctx context.Context, e entity.Entity, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) (map[string]ErrorPayload, error) {
 
 	//unique fields only
-	fields := e.UniqueFields()
+	fields := e.OnlyUniqueFields()
 	if len(fields) == 0 {
 		return nil, nil
 	}

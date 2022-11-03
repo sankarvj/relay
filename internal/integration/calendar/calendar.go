@@ -47,7 +47,7 @@ func (c Calendar) Act(ctx context.Context, accountID string, actionID string, ac
 }
 
 func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemID string, valueAddedCalendarFields []entity.Field, db *sqlx.DB) error {
-	namedFieldsObj := entity.NamedFieldsObjMap(valueAddedCalendarFields)
+	namedFieldsObj := entity.NameMap(valueAddedCalendarFields)
 	meetingID := uuid.New().String()
 	meeting := &integration.Meeting{
 		ID:          meetingID,
@@ -55,7 +55,7 @@ func CreateCalendarEvent(ctx context.Context, accountID, teamID, entityID, itemI
 		Description: entityFieldVal(namedFieldsObj["summary"]),
 		StartTime:   entityFieldVal(namedFieldsObj["start_time"]),
 		EndTime:     entityFieldVal(namedFieldsObj["end_time"]),
-		Attendees:   namedFieldsObj["attendess"].ChoicesValues(),
+		Attendees:   namedFieldsObj["attendess"].ValueChoices(),
 	}
 
 	st, err := util.ParseTime(meeting.StartTime)

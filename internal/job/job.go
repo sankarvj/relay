@@ -378,7 +378,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 
 	//act on notifications
 	if m.State < stream.StateNotification {
-		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, &m.UserID, nil, entity.FieldsMap(valueAddedFields), m.Source, notification.TypeChatConversationAdded)
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, &m.UserID, nil, entity.KeyValueMap(valueAddedFields), m.Source, notification.TypeChatConversationAdded)
 		if err != nil {
 			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on notification update. error: ", err)
 			return err
@@ -438,11 +438,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 			exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
 			filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
 
-			fields, err := e.FilteredFields()
-			if err != nil {
-				return err
-			}
-
+			fields := e.OnlyVisibleFields()
 			for _, f := range fields {
 				if condition, ok := filter.Conditions[f.Key]; ok {
 					conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
@@ -542,7 +538,7 @@ func (j *Job) eventDelayExhausted(m *stream.Message) error {
 func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID string, oldFields map[string]interface{}, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnRedisGraph kicked in")
 	if oldFields != nil { //use only during the update
-		dirtyFields := item.Diff(oldFields, entity.FieldsMap(valueAddedFields))
+		dirtyFields := item.Diff(oldFields, entity.KeyValueMap(valueAddedFields))
 
 		//unlink
 		for i := 0; i < len(valueAddedFields); i++ {
@@ -638,7 +634,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 //actOnPipelines -  not a generic way. the way we use dependent is muddy
 func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnPipelines kicked in")
-	for _, fi := range e.FieldsIgnoreError() {
+	for _, fi := range e.EasyFields() {
 
 		if dirtyField, ok := dirtyFields[fi.Key]; ok && fi.IsNode() && dirtyField != nil && len(dirtyField.([]interface{})) > 0 && fi.Dependent != nil {
 			flowID := newFields[fi.Dependent.ParentKey].([]interface{})[0].(string)
@@ -658,8 +654,8 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 	log.Println("*********> debug internal.job actOnConnections kicked in")
 	ctx := context.Background()
 	createEvent := oldFields == nil
-	newValueAddedFieldsMap := entity.KeyedFieldsObjMap(newFields)
-	oldValueAddedFieldsMap := entity.KeyedFieldsObjMap(oldFields)
+	newValueAddedFieldsMap := entity.KeyMap(newFields)
+	oldValueAddedFieldsMap := entity.KeyMap(oldFields)
 	relationships, err := relationship.Relationships(ctx, db, accountID, entityID)
 	if err != nil {
 		return errors.Wrap(err, "error: querying relationships")

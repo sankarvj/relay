@@ -86,7 +86,7 @@ func (v *Visitor) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	valueAddedFields := e.ValueAdd(i.Fields())
-	namedActualFields := entity.MetaFieldsObjMap(valueAddedFields)
+	namedActualFields := entity.MetaMap(valueAddedFields)
 	title := namedActualFields["title"].Value.(string)
 
 	return web.Respond(ctx, w, createViewModelVisitor(visitor, e.DisplayName, title), http.StatusOK)

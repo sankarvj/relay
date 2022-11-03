@@ -186,38 +186,6 @@ type Dependent struct {
 	Actions     []string `json:"actions"`     // execute the action based on the expression result
 }
 
-func (e Entity) FieldsIgnoreError() []Field {
-	fields, err := e.Fields()
-	if err != nil {
-		log.Println("***> unexpected/unhandled error occurred. internal.entity.fields")
-	}
-	return fields
-}
-
-func (e Entity) DomFields() []Field {
-	fields := e.FieldsIgnoreError()
-	domFields := make([]Field, 0)
-	for _, f := range fields {
-		if f.DomType != DomNotApplicable {
-			domFields = append(domFields, f)
-		}
-	}
-
-	return domFields
-}
-
-func (e Entity) ValueAdd(itemFields map[string]interface{}) []Field {
-	entityFields := e.FieldsIgnoreError()
-	valueAddedFields := make([]Field, 0)
-	for _, field := range entityFields {
-		if val, ok := itemFields[field.Key]; ok {
-			field.Value = val
-		}
-		valueAddedFields = append(valueAddedFields, field)
-	}
-	return valueAddedFields
-}
-
 // Fields parses attribures to fields
 func (e Entity) Fields() ([]Field, error) {
 	fields, err := unmarshalFields(e.Fieldsb)
@@ -227,92 +195,184 @@ func (e Entity) Fields() ([]Field, error) {
 	return fields, nil
 }
 
-func (e Entity) FilteredFields() ([]Field, error) {
-	tmp := make([]Field, 0)
-	fields, err := unmarshalFields(e.Fieldsb)
+func (e Entity) EasyFields() []Field {
+	fields, err := e.Fields()
 	if err != nil {
-		return make([]Field, 0), errors.Wrapf(err, "error while unmarshalling entity attributes to fields type %q", e.ID)
+		log.Println("***> unexpected/unhandled error occurred. internal.entity.fields")
 	}
+	return fields
+}
 
+func (e Entity) AllFieldsButSecured() []Field {
+	tmp := make([]Field, 0)
+	fields := e.EasyFields()
+	for _, f := range fields {
+		if !f.IsConfigField() {
+			tmp = append(tmp, f)
+		}
+	}
+	return tmp
+}
+
+func (e Entity) OnlyVisibleFields() []Field {
+	tmp := make([]Field, 0)
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if !f.IsHidden() {
 			tmp = append(tmp, f)
 		}
 	}
-
-	return tmp, nil
+	return tmp
 }
 
-func (e Entity) UniqueFields() []Field {
+func (e Entity) OnlyUniqueFields() []Field {
 	tmp := make([]Field, 0)
-	fields, _ := e.Fields()
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if f.IsUnique() {
 			tmp = append(tmp, f)
 		}
 	}
-
 	return tmp
 }
 
-func (e Entity) RequiredFields() []Field {
+func (e Entity) OnlyDomApplicableFields() []Field {
 	tmp := make([]Field, 0)
-	fields, _ := e.Fields()
+	fields := e.EasyFields()
+	for _, f := range fields {
+		if !f.IsNotApplicable() {
+			tmp = append(tmp, f)
+		}
+	}
+	return tmp
+}
+
+func (e Entity) OnlyRequiredFields() []Field {
+	tmp := make([]Field, 0)
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if f.IsRequired() {
 			tmp = append(tmp, f)
 		}
 	}
-
 	return tmp
 }
 
-func (e Entity) WhoFields() map[string]string {
-	tmp := make(map[string]string, 0)
-	fields, err := unmarshalFields(e.Fieldsb)
-	if err != nil {
-		return tmp
+func (e Entity) OnlyEmailFields() []Field {
+	tmp := make([]Field, 0)
+	fields := e.EasyFields()
+	for _, f := range fields {
+		if f.Who == WhoEmail {
+			tmp = append(tmp, f)
+		}
 	}
+	return tmp
+}
 
+func (e Entity) WhoKeyMap() map[string]string {
+	tmp := make(map[string]string, 0)
+	fields := e.EasyFields()
 	for _, f := range fields {
 		tmp[f.Who] = f.Key
 	}
 	return tmp
 }
 
-func (e Entity) Layouts() map[string]string {
-	tmp := make(map[string]string, 0)
-	fields, err := unmarshalFields(e.Fieldsb)
-	if err != nil {
-		return tmp
+func KeyValueMap(entityFields []Field) map[string]interface{} {
+	params := map[string]interface{}{}
+	for _, f := range entityFields {
+		params[f.Key] = f.Value
 	}
+	return params
+}
+
+func NameKeyMap(entityFields []Field) map[string]string {
+	params := map[string]string{}
+	for _, f := range entityFields {
+		params[f.Name] = f.Key
+	}
+	return params
+}
+
+func NameMap(entityFields []Field) map[string]Field {
+	params := map[string]Field{}
+	for _, f := range entityFields {
+		params[f.Name] = f
+	}
+	return params
+}
+
+func WhoMap(fields []Field) map[string]Field {
+	params := make(map[string]Field, 0)
+	for _, f := range fields {
+		params[f.Who] = f
+	}
+	return params
+}
+
+func MetaMap(fields []Field) map[string]Field {
+	params := map[string]Field{}
+	for _, f := range fields {
+		params[f.Meta[MetaKeyLayout]] = f
+	}
+	return params
+}
+
+func KeyMap(fields []Field) map[string]Field {
+	params := map[string]Field{}
+	for _, f := range fields {
+		params[f.Key] = f
+	}
+	return params
+}
+
+func (f *Field) ChoiceMap() map[string]Choice {
+	choicesMap := make(map[string]Choice, 0)
+	for _, choice := range f.Choices {
+		choicesMap[choice.ID] = choice
+	}
+	return choicesMap
+}
+
+func (e Entity) LayoutKeyMap() map[string]string {
+	tmp := make(map[string]string, 0)
+	fields := e.EasyFields()
 	for _, f := range fields {
 		tmp[f.Meta[MetaKeyLayout]] = f.Key
 	}
 	return tmp
 }
 
-func (e Entity) Key(name string) string {
-	fields, err := e.Fields()
-	if err != nil {
-		return ""
+func (e Entity) NameKeyMapWrapper() map[string]string {
+	return NameKeyMap(e.EasyFields())
+}
+
+func (e Entity) NameMapWrapper() map[string]Field {
+	return NameMap(e.EasyFields())
+}
+
+func (e Entity) ValueAdd(itemFields map[string]interface{}) []Field {
+	tmp := make([]Field, 0)
+	fields := e.EasyFields()
+	for _, field := range fields {
+		if val, ok := itemFields[field.Key]; ok {
+			field.Value = val
+		}
+		tmp = append(tmp, field)
 	}
-	return NamedKeysMap(fields)[name]
+	return tmp
+}
+
+func (e Entity) Key(name string) string {
+	return NameKeyMap(e.EasyFields())[name]
 }
 
 func (e Entity) Field(key string) Field {
-	fields, err := e.Fields()
-	if err != nil {
-		return Field{}
-	}
-	return KeyedFieldsObjMap(fields)[key]
+	return KeyMap(e.EasyFields())[key]
 }
 
 func (e Entity) WhoField(who string) Field {
-	fields, err := e.Fields()
-	if err != nil {
-		return Field{}
-	}
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if f.Who == who {
 			return f
@@ -322,7 +382,7 @@ func (e Entity) WhoField(who string) Field {
 }
 
 func (e Entity) FlowField() *Field {
-	fields, _ := e.Fields()
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if f.IsFlow() {
 			return &f
@@ -332,42 +392,13 @@ func (e Entity) FlowField() *Field {
 }
 
 func (e Entity) NodeField() *Field {
-	fields, _ := e.Fields()
+	fields := e.EasyFields()
 	for _, f := range fields {
 		if f.IsNode() {
 			return &f
 		}
 	}
 	return nil
-}
-
-func (e Entity) EmailFields() []Field {
-	emailFields := make([]Field, 0)
-	fields, _ := e.Fields()
-	for _, f := range fields {
-		if f.Who == WhoEmail {
-			emailFields = append(emailFields, f)
-		}
-	}
-	return emailFields
-}
-
-func (e Entity) FieldByKey(key string) Field {
-	fields, _ := e.Fields()
-	for _, f := range fields {
-		if f.Key == key {
-			return f
-		}
-	}
-	return Field{}
-}
-
-func (e Entity) NamedKeys() map[string]string {
-	return NamedKeysMap(e.FieldsIgnoreError())
-}
-
-func (e Entity) NamedFields() map[string]Field {
-	return NamedFieldsObjMap(e.FieldsIgnoreError())
 }
 
 func (f *Field) SetDisplayGex(key string) {
@@ -382,6 +413,39 @@ func (f *Field) SetEmailGex(key string) {
 		f.Meta = make(map[string]string, 0)
 	}
 	f.Meta[MetaKeyEmailGex] = key
+}
+
+func (f Field) ForceLoadChoices() bool {
+	if val, ok := f.Meta[MetaKeyLoadChoices]; ok && val == "true" {
+		return true
+	}
+	return false
+}
+
+func (f Field) SetMeta(key string) {
+	f.Meta[key] = "true"
+}
+
+func (f Field) ValidRefField() bool {
+	return f.IsReference() && f.Value != nil && f.Value != "" && len(f.Value.([]interface{})) > 0
+}
+
+func (f Field) RefValues() []interface{} {
+	return f.Value.([]interface{})
+}
+
+func (f Field) DisplayGex() string {
+	if val, ok := f.Meta[MetaKeyDisplayGex]; ok {
+		return val
+	}
+	return ""
+}
+
+func (f Field) EmailGex() string {
+	if val, ok := f.Meta[MetaKeyEmailGex]; ok {
+		return val
+	}
+	return ""
 }
 
 func (f Field) IsFlow() bool {
@@ -400,13 +464,6 @@ func (f Field) IsNode() bool {
 
 func (f *Field) IsEmail() bool {
 	return f.Who == WhoEmail
-}
-
-func (f Field) ForceLoadChoices() bool {
-	if val, ok := f.Meta[MetaKeyLoadChoices]; ok && val == "true" {
-		return true
-	}
-	return false
 }
 
 func (f Field) IsReference() bool {
@@ -437,32 +494,6 @@ func (f Field) IsNotApplicable() bool {
 	return f.DomType == DomNotApplicable
 }
 
-func (f Field) SetMeta(key string) {
-	f.Meta[key] = "true"
-}
-
-func (f Field) ValidRefField() bool {
-	return f.IsReference() && f.Value != nil && f.Value != "" && len(f.Value.([]interface{})) > 0
-}
-
-func (f Field) RefValues() []interface{} {
-	return f.Value.([]interface{})
-}
-
-func (f Field) DisplayGex() string {
-	if val, ok := f.Meta[MetaKeyDisplayGex]; ok {
-		return val
-	}
-	return ""
-}
-
-func (f Field) EmailGex() string {
-	if val, ok := f.Meta[MetaKeyEmailGex]; ok {
-		return val
-	}
-	return ""
-}
-
 func (f Field) IsIdentifierLayout() bool {
 	if val, ok := f.Meta[MetaKeyLayout]; ok {
 		return val == MetaLayoutIdentifier
@@ -473,6 +504,13 @@ func (f Field) IsIdentifierLayout() bool {
 func (f Field) IsTitleLayout() bool {
 	if val, ok := f.Meta[MetaKeyLayout]; ok {
 		return val == MetaLayoutTitle
+	}
+	return false
+}
+
+func (f Field) IsConfigField() bool {
+	if val, ok := f.Meta[MetaKeyConfig]; ok {
+		return val == "true"
 	}
 	return false
 }
@@ -512,55 +550,7 @@ func (f Field) RollUp() string {
 	return MetaRollUpNever
 }
 
-func FieldsMap(entityFields []Field) map[string]interface{} {
-	params := map[string]interface{}{}
-	for _, f := range entityFields {
-		params[f.Key] = f.Value
-	}
-	return params
-}
-
-func NamedKeysMap(entityFields []Field) map[string]string {
-	params := map[string]string{}
-	for _, f := range entityFields {
-		params[f.Name] = f.Key
-	}
-	return params
-}
-
-func NamedFieldsObjMap(entityFields []Field) map[string]Field {
-	params := map[string]Field{}
-	for _, f := range entityFields {
-		params[f.Name] = f
-	}
-	return params
-}
-
-func WhoFieldsMap(entityFields []Field) map[string]Field {
-	params := make(map[string]Field, 0)
-	for _, f := range entityFields {
-		params[f.Who] = f
-	}
-	return params
-}
-
-func MetaFieldsObjMap(entityFields []Field) map[string]Field {
-	params := map[string]Field{}
-	for _, f := range entityFields {
-		params[f.Meta[MetaKeyLayout]] = f
-	}
-	return params
-}
-
-func KeyedFieldsObjMap(entityFields []Field) map[string]Field {
-	params := map[string]Field{}
-	for _, f := range entityFields {
-		params[f.Key] = f
-	}
-	return params
-}
-
-func (f Field) ChoicesValues() []string {
+func (f Field) ValueChoices() []string {
 	s := make([]string, len(f.Choices))
 	for i, choice := range f.Choices {
 		s[i] = fmt.Sprint(choice.Value)
@@ -710,12 +700,4 @@ func (f *Field) MakeGraphFieldPlain() *graphdb.Field {
 	} else {
 		return nil
 	}
-}
-
-func (f *Field) ChoicesMap() map[string]Choice {
-	choicesMap := make(map[string]Choice, 0)
-	for _, choice := range f.Choices {
-		choicesMap[choice.ID] = choice
-	}
-	return choicesMap
 }

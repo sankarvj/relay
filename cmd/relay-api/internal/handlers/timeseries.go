@@ -133,7 +133,7 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 			//overloading the existing chart exp with the additional expression
 			wholeExp := util.AddExpression(exp, ch.GetExp())
 			stTime, endTime, _ := timeseries.Duration(ch.Duration)
-			series, err := list(ctx, ch, wholeExp, stTime, endTime, ts.db, ts.sdb)
+			series, err := loadSeries(ctx, ch, wholeExp, stTime, endTime, ts.db, ts.sdb)
 			if err != nil {
 				return err
 			}
@@ -182,7 +182,7 @@ func (ts *Timeseries) Chart(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		vmc = createViewModelChart(*ch, vmseries(series), len(series), change(len(series), count))
 	case string(chart.DTypeDefault):
-		series, err := listwb(ctx, *ch, exp, baseEntityID, baseItemID, startTime, endTime, ts.db, ts.sdb)
+		series, err := loadCHSeries(ctx, *ch, exp, baseEntityID, baseItemID, startTime, endTime, ts.db, ts.sdb)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func (ts *Timeseries) OnMe(ctx context.Context, w http.ResponseWriter, r *http.R
 	for _, ch := range charts {
 		if ch.Type == string(chart.TypeCard) {
 			startTime, endTime, _ := timeseries.DurationWithZone(ch.Duration, time.FixedZone(zone.Zone()))
-			series, err := list(ctx, ch, ch.GetExp(), startTime, endTime, ts.db, ts.sdb)
+			series, err := loadSeries(ctx, ch, ch.GetExp(), startTime, endTime, ts.db, ts.sdb)
 			if err != nil {
 				return err
 			}
@@ -235,7 +235,7 @@ func vmseries(tms []timeseries.Timeseries) []Series {
 }
 
 func vmseriesFromMap(m map[string]int, f entity.Field) []Series {
-	mapOfChoices := f.ChoicesMap()
+	mapOfChoices := f.ChoiceMap()
 
 	vmseries := make([]Series, 0)
 	for id, value := range m {

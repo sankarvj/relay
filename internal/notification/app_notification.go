@@ -64,7 +64,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 			if i == 0 && berr == nil { // for now fetching one time is enough
 				it, err := item.Retrieve(ctx, baseEntityID, baseItemID, db)
 				if err == nil && it.State != item.StateWebForm {
-					titleField := entity.TitleField(baseEntity.FieldsIgnoreError())
+					titleField := entity.TitleField(baseEntity.EasyFields())
 					appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 
 					//adding base item follower and assignees

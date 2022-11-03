@@ -338,7 +338,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 
 	existingFields := existingItem.Fields()
 	updatedFields := make(map[string]interface{}, 0)
-	namedKeys := entity.NamedKeysMap(ownerEntity.FieldsIgnoreError())
+	namedKeys := entity.NameKeyMap(ownerEntity.EasyFields())
 	for name, k := range namedKeys {
 		updatedFields[k] = existingFields[k]
 		if name == "user_id" {

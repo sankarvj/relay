@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -57,18 +56,18 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 
 	piper := Piper{
 		Items: make(map[string][]ViewModelItem, 0),
 	}
 
 	if !util.IsEmpty(viewID) {
+		exp = ""
 		fl, err := flow.Retrieve(ctx, viewID, i.db)
 		if err != nil {
 			return err
 		}
-
 		if fl.Mode == flow.FlowModePipeLine { //case: kanban view
 			ff := e.FlowField()
 			fl.Expression = fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, ff.Key, fl.ID)
@@ -76,46 +75,20 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 			if err != nil {
 				return err
 			}
+		} else {
+			exp = util.AddExpression(exp, fl.Expression)
 		}
-
-		exp = ""
-		exp = util.AddExpression(exp, fl.Expression)
 	}
-
-	log.Println("exp--- ", exp)
 
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
 
 	if groupby != "" && page == 0 {
-		piper.Items = make(map[string][]ViewModelItem, 0)
-		piper.Tokens = make(map[string]string, 0)
-		piper.Exps = make(map[string]string, 0)
-		piper.CountMap = make(map[string]map[string]int, 0)
-		choicers, err := groupBy(ctx, groupby, e, i.db, i.sdb)
+		err := loadItemsWithGroupByLogic(ctx, accountID, e, exp, sortby, direction, groupby, page, &piper, i.db, i.sdb)
 		if err != nil {
 			return err
 		}
-		for _, choicer := range choicers {
-			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, groupby, choicer.ID)
-			if choicer.ID == "" { // get none values
-				newExp = fmt.Sprintf("{{%s.%s}} !in {%s}", e.ID, groupby, choicer.Value)
-			}
-			finalExp := util.AddExpression(exp, newExp)
-			vitems, countMap, err := NewSegmenter(finalExp).
-				AddPage(page).
-				AddSortLogic(sortby, direction).
-				AddCount().
-				filterWrapper(ctx, accountID, e.ID, fields, map[string]interface{}{}, i.db, i.sdb)
-			if err != nil {
-				return err
-			}
-			piper.CountMap[choicer.ID] = countMap
-			piper.Items[choicer.ID] = vitems
-			piper.Tokens[choicer.ID] = choicer.Name
-			piper.Exps[choicer.ID] = newExp
-		}
-	} else if ls == entity.MetaRenderPipe {
+	} else if ls == entity.MetaRenderPipe && page == 0 {
 		for _, node := range piper.Nodes {
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
@@ -140,26 +113,13 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	//NOT SO GOOD - DOING THIS IS TO SHOW THE LIST OF ENTITIES IN THE ITEMS LIST PAGE FOR UI NAVIGATION
-	viewModelEntities := make([]entity.ViewModelEntity, 0)
-	if page == 0 {
-		entities, err := entity.List(ctx, params["account_id"], params["team_id"], []int{entity.CategoryData}, i.db)
-		if err != nil {
-			return err
-		}
-		for _, entt := range entities {
-			viewModelEntities = append(viewModelEntities, createViewModelEntity(entt))
-		}
-	}
-
 	response := struct {
-		Items    []ViewModelItem          `json:"items"`
-		Category int                      `json:"category"`
-		Fields   []entity.Field           `json:"fields"`
-		Entity   entity.ViewModelEntity   `json:"entity"`
-		Piper    Piper                    `json:"piper"`
-		CountMap map[string]int           `json:"count_map"`
-		Entities []entity.ViewModelEntity `json:"entities"`
+		Items    []ViewModelItem        `json:"items"`
+		Category int                    `json:"category"`
+		Fields   []entity.Field         `json:"fields"`
+		Entity   entity.ViewModelEntity `json:"entity"`
+		Piper    Piper                  `json:"piper"`
+		CountMap map[string]int         `json:"count_map"`
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
@@ -167,7 +127,6 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
 		CountMap: countMap,
-		Entities: viewModelEntities,
 	}
 
 	return web.Respond(ctx, w, response, http.StatusOK)
@@ -184,7 +143,7 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		return err
 	}
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 
 	items, err := item.ListFilterByState(ctx, accountID, entityID, state, i.db)
 	if err != nil {
@@ -308,7 +267,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 
 	it := item.MakeItem(populateBR)
 	bonds := []relationship.Bond{}
@@ -340,18 +299,30 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		viewModelItems = append(viewModelItems, ViewModelItem{})
 	}
 
+	associatedEntities, err := entity.BulkRetrieve(ctx, entityIds(bonds), i.db)
+	if err != nil {
+		return err
+	}
+
+	viewModelEntities := make([]entity.ViewModelEntity, len(associatedEntities))
+	for i, entt := range associatedEntities {
+		viewModelEntities[i] = createViewModelEntity(entt)
+	}
+
 	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, i.sdb, job.NewJabEngine())
 
 	itemDetail := struct {
-		Entity entity.ViewModelEntity `json:"entity"`
-		Item   ViewModelItem          `json:"item"`
-		Bonds  []relationship.Bond    `json:"bonds"`
-		Fields []entity.Field         `json:"fields"`
+		Entity        entity.ViewModelEntity   `json:"entity"`
+		Item          ViewModelItem            `json:"item"`
+		Bonds         []relationship.Bond      `json:"bonds"`
+		Fields        []entity.Field           `json:"fields"`
+		ChildEntities []entity.ViewModelEntity `json:"child_entities"`
 	}{
 		createViewModelEntity(e),
 		viewModelItems[0],
 		bonds,
 		fields,
+		viewModelEntities,
 	}
 	return web.Respond(ctx, w, itemDetail, http.StatusOK)
 }
@@ -387,4 +358,12 @@ func takeAEI(ctx context.Context, params map[string]string, db *sqlx.DB) (string
 		}
 	}
 	return params["account_id"], entityID, params["item_id"]
+}
+
+func entityIds(bonds []relationship.Bond) []string {
+	ids := make([]string, len(bonds))
+	for i, b := range bonds {
+		ids[i] = b.EntityID
+	}
+	return ids
 }

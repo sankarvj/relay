@@ -10,10 +10,10 @@ import (
 
 func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID string) map[string]interface{} {
 	dealVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsTitleLayout() {
 			titleKey = f.Key
 		}
@@ -38,10 +38,10 @@ func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID s
 
 func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	taskVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsTitleLayout() {
 			titleKey = f.Key
 		}
@@ -62,7 +62,7 @@ func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Ent
 
 func assetRequestTemplates(desc, assetID, statusID string, thisEntity entity.Entity) map[string]interface{} {
 	arVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
@@ -79,7 +79,7 @@ func assetRequestTemplates(desc, assetID, statusID string, thisEntity entity.Ent
 
 func serviceRequestTemplates(desc, serviceID, statusID string, thisEntity entity.Entity) map[string]interface{} {
 	arVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
@@ -96,10 +96,10 @@ func serviceRequestTemplates(desc, serviceID, statusID string, thisEntity entity
 
 func inviteTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	inviteVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var emailKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsEmail() {
 			emailKey = f.Key
 		}

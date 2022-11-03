@@ -51,5 +51,5 @@ func StreamVals(streamEntity entity.Entity, title, message, file string) map[str
 		"title": title,
 		"label": message,
 	}
-	return keyMap(streamEntity.NamedKeys(), streamVals)
+	return keyMap(streamEntity.NameKeyMapWrapper(), streamVals)
 }

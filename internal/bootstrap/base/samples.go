@@ -95,7 +95,7 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 		if err != nil {
 			return err
 		}
-		fields := e.FieldsIgnoreError()
+		fields := e.EasyFields()
 		for _, f := range fields {
 			if f.Name == "nps_score" {
 				exp := fmt.Sprintf("{{%s.%s}} gt {98}", entityID, e.Key("nps_score"))
@@ -185,7 +185,7 @@ func (b *Base) AddLayouts(ctx context.Context, name, entityID string) error {
 		return err
 	}
 	layoutFields := make(map[string]string, 0)
-	for _, f := range e.FieldsIgnoreError() {
+	for _, f := range e.EasyFields() {
 		if f.Name == "first_name" { // confusing? because this should happen only via the UI.
 			layoutFields["title"] = f.Key
 		} else if f.Name == "owner" {

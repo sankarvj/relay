@@ -14,7 +14,7 @@ import (
 func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.DB, sdb *database.SecDB) ([]reference.Choicer, error) {
 	var choicers []reference.Choicer
 	var groupByField *entity.Field
-	fields := enty.FieldsIgnoreError()
+	fields := enty.EasyFields()
 
 	for _, f := range fields {
 		if f.Key == fieldKey {
@@ -32,7 +32,7 @@ func groupBy(ctx context.Context, fieldKey string, enty entity.Entity, db *sqlx.
 		if err != nil {
 			return choicers, err
 		}
-		choicers = reference.ItemChoices(groupByField, items, e.WhoFields())
+		choicers = reference.ItemChoices(groupByField, items, e.WhoKeyMap())
 	}
 	choicers = append(choicers, reference.Choicer{ID: "", Name: "Others", Value: itIds(choicers)})
 	return choicers, nil

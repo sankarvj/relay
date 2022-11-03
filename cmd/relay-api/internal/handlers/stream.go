@@ -37,7 +37,7 @@ func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		userIDs[*item.UserID] = true
 	}
 	uMap, _ := userMap(ctx, userIDs, st.db)
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 	viewModelItems := itemResponse(items, uMap)
 
 	response := struct {

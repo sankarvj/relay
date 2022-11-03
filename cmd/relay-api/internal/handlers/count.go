@@ -76,7 +76,7 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 		itemID := r.GetByIndex(1).(string)
 		statusID := r.GetByIndex(2).(string)
 
-		choice := statusField.ChoicesMap()[statusID]
+		choice := statusField.ChoiceMap()[statusID]
 		if _, ok := response[itemID]; !ok {
 			response[itemID] = make([]Series, 0)
 		}
@@ -144,7 +144,7 @@ func (gOne *GridOne) taskCountPerStage(ctx context.Context, accountID, teamID st
 
 	var stageFieldKey string
 	var statusField entity.Field
-	fields := taskE.FieldsIgnoreError()
+	fields := taskE.EasyFields()
 	for _, f := range fields {
 		if f.Name == "pipeline_stage" {
 			stageFieldKey = taskE.Key("pipeline_stage")

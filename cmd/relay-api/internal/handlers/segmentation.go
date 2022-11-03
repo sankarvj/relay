@@ -218,6 +218,11 @@ func (s *Segmenter) AddCount() *Segmenter {
 	return s
 }
 
+func (s *Segmenter) DoCount(count bool) *Segmenter {
+	s.doCount = count
+	return s
+}
+
 func (s *Segmenter) CountEnabled() bool {
 	return s.doCount && s.page == 0
 }

@@ -41,7 +41,7 @@ func (f *Form) Adder(ctx context.Context, w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return err
 	}
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 
 	it, err := item.Retrieve(ctx, entityID, itemID, f.db)
 	if err != nil {
@@ -86,7 +86,7 @@ func (f *Form) Render(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
-	fields := e.FieldsIgnoreError()
+	fields := e.EasyFields()
 
 	it, err := item.Retrieve(ctx, entityID, itemID, f.db)
 	if err != nil {

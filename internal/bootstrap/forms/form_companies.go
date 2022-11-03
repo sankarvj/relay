@@ -141,5 +141,5 @@ func CompanyVals(companyEntity entity.Entity, name, website string) map[string]i
 		"owner":           []interface{}{},
 	}
 
-	return keyMap(companyEntity.NamedKeys(), namedVals)
+	return keyMap(companyEntity.NameKeyMapWrapper(), namedVals)
 }

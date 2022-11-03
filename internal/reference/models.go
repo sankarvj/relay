@@ -16,7 +16,18 @@ type Choicer struct {
 	Color  interface{}
 }
 
-func nodeChoices(nodes []node.Node) []Choicer {
+func NodeChoices(nodes []node.Node) []Choicer {
+	choicers := make([]Choicer, len(nodes))
+	for i, node := range nodes {
+		choicers[i] = Choicer{
+			ID:   node.ID,
+			Name: node.Name,
+		}
+	}
+	return choicers
+}
+
+func NodeActorChoices(nodes []node.NodeActor) []Choicer {
 	choicers := make([]Choicer, len(nodes))
 	for i, node := range nodes {
 		choicers[i] = Choicer{

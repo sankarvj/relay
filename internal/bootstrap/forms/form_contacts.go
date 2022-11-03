@@ -297,5 +297,5 @@ func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadSt
 		"lead_status":     []interface{}{leadStatusItemID},
 	}
 
-	return keyMap(contactEntity.NamedKeys(), namedVals)
+	return keyMap(contactEntity.NameKeyMapWrapper(), namedVals)
 }

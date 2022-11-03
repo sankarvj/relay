@@ -185,7 +185,7 @@ func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {
 		DisplayName:   e.DisplayName,
 		Category:      e.Category,
 		State:         e.State,
-		Fields:        e.DomFields(),
+		Fields:        e.AllFieldsButSecured(),
 		Tags:          e.Tags,
 		IsPublic:      e.IsPublic,
 		IsCore:        e.IsCore,

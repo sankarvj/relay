@@ -101,7 +101,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 									log.Printf("***> unexpected error occurred. when retriving reference nodes for field unit entity. continuing... error: %v\n", err)
 									return
 								}
-								ChoicesMaker(f, pv, nodeChoices(nodes))
+								ChoicesMaker(f, pv, NodeChoices(nodes))
 							case fmt.Sprintf("{{{%s.%s}}}", ActionSet, ByFlow):
 							}
 
@@ -162,13 +162,13 @@ func updateChoices(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accoun
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 			}
-			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoKeyMap()))
 		} else if e.Category == entity.CategoryEmail {
 			refItems, err := item.EntityItems(ctx, accountID, e.ID, db)
 			if err != nil {
 				log.Printf("***> unexpected error occurred when retriving reference items for email entity inside updating choices error: %v.\n continuing...", err)
 			}
-			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoKeyMap()))
 		} else { // useful for auto-complete while viewing
 			refItems, err := item.BulkRetrieve(ctx, e.ID, removeDuplicateValues(refIDs), db)
 			if err != nil && err != item.ErrItemsEmpty {
@@ -176,7 +176,7 @@ func updateChoices(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accoun
 				return
 			}
 
-			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoFields()))
+			ChoicesMaker(f, "", ItemChoices(f, refItems, e.WhoKeyMap()))
 		}
 	}
 
@@ -210,7 +210,7 @@ func ChoicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 		f.Choices = make([]entity.Choice, 0)
 	}
 
-	mapOfChoices := f.ChoicesMap()
+	mapOfChoices := f.ChoiceMap()
 
 	for _, choicer := range choicers {
 		if choice, ok := mapOfChoices[f.RefID]; ok {
@@ -238,7 +238,7 @@ func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
 		return
 	}
 
-	sourceFields := sourceEntity.FieldsIgnoreError()
+	sourceFields := sourceEntity.EasyFields()
 
 	//Adding parents existing items to the child choices
 	for _, sf := range sourceFields {
@@ -307,6 +307,6 @@ func LoadRefFieldChoices(ctx context.Context, accountID string, f *entity.Field,
 		if err != nil {
 			log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 		}
-		ChoicesMaker(f, "", ItemChoices(f, refItems, statusE.WhoFields()))
+		ChoicesMaker(f, "", ItemChoices(f, refItems, statusE.WhoKeyMap()))
 	}
 }

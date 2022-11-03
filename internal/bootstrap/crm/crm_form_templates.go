@@ -11,10 +11,10 @@ import (
 func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID string) (map[string]interface{}, map[string]interface{}) {
 	dealMeta := make(map[string]interface{}, 0)
 	dealVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsTitleLayout() {
 			titleKey = f.Key
 		}
@@ -41,10 +41,10 @@ func dealTemplates(thisEntity entity.Entity, actorEntity entity.Entity, flowID s
 func taskTemplates(msg string, thisEntity entity.Entity, actorEntity entity.Entity, withToken bool) (map[string]interface{}, map[string]interface{}) {
 	taskMeta := make(map[string]interface{}, 0)
 	taskVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsTitleLayout() {
 			titleKey = f.Key
 		}
@@ -73,10 +73,10 @@ func taskTemplates(msg string, thisEntity entity.Entity, actorEntity entity.Enti
 func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadStatus string) (map[string]interface{}, map[string]interface{}) {
 	contactMeta := make(map[string]interface{}, 0)
 	contactVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var dealAmountField entity.Field
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.Name == "deal_amount" {
 			dealAmountField = f
 		}
@@ -100,10 +100,10 @@ func contactTemplates(thisEntity entity.Entity, actorEntity entity.Entity, leadS
 
 func ticketTemplates(thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	ticketVals := make(map[string]interface{}, 0)
-	namedFieldsMap := entity.NamedFieldsObjMap(thisEntity.FieldsIgnoreError())
+	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	var titleKey string
-	for _, f := range actorEntity.FieldsIgnoreError() {
+	for _, f := range actorEntity.EasyFields() {
 		if f.IsTitleLayout() {
 			titleKey = f.Key
 		}
