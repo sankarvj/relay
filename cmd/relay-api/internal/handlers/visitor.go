@@ -80,7 +80,7 @@ func (v *Visitor) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	i, err := item.Retrieve(ctx, accountID, visitor.ItemID, v.db)
+	i, err := item.Retrieve(ctx, accountID, visitor.EntityID, visitor.ItemID, v.db)
 	if err != nil {
 		return err
 	}

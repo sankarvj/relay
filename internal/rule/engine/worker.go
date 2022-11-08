@@ -52,7 +52,7 @@ func worker(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID str
 			// TODO itemID.(string) we are blindly typecasting it to string???
 			// TODO cache the object instead of itemID
 			// what happens if different data type comes??
-			result, err = retriveDataEntityResult(ctx, db, e.ID, itemID.(string))
+			result, err = retriveDataEntityResult(ctx, db, accountID, e.ID, itemID.(string))
 		}
 	}
 	if err != nil {
@@ -73,9 +73,9 @@ func retriveAPIEntityResult(fields []entity.Field) (map[string]interface{}, erro
 	return result, err
 }
 
-func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, entityID, itemID string) (map[string]interface{}, error) {
+func retriveDataEntityResult(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	item, err := item.Retrieve(ctx, entityID, itemID, db)
+	item, err := item.Retrieve(ctx, accountID, entityID, itemID, db)
 	if err != nil {
 		return result, err
 	}

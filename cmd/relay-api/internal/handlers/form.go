@@ -43,7 +43,7 @@ func (f *Form) Adder(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 	fields := e.EasyFields()
 
-	it, err := item.Retrieve(ctx, entityID, itemID, f.db)
+	it, err := item.Retrieve(ctx, accountID, entityID, itemID, f.db)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (f *Form) Render(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 	fields := e.EasyFields()
 
-	it, err := item.Retrieve(ctx, entityID, itemID, f.db)
+	it, err := item.Retrieve(ctx, accountID, entityID, itemID, f.db)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,11 @@ func (f *Form) Render(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	formFields := make([]entity.Field, 0)
 	for _, f := range fields {
 		if itfm, ok := itemFields[f.Key]; ok {
-			f.Meta = convertIntfMaptoStrMap(itfm.(map[string]interface{}))
+			if itfm != nil {
+				f.Meta = convertIntfMaptoStrMap(itfm.(map[string]interface{}))
+			} else {
+				f.Meta = map[string]string{}
+			}
 			formFields = append(formFields, f)
 		}
 	}

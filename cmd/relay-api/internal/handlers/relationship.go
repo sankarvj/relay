@@ -30,7 +30,7 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 	ctx, span := trace.StartSpan(ctx, "handlers.Relationship.List")
 	defer span.End()
 
-	relationships, err := relationship.List(ctx, rs.db, params["account_id"], params["team_id"], params["entity_id"])
+	relationships, err := relationship.List(ctx, rs.db, params["account_id"], params["team_id"], params["entity_id"], auth.God(ctx))
 	if err != nil {
 		return errors.Wrap(err, "selecting relationships for the entity id")
 	}
@@ -64,6 +64,8 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
+	fields := e.AllFieldsButSecured()
+
 	piper := Piper{
 		Items: make(map[string][]ViewModelItem, 0),
 	}
@@ -81,7 +83,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 			piper.NodeKey = e.NodeField().Key
 			newExp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.NodeField().Key, node.ID)
 			finalExp := util.AddExpression(exp, newExp)
-			vitems, _, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, finalExp, 0, relation, e, false, rs.db, rs.sdb)
+			vitems, _, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, finalExp, 0, relation, e, fields, false, rs.db, rs.sdb)
 			if err != nil {
 				return err
 			}
@@ -92,7 +94,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		// 1. Fetch child item ids by querying the connections table.
 		// 2. Fetch child item ids by querying the graph db. tick
 		// 3. Fetch child item ids by querying the genie_id (formerly parent_item_id)
-		viewModelItems, countMap, err = fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, true, rs.db, rs.sdb)
+		viewModelItems, countMap, err = fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, e, fields, true, rs.db, rs.sdb)
 		if err != nil {
 			return err
 		}
@@ -108,7 +110,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	}{
 		Items:    viewModelItems,
 		Category: e.Category,
-		Fields:   e.AllFieldsButSecured(),
+		Fields:   fields, // this fields passed by reference in various places and choices are populated
 		Entity:   createViewModelEntity(e),
 		Piper:    piper,
 		CountMap: countMap,
@@ -117,11 +119,10 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, count bool, db *sqlx.DB, sdb *database.SecDB) ([]ViewModelItem, map[string]int, error) {
+func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemID string, exp string, page int, relation relationship.Relationship, e entity.Entity, fields []entity.Field, count bool, db *sqlx.DB, sdb *database.SecDB) ([]ViewModelItem, map[string]int, error) {
 	sourceMap := make(map[string]interface{}, 0)
 	sourceMap[sourceEntityID] = sourceItemID
 
-	fields := e.EasyFields()
 	var err error
 	var viewModelItems []ViewModelItem
 	var countMap map[string]int
@@ -132,14 +133,15 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
 	} else { // implicit straight. tasks are the child of deals because task has a deal field
 		if isFieldKeyExist(relation.FieldID, entity.KeyValueMap(fields)) {
-			newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)
-			exp = util.AddExpression(exp, newExp)
+			// newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)
+			// exp = util.AddExpression(exp, newExp)
 			viewModelItems, countMap, err = NewSegmenter(exp).AddPage(page).
 				DoCount(count).
+				AddSourceCondition(sourceEntityID, sourceItemID).
 				filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
 		} else { // implicit reverse. contacts are the child of deals because deals has a contact field
 			var it item.Item
-			it, err = item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
+			it, err = item.Retrieve(ctx, accountID, sourceEntityID, sourceItemID, db)
 			if err != nil {
 				return nil, nil, err
 			}

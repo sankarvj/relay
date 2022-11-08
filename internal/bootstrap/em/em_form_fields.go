@@ -310,7 +310,7 @@ func AssetStatusVals(namekey, colorKey, name, color string) map[string]interface
 	return statusVals
 }
 
-func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatusEntityID, assestStatusEntityKey string) []entity.Field {
+func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatusEntityID, assestStatusEntityKey string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 	assetFieldID := uuid.New().String()
 	assetField := entity.Field{
 		Key:         assetFieldID,
@@ -328,14 +328,24 @@ func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatus
 		},
 	}
 
-	commentsFieldID := uuid.New().String()
-	commentsField := entity.Field{
-		Key:         commentsFieldID,
-		Name:        "comments",
-		DisplayName: "Desc",
+	nameFieldID := uuid.New().String()
+	nameField := entity.Field{
+		Key:         nameFieldID,
+		Name:        "name",
+		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle, entity.MetaKeyHTML: "true"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+	}
+
+	descFieldID := uuid.New().String()
+	descField := entity.Field{
+		Key:         descFieldID,
+		Name:        "desc",
+		DisplayName: "Description",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle, entity.MetaKeyHTML: "true"},
 	}
 
 	statusFieldID := uuid.New().String()
@@ -356,13 +366,40 @@ func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatus
 		},
 	}
 
-	return []entity.Field{assetField, commentsField, statusField}
+	dueByFieldID := uuid.New().String()
+	dueByField := entity.Field{
+		Key:         dueByFieldID,
+		Name:        "due_by",
+		DisplayName: "Due By",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoDueBy,
+	}
+
+	ownersFieldID := uuid.New().String()
+	ownerField := entity.Field{
+		Key:         ownersFieldID,
+		Name:        "assignees",
+		DisplayName: "Assignees",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoAssignee,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntitySearchKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{assetField, nameField, descField, statusField, dueByField, ownerField}
 }
 
-func ServiceRequestFields(serviceEntityID string, serviceEntityKey string, statusEntityID, statusEntityKey string) []entity.Field {
-	assetFieldID := uuid.New().String()
-	assetField := entity.Field{
-		Key:         assetFieldID,
+func ServiceRequestFields(serviceEntityID string, serviceEntityKey string, statusEntityID, statusEntityKey string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {
+	serviceFieldID := uuid.New().String()
+	serviceField := entity.Field{
+		Key:         serviceFieldID,
 		Name:        "service",
 		DisplayName: "Service",
 		DomType:     entity.DomSelect,
@@ -375,6 +412,16 @@ func ServiceRequestFields(serviceEntityID string, serviceEntityKey string, statu
 			Key:      "id",
 			Value:    "--",
 		},
+	}
+
+	nameFieldID := uuid.New().String()
+	nameField := entity.Field{
+		Key:         nameFieldID,
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	descFieldID := uuid.New().String()
@@ -405,7 +452,34 @@ func ServiceRequestFields(serviceEntityID string, serviceEntityKey string, statu
 		},
 	}
 
-	return []entity.Field{assetField, descField, statusField}
+	dueByFieldID := uuid.New().String()
+	dueByField := entity.Field{
+		Key:         dueByFieldID,
+		Name:        "due_by",
+		DisplayName: "Due By",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoDueBy,
+	}
+
+	ownersFieldID := uuid.New().String()
+	ownerField := entity.Field{
+		Key:         ownersFieldID,
+		Name:        "assignees",
+		DisplayName: "Assignees",
+		DomType:     entity.DomSelect,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoAssignee,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntitySearchKey, entity.MetaKeyLayout: entity.MetaLayoutUsers},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
+	return []entity.Field{serviceField, nameField, descField, statusField, dueByField, ownerField}
 }
 
 func TaskEFields(employeeEntityID, employeeEntityKey, nodeEntityID, statusEntityID, statusEntityKey string, ownerEntityID, ownerEntitySearchKey string) []entity.Field {

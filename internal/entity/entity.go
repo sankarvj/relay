@@ -200,7 +200,20 @@ func UpdateMarkers(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, aID, e
 	)
 
 	sdb.ResetEntity(eID)
+	return err
+}
 
+func MarkAsPublic(ctx context.Context, aID, eID string, public bool, db *sqlx.DB, sdb *database.SecDB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdateMarkers")
+	defer span.End()
+
+	const q = `UPDATE entities SET
+		"is_public" = $3
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err := db.ExecContext(ctx, q, aID, eID,
+		public,
+	)
+	sdb.ResetEntity(eID)
 	return err
 }
 

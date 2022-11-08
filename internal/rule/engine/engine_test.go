@@ -206,11 +206,11 @@ func TestTrigger(t *testing.T) {
 		{
 			contactEntity, _ := entity.RetrieveFixedEntity(tests.Context(), db, schema.SeedAccountID, schema.SeedTeamID, entity.FixedEntityContacts)
 			contactItems, _ := item.List(tests.Context(), schema.SeedAccountID, contactEntity.ID, db)
-			i, _ := item.Retrieve(tests.Context(), contactEntity.ID, contactItems[0].ID, db)
+			i, _ := item.Retrieve(tests.Context(), schema.SeedAccountID, contactEntity.ID, contactItems[0].ID, db)
 			oldItemFields := i.Fields()
 			newItemFields := i.Fields()
 			newItemFields[contactEntity.Key("nps_score")] = 99
-			item.UpdateFields(tests.Context(), db, contactEntity.ID, i.ID, newItemFields)
+			item.UpdateFields(tests.Context(), db, schema.SeedAccountID, contactEntity.ID, i.ID, newItemFields)
 			// the above action will trigger this in the background thread
 			flows, _ := flow.List(tests.Context(), []string{contactEntity.ID}, flow.FlowModeAll, flow.FlowTypeEventUpdate, db)
 			dirtyFlows := flow.DirtyFlows(tests.Context(), flows, item.Diff(oldItemFields, newItemFields))

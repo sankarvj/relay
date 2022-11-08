@@ -189,6 +189,8 @@ func ProjVals(projectEntity entity.Entity, name string, contactID1, contactID2, 
 		"pipeline":             []interface{}{flowID},
 		"pipeline_stage":       []interface{}{},
 		"associated_companies": []interface{}{},
+		"start_time":           util.FormatTimeGo(time.Now()),
+		"end_time":             util.FormatTimeGo(time.Now().Add(10)),
 	}
 	return forms.KeyMap(projectEntity.NameKeyMapWrapper(), projVals)
 }

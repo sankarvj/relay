@@ -46,7 +46,7 @@ func StreamFields(ownerEntityID, ownerEntitySearchKey string) []entity.Field {
 	return []entity.Field{titleField, messageField, followerField}
 }
 
-func StreamVals(streamEntity entity.Entity, title, message, file string) map[string]interface{} {
+func StreamVals(streamEntity entity.Entity, title, message string) map[string]interface{} {
 	streamVals := map[string]interface{}{
 		"title": title,
 		"label": message,

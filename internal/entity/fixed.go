@@ -264,7 +264,7 @@ func RetrieveFixedItem(ctx context.Context, accountID, preDefinedEntityID, itemI
 		return nil, nil, err
 	}
 
-	it, err := item.Retrieve(ctx, preDefinedEntityID, itemID, db)
+	it, err := item.Retrieve(ctx, accountID, preDefinedEntityID, itemID, db)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -315,7 +315,7 @@ func SaveFixedEntityItem(ctx context.Context, accountID, teamID, currentUserID, 
 
 		if dis != nil {
 			if dis.Type == discoveryType {
-				it, err := item.Retrieve(ctx, dis.EntityID, dis.ItemID, db)
+				it, err := item.Retrieve(ctx, accountID, dis.EntityID, dis.ItemID, db)
 				if err != nil {
 					return item.Item{}, err
 				}
@@ -384,7 +384,7 @@ func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *s
 //updateFields func encloses the update func
 func updateFields(accountID, entityID, itemID string, fields []Field) UpdaterFunc {
 	return func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error {
-		_, err := item.UpdateFields(ctx, db, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
+		_, err := item.UpdateFields(ctx, db, accountID, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
 		return err
 	}
 }

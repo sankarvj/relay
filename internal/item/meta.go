@@ -11,11 +11,12 @@ import (
 )
 
 //UpdateMeta patches the meta data right now it is used to save the UI web forms
-func UpdateFieldsWithMeta(ctx context.Context, db *sqlx.DB, i Item, name *string, fields, meta map[string]interface{}) (Item, error) {
+func UpdateFieldsWithMeta(ctx context.Context, db *sqlx.DB, i Item, name *string, fields, meta map[string]interface{}, isPublic bool) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.UpdateMeta")
 	defer span.End()
 
 	i.Name = name
+	i.IsPublic = isPublic
 	i.Metab = i.metabJson(meta)
 	i.Fieldsb = *marshalMap(fields)
 	i.UpdatedAt = time.Now().Unix()
@@ -24,11 +25,26 @@ func UpdateFieldsWithMeta(ctx context.Context, db *sqlx.DB, i Item, name *string
 		"name"  = $4,
 		"metab" = $5,
 		"fieldsb" = $6,
-		"updated_at" = $7 
+		"updated_at" = $7,
+		"is_public" = $8 
 		WHERE account_id = $1 AND entity_id = $2 AND item_id = $3`
 	_, err := db.ExecContext(ctx, q, i.AccountID, i.EntityID, i.ID,
-		i.Name, i.Metab, i.Fieldsb, i.UpdatedAt,
+		i.Name, i.Metab, i.Fieldsb, i.UpdatedAt, i.IsPublic,
 	)
+	return i, err
+}
+
+func UpdatePublicAccess(ctx context.Context, db *sqlx.DB, i Item) (Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.UpdatePublicAccess")
+	defer span.End()
+
+	i.UpdatedAt = time.Now().Unix()
+
+	const q = `UPDATE items SET
+		"updated_at" = $4,
+		"is_public" = $5 
+		WHERE account_id = $1 AND entity_id = $2 AND item_id = $3`
+	_, err := db.ExecContext(ctx, q, i.AccountID, i.EntityID, i.ID, i.UpdatedAt, i.IsPublic)
 	return i, err
 }
 

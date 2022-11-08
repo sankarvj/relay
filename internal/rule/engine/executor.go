@@ -60,7 +60,7 @@ func valueAdd(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, 
 		return []entity.Field{}, err
 	}
 	if itemID != "" {
-		i, err := item.Retrieve(ctx, entityID, itemID, db)
+		i, err := item.Retrieve(ctx, accountID, entityID, itemID, db)
 		if err != nil {
 			return []entity.Field{}, err
 		}

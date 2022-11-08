@@ -189,12 +189,12 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	//retriving the existing item don't change the order of execution
-	existingItem, err := item.Retrieve(ctx, entityID, itemID, i.db)
+	existingItem, err := item.Retrieve(ctx, accountID, entityID, itemID, i.db)
 	if err != nil {
 		return errors.Wrapf(err, "error retriving item")
 	}
 
-	it, err := item.UpdateFieldsWithMeta(ctx, i.db, existingItem, ni.Name, ni.Fields, ni.Meta)
+	it, err := item.UpdateFieldsWithMeta(ctx, i.db, existingItem, ni.Name, ni.Fields, ni.Meta, ni.IsPublic)
 	if err != nil {
 		return errors.Wrapf(err, "error when update item fields %+v", &ni)
 	}
@@ -210,7 +210,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
-	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	currentUser, err := user.RetrieveCurrentUser(ctx, i.db)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	ni.AccountID = accountID
 	ni.EntityID = entityID
-	ni.UserID = &currentUserID
+	ni.UserID = &currentUser.ID
 	ni.ID = uuid.New().String()
 
 	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.sdb)
@@ -230,12 +230,16 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
-	it, err := createAndPublish(ctx, currentUserID, ni, i.db, i.sdb, i.authenticator.FireBaseAdminSDK)
+	it, err := createAndPublish(ctx, currentUser.ID, ni, i.db, i.sdb, i.authenticator.FireBaseAdminSDK)
 	if err != nil {
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
+	vmItem := createViewModelItem(it)
+	vmItem.UserName = *currentUser.Name
+	vmItem.UserAvatar = *currentUser.Avatar
+
+	return web.Respond(ctx, w, vmItem, http.StatusCreated)
 }
 
 func createAndPublish(ctx context.Context, userID string, ni item.NewItem, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) (item.Item, error) {
@@ -272,12 +276,12 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	it := item.MakeItem(populateBR)
 	bonds := []relationship.Bond{}
 	if itemID != "undefined" { // get call
-		it, err = item.Retrieve(ctx, entityID, itemID, i.db)
+		it, err = item.Retrieve(ctx, accountID, entityID, itemID, i.db)
 		if err != nil {
 			return err
 		}
 		//TODO not needed to populate this all the time
-		bonds, err = relationship.List(ctx, i.db, accountID, params["team_id"], entityID)
+		bonds, err = relationship.List(ctx, i.db, accountID, params["team_id"], entityID, auth.God(ctx))
 		if err != nil {
 			return err
 		}
@@ -344,6 +348,32 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewDeleteItemMessage(ctx, i.db, accountID, currentUserID, entityID, itemID))
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
+}
+
+func (i *Item) ToggleAccess(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Item.ToggleAccess")
+	defer span.End()
+
+	currentUserID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	accountID, entityID, itemID := takeAEI(ctx, params, i.db)
+	if util.NotEmpty(entityID) && util.NotEmpty(itemID) {
+		existingItem, err := item.Retrieve(ctx, accountID, entityID, itemID, i.db)
+		if err != nil {
+			return errors.Wrapf(err, "error retriving item")
+		}
+		existingItem.IsPublic = !existingItem.IsPublic
+		it, err := item.UpdatePublicAccess(ctx, i.db, existingItem)
+		if err != nil {
+			return errors.Wrapf(err, "error when toggle is_public for item")
+		}
+		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, existingItem.ID, it.Fields(), existingItem.Fields()))
+		return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+	}
+	return web.Respond(ctx, w, "failure", http.StatusNotAcceptable)
 }
 
 // AEI accountID, entityID, itemID

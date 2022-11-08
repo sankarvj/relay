@@ -20,9 +20,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"gitlab.com/vjsideprojects/relay/internal/user"
-	"gitlab.com/vjsideprojects/relay/internal/visitor"
 	"go.opencensus.io/trace"
 )
 
@@ -81,7 +79,7 @@ func HasSocketAccess(sdb *database.SecDB) web.Middleware {
 			if err != nil {
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
-			// Add claims to the context so they can be retrieved later.
+			// Add userID to the context so they can be retrieved later.
 			ctx = context.WithValue(ctx, auth.SocketKey, userID)
 
 			return after(ctx, w, r, params)
@@ -113,6 +111,9 @@ func HasRole(roles ...string) web.Middleware {
 			if !claims.HasRole(roles...) {
 				return ErrForbidden
 			}
+
+			//storing the first role encountered. Is it okay??
+			ctx = context.WithValue(ctx, auth.RoleKey, claims.Roles[0])
 
 			return after(ctx, w, r, params)
 		}
@@ -146,51 +147,26 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 				return web.NewRequestError(err, http.StatusForbidden)
 			}
 
-			if hasRoleAdmin(usr.Roles) || hasRoleUser(usr.Roles) {
+			//for visitor, check account and entity access
+			if auth.IsRoleVisitor(usr.Roles) {
+				teamID := params["team_id"]
+				baseEntityID := r.URL.Query().Get("be")
+				baseItemID := r.URL.Query().Get("bi")
+				entityID := params["entity_id"]
+				itemID := params["item_id"]
+
+				log.Printf("\t\tVisitor :::::: teamID::: %s baseEntityID:%s,  baseItemID:%s, entityID:%s, itemID:%s \n", teamID, baseEntityID, baseItemID, entityID, itemID)
+
+				err := auth.CheckVisitorEntityAccess(ctx, usr.Email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID, db)
+				if err != nil {
+					err := errors.New("visitor_dont_have_access")
+					return web.NewRequestError(err, http.StatusForbidden)
+				}
+			} else {
 				if !isExist(usr.AccountIDs(), accountID) {
 					err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
 					return web.NewRequestError(err, http.StatusForbidden)
 				}
-			} else if hasRoleVisitor(usr.Roles) {
-				baseEntityID := r.URL.Query().Get("be")
-				entityID := params["entity_id"]
-				itemID := params["item_id"]
-				vl, err := visitor.ListByEmail(ctx, accountID, usr.Email, db)
-				if err != nil {
-					err := errors.New("account_not_associated_with_this_visitor") // value used in the UI dont change the string message.
-					return web.NewRequestError(err, http.StatusForbidden)
-				}
-				hasAccess := false
-				for _, vi := range vl {
-					if vi.AccountID == accountID && vi.EntityID == entityID && vi.ItemID == itemID {
-						hasAccess = true
-						break
-					}
-				}
-				//re-evaluate with the base entityID
-				if !hasAccess {
-					for _, vi := range vl {
-						if vi.AccountID == accountID && vi.EntityID == baseEntityID && vi.ItemID == itemID {
-							bonds, err := relationship.List(ctx, db, accountID, params["team_id"], entityID)
-							if err != nil {
-								return web.NewRequestError(err, http.StatusInternalServerError)
-							}
-							for _, bond := range bonds {
-								if bond.EntityID == entityID && bond.IsPublic {
-									hasAccess = true
-									break
-								}
-							}
-						}
-					}
-				}
-
-				if !hasAccess {
-					err := errors.New("module_not_associated_with_this_visitor") // value used in the UI dont change the string message.
-					return web.NewRequestError(err, http.StatusForbidden)
-				}
-
-				log.Println("VISITOR LOGGED IN")
 			}
 
 			return after(ctx, w, r, params)
@@ -275,33 +251,6 @@ func hasValidSlackSigningSecret(r *http.Request, slackSignature, body string) er
 	return nil
 }
 
-func hasRoleAdmin(roles []string) bool {
-	for _, r := range roles {
-		if r == auth.RoleAdmin {
-			return true
-		}
-	}
-	return false
-}
-
-func hasRoleUser(roles []string) bool {
-	for _, r := range roles {
-		if r == auth.RoleUser {
-			return true
-		}
-	}
-	return false
-}
-
-func hasRoleVisitor(roles []string) bool {
-	for _, r := range roles {
-		if r == auth.RoleUser {
-			return true
-		}
-	}
-	return false
-}
-
 func isExist(accountIDs []string, accountIDInReqParam string) bool {
 	for _, accountID := range accountIDs {
 		if accountIDInReqParam == accountID {
@@ -318,15 +267,4 @@ func hmac256(secret, data string) string {
 	// Get result and encode as hexadecimal string
 	return hex.EncodeToString(h.Sum(nil))
 
-}
-
-func getBaseEntity(entityIDformat string) (string, string) {
-	parts := strings.Split(entityIDformat, "#")
-	if len(parts) == 2 {
-		return parts[0], parts[1]
-	} else if len(parts) == 1 {
-		return "", parts[0]
-	} else {
-		return "", entityIDformat
-	}
 }

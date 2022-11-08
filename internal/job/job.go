@@ -77,7 +77,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
@@ -169,7 +169,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 		return err
 	}
 
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
@@ -245,7 +245,7 @@ func (j *Job) eventItemReminded(m *stream.Message) error {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
@@ -273,7 +273,7 @@ func (j *Job) eventItemDeleted(m *stream.Message) error {
 		return err
 	}
 
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventItemDeleted: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
@@ -357,7 +357,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 		log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	it, err := item.Retrieve(ctx, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
 		log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
@@ -555,9 +555,10 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 	}
 
+	log.Printf("valueAddedFields  %+v", valueAddedFields)
+
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
 	if j.baseEntityID != "" && len(j.baseItemIDs) > 0 {
-
 		relationShips, err := relationship.RetionshipType(ctx, db, accountID, j.baseEntityID, entityID)
 		if err != nil {
 			return errors.Wrap(err, "***> EventItemCreated: unexpected/unhandled error occurred when retriving relationships on job. error:")
@@ -702,7 +703,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 						if err != nil {
 							log.Println("***>***> actOnConnections: unexpected/unhandled error occurred when adding connections. error: ", err)
 						}
-						baseItem, err := item.Retrieve(ctx, r.DstEntityID, baseItemID, db)
+						baseItem, err := item.Retrieve(ctx, accountID, r.DstEntityID, baseItemID, db)
 						if err != nil {
 							return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 						}
@@ -713,7 +714,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 							exisitingVals = append(exisitingVals, itemID)
 							itemFieldsMap[r.FieldID] = exisitingVals
 							log.Println("*********> debug internal.job AF itemFieldsMap ", itemFieldsMap)
-							_, err = item.UpdateFields(ctx, db, r.DstEntityID, baseItemID, itemFieldsMap)
+							_, err = item.UpdateFields(ctx, db, accountID, r.DstEntityID, baseItemID, itemFieldsMap)
 							if err != nil {
 								return errors.Wrap(err, "error: implicit connection with reverse reference failed")
 							}
@@ -872,7 +873,7 @@ func appendSystemProps(it item.Item, valueAddedFields []entity.Field) []entity.F
 	}
 	isPubilcField := entity.Field{
 		Key:   "system_is_public",
-		Value: it.IsPublic,
+		Value: fmt.Sprintf("%t", it.IsPublic),
 	}
 	valueAddedFields = append(valueAddedFields, createdAtField, updatedAtField, isPubilcField)
 	if it.UserID != nil {

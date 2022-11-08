@@ -62,7 +62,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 			//making baseID for filtering notifications per item (events).
 			appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", baseEntityID, baseItemID))
 			if i == 0 && berr == nil { // for now fetching one time is enough
-				it, err := item.Retrieve(ctx, baseEntityID, baseItemID, db)
+				it, err := item.Retrieve(ctx, accountID, baseEntityID, baseItemID, db)
 				if err == nil && it.State != item.StateWebForm {
 					titleField := entity.TitleField(baseEntity.EasyFields())
 					appNotif.BaseItemName = it.Fields()[titleField.Key].(string)

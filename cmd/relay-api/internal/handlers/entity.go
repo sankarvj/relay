@@ -36,6 +36,11 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Home")
 	defer span.End()
 
+	role, ok := ctx.Value(auth.RoleKey).(string)
+	if ok {
+		log.Println("role--- ", role)
+	}
+
 	acc, err := account.Retrieve(ctx, e.db, params["account_id"])
 	if err != nil {
 		return err

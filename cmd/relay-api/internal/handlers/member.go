@@ -126,7 +126,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err := web.Decode(r, &vm); err != nil {
 		return errors.Wrap(err, "")
 	}
-	existingItem, err := item.Retrieve(ctx, entityID, memberID, m.db)
+	existingItem, err := item.Retrieve(ctx, accountID, entityID, memberID, m.db)
 	if err != nil {
 		return errors.Wrapf(err, "Member Get During Update")
 	}
@@ -139,7 +139,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	namedKeys := entity.NameKeyMap(e.EasyFields())
 
 	updatedFields := recreateFields(vm, namedKeys)
-	it, err := item.UpdateFields(ctx, m.db, entityID, memberID, updatedFields)
+	it, err := item.UpdateFields(ctx, m.db, accountID, entityID, memberID, updatedFields)
 	if err != nil {
 		return errors.Wrapf(err, "member update: %+v", &it)
 	}

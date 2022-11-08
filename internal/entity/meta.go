@@ -33,6 +33,19 @@ func (e *Entity) UpdateMeta(ctx context.Context, db *sqlx.DB) error {
 	return err
 }
 
+func (e *Entity) UpdatePublicAccess(ctx context.Context, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.entity.UpdatePublicAccess")
+	defer span.End()
+
+	const q = `UPDATE entities SET
+		"is_public" = $3 
+		WHERE account_id = $1 AND entity_id = $2`
+	_, err := db.ExecContext(ctx, q, e.AccountID, e.ID,
+		e.IsPublic,
+	)
+	return err
+}
+
 func (e Entity) Meta() map[string]interface{} {
 	meta := make(map[string]interface{}, 0)
 	if e.Metab == nil || *e.Metab == "" {

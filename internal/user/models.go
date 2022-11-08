@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	UUID_ENGINE_USER    = "10000000-1000-1000-1000-100000000000" //user calling from engine. executar data..
 	UUID_SYSTEM_USER    = "00000000-0000-0000-0000-000000000000" //system user
-	UUID_ANONYMOUS_USER = "20000000-2000-2000-2000-200000000000" //system user
+	UUID_ENGINE_USER    = "10000000-1000-1000-1000-100000000000" //engine user from executar data
+	UUID_ANONYMOUS_USER = "20000000-2000-2000-2000-200000000000" //anonymous user
 
 )
 

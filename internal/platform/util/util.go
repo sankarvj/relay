@@ -293,7 +293,6 @@ func ParseGraphResult(result *rg.QueryResult) []interface{} {
 		for result.Next() { // Next returns true until the iterator is depleted.
 			// Get the current Record.
 			r := result.Record()
-
 			// Entries in the Record can be accessed by index or key.
 			record := ConvertInterfaceToMap(ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
 			//if record["id"] != "--" { //TODO: hacky-none-fix

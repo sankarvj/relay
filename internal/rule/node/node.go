@@ -291,6 +291,18 @@ func UpdateNodeVars(existingVars map[string]interface{}, newVars map[string]inte
 	return newVars
 }
 
+func Delete(ctx context.Context, accountID, flowID, nodeID string, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.node.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM nodes WHERE account_id = $1 and flow_id = $2 and node_id = $3`
+
+	if _, err := db.ExecContext(ctx, q, accountID, flowID, nodeID); err != nil {
+		return errors.Wrapf(err, "deleting node %s", flowID)
+	}
+	return nil
+}
+
 //IsRootNode decides whether the node is root or not
 func (n Node) IsRootNode() bool {
 	return n.ID == Root

@@ -177,14 +177,12 @@ func (d *Dashboard) Dashboard(ctx context.Context, w http.ResponseWriter, r *htt
 		}
 	}
 
-	_, countMap, err := NewSegmenter(exp).
+	_, _, err = NewSegmenter(exp).
 		AddCount().
 		filterWrapper(ctx, params["account_id"], e.ID, fields, map[string]interface{}{}, d.db, d.sdb)
 	if err != nil {
 		return err
 	}
-
-	log.Println("countMap---> ", countMap)
 
 	return web.Respond(ctx, w, "", http.StatusOK)
 }
@@ -256,6 +254,16 @@ func conditionableRef(f entity.Field, value interface{}) graphdb.Field {
 		DataType: graphdb.TypeReference,
 		RefID:    f.RefID,
 		Field:    &graphdb.Field{},
+	}
+}
+
+func publicRecordsOnly() graphdb.Field {
+	return graphdb.Field{
+		Key:        "system_is_public",
+		Value:      true,
+		DataType:   graphdb.TypeString,
+		IsReverse:  false,
+		Expression: "=",
 	}
 }
 

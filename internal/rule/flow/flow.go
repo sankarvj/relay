@@ -350,7 +350,7 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accoun
 	if err != nil {
 		return err
 	}
-	i, err := item.Retrieve(ctx, entityID, itemID, db)
+	i, err := item.Retrieve(ctx, accountID, entityID, itemID, db)
 	if err != nil {
 		return err
 	}
@@ -376,6 +376,18 @@ func DirectTrigger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accoun
 		return af.entryFlowTrigger(ctx, db, sdb, n, eng) // entering the workflow with all the variables loaded in the node
 	}
 	return ErrExpressionConditionFailed
+}
+
+func Delete(ctx context.Context, accountID, flowID string, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.flow.Delete")
+	defer span.End()
+
+	const q = `DELETE FROM flows WHERE account_id = $1 and flow_id = $2`
+
+	if _, err := db.ExecContext(ctx, q, accountID, flowID); err != nil {
+		return errors.Wrapf(err, "deleting flow %s", flowID)
+	}
+	return nil
 }
 
 func ids(lazyFlows []Flow) []string {

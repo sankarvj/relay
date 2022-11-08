@@ -58,7 +58,7 @@ func loadPiperNodes(ctx context.Context, accountID, sourceEntityID, sourceItemID
 	if err != nil {
 		return err
 	}
-	it, err := item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
+	it, err := item.Retrieve(ctx, accountID, sourceEntityID, sourceItemID, db)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func loadNodes(ctx context.Context, accountID, sourceEntityID, sourceItemID stri
 	if err != nil {
 		return nil, err
 	}
-	it, err := item.Retrieve(ctx, sourceEntityID, sourceItemID, db)
+	it, err := item.Retrieve(ctx, accountID, sourceEntityID, sourceItemID, db)
 	if err != nil {
 		return nil, err
 	}
@@ -90,12 +90,17 @@ func loadNodes(ctx context.Context, accountID, sourceEntityID, sourceItemID stri
 	if f != nil {
 		flowIDs := it.Fields()[f.Key]
 		if flowIDs != nil {
-			flowID := flowIDs.([]interface{})[0]
-			nodes, err := node.NodeActorsList(ctx, accountID, flowID.(string), db)
-			if err != nil {
-				log.Printf("***> unexpected error occurred when retriving reference items for nodes inside updating choices error: %v.\n continuing...", err)
+			flowIDs := flowIDs.([]interface{})
+			if len(flowIDs) > 0 {
+				flowID := flowIDs[0]
+				if flowID != nil && flowID != "" {
+					nodes, err := node.NodeActorsList(ctx, accountID, flowID.(string), db)
+					if err != nil {
+						log.Printf("***> unexpected error occurred when retriving reference items for nodes inside updating choices error: %v.\n continuing...", err)
+					}
+					return nodes, err
+				}
 			}
-			return nodes, err
 
 		}
 	}

@@ -241,7 +241,7 @@ func addNotification(ctx context.Context, accountID, entityID, itemID, userID, m
 		log.Println("***>***> addNotification: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	it, err := item.Retrieve(ctx, entityID, itemID, db)
+	it, err := item.Retrieve(ctx, accountID, entityID, itemID, db)
 	if err != nil {
 		log.Println("***>***> addNotification: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err

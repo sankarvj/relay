@@ -194,7 +194,7 @@ func RetriveAssociation(ctx context.Context, accountID, srcEntityID, dstEntityID
 }
 
 // List gets the relationships for the destination entity
-func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) ([]Bond, error) {
+func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, god bool) ([]Bond, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.relationship.List")
 	defer span.End()
 
@@ -213,9 +213,17 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string) 
 		relatedEntitesMap[b.EntityID] = b
 	}
 
+	log.Printf("bonds %+v", bonds)
+
 	trimmedBonds := []Bond{}
 	for _, value := range relatedEntitesMap {
-		trimmedBonds = append(trimmedBonds, value)
+		if god {
+			trimmedBonds = append(trimmedBonds, value)
+		} else {
+			if value.IsPublic {
+				trimmedBonds = append(trimmedBonds, value)
+			}
+		}
 	}
 
 	return trimmedBonds, nil

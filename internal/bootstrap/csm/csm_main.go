@@ -42,8 +42,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 
 	// add entity - approvals
 	fmt.Println("\tCRM:BOOT Approvals Entity Started")
-	fmt.Println("\tb.ApprovalStatusEntity.ID", b.ApprovalStatusEntity.ID)
-	fmt.Println("\tb.ApprovalStatusEntity.Key", b.ApprovalStatusEntity.Key("name"))
 	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityApprovals, "Approvals", entity.CategoryApprovals, entity.StateTeamLevel, false, false, false, forms.ApprovalsFields(b.ApprovalStatusEntity.ID, b.ApprovalStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
@@ -122,6 +120,8 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
+	//mark task as public
+	entity.MarkAsPublic(ctx, b.AccountID, taskEntity.ID, true, b.DB, b.SecDB)
 
 	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
 	if err != nil {
@@ -143,43 +143,49 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Events Created")
+	fmt.Println("\tCSP:SAMPLES Events Created")
 
 	err = addContacts(ctx, b, contactEntity, taskEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Contacts Items Created")
+	fmt.Println("\tCSP:SAMPLES Contacts Items Created")
 
 	err = addCompanies(ctx, b, companyEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Companies Item Created")
+	fmt.Println("\tCSP:SAMPLES Companies Item Created")
+
+	err = addStreams(ctx, b, streamEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:SAMPLES Streams Item Created")
 
 	err = addProjects(ctx, b, projectEntity, contactEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Projects Item Created")
+	fmt.Println("\tCSP:SAMPLES Projects Item Created")
 
 	err = addActivities(ctx, b, activityEntity, contactEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Activities Item Created")
+	fmt.Println("\tCSP:SAMPLES Activities Item Created")
 
 	err = addSubscriptions(ctx, b, planEntity, contactEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Subscriptions Item Created")
+	fmt.Println("\tCSP:SAMPLES Subscriptions Item Created")
 
 	err = addDashboards(ctx, b, activityEntity, planEntity, approvalsEntity)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:SAMPLES Charts Created")
+	fmt.Println("\tCSP:SAMPLES Charts Created")
 
 	return nil
 }
@@ -206,8 +212,15 @@ func addEvents(ctx context.Context, b *base.Base) error {
 
 func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, streamEID, taskEID, approvalsEID entity.Entity) error {
 
+	var err error
+	//contact company association
+	_, err = b.AssociationAdd(ctx, b.ContactEntity.ID, b.CompanyEntity.ID)
+	if err != nil {
+		return err
+	}
+
 	//project email association
-	_, err := b.AssociationAdd(ctx, proEid.ID, emailEid.ID)
+	_, err = b.AssociationAdd(ctx, proEid.ID, emailEid.ID)
 	if err != nil {
 		return err
 	}
@@ -304,6 +317,14 @@ func addCompanies(ctx context.Context, b *base.Base, companyEntity entity.Entity
 
 func addProjects(ctx context.Context, b *base.Base, projectEntity, contactEntity entity.Entity) error {
 	_, err := b.ItemAdd(ctx, projectEntity.ID, uuid.New().String(), b.UserID, ProjVals(projectEntity, "Base Project", b.ContactItemMatt.ID, b.ContactItemNatasha.ID, b.SalesPipelineFlowID), nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addStreams(ctx context.Context, b *base.Base, streamEntity entity.Entity) error {
+	_, err := b.ItemAdd(ctx, streamEntity.ID, uuid.New().String(), b.UserID, forms.StreamVals(streamEntity, "General", "conversations"), nil)
 	if err != nil {
 		return err
 	}

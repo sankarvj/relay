@@ -264,6 +264,7 @@ func createViewModelItem(i item.Item) ViewModelItem {
 		State:     i.State,
 		Fields:    i.Fields(),
 		Meta:      i.Meta(),
+		IsPublic:  i.IsPublic,
 		CreatedAt: i.CreatedAt,
 		UpdatedAt: i.UpdatedAt,
 	}
@@ -297,6 +298,7 @@ type ViewModelItem struct {
 	Meta       map[string]interface{} `json:"meta"`
 	CreatedAt  time.Time              `json:"created_at"`
 	UpdatedAt  int64                  `json:"updated_at"`
+	IsPublic   bool                   `json:"is_public"`
 }
 
 func createViewModelNodeActor(n node.NodeActor) node.ViewModelNode {

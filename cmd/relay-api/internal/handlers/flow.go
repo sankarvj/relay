@@ -250,6 +250,17 @@ func (f *Flow) UpdateStatus(ctx context.Context, w http.ResponseWriter, r *http.
 	return web.Respond(ctx, w, nil, http.StatusOK)
 }
 
+func (f *Flow) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	accountID := params["account_id"]
+	flowID := params["flow_id"]
+
+	err := flow.Delete(ctx, accountID, flowID, f.db)
+	if err != nil {
+		return err
+	}
+	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
+}
+
 func itemIds(actFlows []flow.ActiveFlow) []interface{} {
 	ids := make([]interface{}, len(actFlows))
 	for i, aflow := range actFlows {

@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 	"go.opencensus.io/trace"
@@ -117,7 +119,7 @@ func (e *Entity) Associations(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
-	bonds, err := relationship.List(ctx, e.db, params["account_id"], params["team_id"], params["entity_id"])
+	bonds, err := relationship.List(ctx, e.db, params["account_id"], params["team_id"], params["entity_id"], auth.God(ctx))
 	if err != nil {
 		return err
 	}
@@ -140,4 +142,24 @@ func (e *Entity) Associations(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	return web.Respond(ctx, w, viewModelChildren, http.StatusOK)
+}
+
+func (e *Entity) ToggleAccess(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.EntityAction.ToggleAccess")
+	defer span.End()
+
+	accountID, entityID, _ := takeAEI(ctx, params, e.db)
+	if util.NotEmpty(entityID) {
+		existingEntity, err := entity.Retrieve(ctx, accountID, entityID, e.db, e.sdb)
+		if err != nil {
+			return errors.Wrapf(err, "error retriving entity")
+		}
+		existingEntity.IsPublic = !existingEntity.IsPublic
+		err = existingEntity.UpdatePublicAccess(ctx, e.db)
+		if err != nil {
+			return errors.Wrapf(err, "error when toggle is_public for entity")
+		}
+		return web.Respond(ctx, w, createViewModelEntity(existingEntity), http.StatusOK)
+	}
+	return web.Respond(ctx, w, "failure", http.StatusNotAcceptable)
 }

@@ -100,12 +100,14 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 		}
 	} else { // handles home dash, notification dash and item-detail dash
 		dash, err := dashboard.RetrieveByEntity(ctx, accountID, teamID, baseEntityID, ts.db)
-		if err != nil {
+		if err != nil && err != dashboard.ErrDashboardNotFound {
 			return err
 		}
-		charts, err = chart.ListByDashID(ctx, accountID, teamID, dash.ID, ts.db)
-		if err != nil {
-			return err
+		if dash != nil {
+			charts, err = chart.ListByDashID(ctx, accountID, teamID, dash.ID, ts.db)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -76,7 +76,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
-	existingItem, err := item.Retrieve(ctx, entityID, itemID, n.db)
+	existingItem, err := item.Retrieve(ctx, accountID, entityID, itemID, n.db)
 	if err != nil {
 		return errors.Wrapf(err, "get item when the notification clear")
 	}
@@ -108,7 +108,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 		}
 	}
 
-	it, err := item.UpdateFields(ctx, n.db, entityID, itemID, updatedFields)
+	it, err := item.UpdateFields(ctx, n.db, accountID, entityID, itemID, updatedFields)
 	if err != nil {
 		return errors.Wrapf(err, "Notification clear")
 	}

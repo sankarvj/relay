@@ -26,59 +26,11 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
-	fmt.Println("\tEM:BOOT Role Entity Created")
 
-	// add role item - Intern
-	itemIDMap["intern"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["intern"], b.UserID, RoleVals(roleEntityKey, "Intern"), nil)
+	err = addRoles(ctx, b, itemIDMap, rolesEntity)
 	if err != nil {
 		return err
 	}
-	// add role item - Developer
-	itemIDMap["developer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["developer"], b.UserID, RoleVals(roleEntityKey, "Developer"), nil)
-	if err != nil {
-		return err
-	}
-
-	// add role item - designer
-	itemIDMap["designer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["designer"], b.UserID, RoleVals(roleEntityKey, "Designer"), nil)
-	if err != nil {
-		return err
-	}
-
-	// add role item - QA Engineer
-	itemIDMap["qa_engineer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["qa_engineer"], b.UserID, RoleVals(roleEntityKey, "QA Engineer"), nil)
-	if err != nil {
-		return err
-	}
-	// add role item - Manager
-	itemIDMap["manager"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["manager"], b.UserID, RoleVals(roleEntityKey, "Manager"), nil)
-	if err != nil {
-		return err
-	}
-	// add role item - Sales Rep
-	itemIDMap["sales_rep"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["sales_rep"], b.UserID, RoleVals(roleEntityKey, "Sales Rep"), nil)
-	if err != nil {
-		return err
-	}
-	// add role item - Support Engineer
-	itemIDMap["support_engineer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["support_engineer"], b.UserID, RoleVals(roleEntityKey, "Support Engineer"), nil)
-	if err != nil {
-		return err
-	}
-	// add role item - Director
-	itemIDMap["director"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["director"], b.UserID, RoleVals(roleEntityKey, "Director"), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tEM:BOOT Roles Created")
 
 	// add entity - payroll
 	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategorySubData, entity.StateTeamLevel, false, false, false, PayrollFields())
@@ -100,12 +52,20 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Employee Entity Created")
 
 	// add entity - tasks
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityETask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, TaskEFields(employeeEntity.ID, employeeEntity.Key("first_name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, ownerKey))
+	taskEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityETask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, TaskEFields(employeeEntity.ID, employeeEntity.Key("first_name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, ownerKey))
 	if err != nil {
 		fmt.Println("\tEM:BOOT Employee Task Entity Created ERR")
 		return err
 	}
 	fmt.Println("\tEM:BOOT Employee Task Entity Created")
+
+	// add entity - approvals
+	fmt.Println("\tCRM:BOOT Approvals Entity Started")
+	approvalEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityApprovals, "Approvals", entity.CategoryApprovals, entity.StateTeamLevel, false, false, false, forms.ApprovalsFields(b.ApprovalStatusEntity.ID, b.ApprovalStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - asset-catagory
 	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.AssetCategory())
@@ -190,7 +150,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	// add entity - asset request
 	assetStatusTitleField := entity.TitleField(assetStatusEntity.EasyFields())
 	assetTitleField := entity.TitleField(assetEntity.EasyFields())
-	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
+	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -249,13 +209,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Services Created")
 	// add entity - service request
 	serviceTitleField := entity.TitleField(serviceEntity.EasyFields())
-	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key))
+	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Service Request Entity Created")
 
-	err = AddAssociations(ctx, b, payrollEntity, salaryEntity, employeeEntity, assetRequestEntity, serviceRequestEntity)
+	err = AddAssociations(ctx, b, payrollEntity, salaryEntity, employeeEntity, assetRequestEntity, serviceRequestEntity, taskEntity, approvalEntity)
 	if err != nil {
 		return err
 	}
@@ -268,7 +228,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	return nil
 }
 
-func AddAssociations(ctx context.Context, b *base.Base, payrollEid, salaryEid, employeeEid, assetRequestEid, serviceRequestEid entity.Entity) error {
+func AddAssociations(ctx context.Context, b *base.Base, payrollEid, salaryEid, employeeEid, assetRequestEid, serviceRequestEid, taskEntity, approvalsEntity entity.Entity) error {
 
 	streamEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStream)
 	if err != nil {
@@ -319,6 +279,12 @@ func AddAssociations(ctx context.Context, b *base.Base, payrollEid, salaryEid, e
 
 	//service-request stream association
 	_, err = b.AssociationAdd(ctx, serviceRequestEid.ID, streamEntity.ID)
+	if err != nil {
+		return err
+	}
+
+	//task approvals association
+	_, err = b.AssociationAdd(ctx, taskEntity.ID, approvalsEntity.ID)
 	if err != nil {
 		return err
 	}
@@ -542,5 +508,64 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 
 	fmt.Println("\tEM:SAMPLES Workflows And Its Nodes Created")
 
+	return nil
+}
+
+func addRoles(ctx context.Context, b *base.Base, itemIDMap map[string]string, rolesEntity entity.Entity) error {
+	var err error
+	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
+	fmt.Println("\tEM:BOOT Role Entity Created")
+
+	// add role item - Intern
+	itemIDMap["intern"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["intern"], b.UserID, RoleVals(roleEntityKey, "Intern"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Developer
+	itemIDMap["developer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["developer"], b.UserID, RoleVals(roleEntityKey, "Developer"), nil)
+	if err != nil {
+		return err
+	}
+
+	// add role item - designer
+	itemIDMap["designer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["designer"], b.UserID, RoleVals(roleEntityKey, "Designer"), nil)
+	if err != nil {
+		return err
+	}
+
+	// add role item - QA Engineer
+	itemIDMap["qa_engineer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["qa_engineer"], b.UserID, RoleVals(roleEntityKey, "QA Engineer"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Manager
+	itemIDMap["manager"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["manager"], b.UserID, RoleVals(roleEntityKey, "Manager"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Sales Rep
+	itemIDMap["sales_rep"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["sales_rep"], b.UserID, RoleVals(roleEntityKey, "Sales Rep"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Support Engineer
+	itemIDMap["support_engineer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["support_engineer"], b.UserID, RoleVals(roleEntityKey, "Support Engineer"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Director
+	itemIDMap["director"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["director"], b.UserID, RoleVals(roleEntityKey, "Director"), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEM:BOOT Roles Created")
 	return nil
 }

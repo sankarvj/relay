@@ -26,7 +26,7 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 		return err
 	}
 
-	i, err := item.Retrieve(ctx, n.Meta.EntityID, n.Meta.ItemID, db)
+	i, err := item.Retrieve(ctx, n.AccountID, n.Meta.EntityID, n.Meta.ItemID, db)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func inviteMember(ctx context.Context, nv visitor.NewVisitor, role string, body 
 			teamIds := itemFields[namedKeys["team_ids"].Key].([]interface{})
 			teamIds = append(teamIds, nv.TeamID)
 			itemFields[namedKeys["team_ids"].Key] = teamIds
-			_, err := item.UpdateFields(ctx, db, i.EntityID, i.ID, itemFields)
+			_, err := item.UpdateFields(ctx, db, nv.AccountID, i.EntityID, i.ID, itemFields)
 			if err != nil {
 				return err
 			}

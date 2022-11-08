@@ -94,6 +94,18 @@ func (n *Node) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelNode(*no), http.StatusOK)
 }
 
+func (n *Node) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	accountID := params["account_id"]
+	flowID := params["flow_id"]
+	nodeID := params["node_id"]
+
+	err := node.Delete(ctx, accountID, flowID, nodeID, n.db)
+	if err != nil {
+		return err
+	}
+	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
+}
+
 func makeNode(accountID, flowID string, nn node.NewNode) node.NewNode {
 	//nn.ID = uuid.New().String() TODO:currently the view is creating it. Need to check
 	nn.FlowID = flowID

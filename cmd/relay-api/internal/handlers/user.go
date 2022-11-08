@@ -331,7 +331,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 	if err != nil {
 		return err
 	}
-	existingItem, err := item.Retrieve(ctx, ownerEntity.ID, memberID, u.db)
+	existingItem, err := item.Retrieve(ctx, accountID, ownerEntity.ID, memberID, u.db)
 	if err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 		}
 	}
 
-	it, err := item.UpdateFields(ctx, u.db, ownerEntity.ID, existingItem.ID, updatedFields)
+	it, err := item.UpdateFields(ctx, u.db, accountID, ownerEntity.ID, existingItem.ID, updatedFields)
 	if err != nil {
 		return err
 	}

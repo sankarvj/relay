@@ -63,6 +63,7 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	if err != nil {
 		return nil, nil, err
 	}
+
 	//adding users
 	userIDs := make(map[string]bool, 0)
 	for _, item := range itemResultBody.Items {
@@ -93,14 +94,22 @@ func (s Segmenter) filterItems(ctx context.Context, accountID, entityID string, 
 }
 
 func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb *database.SecDB) (*rg.QueryResult, *rg.QueryResult, error) {
+
 	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, s.exp, db, sdb)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Println("conditionFields --- ", conditionFields)
+	if !auth.God(ctx) {
+		conditionFields = append(conditionFields, publicRecordsOnly())
+	}
+	log.Println("111 conditionFields....", conditionFields)
+
 	if s.source != nil {
 		conditionFields = append(conditionFields, *s.source)
 	}
+
+	log.Println("222 conditionFields....", conditionFields)
+
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFields)
 	gSegment.UseReturnNode = s.useReturn

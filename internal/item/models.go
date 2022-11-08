@@ -54,6 +54,7 @@ type NewItem struct {
 	Name      *string                `json:"name"`
 	Type      int                    `json:"type"`
 	State     int                    `json:"state"`
+	IsPublic  bool                   `json:"is_public"`
 	Fields    map[string]interface{} `json:"fields" validate:"required"`
 	Meta      map[string]interface{} `json:"meta"`
 	Source    map[string][]string    `json:"source"`
