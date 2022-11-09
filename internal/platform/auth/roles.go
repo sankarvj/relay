@@ -21,6 +21,7 @@ const (
 	RoleMember  = "MEMBER" // not yet implemented
 	RoleUser    = "USER"
 	RoleVisitor = "VISITOR"
+	RoleMyself  = "MYSELF"
 )
 
 // ctxKey represents the type of value for the context key.
@@ -30,6 +31,7 @@ type ctxKey int
 const Key ctxKey = 1
 const SocketKey ctxKey = 100
 const RoleKey ctxKey = 200
+const ValidateMyItemKey ctxKey = 300
 
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
@@ -80,12 +82,8 @@ func (c Claims) HasRole(allowed ...string) bool {
 	return false
 }
 
-func CheckVisitorEntityAccess(ctx context.Context, email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID string, db *sqlx.DB) error {
+func CheckVisitorEntityAccess(ctx context.Context, r *http.Request, email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID string, db *sqlx.DB) error {
 
-	// baseEntityID := r.URL.Query().Get("be")
-	// entityID := params["entity_id"]
-	// itemID := params["item_id"]
-	//usr.Email
 	vl, err := visitor.ListByEmail(ctx, accountID, email, db)
 	if err != nil {
 		err := errors.New("account_not_associated_with_this_visitor") // value used in the UI dont change the string message.
@@ -100,14 +98,15 @@ func CheckVisitorEntityAccess(ctx context.Context, email, accountID, teamID, bas
 	}
 	//re-evaluate with the base entityID - allow if the
 	if !hasAccess {
-		for _, vi := range vl {
-			if vi.AccountID == accountID && vi.EntityID == baseEntityID {
+
+		//this let visitor see the public entity blueprints
+		for _, vis := range vl {
+			if vis.AccountID == accountID && vis.EntityID == baseEntityID {
 				bonds, err := relationship.List(ctx, db, accountID, teamID, baseEntityID, false)
 				if err != nil {
 					return err
 				}
 				for _, bond := range bonds {
-					log.Printf("bond ------ > %+v", bond)
 					if bond.EntityID == entityID && bond.IsPublic {
 						hasAccess = true
 						break
@@ -118,7 +117,7 @@ func CheckVisitorEntityAccess(ctx context.Context, email, accountID, teamID, bas
 	}
 
 	if !hasAccess {
-		err := errors.New("module_not_associated_with_this_visitor") // value used in the UI dont change the string message.
+		err := errors.New("visitor_dont_have_access") // value used in the UI dont change the string message.
 		return web.NewRequestError(err, http.StatusForbidden)
 	}
 
@@ -126,27 +125,9 @@ func CheckVisitorEntityAccess(ctx context.Context, email, accountID, teamID, bas
 	return nil
 }
 
-func isRoleAdmin(roles []string) bool {
+func IsRoleMyselfExist(roles []string) bool {
 	for _, r := range roles {
-		if r == RoleAdmin {
-			return true
-		}
-	}
-	return false
-}
-
-func isRoleMember(roles []string) bool {
-	for _, r := range roles {
-		if r == RoleMember {
-			return true
-		}
-	}
-	return false
-}
-
-func isRoleUser(roles []string) bool {
-	for _, r := range roles {
-		if r == RoleUser {
+		if r == RoleMyself {
 			return true
 		}
 	}

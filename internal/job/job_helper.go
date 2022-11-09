@@ -104,3 +104,65 @@ func emailHash(emailAddress string) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(bmHash), nil
 }
+
+func (j Job) kabali(ctx context.Context, accountID, teamID, userID, entityID, itemID string, approverField entity.Field, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
+	log.Println("TODO: Bad Logic To Handle Adding Approvals To Task. These logic definetly needs to be revisited")
+	var dueByVal interface{}
+	for _, vaf := range valueAddedFields {
+		if vaf.Who == entity.WhoDueBy {
+			dueByVal = vaf.Value
+		}
+	}
+
+	// add a approver under current item
+	approvalEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityApprovals)
+	if err != nil {
+		return err
+	}
+	itemFieldsMap := make(map[string]interface{}, 0)
+	approvalFields := approvalEntity.EasyFields()
+	for _, apf := range approvalFields {
+		if apf.Who == entity.WhoAssignee {
+			itemFieldsMap[apf.Key] = approverField.Value
+		} else if apf.Who == entity.WhoStatus {
+			refItems, _ := item.EntityItems(ctx, accountID, apf.RefID, db)
+			if len(refItems) > 0 {
+				itemFieldsMap[apf.Key] = []interface{}{refItems[0].ID}
+			}
+		} else if apf.Who == entity.WhoDueBy {
+			if dueByVal != nil {
+				itemFieldsMap[apf.Key] = dueByVal
+			}
+		}
+	}
+	ni := item.NewItem{
+		ID:        uuid.New().String(),
+		AccountID: accountID,
+		GenieID:   &itemID,
+		UserID:    &userID,
+		EntityID:  approvalEntity.ID,
+		Fields:    itemFieldsMap,
+		Source:    map[string][]string{entityID: {itemID}},
+	}
+
+	it, err := item.Create(ctx, db, ni, time.Now())
+	if err != nil {
+		return err
+	}
+
+	existingBE := j.baseEntityID
+	existingBIDS := j.baseItemIDs
+
+	j.baseEntityID = entityID
+	j.baseItemIDs = []string{itemID}
+	err = j.actOnRedisGraph(ctx, accountID, it.EntityID, it.ID, nil, approvalEntity.ValueAdd(it.Fields()), db, sdb)
+	if err != nil {
+		j.baseEntityID = existingBE
+		j.baseItemIDs = existingBIDS
+		return err
+	}
+	j.baseEntityID = existingBE
+	j.baseItemIDs = existingBIDS
+
+	return nil
+}

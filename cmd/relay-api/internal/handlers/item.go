@@ -194,6 +194,11 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "error retriving item")
 	}
 
+	err = validateMyselfWithOwner(ctx, accountID, entityID, existingItem, i.db, i.sdb)
+	if err != nil {
+		return err
+	}
+
 	it, err := item.UpdateFieldsWithMeta(ctx, i.db, existingItem, ni.Name, ni.Fields, ni.Meta, ni.IsPublic)
 	if err != nil {
 		return errors.Wrapf(err, "error when update item fields %+v", &ni)
@@ -338,6 +343,12 @@ func (i *Item) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return err
 	}
+
+	err = validateMyself(ctx, accountID, entityID, itemID, i.db)
+	if err != nil {
+		return err
+	}
+
 	// Delete calls should be called in the last stage of job
 	// err := item.Delete(ctx, i.db, accountID, entityID, itemID)
 	// if err != nil {
@@ -364,6 +375,10 @@ func (i *Item) ToggleAccess(ctx context.Context, w http.ResponseWriter, r *http.
 		existingItem, err := item.Retrieve(ctx, accountID, entityID, itemID, i.db)
 		if err != nil {
 			return errors.Wrapf(err, "error retriving item")
+		}
+		err = validateMyself(ctx, accountID, entityID, itemID, i.db)
+		if err != nil {
+			return err
 		}
 		existingItem.IsPublic = !existingItem.IsPublic
 		it, err := item.UpdatePublicAccess(ctx, i.db, existingItem)

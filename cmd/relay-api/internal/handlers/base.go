@@ -3,17 +3,22 @@ package handlers
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/team"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
 type Piper struct {
@@ -156,4 +161,69 @@ func makeConditionsFromExp(ctx context.Context, accountID, entityID, exp string,
 		}
 	}
 	return conditionFields, nil
+}
+
+func validateMyself(ctx context.Context, accountID, entityID, itemID string, db *sqlx.DB) error {
+	validateMyself, _ := ctx.Value(auth.ValidateMyItemKey).(bool)
+	if validateMyself {
+		currentUserID, err := user.RetrieveCurrentUserID(ctx)
+		if err != nil {
+			return err
+		}
+		it, err := item.Retrieve(ctx, accountID, entityID, itemID, db)
+		if err != nil {
+			return err
+		}
+		if it.UserID == nil || *it.UserID != currentUserID {
+			err := errors.New("you_dont_have_access_todo_this_operation")
+			return web.NewRequestError(err, http.StatusForbidden)
+		}
+	}
+	return nil
+}
+
+func validateMyselfWithOwner(ctx context.Context, accountID, entityID string, item item.Item, db *sqlx.DB, sdb *database.SecDB) error {
+	validateMyself, _ := ctx.Value(auth.ValidateMyItemKey).(bool)
+	if validateMyself {
+		currentUserID, err := user.RetrieveCurrentUserID(ctx)
+		if err != nil {
+			return err
+		}
+
+		if item.UserID == nil || *item.UserID != currentUserID {
+			err := errors.New("you_dont_have_access_todo_this_operation")
+			return web.NewRequestError(err, http.StatusForbidden)
+		}
+
+		cuser, err := user.RetrieveUser(ctx, db, currentUserID)
+		if err != nil {
+			err := errors.New("you_dont_have_access_todo_this_operation")
+			return web.NewRequestError(err, http.StatusForbidden)
+		}
+
+		e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
+		if err != nil {
+			return err
+		}
+
+		valueAddedFields := e.ValueAdd(item.Fields())
+
+		var isUserAssigned bool
+		for _, vf := range valueAddedFields {
+			if vf.Who == entity.WhoAssignee {
+				vals := vf.Value.([]interface{})
+				for _, v := range vals {
+					if v == cuser.MemberID(accountID) {
+						isUserAssigned = true
+					}
+				}
+			}
+		}
+
+		if !isUserAssigned {
+			err := errors.New("you_dont_have_access_todo_this_operation")
+			return web.NewRequestError(err, http.StatusForbidden)
+		}
+	}
+	return nil
 }

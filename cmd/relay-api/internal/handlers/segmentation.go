@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -102,13 +101,10 @@ func (s Segmenter) segment(ctx context.Context, accountID, entityID string, db *
 	if !auth.God(ctx) {
 		conditionFields = append(conditionFields, publicRecordsOnly())
 	}
-	log.Println("111 conditionFields....", conditionFields)
 
 	if s.source != nil {
 		conditionFields = append(conditionFields, *s.source)
 	}
-
-	log.Println("222 conditionFields....", conditionFields)
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
 	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFields)

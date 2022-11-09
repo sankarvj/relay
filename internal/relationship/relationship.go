@@ -213,8 +213,6 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, 
 		relatedEntitesMap[b.EntityID] = b
 	}
 
-	log.Printf("bonds %+v", bonds)
-
 	trimmedBonds := []Bond{}
 	for _, value := range relatedEntitesMap {
 		if god {

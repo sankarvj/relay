@@ -112,8 +112,14 @@ func HasRole(roles ...string) web.Middleware {
 				return ErrForbidden
 			}
 
-			//storing the first role encountered. Is it okay??
-			ctx = context.WithValue(ctx, auth.RoleKey, claims.Roles[0])
+			//MAJAOR TODO storing the first role encountered. Is it okay??
+			currentRole := claims.Roles[0]
+			ctx = context.WithValue(ctx, auth.RoleKey, currentRole)
+
+			//set validation to true if the route has ROLEMYSELF and the user is not admin/member
+			if auth.IsRoleMyselfExist(roles) && currentRole != auth.RoleAdmin && currentRole != auth.RoleMember {
+				ctx = context.WithValue(ctx, auth.ValidateMyItemKey, true)
+			}
 
 			return after(ctx, w, r, params)
 		}
@@ -157,7 +163,7 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 
 				log.Printf("\t\tVisitor :::::: teamID::: %s baseEntityID:%s,  baseItemID:%s, entityID:%s, itemID:%s \n", teamID, baseEntityID, baseItemID, entityID, itemID)
 
-				err := auth.CheckVisitorEntityAccess(ctx, usr.Email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID, db)
+				err := auth.CheckVisitorEntityAccess(ctx, r, usr.Email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID, db)
 				if err != nil {
 					err := errors.New("visitor_dont_have_access")
 					return web.NewRequestError(err, http.StatusForbidden)

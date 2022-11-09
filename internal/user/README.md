@@ -11,3 +11,10 @@ So far,
 ## How member invite works?
 
 When the member info submitted by the ADMIN user it will add the new member in the owner entity. An invitation email will be sent to his email address. When he clicks the link the user will be taken to the page which asks the basic info if that user is not logged in already and proceeds with the sign up process. But he is already added to some other account then the user will be added with the new account ID and will be allowed to proceed with the login with his choice of account.
+
+## How approvers add works for tasks?
+If the entity fields with `WhoApprover` is present then the job will take care of adding new approver for the task.
+
+## How updating child elements works? when a deal is updated, make changes it all of its related contact. (In development stage not in prod)
+In the executor data, if the n.ActorID != n.Meta.EntityID then the child elements gets updated with the template value.
+

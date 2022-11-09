@@ -124,7 +124,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//who
 	if m.State < stream.StateWho {
-		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.SDB)
+		err = j.actOnWho(ctx, m.AccountID, e.TeamID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 			return err
@@ -204,7 +204,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 
 	//who
 	if m.State < stream.StateWho {
-		err = j.actOnWho(m.AccountID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.SDB)
+		err = j.actOnWho(ctx, m.AccountID, e.TeamID, m.UserID, m.EntityID, m.ItemID, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on actOnWho. error: ", err)
 			return err
@@ -555,8 +555,6 @@ func (j *Job) actOnRedisGraph(ctx context.Context, accountID, entityID, itemID s
 		}
 	}
 
-	log.Printf("valueAddedFields  %+v", valueAddedFields)
-
 	gpbNode := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode(itemID, makeGraphFields(valueAddedFields))
 	if j.baseEntityID != "" && len(j.baseItemIDs) > 0 {
 		relationShips, err := relationship.RetionshipType(ctx, db, accountID, j.baseEntityID, entityID)
@@ -783,14 +781,19 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 	return err
 }
 
-func (j Job) actOnWho(accountID, userID, entityID, itemID string, valueAddedFields []entity.Field, sdb *database.SecDB) error {
+func (j Job) actOnWho(ctx context.Context, accountID, teamID, userID, entityID, itemID string, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	for _, f := range valueAddedFields {
 		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil {
 			when, err := util.ParseTime(f.Value.(string))
 			if err != nil {
 				return err
 			}
-			return (j).AddReminder(accountID, userID, entityID, itemID, when, sdb)
+			err = (j).AddReminder(accountID, userID, entityID, itemID, when, sdb)
+			if err != nil {
+				return err
+			}
+		} else if f.Who == entity.WhoApprover && f.IsHidden() && f.Value != nil {
+			j.kabali(ctx, accountID, teamID, userID, entityID, itemID, f, valueAddedFields, db, sdb)
 		}
 	}
 	return nil

@@ -132,6 +132,7 @@ const (
 	WhoIdentifier    = "identifier"
 	WhoVerb          = "verb"
 	WhoColor         = "color"
+	WhoApprover      = "approver"
 )
 
 // Field represents structural format of attributes in entity

@@ -112,6 +112,7 @@ func createViewModelChart(c chart.Chart, series []Series, count, change int) VMC
 		Change:   change,
 		Icon:     c.GetIcon(),
 		Advanced: c.GetAdvancedMap(),
+		Exp:      c.GetExp(),
 	}
 }
 
@@ -141,6 +142,7 @@ type VMChart struct {
 	EntityID string            `json:"entity_id"`
 	Title    string            `json:"title"`
 	Field    string            `json:"field"`
+	Exp      string            `json:"exp"`
 	Type     string            `json:"type"`
 	DataType string            `json:"data_type"`
 	Duration string            `json:"duration"`

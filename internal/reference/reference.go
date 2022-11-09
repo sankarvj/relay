@@ -245,7 +245,7 @@ func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
 		if sf.RefID == f.RefID {
 			f.Choices = append(f.Choices, entity.Choice{
 				ID:           fmt.Sprintf("{{%s.%s}}", sourceEntity.ID, sf.Key),
-				DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("%s's existing %s", sourceEntity.DisplayName, f.DisplayName))),
+				DisplayValue: strings.Title(strings.ToLower(fmt.Sprintf("%s - %s", sourceEntity.DisplayName, sf.DisplayName))),
 				BaseChoice:   true,
 			})
 
