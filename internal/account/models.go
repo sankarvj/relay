@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+const (
+	PlanFree    = 0
+	PlanStartup = 1
+	PlanPro     = 2
+)
+
 // Account represents the organization where set of users belong
 type Account struct {
 	ID              string    `db:"account_id" json:"id"`
@@ -13,6 +19,8 @@ type Account struct {
 	Avatar          *string   `db:"avatar" json:"avatar"`
 	Plan            int       `db:"plan" json:"plan"`
 	Mode            int       `db:"mode" json:"mode"`
+	CustomerMail    string    `db:"cus_mail" json:"cus_mail"`
+	CustomerID      string    `db:"cus_id" json:"cus_id"`
 	TimeZone        *string   `db:"timezone" json:"timezone"`
 	Language        *string   `db:"language" json:"language"`
 	Country         *string   `db:"country" json:"country"`

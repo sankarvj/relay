@@ -40,6 +40,18 @@ func (a *Account) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	return web.Respond(ctx, w, accounts, http.StatusOK)
 }
 
+func (a *Account) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Account.Retrieve")
+	defer span.End()
+
+	account, err := account.Retrieve(ctx, a.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, createViewModelAccount(account), http.StatusOK)
+}
+
 func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	accName := r.URL.Query().Get("name")
 	for _, v := range account.ExistingSubDomains {

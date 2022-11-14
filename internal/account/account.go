@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"go.opencensus.io/trace"
 )
 
@@ -53,6 +54,23 @@ func Retrieve(ctx context.Context, db *sqlx.DB, id string) (*Account, error) {
 		}
 
 		return nil, errors.Wrapf(err, "selecting account %q", id)
+	}
+
+	return &a, nil
+}
+
+func RetrieveByStripeID(ctx context.Context, stripeCusID string, db *sqlx.DB) (*Account, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.account.RetrieveByStripeID")
+	defer span.End()
+
+	var a Account
+	const q = `SELECT * FROM accounts WHERE cus_id = $1`
+	if err := db.GetContext(ctx, &a, q, stripeCusID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+
+		return nil, errors.Wrapf(err, "selecting account using stripe ID %q", stripeCusID)
 	}
 
 	return &a, nil
@@ -114,4 +132,53 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 	}
 
 	return a, nil
+}
+
+func UpdateStripeCustomer(ctx context.Context, accountID, cusID, cusEmail string, trailEnds int64, plan int, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.UpdateStripeCustomer")
+	defer span.End()
+
+	expireAt := util.ConvertMilliToTime(trailEnds)
+
+	const q = `UPDATE accounts SET cus_id = $2, cus_mail = $3, expiry = $4, plan = $5
+		WHERE account_id = $1`
+	_, err := db.ExecContext(ctx, q, accountID,
+		cusID, cusEmail, expireAt, plan,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating account payment plan and stripe customer id")
+	}
+	return nil
+}
+
+func UpdateStripePlan(ctx context.Context, accountID string, plan, seat int, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.UpdateStripeCustomer")
+	defer span.End()
+
+	const q = `UPDATE accounts SET plan = $2, cus_seat = $3
+		WHERE account_id = $1`
+	_, err := db.ExecContext(ctx, q, accountID,
+		plan, seat,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating account payment plan and seat")
+	}
+	return nil
+}
+
+func UpdateStripeTrailEndDate(ctx context.Context, accountID string, expiry int64, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.account.UpdateStripeCustomer")
+	defer span.End()
+
+	expireAt := util.ConvertMilliToTime(expiry)
+
+	const q = `UPDATE accounts SET expiry = $2
+		WHERE account_id = $1`
+	_, err := db.ExecContext(ctx, q, accountID,
+		expireAt,
+	)
+	if err != nil {
+		return errors.Wrap(err, "updating account payment plan")
+	}
+	return nil
 }

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
+	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/user"
@@ -301,6 +303,15 @@ func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 
 	//all done
 	fmt.Printf("\nBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
+
+	//add trail
+	err = payment.InitStripe(ctx, accountID, userID, b.DB)
+	if err != nil {
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+	} else {
+		log.Printf("***> trail started successfully")
+		log.Println("update the account with the plan name and etc...")
+	}
 
 	return nil
 }

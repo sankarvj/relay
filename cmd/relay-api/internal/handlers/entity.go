@@ -78,6 +78,9 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		Entities       []entity.ViewModelEntity  `json:"entities"`
 		User           user.ViewModelUser        `json:"user"`
 		UserSetting    user.ViewModelUserSetting `json:"user_setting"`
+		Role           string                    `json:"role"`
+		Plan           int                       `json:"plan"`
+		TrialEndsIn    float64                   `json:"trial_ends_in"`
 	}{
 		acc.Name,
 		teamID,
@@ -85,6 +88,9 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		viewModelEntities,
 		createViewModelUser(*cu, acc.ID),
 		createViewModelUS(cus),
+		role,
+		acc.Plan,
+		time.Since(acc.Expiry).Hours() / 24,
 	}
 
 	return web.Respond(ctx, w, homeDetail, http.StatusOK)

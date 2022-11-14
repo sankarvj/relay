@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -17,6 +18,20 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
+
+type ViewModelAccount struct {
+	ID     string    `json:"id"`
+	Plan   int       `json:"plan"`
+	Expiry time.Time `json:"expiry"`
+}
+
+func createViewModelAccount(acc *account.Account) ViewModelAccount {
+	return ViewModelAccount{
+		ID:     acc.ID,
+		Plan:   acc.Plan,
+		Expiry: acc.Expiry,
+	}
+}
 
 func createViewModelVisitor(v visitor.Visitor, entityName, itemName string) ViewModelVisitor {
 	return ViewModelVisitor{

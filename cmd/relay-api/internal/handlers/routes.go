@@ -59,7 +59,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 
 	app.Handle("GET", "/v1/accounts/availability", a.Availability)
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("GET", "/v1/accounts/:account_id", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser))
+	app.Handle("GET", "/v1/accounts/:account_id", a.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser))
 	// app.Handle("POST", "/v1/accounts", a.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	v := Visitor{
@@ -232,24 +232,28 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("GET", "/v1/ws/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/socket/:token", cv.WebSocketMessage, mid.HasSocketAccess(sdb))
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/conversations", cv.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser), mid.HasAccountAccess(db))
 
+	// Register events endpoints.
 	ev := Event{
 		db: db,
 	}
 
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/events", ev.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 
+	// Register counter endpoints.
 	c := Counter{
 		db:  db,
 		sdb: sdb,
 	}
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/count/:destination", c.Count, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 
+	// Register dashboard endpoints.
 	d := Dashboard{
 		db:  db,
 		sdb: sdb,
 	}
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/overview", d.Overview, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 
+	// Register timeseries endpoints.
 	ts := Timeseries{
 		db:            db,
 		sdb:           sdb,
@@ -259,6 +263,14 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries", ts.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/:chart_id", ts.Chart, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/onme", ts.OnMe, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+
+	// Register bill endpoints.
+	bi := Bill{
+		db:            db,
+		authenticator: authenticator,
+	}
+	app.Handle("POST", "/stripe/webhook", bi.Events)
+	app.Handle("POST", "/v1/accounts/:account_id/billing/portal", bi.Portal, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 
 	return app
 }

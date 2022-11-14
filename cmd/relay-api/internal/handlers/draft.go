@@ -16,6 +16,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/token"
@@ -157,6 +158,14 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	draft.Delete(ctx, draftID, a.db)
+
+	err = payment.InitStripe(ctx, accountID, usr.ID, a.db)
+	if err != nil {
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+	} else {
+		log.Printf("***> trail started successfully")
+		log.Println("update the account with the plan name and etc...")
+	}
 
 	return web.Respond(ctx, w, userToken, http.StatusCreated)
 }
