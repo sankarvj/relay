@@ -40,30 +40,19 @@ type User struct {
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
-// List returns all the existing users in the system.
-func (u *User) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.User.List")
-	defer span.End()
-
-	users, err := user.List(ctx, u.db)
-	if err != nil {
-		return err
-	}
-
-	return web.Respond(ctx, w, users, http.StatusOK)
-}
-
 // Retrieve returns the specified user from the system.
 func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.User.Retrieve")
 	defer span.End()
+
+	accountID := params["account_id"]
 
 	claims, ok := ctx.Value(auth.Key).(auth.Claims)
 	if !ok {
 		return errors.New("claims missing from context")
 	}
 
-	usr, err := user.Retrieve(ctx, claims, u.db)
+	usr, err := user.Retrieve(ctx, claims, accountID, u.db)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -81,37 +70,37 @@ func (u *User) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 }
 
 // Create inserts a new user into the system.
-func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.User.Create")
-	defer span.End()
+// func (u *User) Create(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+// 	ctx, span := trace.StartSpan(ctx, "handlers.User.Create")
+// 	defer span.End()
 
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
+// 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+// 	if !ok {
+// 		return web.NewShutdownError("web value missing from context")
+// 	}
 
-	var nu user.NewUser
-	if err := web.Decode(r, &nu); err != nil {
-		return errors.Wrap(err, "")
-	}
+// 	var nu user.NewUser
+// 	if err := web.Decode(r, &nu); err != nil {
+// 		return errors.Wrap(err, "")
+// 	}
 
-	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
+// 	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, nu.Email, *nu.Phone)
 
-	if err != nil && err == user.ErrNotFound {
-		usr, err = user.Create(ctx, u.db, nu, v.Now)
-		if err != nil {
-			return errors.Wrapf(err, "User: %+v created", &usr)
-		}
+// 	if err != nil && err == user.ErrNotFound {
+// 		usr, err = user.Create(ctx, u.db, nu, v.Now)
+// 		if err != nil {
+// 			return errors.Wrapf(err, "User: %+v created", &usr)
+// 		}
 
-	} else if err == nil {
-		err := user.UpdatePassword(ctx, u.db, usr.ID, nu.Password, v.Now)
-		if err != nil {
-			return errors.Wrapf(err, "User: %+v password updated", &usr)
-		}
-	}
+// 	} else if err == nil {
+// 		err := user.UpdatePassword(ctx, u.db, usr.ID, nu.Password, v.Now)
+// 		if err != nil {
+// 			return errors.Wrapf(err, "User: %+v password updated", &usr)
+// 		}
+// 	}
 
-	return web.Respond(ctx, w, usr, http.StatusCreated)
-}
+// 	return web.Respond(ctx, w, usr, http.StatusCreated)
+// }
 
 // Update updates the specified user in the system.
 func (u *User) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -133,12 +122,14 @@ func (u *User) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
+	accountID := params["account_id"]
+
 	var upd user.UpdateUser
 	if err := web.Decode(r, &upd); err != nil {
 		return errors.Wrap(err, "")
 	}
 
-	err = user.Update(ctx, claims, u.db, currentUserID, upd, v.Now)
+	err = user.Update(ctx, claims, u.db, currentUserID, accountID, upd, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrInvalidID:
@@ -199,7 +190,7 @@ func (u *User) Verfiy(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrap(err, "verifying token with firebase")
 	}
 
-	tkn, err := generateUserJWT(ctx, tokenEmail, v.Now, u.authenticator, u.db)
+	tkn, err := generateUserJWTForAnyAccount(ctx, tokenEmail, v.Now, u.authenticator, u.db)
 	if err != nil {
 		return web.NewRequestError(err, http.StatusUnauthorized)
 	}
@@ -218,7 +209,7 @@ func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		log.Println("***> unexpected error occurred in MLVerify. error: ", err)
 		return ErrForbiddenMLToken
 	}
-	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, userInfo.Email, "")
+	_, err = user.RetrieveUserByUniqIdentifier(ctx, userInfo.AccountID, userInfo.Email, "", u.db)
 	if err != nil {
 		userInfo.Verified = false
 	}
@@ -247,9 +238,9 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	// all authentication completed. Proceed with the next steps
-	usr, err := user.RetrieveUserByUniqIdentifier(ctx, u.db, tokenEmail, "")
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, userInfo.AccountID, tokenEmail, "", u.db)
 	if err == user.ErrNotFound {
-		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, u.db)
+		usr, err = createNewVerifiedUser(ctx, userInfo.AccountID, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, u.db)
 		if err != nil {
 			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
 		}
@@ -257,7 +248,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
 	}
 
-	err = usr.UpdateAccounts(ctx, u.db, usr.AddAccount(userInfo.AccountID, userInfo.MemberID))
+	err = usr.UpdateMemberID(ctx, userInfo.MemberID, u.db)
 	if err != nil {
 		return errors.Wrap(err, "adding accounts to user failed")
 	}
@@ -273,7 +264,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return errors.Wrap(err, "adding member record for this user failed")
 	}
 
-	tkn, err := generateUserJWT(ctx, tokenEmail, time.Now(), u.authenticator, u.db)
+	tkn, err := generateUserJWT(ctx, userInfo.AccountID, tokenEmail, time.Now(), u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
@@ -303,9 +294,9 @@ func (u *User) Visit(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrap(err, "token mismatch detected")
 	}
 
-	_, err = user.RetrieveUserByUniqIdentifier(ctx, u.db, vis.Email, "")
+	_, err = user.RetrieveUserByUniqIdentifier(ctx, userInfo.AccountID, vis.Email, "", u.db)
 	if err == user.ErrNotFound {
-		_, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleVisitor}, u.db)
+		_, err = createNewVerifiedUser(ctx, userInfo.AccountID, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleVisitor}, u.db)
 		if err != nil {
 			return errors.Wrapf(err, "creating new user failed. please contact support@workbaseone.com")
 		}
@@ -313,7 +304,7 @@ func (u *User) Visit(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return errors.Wrapf(err, "retrival of user failed for reason other than not found")
 	}
 
-	tkn, err := generateUserJWT(ctx, vis.Email, time.Now(), u.authenticator, u.db)
+	tkn, err := generateUserJWT(ctx, userInfo.AccountID, vis.Email, time.Now(), u.authenticator, u.db)
 	if err != nil {
 		return errors.Wrap(err, "generating token")
 	}
@@ -380,8 +371,57 @@ func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, 
 	return token.UID, token.Claims["email"].(string), nil
 }
 
-func generateUserJWT(ctx context.Context, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
-	dbUser, err := user.RetrieveUserByUniqIdentifier(ctx, db, email, "")
+func generateUserJWTForAnyAccount(ctx context.Context, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
+	dbUsers, err := user.List(ctx, email, "", db)
+	if err != nil {
+		errors.Wrap(err, "user does not exist in the DB. Cannot generate JWT token")
+		return nil, web.NewRequestError(err, http.StatusUnauthorized)
+	}
+
+	var tkn UserToken
+	if len(dbUsers) == 1 {
+		dbUser := dbUsers[0]
+		claims := auth.NewClaims(dbUser.ID, dbUser.Roles, now, 96*time.Hour)
+		if err != nil {
+			switch err {
+			case user.ErrAuthenticationFailure:
+				return nil, web.NewRequestError(err, http.StatusUnauthorized)
+			default:
+				return nil, web.NewRequestError(err, http.StatusUnauthorized)
+			}
+		}
+
+		tkn.Token, err = a.GenerateToken(claims)
+		if err != nil {
+			return nil, err
+		}
+		tkn.Accounts = []string{dbUser.AccountID}
+	} else if len(dbUsers) > 1 {
+		claims := auth.NewClaims(email, []string{auth.RoleAdmin}, now, 1*time.Hour)
+		if err != nil {
+			switch err {
+			case user.ErrAuthenticationFailure:
+				return nil, web.NewRequestError(err, http.StatusUnauthorized)
+			default:
+				return nil, web.NewRequestError(err, http.StatusUnauthorized)
+			}
+		}
+
+		tkn.Token, err = a.GenerateToken(claims)
+		if err != nil {
+			return nil, err
+		}
+		tkn.Accounts = make([]string, 0)
+		for _, dbUser := range dbUsers {
+			tkn.Accounts = append(tkn.Accounts, dbUser.AccountID)
+		}
+	}
+
+	return &tkn, nil
+}
+
+func generateUserJWT(ctx context.Context, accountID, email string, now time.Time, a *auth.Authenticator, db *sqlx.DB) (*UserToken, error) {
+	dbUser, err := user.RetrieveUserByUniqIdentifier(ctx, accountID, email, "", db)
 	if err != nil {
 		errors.Wrap(err, "user does not exist in the DB. Cannot generate JWT token")
 		return nil, web.NewRequestError(err, http.StatusUnauthorized)
@@ -401,7 +441,7 @@ func generateUserJWT(ctx context.Context, email string, now time.Time, a *auth.A
 	if err != nil {
 		return nil, err
 	}
-	tkn.Accounts = dbUser.AccountIDs()
+	tkn.Accounts = []string{accountID}
 	return &tkn, nil
 }
 
@@ -415,10 +455,10 @@ func generateSystemUserJWT(ctx context.Context, accountID string, scope []string
 	return systemToken, nil
 }
 
-func userMap(ctx context.Context, userIDs map[string]bool, db *sqlx.DB) (map[string]*user.User, error) {
+func userMap(ctx context.Context, accountID string, userIDs map[string]bool, db *sqlx.DB) (map[string]*user.User, error) {
 	userMap := make(map[string]*user.User, 0)
 
-	users, err := user.BulkRetrieveUsers(ctx, userkeys(userIDs), db)
+	users, err := user.BulkRetrieveUsers(ctx, accountID, userkeys(userIDs), db)
 	if err != nil {
 		return userMap, err
 	}

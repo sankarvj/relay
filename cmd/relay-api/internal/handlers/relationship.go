@@ -64,7 +64,7 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 
-	fields := e.AllFieldsButSecured()
+	fields := e.EasyFieldsByRole(ctx)
 
 	piper := Piper{
 		Items: make(map[string][]ViewModelItem, 0),

@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
@@ -87,6 +89,7 @@ const (
 	MetaKeyHTML         = "html"
 	MetaKeyCalc         = "calc"
 	MetaKeyRollUp       = "rollup"
+	MetaKeyPublic       = "public"
 )
 
 const (
@@ -200,6 +203,20 @@ func (e Entity) EasyFields() []Field {
 	fields, err := e.Fields()
 	if err != nil {
 		log.Println("***> unexpected/unhandled error occurred. internal.entity.fields")
+	}
+	return fields
+}
+
+func (e Entity) EasyFieldsByRole(ctx context.Context) []Field {
+	fields := e.EasyFields()
+	publicFields := make([]Field, 0)
+	if !auth.God(ctx) {
+		for _, f := range fields {
+			if f.IsPublic() && !f.IsConfigField() {
+				publicFields = append(publicFields, f)
+			}
+		}
+		return publicFields
 	}
 	return fields
 }
@@ -532,6 +549,13 @@ func (f Field) IsUnique() bool {
 
 func (f Field) IsRequired() bool {
 	if val, ok := f.Meta[MetaKeyRequired]; ok {
+		return val == "true"
+	}
+	return false
+}
+
+func (f Field) IsPublic() bool {
+	if val, ok := f.Meta[MetaKeyPublic]; ok {
 		return val == "true"
 	}
 	return false

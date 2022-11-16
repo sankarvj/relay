@@ -735,7 +735,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 
 	userName := "System User"
 	if currentUserID != user.UUID_SYSTEM_USER && currentUserID != user.UUID_ENGINE_USER && currentUserID != user.UUID_ANONYMOUS_USER {
-		currentUser, err := user.RetrieveUser(ctx, db, currentUserID)
+		currentUser, err := user.RetrieveUser(ctx, db, accountID, currentUserID)
 		if err != nil {
 			return err
 		}

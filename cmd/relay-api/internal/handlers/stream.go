@@ -36,9 +36,9 @@ func (st *Stream) List(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	for _, item := range items {
 		userIDs[*item.UserID] = true
 	}
-	uMap, _ := userMap(ctx, userIDs, st.db)
+	uMap, _ := userMap(ctx, accountID, userIDs, st.db)
 	fields := e.EasyFields()
-	viewModelItems := itemResponse(items, uMap)
+	viewModelItems := itemResponse(items, uMap, e.EasyFieldsByRole(ctx))
 
 	response := struct {
 		Items  []ViewModelItem        `json:"items"`

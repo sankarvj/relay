@@ -88,6 +88,8 @@ type CrmSample struct {
 	LeadStatusItemBadTiming item.Item
 	LeadStatusItemConnected item.Item
 	LeadStatusItemAttempted item.Item
+	EmpItemMatt             item.Item
+	EmpItemNatasha          item.Item
 }
 
 type CoreWorkflow struct {

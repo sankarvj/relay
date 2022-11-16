@@ -53,14 +53,14 @@ func Seed(db *sqlx.DB) error {
 		return err
 	}
 
-	if _, err := tx.Exec(userSeeds); err != nil {
+	if _, err := tx.Exec(accountSeeds); err != nil {
 		if err := tx.Rollback(); err != nil {
 			return err
 		}
 		return err
 	}
 
-	if _, err := tx.Exec(accountSeeds); err != nil {
+	if _, err := tx.Exec(userSeeds); err != nil {
 		if err := tx.Rollback(); err != nil {
 			return err
 		}
@@ -162,18 +162,18 @@ func SeedPipelines(db *sqlx.DB) error {
 // may need to be broken up.
 
 //TODO: this seed needs to get removed in the main project
-const userSeeds = `
-INSERT INTO public.users (user_id, accounts, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', '{"3cf17266-3473-4006-984f-9325122678b7": "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"}', 'vijay', 'https://randomuser.me/api/portraits/thumb/lego/1.jpg', 'vijayasankarj@gmail.com', '9940209164', true, '{ADMIN}', 'Zyg2U2ogVEafE7aaXXeQpYsI9G33', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
-INSERT INTO public.users (user_id, accounts, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('55b5fbd3-755f-4379-8f07-a58d4a30fa2f', '{"3cf17266-3473-4006-984f-9325122678b7": "55b5fbd3-755f-4379-8f07-a58d4a30fa2f"}', 'senthil', 'https://randomuser.me/api/portraits/thumb/lego/2.jpg', 'sksenthilkumaar@gmail.com', '9940209164', true, '{MEMBER}', 'sk_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
-INSERT INTO public.users (user_id, accounts, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('65b5fbd3-755f-4379-8f07-a58d4a30fa2f', '{"3cf17266-3473-4006-984f-9325122678b7": "65b5fbd3-755f-4379-8f07-a58d4a30fa2f"}', 'saravana', 'https://randomuser.me/api/portraits/thumb/lego/3.jpg', 'saravanaprakas@gmail.com', '9940209164', true, '{USER}', 'sexy_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
-INSERT INTO public.users (user_id, accounts, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('5cf37266-3473-4006-984f-9325122678b7', '{"3cf17266-3473-4006-984f-9325122678b7": "5cf37266-3473-4006-984f-9325122678b7"}', 'sankar', 'https://randomuser.me/api/portraits/thumb/lego/4.jpg', 'vijayasankarmail@gmail.com', '9944293499', true, '{VISITOR}', 'MYmfEIgwFYWrlKaDNJ0O3UNJSPg2', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1612675165);
-`
-
 const accountSeeds = `
 INSERT INTO public.accounts (account_id, parent_account_id, name, domain, avatar, plan, mode, timezone, language, country, issued_at, expiry, created_at, updated_at) VALUES ('3cf17266-3473-4006-984f-9325122678b7', NULL, 'Wayplot', 'wayplot.com', NULL, 0, 0, NULL, NULL, NULL, '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', 1610290392);
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('73d54431-318c-4b3b-ae73-82c75cd56dcb', '3cf17266-3473-4006-984f-9325122678b7', 'Base', '', '2021-04-08 06:19:04.630095', 1617862744);
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('2f3c379d-60f6-4793-8928-3d2ccb852208', '3cf17266-3473-4006-984f-9325122678b7', 'CRM', '', '2021-04-08 06:19:09.377088', 1617862749);
 INSERT INTO public.tokens (token, account_id, type, state, scope, issued_at, expiry, created_at) VALUES ('eyJhbGciOiJSUzI1NiIsImtpZCI6IjEiLCJ0eXAiOiJKV1QifQ.eyJyb2xlcyI6W10sImV4cCI6MjI2ODU4MzgxMiwiaWF0IjoxNjYzNzgzODEyLCJzdWIiOiJjYTMxMmJjNi0zMGE1LTQ4YTgtYTU0ZC1iMTk3YjQyZjBjODEifQ.IrOr3cvLPr-rXxsbMsTffX0eRBVwtPLv4gFrz9bqTnI4dQF6x0DC255wfPWfK60jqv6n5CkzGSPok80Ltyp7RPg-pfjCQfvAQslXxDZozT90qS7VXksFc7b-TdHkpmEXlL0ffqiqmqAIOU5DUQ2jI8qRBKKdTr3W6w91pyq1uCq4JN9CpJ0M8N_W5aiVviFwm4luJ--QFxlGD5UsRwozE08GM5hUCUwLhSy85oW2bkWFQT22NGvpkUiAe8kWgU3ZuNBw-kS2s5j3kyJdPzzwlAxpsXQ7MHBpslW9x_M0Yt88_pKPcABUGORYv0WRUC4yObjOlrSPN4YLAB9VIfFaNQ', '3cf17266-3473-4006-984f-9325122678b7', 0, 0, '{}', '2022-09-21 18:10:12.084639', '2041-11-20 18:10:12.084639', '2022-09-21 18:10:12.084639');
+`
+
+const userSeeds = `
+INSERT INTO public.users (user_id, account_id, member_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', '3cf17266-3473-4006-984f-9325122678b7', '45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'vijay', 'https://randomuser.me/api/portraits/thumb/lego/1.jpg', 'vijayasankarj@gmail.com', '9940209164', true, '{ADMIN}', 'Zyg2U2ogVEafE7aaXXeQpYsI9G33', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
+INSERT INTO public.users (user_id, account_id, member_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('55b5fbd3-755f-4379-8f07-a58d4a30fa2f', '3cf17266-3473-4006-984f-9325122678b7', '55b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'senthil', 'https://randomuser.me/api/portraits/thumb/lego/2.jpg', 'sksenthilkumaar@gmail.com', '9940209164', true, '{MEMBER}', 'sk_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
+INSERT INTO public.users (user_id, account_id, member_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('65b5fbd3-755f-4379-8f07-a58d4a30fa2f', '3cf17266-3473-4006-984f-9325122678b7', '65b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'saravana', 'https://randomuser.me/api/portraits/thumb/lego/3.jpg', 'saravanaprakas@gmail.com', '9940209164', true, '{USER}', 'sexy_replacetokenhere', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1574239364000);
+INSERT INTO public.users (user_id, account_id, member_id, name, avatar, email, phone, verified, roles, password_hash, provider, issued_at, created_at, updated_at) VALUES ('5cf37266-3473-4006-984f-9325122678b7', '3cf17266-3473-4006-984f-9325122678b7', '5cf37266-3473-4006-984f-9325122678b7', 'sankar', 'https://randomuser.me/api/portraits/thumb/lego/4.jpg', 'vijayasankarmail@gmail.com', '9944293499', true, '{VISITOR}', 'MYmfEIgwFYWrlKaDNJ0O3UNJSPg2', 'firebase', '2019-11-20 00:00:00', '2019-11-20 00:00:00', 1612675165);
 `
 
 const entityItemSeeds = `

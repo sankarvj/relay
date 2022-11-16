@@ -46,7 +46,7 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	cu, err := user.RetrieveCurrentUser(ctx, e.db)
+	cu, err := user.RetrieveCurrentUser(ctx, acc.ID, e.db)
 	if err != nil {
 		return err
 	}

@@ -99,18 +99,20 @@ func (cv *Conversation) WebSocketMessage(ctx context.Context, w http.ResponseWri
 		return err
 	}
 
+	accountID, entityID, itemID := takeAEI(ctx, params, cv.db)
+
 	currentUserID, err := user.RetrieveWSCurrentUserID(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "auth claims missing from context")
 	}
 
-	cuser, err := user.RetrieveUser(ctx, cv.db, currentUserID)
+	cuser, err := user.RetrieveUser(ctx, cv.db, accountID, currentUserID)
 	if err != nil {
 		return err
 	}
 
 	clientID := uuid.New().String()
-	accountID, entityID, itemID := takeAEI(ctx, params, cv.db)
+
 	baseEntityID := r.URL.Query().Get("be")
 	baseItemID := r.URL.Query().Get("bi")
 	base := fmt.Sprintf("%s#%s", baseEntityID, baseItemID)
@@ -130,7 +132,7 @@ func (cv *Conversation) Create(ctx context.Context, w http.ResponseWriter, r *ht
 	ctx, span := trace.StartSpan(ctx, "handlers.Conversation.Create")
 	defer span.End()
 
-	currentUser, err := user.RetrieveCurrentUser(ctx, cv.db)
+	currentUser, err := user.RetrieveCurrentUser(ctx, params["account_id"], cv.db)
 	if err != nil {
 		return err
 	}

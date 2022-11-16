@@ -66,7 +66,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 
 	accountID, entityID, itemID := takeAEI(ctx, params, n.db)
 
-	currentUser, err := user.RetrieveCurrentUser(ctx, n.db)
+	currentUser, err := user.RetrieveCurrentUser(ctx, accountID, n.db)
 	if err != nil {
 		return err
 	}
@@ -84,26 +84,24 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 
 	whoMap := e.WhoKeyMap()
 
-	if memberID, ok := currentUser.AccountsB()[accountID]; ok {
-		followers := updatedFields[whoMap[entity.WhoFollower]]
-		if followers != nil {
-			followers := followers.([]interface{})
-			for i, fID := range followers {
-				if fID == memberID {
-					updatedFields[whoMap[entity.WhoFollower]] = removeIndex(followers, i)
-					break
-				}
+	followers := updatedFields[whoMap[entity.WhoFollower]]
+	if followers != nil {
+		followers := followers.([]interface{})
+		for i, fID := range followers {
+			if fID == currentUser.MemberID {
+				updatedFields[whoMap[entity.WhoFollower]] = removeIndex(followers, i)
+				break
 			}
 		}
-		assigneeKey := whoMap[entity.WhoAssignee]
-		assignees := updatedFields[whoMap[entity.WhoFollower]]
-		if assignees != nil {
-			assignees := assignees.([]interface{})
-			for i, fID := range assignees {
-				if fID == memberID {
-					updatedFields[assigneeKey] = removeIndex(assignees, i)
-					break
-				}
+	}
+	assigneeKey := whoMap[entity.WhoAssignee]
+	assignees := updatedFields[whoMap[entity.WhoFollower]]
+	if assignees != nil {
+		assignees := assignees.([]interface{})
+		for i, fID := range assignees {
+			if fID == currentUser.MemberID {
+				updatedFields[assigneeKey] = removeIndex(assignees, i)
+				break
 			}
 		}
 	}
@@ -115,7 +113,7 @@ func (n *Notification) Clear(ctx context.Context, w http.ResponseWriter, r *http
 	//stream
 	go job.NewJob(n.db, n.sdb, n.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, n.db, accountID, currentUser.ID, entityID, it.ID, it.Fields(), existingItem.Fields()))
 
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelItem(it, e.EasyFieldsByRole(ctx)), http.StatusOK)
 }
 
 func removeIndex(s []interface{}, index int) []interface{} {

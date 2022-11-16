@@ -99,10 +99,7 @@ func (f *Flow) FlowTrails(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	fields, err := e.Fields()
-	if err != nil {
-		return err
-	}
+	fields := e.EasyFields()
 
 	//TODO add pagination
 	aflows, err := flow.ActiveFlows(ctx, params["account_id"], []string{fl.ID}, next, f.db)
@@ -130,7 +127,7 @@ func (f *Flow) FlowTrails(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	viewModelItems := make([]ViewModelItem, len(items))
 	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
+		viewModelItems[i] = createViewModelItem(item, fields)
 	}
 
 	next = next + 1

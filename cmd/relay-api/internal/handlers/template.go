@@ -59,5 +59,5 @@ func (i *Item) CreateTemplate(ctx context.Context, w http.ResponseWriter, r *htt
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusCreated)
+	return web.Respond(ctx, w, createViewModelItem(it, ce.EasyFieldsByRole(ctx)), http.StatusCreated)
 }

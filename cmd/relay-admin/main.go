@@ -184,36 +184,37 @@ func migrate(cfg database.Config) error {
 
 func seed(db *sqlx.DB, sdb *database.SecDB, auth *auth.Authenticator) error {
 
-	if err := schema.SeedUsers(db); err != nil {
-		return err
-	}
-
 	ctx := context.Background()
-	cuser, err := user.RetrieveUser(ctx, db, schema.SeedUserID1)
-	if err != nil {
-		return err
-	}
 	nc := account.NewAccount{
 		ID:     schema.SeedAccountID,
 		Name:   "Titan",
 		Domain: "titan.com",
 	}
 
-	a, err := account.Create(ctx, db, nc, time.Now())
+	acc, err := account.Create(ctx, db, nc, time.Now())
 	if err != nil {
 		return err
 	}
 
-	systemToken, err := generateSystemUserJWT(ctx, a.ID, []string{}, time.Now(), auth, db)
+	if err := schema.SeedUsers(db); err != nil {
+		return err
+	}
+
+	cuser, err := user.RetrieveUser(ctx, db, acc.ID, schema.SeedUserID1)
+	if err != nil {
+		return err
+	}
+
+	systemToken, err := generateSystemUserJWT(ctx, acc.ID, []string{}, time.Now(), auth, db)
 	if err != nil {
 		return errors.Wrap(err, "System JWT creation failed")
 	}
-	err = token.Create(ctx, db, systemToken, a.ID, time.Now())
+	err = token.Create(ctx, db, systemToken, acc.ID, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "System JWT token save failed")
 	}
 
-	err = bootstrap.Bootstrap(ctx, db, sdb, auth.FireBaseAdminSDK, a.ID, a.Name, cuser)
+	err = bootstrap.Bootstrap(ctx, db, sdb, auth.FireBaseAdminSDK, acc.ID, acc.Name, cuser)
 	if err != nil {
 		log.Println("main: !!!! TODO: Should Implement Roll Back Option Here.")
 		return err
@@ -244,7 +245,7 @@ func useradd(db *sqlx.DB, accountID, email, password string) error {
 	ctx := context.Background()
 
 	nu := user.NewUser{
-		Accounts:        map[string]interface{}{accountID: ""},
+		AccountID:       accountID,
 		Email:           email,
 		Password:        password,
 		PasswordConfirm: password,

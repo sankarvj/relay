@@ -38,15 +38,12 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("GET", "/v1/users/join", u.Join)
 	// visitors token
 	app.Handle("GET", "/v1/users/visit", u.Visit)
-	// users creation
-	app.Handle("POST", "/v1/users", u.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("GET", "/v1/users", u.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	// users profile
-	app.Handle("PUT", "/v1/accounts/users/current/profile", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("DELETE", "/v1/accounts/users/current/profile", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("GET", "/v1/accounts/users/current/profile", u.Retrieve, mid.Authenticate(authenticator))
-	app.Handle("PUT", "/v1/accounts/:account_id/users/current/setting", u.UpdateUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("GET", "/v1/accounts/:account_id/users/current/setting", u.RetriveUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
+	app.Handle("PUT", "/v1/accounts/:account_id/users/current/profile", u.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("DELETE", "/v1/accounts/:account_id/users/current/profile", u.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/users/current/profile", u.Retrieve, mid.Authenticate(authenticator), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/users/current/setting", u.UpdateUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/users/current/setting", u.RetriveUserSetting, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 
 	a := Account{
 		db:            db,
@@ -58,9 +55,9 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("POST", "/v1/accounts/launch/:draft_id", a.Launch)
 
 	app.Handle("GET", "/v1/accounts/availability", a.Availability)
-	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("GET", "/v1/accounts/:account_id", a.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser))
-	// app.Handle("POST", "/v1/accounts", a.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser))
+	app.Handle("GET", "/v1/accounts/:account_id", a.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id", a.GenerateToken, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	v := Visitor{
 		db:            db,
@@ -68,12 +65,12 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 		authenticator: authenticator,
 	}
 	// Register accounts management endpoints.
-	app.Handle("GET", "/v1/accounts/:account_id/visitors", v.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("GET", "/v1/accounts/:account_id/visitors/:visitor_id", v.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("POST", "/v1/accounts/:account_id/visitors", v.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember))
-	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/toggle_active", v.ToggleActive, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/resend", v.Resend, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("DELETE", "/v1/accounts/:account_id/visitors/:visitor_id", v.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/accounts/:account_id/visitors", v.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/visitors/:visitor_id", v.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/visitors", v.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/toggle_active", v.ToggleActive, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/resend", v.Resend, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("DELETE", "/v1/accounts/:account_id/visitors/:visitor_id", v.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 
 	integ := Integration{
 		db:            db,
@@ -83,9 +80,9 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	}
 	app.Handle("POST", "/notifications", integ.Notifications)        //google-calendar sync
 	app.Handle("POST", "/receive/gmail/message", integ.ReceiveEmail) //gmail sync
-	app.Handle("GET", "/v1/accounts/:account_id/integrations/:integration_id", integ.AccessIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id", integ.SaveIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
-	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/actions/:action_id", integ.Act, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/accounts/:account_id/integrations/:integration_id", integ.AccessIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id", integ.SaveIntegration, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	app.Handle("POST", "/v1/accounts/:account_id/integrations/:integration_id/actions/:action_id", integ.Act, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 
 	t := Team{
 		db:            db,

@@ -18,7 +18,8 @@ import (
 
 var (
 	// ErrNotFound is used when a specific entity is requested but does not exist.
-	ErrEntityNotFound = errors.New("Entity not found")
+	ErrEntityNotFoundByID   = errors.New("Entity not found when find by id")
+	ErrEntityNotFoundByName = errors.New("Entity not found when find by name")
 
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidEntityID = errors.New("ID is not in its proper form")
@@ -239,7 +240,9 @@ func Retrieve(ctx context.Context, accountID, entityID string, db *sqlx.DB, sdb 
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND entity_id = $2`
 	if err := db.GetContext(ctx, &e, q, accountID, entityID); err != nil {
 		if err == sql.ErrNoRows {
-			return Entity{}, ErrEntityNotFound
+			// return Entity{}, err
+
+			return Entity{}, errors.Wrapf(err, "selecting entity %q", entityID)
 		}
 
 		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityID)
@@ -258,7 +261,7 @@ func RetrieveByName(ctx context.Context, accountID, entityName string, db *sqlx.
 	const q = `SELECT * FROM entities WHERE account_id = $1 AND name = $2`
 	if err := db.GetContext(ctx, &e, q, accountID, entityName); err != nil {
 		if err == sql.ErrNoRows {
-			return Entity{}, ErrEntityNotFound
+			return Entity{}, ErrEntityNotFoundByName
 		}
 
 		return Entity{}, errors.Wrapf(err, "selecting entity %q", entityName)

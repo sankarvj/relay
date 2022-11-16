@@ -146,7 +146,7 @@ func (m *Member) Update(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	//stream
 	go job.NewJob(m.db, m.sdb, m.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, m.db, accountID, currentUserID, entityID, memberID, it.Fields(), existingItem.Fields()))
 
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelItem(it, e.EasyFieldsByRole(ctx)), http.StatusOK)
 }
 
 func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -171,12 +171,12 @@ func (m *Member) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errors.Wrap(err, "Operation not permitted. Please transfer the ownership of this account or delete the account itself")
 	}
 
-	removableUser, err := user.RetrieveUser(ctx, m.db, userItem.UserID)
+	removableUser, err := user.RetrieveUser(ctx, m.db, accountID, userItem.UserID)
 	if err != nil {
 		return err
 	}
 
-	err = removableUser.UpdateAccounts(ctx, m.db, removableUser.RemoveAccount(accountID))
+	err = removableUser.RemoveAccount(ctx, m.db)
 	if err != nil {
 		return errors.Wrap(err, "removing accounts from the user failed")
 	}

@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
+	"gitlab.com/vjsideprojects/relay/internal/dashboard"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -25,12 +27,6 @@ func Boot(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
-
-	err = addRoles(ctx, b, itemIDMap, rolesEntity)
-	if err != nil {
-		return err
-	}
 
 	// add entity - payroll
 	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategorySubData, entity.StateTeamLevel, false, false, false, PayrollFields())
@@ -45,16 +41,15 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 
 	// add entity - employees
-	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, false, true, false, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id"), b.OwnerEntity.ID, ownerKey, rolesEntity.ID, roleEntityKey))
+	employeeEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityEmployee, "Employees", entity.CategoryData, entity.StateTeamLevel, false, true, false, EmployeeFields(b.FlowEntity.ID, b.NodeEntity.ID, b.NodeEntity.Key("node_id"), b.OwnerEntity.ID, ownerKey, rolesEntity.ID, rolesEntity.Key("role")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Employee Entity Created")
 
 	// add entity - tasks
-	taskEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityETask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, false, true, TaskEFields(employeeEntity.ID, employeeEntity.Key("first_name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, ownerKey))
+	taskEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityETask, "Tasks", entity.CategoryTask, entity.StateTeamLevel, false, true, true, TaskEFields(employeeEntity.ID, employeeEntity.Key("first_name"), b.NodeEntity.ID, b.StatusEntity.ID, b.StatusEntity.Key("name"), b.OwnerEntity.ID, ownerKey))
 	if err != nil {
-		fmt.Println("\tEM:BOOT Employee Task Entity Created ERR")
 		return err
 	}
 	fmt.Println("\tEM:BOOT Employee Task Entity Created")
@@ -80,77 +75,17 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Assets Entity Created")
-	assetsFieldsNamedKeysMap := assetEntity.NameKeyMapWrapper()
-	// add asset item - Macbook Pro
-	itemIDMap["macbook_pro"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["macbook_pro"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "Macbook Pro", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add asset item - iphone_14
-	itemIDMap["iphone_14"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["iphone_14"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "iPhone 14", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add asset item - Macbook Air
-	itemIDMap["macbook_air"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["macbook_air"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "Macbook Air", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-
-	// add asset item - iMac 24'
-	itemIDMap["imac"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["imac"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "iMac 24 Inch", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tEM:BOOT Assets Created")
 
 	// add entity - asset status
 	assetStatusEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Asset Status", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, AssetStatusFields())
 	if err != nil {
 		return err
 	}
-	statusFieldsNamedKeysMap := assetStatusEntity.NameKeyMapWrapper()
-	// add status item - Request-received
-	itemIDMap["status_received"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, itemIDMap["status_received"], b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Request Received", "#fb667e"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - In-progress
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "In Progress", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - Approved
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Approved", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - Delivered
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Delivered", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - Returned
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Returned", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	// add status item - Trashed
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Trashed", "#66fb99"), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tEM:BOOT Asset Status Entity Created")
 
 	// add entity - asset request
 	assetStatusTitleField := entity.TitleField(assetStatusEntity.EasyFields())
 	assetTitleField := entity.TitleField(assetEntity.EasyFields())
-	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, true, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -169,47 +104,10 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	fmt.Println("\tEM:BOOT Services Entity Created")
-	servicesFieldsNamedKeysMap := serviceEntity.NameKeyMapWrapper()
-	// add service item - Git Access
-	itemIDMap["git"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["git"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Git access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add service item - Mail Access
-	itemIDMap["mail"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["mail"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Mail access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add service item - Slack Access
-	itemIDMap["slack"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["slack"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Slack access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add service item - Infra Access
-	itemIDMap["infra"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["infra"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Infra access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add service item - Marketing Tools Access
-	itemIDMap["marketing"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["marketing"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Marketing tools access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	// add service item - Earnings Access
-	itemIDMap["earnings"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["earnings"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Earning sheet access", []interface{}{}), nil)
-	if err != nil {
-		return err
-	}
-	fmt.Println("\tEM:BOOT Services Created")
+
 	// add entity - service request
 	serviceTitleField := entity.TitleField(serviceEntity.EasyFields())
-	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, false, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, true, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -220,6 +118,10 @@ func Boot(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	err = AddSamples(ctx, b, itemIDMap)
+	if err != nil {
+		return err
+	}
+	err = AddWorkflows(ctx, b, employeeEntity, taskEntity, assetRequestEntity, serviceRequestEntity, itemIDMap)
 	if err != nil {
 		return err
 	}
@@ -289,6 +191,18 @@ func AddAssociations(ctx context.Context, b *base.Base, payrollEid, salaryEid, e
 		return err
 	}
 
+	//asset-request approvals association
+	_, err = b.AssociationAdd(ctx, assetRequestEid.ID, approvalsEntity.ID)
+	if err != nil {
+		return err
+	}
+
+	//service-request approvals association
+	_, err = b.AssociationAdd(ctx, serviceRequestEid.ID, approvalsEntity.ID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -298,13 +212,27 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	if err != nil {
 		return err
 	}
+	b.TaskEntity = taskEntity
 
 	employeeEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityEmployee)
 	if err != nil {
 		return err
 	}
 
-	assetRequestEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityAssetRequest)
+	rolesEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityRoles)
+	if err != nil {
+		return err
+	}
+	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
+	if err != nil {
+		return err
+	}
+
+	assetsEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityAssets)
+	if err != nil {
+		return err
+	}
+	servicesEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityServices)
 	if err != nil {
 		return err
 	}
@@ -313,7 +241,248 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	if err != nil {
 		return err
 	}
+	assetRequestEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityAssetRequest)
+	if err != nil {
+		return err
+	}
 
+	approvalEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityApprovals)
+	if err != nil {
+		return err
+	}
+
+	err = addRoles(ctx, b, itemIDMap, rolesEntity)
+	if err != nil {
+		return err
+	}
+
+	err = addAssets(ctx, b, employeeEntity, assetsEntity, itemIDMap)
+	if err != nil {
+		return err
+	}
+
+	err = addStatuses(ctx, b, employeeEntity, statusEntity, itemIDMap)
+	if err != nil {
+		return err
+	}
+
+	err = addServices(ctx, b, employeeEntity, servicesEntity, itemIDMap)
+	if err != nil {
+		return err
+	}
+
+	err = addEmployees(ctx, b, employeeEntity, taskEntity, itemIDMap)
+	if err != nil {
+		return err
+	}
+
+	err = addDashboards(ctx, b, employeeEntity, serviceRequestEntity, assetRequestEntity, approvalEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:SAMPLES Charts Created")
+
+	return nil
+}
+
+func addRoles(ctx context.Context, b *base.Base, itemIDMap map[string]string, rolesEntity entity.Entity) error {
+	var err error
+	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
+	fmt.Println("\tEM:BOOT Role Entity Created")
+
+	// add role item - Intern
+	itemIDMap["intern"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["intern"], b.UserID, RoleVals(roleEntityKey, "Intern"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Developer
+	itemIDMap["developer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["developer"], b.UserID, RoleVals(roleEntityKey, "Developer"), nil)
+	if err != nil {
+		return err
+	}
+
+	// add role item - designer
+	itemIDMap["designer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["designer"], b.UserID, RoleVals(roleEntityKey, "Designer"), nil)
+	if err != nil {
+		return err
+	}
+
+	// add role item - QA Engineer
+	itemIDMap["qa_engineer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["qa_engineer"], b.UserID, RoleVals(roleEntityKey, "QA Engineer"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Manager
+	itemIDMap["manager"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["manager"], b.UserID, RoleVals(roleEntityKey, "Manager"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Sales Rep
+	itemIDMap["sales_rep"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["sales_rep"], b.UserID, RoleVals(roleEntityKey, "Sales Rep"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Support Engineer
+	itemIDMap["support_engineer"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["support_engineer"], b.UserID, RoleVals(roleEntityKey, "Support Engineer"), nil)
+	if err != nil {
+		return err
+	}
+	// add role item - Director
+	itemIDMap["director"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["director"], b.UserID, RoleVals(roleEntityKey, "Director"), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEM:BOOT Roles Created")
+	return nil
+}
+
+func addAssets(ctx context.Context, b *base.Base, empEntity, assetEntity entity.Entity, itemIDMap map[string]string) error {
+	assetsFieldsNamedKeysMap := assetEntity.NameKeyMapWrapper()
+	// add asset item - Macbook Pro
+	itemIDMap["macbook_pro"] = uuid.New().String()
+	_, err := b.ItemAdd(ctx, assetEntity.ID, itemIDMap["macbook_pro"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "Macbook Pro", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add asset item - iphone_14
+	itemIDMap["iphone_14"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["iphone_14"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "iPhone 14", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add asset item - Macbook Air
+	itemIDMap["macbook_air"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["macbook_air"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "Macbook Air", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+
+	// add asset item - iMac 24'
+	itemIDMap["imac"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, assetEntity.ID, itemIDMap["imac"], b.UserID, forms.AssetVals(assetsFieldsNamedKeysMap["asset_name"], assetsFieldsNamedKeysMap["catagory"], "iMac 24 Inch", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEM:BOOT Assets Created")
+	return nil
+}
+
+func addStatuses(ctx context.Context, b *base.Base, empEntity, assetStatusEntity entity.Entity, itemIDMap map[string]string) error {
+	statusFieldsNamedKeysMap := assetStatusEntity.NameKeyMapWrapper()
+	// add status item - Request-received
+	itemIDMap["status_received"] = uuid.New().String()
+	_, err := b.ItemAdd(ctx, assetStatusEntity.ID, itemIDMap["status_received"], b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Request Received", "#fb667e"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - In-progress
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "In Progress", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - Approved
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Approved", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - Delivered
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Delivered", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - Returned
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Returned", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	// add status item - Trashed
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Trashed", "#66fb99"), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEM:BOOT Asset Status Entity Created")
+	return nil
+}
+
+func addServices(ctx context.Context, b *base.Base, empEntity, serviceEntity entity.Entity, itemIDMap map[string]string) error {
+	servicesFieldsNamedKeysMap := serviceEntity.NameKeyMapWrapper()
+	// add service item - Git Access
+	itemIDMap["git"] = uuid.New().String()
+	_, err := b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["git"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Git access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add service item - Mail Access
+	itemIDMap["mail"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["mail"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Mail access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add service item - Slack Access
+	itemIDMap["slack"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["slack"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Slack access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add service item - Infra Access
+	itemIDMap["infra"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["infra"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Infra access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add service item - Marketing Tools Access
+	itemIDMap["marketing"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["marketing"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Marketing tools access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	// add service item - Earnings Access
+	itemIDMap["earnings"] = uuid.New().String()
+	_, err = b.ItemAdd(ctx, serviceEntity.ID, itemIDMap["earnings"], b.UserID, forms.AssetVals(servicesFieldsNamedKeysMap["service_name"], servicesFieldsNamedKeysMap["catagory"], "Earning sheet access", []interface{}{}), nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tEM:BOOT Services Created")
+	return nil
+}
+
+func addEmployees(ctx context.Context, b *base.Base, empEntity, taskEntity entity.Entity, itemIDMap map[string]string) error {
+	var err error
+	// add employee item
+	b.EmpItemMatt, err = b.ItemAdd(ctx, empEntity.ID, uuid.New().String(), b.UserID, EmpVals(empEntity, "Matt", "Murdock", "matt@starkindst.com", itemIDMap["intern"]), nil)
+	if err != nil {
+		return err
+	}
+	// add employee item
+	b.EmpItemNatasha, err = b.ItemAdd(ctx, empEntity.ID, uuid.New().String(), b.UserID, EmpVals(empEntity, "Natasha", "Romanova", "natasha@randcorp.com", itemIDMap["developer"]), nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, empEntity.ID, uuid.New().String(), b.UserID, EmpVals(empEntity, "Bruce", "Banner", "bruce@alumina.com", itemIDMap["designer"]), nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.ItemAdd(ctx, empEntity.ID, uuid.New().String(), b.UserID, EmpVals(empEntity, "Bucky", "Barnes", "bucky@dailybugle.com", itemIDMap["manager"]), nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("\tEMP:SAMPLES Employess Created")
+
+	return nil
+}
+
+func AddWorkflows(ctx context.Context, b *base.Base, employeeEntity, taskEntity, assetRequestEntity, serviceRequestEntity entity.Entity, itemIDMap map[string]string) error {
 	assetTemplateMacbookPro, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Pro", itemIDMap["macbook_pro"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
@@ -370,7 +539,6 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	}
 
 	namedKeysMap := employeeEntity.NameKeyMapWrapper()
-
 	cp := &base.CoreWorkflow{
 		Name:    "Employee Lifecycle",
 		ActorID: employeeEntity.ID,
@@ -507,65 +675,134 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	}
 
 	fmt.Println("\tEM:SAMPLES Workflows And Its Nodes Created")
+	return nil
+}
+
+func addDashboards(ctx context.Context, b *base.Base, empEntity, srEntity, arEntity, approvalsEntity entity.Entity) error {
+
+	homeDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, entity.NoEntityID, "Overview").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = addHomeCharts(ctx, b, homeDashID, empEntity, srEntity, arEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:Dashboard Overview Created")
+	projDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, empEntity.ID, "Employee Overview").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = addProjectCharts(ctx, b, projDashID, empEntity, srEntity, arEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:Dashboard Project Overview Created")
+	myDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, b.NotificationEntity.ID, "My Dashboard").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = addMyCharts(ctx, b, myDashID, empEntity, srEntity, arEntity, approvalsEntity)
+	if err != nil {
+		return err
+	}
+	fmt.Println("\tCSP:Dashboard My Dashboard Created")
 
 	return nil
 }
 
-func addRoles(ctx context.Context, b *base.Base, itemIDMap map[string]string, rolesEntity entity.Entity) error {
-	var err error
-	roleEntityKey := rolesEntity.NameKeyMapWrapper()["role"]
-	fmt.Println("\tEM:BOOT Role Entity Created")
-
-	// add role item - Intern
-	itemIDMap["intern"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["intern"], b.UserID, RoleVals(roleEntityKey, "Intern"), nil)
+func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, empEntity, srEntity, arEntity entity.Entity) error {
+	//charts for home dashboard
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "employee_stage", "Employee stage", "lifecycle_stage", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	// add role item - Developer
-	itemIDMap["developer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["developer"], b.UserID, RoleVals(roleEntityKey, "Developer"), nil)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "employee_roles", "Employee roles", "role", chart.TypeBar).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	// add role item - designer
-	itemIDMap["designer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["designer"], b.UserID, RoleVals(roleEntityKey, "Designer"), nil)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "exit", "Exit rate", "lifecycle_stage", chart.TypeGrid).AddDateField("exit_date").SetDurationLast24hrs().SetCalcRate().SetGrpLogicID().SetIcon("face-with-_x_-eyes-.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "join", "New Joinees", "", chart.TypeGrid).AddDateField("joining_date").SetDurationLast24hrs().SetCalcSum().SetIcon("spotted-sweater-girl-with-wand-torso.png").Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
 
-	// add role item - QA Engineer
-	itemIDMap["qa_engineer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["qa_engineer"], b.UserID, RoleVals(roleEntityKey, "QA Engineer"), nil)
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Activities", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, planEntity.ID, "cancellations", "Cancellations", "reason", chart.TypeRod).SetDurationAllTime().SetGrpLogicID().Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
+	return nil
+}
+
+func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, empEntity, srEntity, arEntity entity.Entity) error {
+
+	//charts for projects
+	overdueEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now")
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue", "Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	// add role item - Manager
-	itemIDMap["manager"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["manager"], b.UserID, RoleVals(roleEntityKey, "Manager"), nil)
+	openEXP := fmt.Sprintf("{{%s.%s}} in {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "open", "Open", "", chart.TypeGrid).AddExp(openEXP).SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	// add role item - Sales Rep
-	itemIDMap["sales_rep"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["sales_rep"], b.UserID, RoleVals(roleEntityKey, "Sales Rep"), nil)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "stage", "Stage", empEntity.Key("lifecyle_stage"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	// add role item - Support Engineer
-	itemIDMap["support_engineer"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["support_engineer"], b.UserID, RoleVals(roleEntityKey, "Support Engineer"), nil)
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, empEntity.ID, "status", "Status", empEntity.Key("role"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	// add role item - Director
-	itemIDMap["director"] = uuid.New().String()
-	_, err = b.ItemAdd(ctx, rolesEntity.ID, itemIDMap["director"], b.UserID, RoleVals(roleEntityKey, "Director"), nil)
+
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "tasks", "Tasks", "status", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tEM:BOOT Roles Created")
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue_tasks", "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addMyCharts(ctx context.Context, b *base.Base, dashboardID string, empEntity, srEntity, arEntity, approvalsEntity entity.Entity) error {
+	//charts for notifications me
+	paOnMeExp := fmt.Sprintf("{{%s.%s}} in {%s,%s} && {{%s.%s}} in {{me}}", approvalsEntity.ID, approvalsEntity.Key("status"), b.ApprovalStatusWaiting.ID, b.ApprovalStatusChangeRequested.ID, approvalsEntity.ID, approvalsEntity.Key("assignees"))
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, approvalsEntity.ID, "my_pending_approvals", "My Pending Approvals", "", chart.TypeCard).AddExp(paOnMeExp).SetDurationAllTime().SetGrpLogicID().SetIcon("vertical-traffic-lights.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	overdueOnMeEXP := fmt.Sprintf("{{%s.%s}} !eq {%s} && {{%s.%s}} bf {%s} && {{%s.%s}} in {{me}}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now", b.TaskEntity.ID, b.TaskEntity.Key("assignees"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_overdue_tasks", "My Overdue Tasks", "", chart.TypeCard).AddExp(overdueOnMeEXP).SetDurationAllTime().SetIcon("round-wall-clock-yellow.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	openOnMeEXP := fmt.Sprintf("{{%s.%s}} in {%s} && {{%s.%s}} in {{me}}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID, b.TaskEntity.ID, b.TaskEntity.Key("assignees"))
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "my_open_tasks", "My Open Tasks", "", chart.TypeCard).AddExp(openOnMeEXP).SetDurationAllTime().SetIcon("round-wall-clock.png").Add(ctx, b.DB)
+	if err != nil {
+		return err
+	}
+	// overdueProjOnMeEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s} && {{%s.%s}} in {{me}}", b.ProjectEntity.ID, b.ProjectEntity.Key("status"), b.StatusItemClosed.ID, b.ProjectEntity.ID, b.ProjectEntity.Key("end_time"), "now", b.ProjectEntity.ID, b.ProjectEntity.Key("owner"))
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "my_overdue_projects", "My Overdue Projects", "", chart.TypeCard).AddExp(overdueProjOnMeEXP).SetDurationAllTime().SetIcon("timetable-icon.png").Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
+	// openProjOnMeEXP := fmt.Sprintf("{{%s.%s}} in {%s} && {{%s.%s}} in {{me}}", b.ProjectEntity.ID, b.ProjectEntity.Key("status"), b.StatusItemOpened.ID, b.ProjectEntity.ID, b.ProjectEntity.Key("owner"))
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "my_open_projects", "My Open Projects", "", chart.TypeCard).AddExp(openProjOnMeEXP).SetDurationAllTime().SetIcon("aim-board-with-stand.png").Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
+
 	return nil
 }

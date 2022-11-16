@@ -56,7 +56,8 @@ var migrations = []darwin.Migration{
 		
 		CREATE TABLE users (
 			user_id       UUID,
-			accounts     JSONB,
+			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			member_id     UUID,
 			name          TEXT,
 			avatar 		  TEXT,
 			email         TEXT,
@@ -69,10 +70,13 @@ var migrations = []darwin.Migration{
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
 			PRIMARY KEY (user_id),
-			UNIQUE (email)
+			UNIQUE (account_id,email)
 		);
 		CREATE INDEX idx_users_email
 		ON users(email);
+		CREATE INDEX idx_users_account_id
+		ON users(account_id);
+		
 		
 		CREATE TABLE drafts (
 			draft_id    		UUID,

@@ -3,7 +3,9 @@ package em
 import (
 	"fmt"
 
+	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
@@ -30,9 +32,9 @@ func RoleVals(namekey, name string) map[string]interface{} {
 }
 
 func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEntityKey string, roleEntityID, roleEntityKey string) []entity.Field {
-	nameFieldID := uuid.New().String()
-	nameField := entity.Field{
-		Key:         nameFieldID,
+	firstNameFieldID := uuid.New().String()
+	firstNameField := entity.Field{
+		Key:         firstNameFieldID,
 		Name:        "first_name",
 		DisplayName: "First Name",
 		DomType:     entity.DomText,
@@ -40,10 +42,19 @@ func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEnt
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
+	lastNameFieldID := uuid.New().String()
+	lastNameField := entity.Field{
+		Key:         lastNameFieldID,
+		Name:        "last_name",
+		DisplayName: "Last Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
 	personalEmailFieldID := uuid.New().String()
 	personalEmailField := entity.Field{
 		Key:         personalEmailFieldID,
-		Name:        "email",
+		Name:        "personal_email",
 		DisplayName: "Personal Email",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
@@ -105,8 +116,8 @@ func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEnt
 	lifecyleStageFieldID := uuid.New().String()
 	lifecyleStageField := entity.Field{
 		Key:         lifecyleStageFieldID,
-		Name:        "lifecyle_stage",
-		DisplayName: "Lifecyle Stage",
+		Name:        "lifecycle_stage",
+		DisplayName: "Lifecycle Stage",
 		DomType:     entity.DomSelect,
 		DataType:    entity.TypeReference,
 		RefID:       nodeEntityID,
@@ -187,7 +198,31 @@ func EmployeeFields(flowEntityID, nodeEntityID, nodeKey, ownerEntityID, ownerEnt
 		DataType:    entity.TypeDateTime,
 	}
 
-	return []entity.Field{nameField, personalEmailField, mobileField, officeEmailField, lifecyleField, lifecyleStageField, avatarField, ownerField, managerField, roleField, joiningDateField}
+	exitDateFieldID := uuid.New().String()
+	exitDateField := entity.Field{
+		Key:         exitDateFieldID,
+		Name:        "exit_date",
+		DisplayName: "Exit date",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDate,
+	}
+
+	return []entity.Field{firstNameField, lastNameField, personalEmailField, mobileField, officeEmailField, lifecyleField, lifecyleStageField, avatarField, ownerField, managerField, roleField, joiningDateField, exitDateField}
+}
+
+func EmpVals(empEntity entity.Entity, firstName, lastName, email, roleID string) map[string]interface{} {
+	empVals := map[string]interface{}{
+		"first_name":     firstName,
+		"last_name":      lastName,
+		"email":          email,
+		"mobile_numbers": []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
+		"hr":             []interface{}{},
+		"manager":        []interface{}{},
+		"avatar":         fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", firstName),
+		"role":           []interface{}{roleID},
+	}
+
+	return forms.KeyMap(empEntity.NameKeyMapWrapper(), empVals)
 }
 
 func PayrollFields() []entity.Field {

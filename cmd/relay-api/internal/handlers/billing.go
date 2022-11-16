@@ -101,7 +101,9 @@ func (b *Bill) Portal(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Billing.Portal")
 	defer span.End()
 
-	currentUser, err := user.RetrieveCurrentUser(ctx, b.db)
+	accountID := params["account_id"]
+
+	currentUser, err := user.RetrieveCurrentUser(ctx, accountID, b.db)
 	if err != nil {
 		err := errors.New("auth_cliams_missing_from_context") // value used in the UI dont change the string message.
 		return web.NewRequestError(err, http.StatusForbidden)

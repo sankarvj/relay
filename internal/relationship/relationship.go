@@ -215,6 +215,7 @@ func List(ctx context.Context, db *sqlx.DB, accountID, teamID, entityID string, 
 
 	trimmedBonds := []Bond{}
 	for _, value := range relatedEntitesMap {
+
 		if god {
 			trimmedBonds = append(trimmedBonds, value)
 		} else {

@@ -65,7 +65,9 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 				it, err := item.Retrieve(ctx, accountID, baseEntityID, baseItemID, db)
 				if err == nil && it.State != item.StateWebForm {
 					titleField := entity.TitleField(baseEntity.EasyFields())
-					appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
+					if it.Fields()[titleField.Key] != nil {
+						appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
+					}
 
 					//adding base item follower and assignees
 					appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)
@@ -96,7 +98,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		appNotif.UserName = "system"
 		appNotif.UserAvatar = "https://avatars.dicebear.com/api/bottts/system.svg"
 	default:
-		usr, err := user.RetrieveUser(ctx, db, userID)
+		usr, err := user.RetrieveUser(ctx, db, accountID, userID)
 		if err == nil {
 			appNotif.UserName = *usr.Name
 			appNotif.UserAvatar = *usr.Avatar
@@ -181,7 +183,7 @@ func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, as
 }
 
 func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID string, itemCreatorID *string, db *sqlx.DB, sdb *database.SecDB) {
-	creator, err := user.RetrieveUser(ctx, db, *itemCreatorID)
+	creator, err := user.RetrieveUser(ctx, db, accountID, *itemCreatorID)
 	if err != nil {
 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
 	} else {
@@ -189,13 +191,11 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 		if err != nil {
 			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity. error:", err)
 		}
-		if memberID, ok := creator.AccountsB()[accountID]; ok {
-			userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, memberID.(string), db, sdb)
-			if err != nil {
-				log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
-			} else {
-				appNotif.Followers = append(appNotif.Followers, *userItem)
-			}
+		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, creator.MemberID, db, sdb)
+		if err != nil {
+			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
+		} else {
+			appNotif.Followers = append(appNotif.Followers, *userItem)
 		}
 	}
 }

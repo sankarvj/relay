@@ -30,7 +30,7 @@ const (
 )
 
 func InitStripe(ctx context.Context, accountID, userID string, db *sqlx.DB) error {
-	user, err := user.RetrieveUser(ctx, db, userID)
+	user, err := user.RetrieveUser(ctx, db, accountID, userID)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func CustomerPortal(ctx context.Context, accountID, userID string, db *sqlx.DB) 
 
 	stripe.Key = stripeTestKey
 	params := &stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(acc.CustomerID),
+		Customer:  stripe.String(*acc.CustomerID),
 		ReturnURL: stripe.String(billingLink(acc.ID, acc.Domain)),
 	}
 	s, err := session.New(params)

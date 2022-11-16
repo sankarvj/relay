@@ -21,7 +21,7 @@ All the functions in this file needs revisit.....
 ***/
 
 func loadItemsWithGroupByLogic(ctx context.Context, accountID string, e entity.Entity, exp, sortby, direction, groupby string, page int, piper *Piper, db *sqlx.DB, sdb *database.SecDB) error {
-	fields := e.EasyFields()
+	fields := e.EasyFieldsByRole(ctx)
 	piper.Items = make(map[string][]ViewModelItem, 0)
 	piper.Tokens = make(map[string]string, 0)
 	piper.Exps = make(map[string]string, 0)

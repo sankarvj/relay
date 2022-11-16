@@ -35,7 +35,7 @@ func (ev *Event) List(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	for _, c := range connections {
 		userIDs[c.UserID] = true
 	}
-	uMap, err := userMap(ctx, userIDs, ev.db)
+	uMap, err := userMap(ctx, accountID, userIDs, ev.db)
 	if err != nil {
 		return errors.Wrap(err, "forming users map")
 	}

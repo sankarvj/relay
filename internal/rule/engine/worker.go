@@ -195,12 +195,9 @@ func superBugger(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountI
 }
 
 func memberID(ctx context.Context, db *sqlx.DB, accountID, userID string) (string, error) {
-	creator, err := user.RetrieveUser(ctx, db, userID)
+	creator, err := user.RetrieveUser(ctx, db, accountID, userID)
 	if err != nil {
 		return "", err
 	}
-	if memberID, ok := creator.AccountsB()[accountID]; ok {
-		return memberID.(string), nil
-	}
-	return "", errors.New("member not found")
+	return creator.MemberID, nil
 }

@@ -3,8 +3,6 @@ package user
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,14 +33,14 @@ var (
 )
 
 // List retrieves a list of existing users from the database.
-func List(ctx context.Context, db *sqlx.DB) ([]User, error) {
+func List(ctx context.Context, email, phone string, db *sqlx.DB) ([]User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.List")
 	defer span.End()
 
 	users := []User{}
-	const q = `SELECT * FROM users`
+	const q = `SELECT * FROM users where ((email=$1 AND email != '') OR (phone=$2 AND phone != ''))`
 
-	if err := db.SelectContext(ctx, &users, q); err != nil {
+	if err := db.SelectContext(ctx, &users, q, email, phone); err != nil {
 		return nil, errors.Wrap(err, "selecting users")
 	}
 
@@ -73,7 +71,7 @@ func RetrieveWSCurrentUserID(ctx context.Context) (string, error) {
 }
 
 // Retrieve gets the specified user from the database.
-func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, error) {
+func Retrieve(ctx context.Context, claims auth.Claims, accountID string, db *sqlx.DB) (*User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Retrieve")
 	defer span.End()
 
@@ -88,8 +86,8 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, erro
 	}
 
 	var u User
-	const q = `SELECT * FROM users WHERE user_id = $1`
-	if err := db.GetContext(ctx, &u, q, id); err != nil {
+	const q = `SELECT * FROM users WHERE user_id = $1 and account_id = $2`
+	if err := db.GetContext(ctx, &u, q, id, accountID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
@@ -100,7 +98,7 @@ func Retrieve(ctx context.Context, claims auth.Claims, db *sqlx.DB) (*User, erro
 	return &u, nil
 }
 
-func RetrieveCurrentUser(ctx context.Context, db *sqlx.DB) (*User, error) {
+func RetrieveCurrentUser(ctx context.Context, accountID string, db *sqlx.DB) (*User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.RetrieveCurrentUser")
 	defer span.End()
 
@@ -109,26 +107,39 @@ func RetrieveCurrentUser(ctx context.Context, db *sqlx.DB) (*User, error) {
 		return nil, err
 	}
 
-	return RetrieveUser(ctx, db, currentUserID)
+	return RetrieveUser(ctx, db, accountID, currentUserID)
 }
 
-func RetrieveUser(ctx context.Context, db *sqlx.DB, currentUserID string) (*User, error) {
+func RetrieveUser(ctx context.Context, db *sqlx.DB, accountID, userID string) (*User, error) {
 	var u User
-	const q = `SELECT * FROM users WHERE user_id = $1`
-	if err := db.GetContext(ctx, &u, q, currentUserID); err != nil {
+	const q = `SELECT * FROM users WHERE user_id = $1 AND account_id = $2`
+	if err := db.GetContext(ctx, &u, q, userID, accountID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
-		return nil, errors.Wrapf(err, "selecting current user %q", currentUserID)
+		return nil, errors.Wrapf(err, "selecting current user %q", userID)
 	}
 
 	return &u, nil
 }
 
-func RetrieveUserByUniqIdentifier(ctx context.Context, db *sqlx.DB, email, phone string) (User, error) {
+func RetrieveUserWOAcc(ctx context.Context, db *sqlx.DB, userID string) (*User, error) {
 	var u User
-	const q = `select * from users where (email=$1 AND email != '') OR (phone=$2 AND phone != '')`
-	if err := db.GetContext(ctx, &u, q, email, phone); err != nil {
+	const q = `SELECT * FROM users WHERE user_id = $1`
+	if err := db.GetContext(ctx, &u, q, userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrapf(err, "selecting current user %q", userID)
+	}
+
+	return &u, nil
+}
+
+func RetrieveUserByUniqIdentifier(ctx context.Context, accountID, email, phone string, db *sqlx.DB) (User, error) {
+	var u User
+	const q = `select * from users where account_id = $1 AND ((email=$2 AND email != '') OR (phone=$3 AND phone != ''))`
+	if err := db.GetContext(ctx, &u, q, accountID, email, phone); err != nil {
 		if err == sql.ErrNoRows {
 			return User{}, ErrNotFound
 		}
@@ -138,14 +149,14 @@ func RetrieveUserByUniqIdentifier(ctx context.Context, db *sqlx.DB, email, phone
 	return u, nil
 }
 
-func BulkRetrieveUsers(ctx context.Context, ids []string, db *sqlx.DB) ([]User, error) {
+func BulkRetrieveUsers(ctx context.Context, accountID string, ids []string, db *sqlx.DB) ([]User, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.user.BulkRetrieveUsers")
 	defer span.End()
 
 	users := []User{}
-	const q = `SELECT * FROM users where user_id = any($1)`
+	const q = `SELECT * FROM users where account_id =$1 AND user_id = any($2)`
 
-	if err := db.SelectContext(ctx, &users, q, pq.Array(ids)); err != nil {
+	if err := db.SelectContext(ctx, &users, q, accountID, pq.Array(ids)); err != nil {
 		return users, errors.Wrap(err, "selecting bulk users for selected user ids")
 	}
 
@@ -162,11 +173,6 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 		return User{}, errors.Wrap(err, "generating password hash")
 	}
 
-	accountBytes, err := json.Marshal(n.Accounts)
-	if err != nil {
-		return User{}, errors.Wrap(err, "encode accounts to bytes")
-	}
-
 	if n.Avatar == nil || *n.Avatar == "" {
 		avatar := util.Avatar(n.Email)
 		n.Avatar = &avatar
@@ -174,7 +180,8 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 
 	u := User{
 		ID:           uuid.New().String(),
-		Accounts:     util.String(string(accountBytes)),
+		AccountID:    n.AccountID,
+		MemberID:     n.MemberID,
 		Name:         &n.Name,
 		Email:        n.Email,
 		Avatar:       n.Avatar,
@@ -189,11 +196,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 	}
 
 	const q = `INSERT INTO users
-		(user_id, accounts, name, email, avatar, phone, provider, verified, issued_at, password_hash, roles, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+		(user_id, account_id, member_id, name, email, avatar, phone, provider, verified, issued_at, password_hash, roles, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 	_, err = db.ExecContext(
 		ctx, q,
-		u.ID, u.Accounts, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.Verified, u.IssuedAt,
+		u.ID, u.AccountID, u.MemberID, u.Name, u.Email, u.Avatar, u.Phone, u.Provider, u.Verified, u.IssuedAt,
 		u.PasswordHash, u.Roles,
 		u.CreatedAt, u.UpdatedAt,
 	)
@@ -205,11 +212,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 }
 
 // Update replaces a user document in the database.
-func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id string, upd UpdateUser, now time.Time) error {
+func Update(ctx context.Context, claims auth.Claims, db *sqlx.DB, id, accountID string, upd UpdateUser, now time.Time) error {
 	ctx, span := trace.StartSpan(ctx, "internal.user.Update")
 	defer span.End()
 
-	u, err := Retrieve(ctx, claims, db)
+	u, err := Retrieve(ctx, claims, accountID, db)
 	if err != nil {
 		return err
 	}
@@ -332,65 +339,27 @@ func removeDuplicateValues(intSlice pq.StringArray) pq.StringArray {
 	return list
 }
 
-func (u *User) UpdateAccounts(ctx context.Context, db *sqlx.DB, accounts map[string]interface{}) error {
-	ctx, span := trace.StartSpan(ctx, "internal.user.UpdateAccounts")
+func (u *User) UpdateMemberID(ctx context.Context, memberID string, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.UpdateMemberID")
 	defer span.End()
 
-	input, err := json.Marshal(accounts)
-	if err != nil {
-		return errors.Wrap(err, "encode meta to input")
-	}
-	inputB := string(input)
-	u.Accounts = &inputB
-
 	const q = `UPDATE users SET
-		"accounts" = $2 
-		WHERE user_id = $1`
-	_, err = db.ExecContext(ctx, q, u.ID,
-		u.Accounts,
+		"member_id" = $3  
+		WHERE user_id = $1 AND account_id = $2`
+	_, err := db.ExecContext(ctx, q, u.ID,
+		u.AccountID, memberID,
 	)
 	return err
 }
 
-func (u User) AccountsB() map[string]interface{} {
-	accounts := make(map[string]interface{}, 0)
-	if u.Accounts == nil || *u.Accounts == "" {
-		return accounts
-	}
-	if err := json.Unmarshal([]byte(*u.Accounts), &accounts); err != nil {
-		log.Printf("***> unexpected error occurred when unmarshalling user accounts error: %v\n", err)
-	}
-	if accounts == nil {
-		accounts = make(map[string]interface{}, 0)
-	}
-	return accounts
-}
+func (u User) RemoveAccount(ctx context.Context, db *sqlx.DB) error {
+	ctx, span := trace.StartSpan(ctx, "internal.user.RemoveAccount")
+	defer span.End()
 
-func (u User) MemberID(accountID string) string {
-	memberID := u.AccountsB()[accountID]
-	if memberID != nil {
-		return memberID.(string)
+	const q = `DELETE FROM users WHERE user_id = $1 AND account_id = $2`
+
+	if _, err := db.ExecContext(ctx, q, u.ID, u.AccountID); err != nil {
+		return errors.Wrapf(err, "deleting user %s", u.ID)
 	}
-	return ""
-}
-
-func (u User) RemoveAccount(accountID string) map[string]interface{} {
-	accounts := u.AccountsB()
-	delete(accounts, accountID)
-	return accounts
-}
-
-func (u User) AddAccount(accountID, memberID string) map[string]interface{} {
-	accounts := u.AccountsB()
-	accounts[accountID] = memberID
-	return accounts
-}
-
-func (u User) AccountIDs() []string {
-	accounts := u.AccountsB()
-	accoutIds := make([]string, 0)
-	for k := range accounts {
-		accoutIds = append(accoutIds, k)
-	}
-	return accoutIds
+	return nil
 }

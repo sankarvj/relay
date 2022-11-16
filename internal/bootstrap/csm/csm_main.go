@@ -219,6 +219,12 @@ func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, stream
 		return err
 	}
 
+	//task approvals association
+	_, err = b.AssociationAdd(ctx, taskEID.ID, approvalsEID.ID)
+	if err != nil {
+		return err
+	}
+
 	//project email association
 	_, err = b.AssociationAdd(ctx, proEid.ID, emailEid.ID)
 	if err != nil {
@@ -227,12 +233,6 @@ func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, stream
 
 	//project task association
 	_, err = b.AssociationAdd(ctx, proEid.ID, taskEID.ID)
-	if err != nil {
-		return err
-	}
-
-	//task approvals association
-	_, err = b.AssociationAdd(ctx, taskEID.ID, approvalsEID.ID)
 	if err != nil {
 		return err
 	}

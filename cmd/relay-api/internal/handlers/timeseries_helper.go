@@ -58,13 +58,16 @@ func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseIt
 			}
 
 			// populate field choices
-			if f.IsReference() && !f.IsNode() {
+			if f.IsReference() && (!f.IsNode() || baseEntityID == NoEntityID || baseEntityID == "undefined") {
 				refItems, err := item.EntityItems(ctx, ch.AccountID, filterByField.RefID, db)
 				if err != nil {
 					log.Printf("***> unexpected error occurred when retriving reference items for field unit inside updating choices error: %v.\n continuing...", err)
 				}
 				reference.ChoicesMaker(&filterByField, "", reference.ItemChoices(&filterByField, refItems, map[string]string{}))
 			} else if f.IsNode() {
+				log.Printf("ch ---> %+v ", ch)
+				log.Println("baseEntityID ", baseEntityID)
+				log.Println("baseItemID ", baseItemID)
 				nodes, err := loadNodes(ctx, ch.AccountID, baseEntityID, baseItemID, db, sdb)
 				if err != nil {
 					return nil, err

@@ -19,8 +19,9 @@ type Account struct {
 	Avatar          *string   `db:"avatar" json:"avatar"`
 	Plan            int       `db:"plan" json:"plan"`
 	Mode            int       `db:"mode" json:"mode"`
-	CustomerMail    string    `db:"cus_mail" json:"cus_mail"`
-	CustomerID      string    `db:"cus_id" json:"cus_id"`
+	CustomerMail    *string   `db:"cus_mail" json:"cus_mail"`
+	CustomerID      *string   `db:"cus_id" json:"cus_id"`
+	CustomerSeat    int       `db:"cus_seat" json:"cus_seat"`
 	TimeZone        *string   `db:"timezone" json:"timezone"`
 	Language        *string   `db:"language" json:"language"`
 	Country         *string   `db:"country" json:"country"`

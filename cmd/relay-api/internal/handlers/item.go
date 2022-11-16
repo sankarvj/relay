@@ -56,7 +56,7 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-	fields := e.EasyFields()
+	fields := e.EasyFieldsByRole(ctx)
 
 	piper := Piper{
 		Items: make(map[string][]ViewModelItem, 0),
@@ -154,8 +154,8 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	for _, item := range items {
 		userIDs[*item.UserID] = true
 	}
-	uMap, _ := userMap(ctx, userIDs, i.db)
-	viewModelItems := itemResponse(items, uMap)
+	uMap, _ := userMap(ctx, accountID, userIDs, i.db)
+	viewModelItems := itemResponse(items, uMap, fields)
 
 	response := struct {
 		Items    []ViewModelItem        `json:"items"`
@@ -206,7 +206,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if it.State == item.StateDefault { // no need to go to job for web forms now!
 		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, ni.ID, it.Fields(), existingItem.Fields()))
 	}
-	return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+	return web.Respond(ctx, w, createViewModelItem(it, nil), http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -215,7 +215,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	defer span.End()
 
 	accountID, entityID, _ := takeAEI(ctx, params, i.db)
-	currentUser, err := user.RetrieveCurrentUser(ctx, i.db)
+	currentUser, err := user.RetrieveCurrentUser(ctx, accountID, i.db)
 	if err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return errors.Wrapf(err, "Item: %+v", &i)
 	}
 
-	vmItem := createViewModelItem(it)
+	vmItem := createViewModelItem(it, nil)
 	vmItem.UserName = *currentUser.Name
 	vmItem.UserAvatar = *currentUser.Avatar
 
@@ -276,7 +276,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	fields := e.EasyFields()
+	fields := e.EasyFieldsByRole(ctx)
 
 	it := item.MakeItem(populateBR)
 	bonds := []relationship.Bond{}
@@ -300,12 +300,19 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 	uMap := make(map[string]*user.User, 0)
 	if it.UserID != nil {
-		uMap, _ = userMap(ctx, map[string]bool{*it.UserID: true}, i.db)
+		uMap, _ = userMap(ctx, accountID, map[string]bool{*it.UserID: true}, i.db)
 	}
 
-	viewModelItems := itemResponse([]item.Item{it}, uMap)
+	viewModelItems := itemResponse([]item.Item{it}, uMap, fields)
 	if len(viewModelItems) == 0 {
 		viewModelItems = append(viewModelItems, ViewModelItem{})
+	}
+
+	viewModelBonds := make([]relationship.Bond, 0)
+	for _, b := range bonds {
+		if b.Category != entity.CategoryNode {
+			viewModelBonds = append(viewModelBonds, b)
+		}
 	}
 
 	associatedEntities, err := entity.BulkRetrieve(ctx, entityIds(bonds), i.db)
@@ -315,7 +322,9 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	viewModelEntities := make([]entity.ViewModelEntity, len(associatedEntities))
 	for i, entt := range associatedEntities {
-		viewModelEntities[i] = createViewModelEntity(entt)
+		if entt.Category != entity.CategoryNode && entt.Category != entity.CategoryFlow {
+			viewModelEntities[i] = createViewModelEntity(entt)
+		}
 	}
 
 	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{it}, map[string]interface{}{baseEntityID: baseItemID}, i.db, i.sdb, job.NewJabEngine())
@@ -329,7 +338,7 @@ func (i *Item) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}{
 		createViewModelEntity(e),
 		viewModelItems[0],
-		bonds,
+		viewModelBonds,
 		fields,
 		viewModelEntities,
 	}
@@ -386,7 +395,7 @@ func (i *Item) ToggleAccess(ctx context.Context, w http.ResponseWriter, r *http.
 			return errors.Wrapf(err, "error when toggle is_public for item")
 		}
 		go job.NewJob(i.db, i.sdb, i.authenticator.FireBaseAdminSDK).Stream(stream.NewUpdateItemMessage(ctx, i.db, accountID, currentUserID, entityID, existingItem.ID, it.Fields(), existingItem.Fields()))
-		return web.Respond(ctx, w, createViewModelItem(it), http.StatusOK)
+		return web.Respond(ctx, w, createViewModelItem(it, nil), http.StatusOK)
 	}
 	return web.Respond(ctx, w, "failure", http.StatusNotAcceptable)
 }

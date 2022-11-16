@@ -33,6 +33,18 @@ func createViewModelAccount(acc *account.Account) ViewModelAccount {
 	}
 }
 
+type ViewModelAccountPage struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func createViewModelAccountPage(acc account.Account) ViewModelAccountPage {
+	return ViewModelAccountPage{
+		ID:   acc.ID,
+		Name: acc.Name,
+	}
+}
+
 func createViewModelVisitor(v visitor.Visitor, entityName, itemName string) ViewModelVisitor {
 	return ViewModelVisitor{
 		ID:         v.VistitorID,
@@ -69,7 +81,7 @@ func createViewModelUser(u user.User, accountID string) user.ViewModelUser {
 		Name:     *u.Name,
 		Avatar:   *u.Avatar,
 		Email:    u.Email,
-		MemberID: u.MemberID(accountID),
+		MemberID: u.MemberID,
 		Phone:    *u.Phone,
 		Roles:    u.Roles,
 	}
@@ -271,7 +283,19 @@ type Cypher struct {
 	Create bool `json:"create"`
 }
 
-func createViewModelItem(i item.Item) ViewModelItem {
+func createViewModelItem(i item.Item, fields []entity.Field) ViewModelItem {
+	fieldsMap := i.Fields()
+	allowedFieldsMap := make(map[string]interface{}, 0)
+	if fields != nil {
+		for _, f := range fields {
+			if val, ok := fieldsMap[f.Key]; ok {
+				allowedFieldsMap[f.Key] = val
+			}
+		}
+	} else {
+		allowedFieldsMap = fieldsMap
+	}
+
 	return ViewModelItem{
 		ID:        i.ID,
 		EntityID:  i.EntityID,
@@ -279,7 +303,7 @@ func createViewModelItem(i item.Item) ViewModelItem {
 		Name:      i.Name,
 		Type:      i.Type,
 		State:     i.State,
-		Fields:    i.Fields(),
+		Fields:    allowedFieldsMap,
 		Meta:      i.Meta(),
 		IsPublic:  i.IsPublic,
 		CreatedAt: i.CreatedAt,
@@ -287,10 +311,10 @@ func createViewModelItem(i item.Item) ViewModelItem {
 	}
 }
 
-func itemResponse(items []item.Item, uMap map[string]*user.User) []ViewModelItem {
+func itemResponse(items []item.Item, uMap map[string]*user.User, fields []entity.Field) []ViewModelItem {
 	viewModelItems := make([]ViewModelItem, len(items))
 	for i, item := range items {
-		viewModelItems[i] = createViewModelItem(item)
+		viewModelItems[i] = createViewModelItem(item, fields)
 		if item.UserID != nil {
 			avatar, name, _ := userAvatarNameEmail(uMap[*item.UserID])
 			viewModelItems[i].UserAvatar = avatar
@@ -407,8 +431,10 @@ type AssociationReqBody struct {
 	AssociationReqs []Association `json:"association_reqs"`
 }
 
-func createNewVerifiedUser(ctx context.Context, name, email string, roles []string, db *sqlx.DB) (user.User, error) {
+func createNewVerifiedUser(ctx context.Context, accountID, name, email string, roles []string, db *sqlx.DB) (user.User, error) {
+
 	nu := user.NewUser{
+		AccountID:       accountID,
 		Name:            name,
 		Avatar:          util.String(""),
 		Email:           email,

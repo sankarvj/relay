@@ -36,7 +36,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, firebaseSD
 
 	//TODO: all bootsrapping should happen in a single transaction
 
-	err := cuser.UpdateAccounts(ctx, db, cuser.AddAccount(accountID, memberID))
+	err := cuser.UpdateMemberID(ctx, memberID, db)
 	if err != nil {
 		return errors.Wrap(err, "user update with accounts failed")
 	}

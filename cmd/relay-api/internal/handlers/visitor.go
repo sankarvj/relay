@@ -212,7 +212,7 @@ func (v *Visitor) Create(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	go job.NewJob(v.db, v.sdb, v.authenticator.FireBaseAdminSDK).AddVisitor(vis.AccountID, vis.VistitorID, vmv.Body, v.db, v.sdb)
 
-	return web.Respond(ctx, w, createViewModelVisitor(vis, "", ""), http.StatusCreated)
+	return web.Respond(ctx, w, createViewModelVisitor(vis, vmv.EntityName, vmv.ItemName), http.StatusCreated)
 }
 
 func (v *Visitor) ListRelations(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

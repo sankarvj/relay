@@ -195,7 +195,7 @@ func validateMyselfWithOwner(ctx context.Context, accountID, entityID string, it
 			return web.NewRequestError(err, http.StatusForbidden)
 		}
 
-		cuser, err := user.RetrieveUser(ctx, db, currentUserID)
+		cuser, err := user.RetrieveUser(ctx, db, accountID, currentUserID)
 		if err != nil {
 			err := errors.New("you_dont_have_access_todo_this_operation")
 			return web.NewRequestError(err, http.StatusForbidden)
@@ -213,7 +213,7 @@ func validateMyselfWithOwner(ctx context.Context, accountID, entityID string, it
 			if vf.Who == entity.WhoAssignee {
 				vals := vf.Value.([]interface{})
 				for _, v := range vals {
-					if v == cuser.MemberID(accountID) {
+					if v == cuser.MemberID {
 						isUserAssigned = true
 					}
 				}

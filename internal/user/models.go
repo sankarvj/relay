@@ -16,7 +16,8 @@ const (
 // User represents someone with access to our system.
 type User struct {
 	ID           string         `db:"user_id" json:"id"`
-	Accounts     *string        `db:"accounts" json:"accounts"`
+	AccountID    string         `db:"account_id" json:"account_id"`
+	MemberID     string         `db:"member_id" json:"member_id"`
 	Name         *string        `db:"name" json:"name"`
 	Avatar       *string        `db:"avatar" json:"avatar"`
 	Email        string         `db:"email" json:"email"`
@@ -56,16 +57,17 @@ type ViewModelUserSetting struct {
 
 // NewUser contains information needed to create a new User.
 type NewUser struct {
-	Accounts        map[string]interface{} `json:"accounts" validate:"required"`
-	Name            string                 `json:"name" validate:"required"`
-	Email           string                 `json:"email" validate:"required"`
-	Avatar          *string                `json:"avatar"`
-	Phone           *string                `json:"phone"`
-	Provider        *string                `json:"provider"`
-	Verified        bool                   `json:"verified"`
-	Roles           []string               `json:"roles" validate:"required"`
-	Password        string                 `json:"password" validate:"required"`
-	PasswordConfirm string                 `json:"password_confirm" validate:"eqfield=Password"`
+	AccountID       string   `json:"account_id"`
+	MemberID        string   `json:"member_id"`
+	Name            string   `json:"name" validate:"required"`
+	Email           string   `json:"email" validate:"required"`
+	Avatar          *string  `json:"avatar"`
+	Phone           *string  `json:"phone"`
+	Provider        *string  `json:"provider"`
+	Verified        bool     `json:"verified"`
+	Roles           []string `json:"roles" validate:"required"`
+	Password        string   `json:"password" validate:"required"`
+	PasswordConfirm string   `json:"password_confirm" validate:"eqfield=Password"`
 }
 
 type ViewModelUser struct {

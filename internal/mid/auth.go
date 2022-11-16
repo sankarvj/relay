@@ -19,6 +19,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -116,6 +117,11 @@ func HasRole(roles ...string) web.Middleware {
 			currentRole := claims.Roles[0]
 			ctx = context.WithValue(ctx, auth.RoleKey, currentRole)
 
+			view := r.URL.Query().Get("view")
+			if util.NotEmpty(view) && view == "visitor" {
+				ctx = context.WithValue(ctx, auth.RoleKey, "VISITOR")
+			}
+
 			//set validation to true if the route has ROLEMYSELF and the user is not admin/member
 			if auth.IsRoleMyselfExist(roles) && currentRole != auth.RoleAdmin && currentRole != auth.RoleMember {
 				ctx = context.WithValue(ctx, auth.ValidateMyItemKey, true)
@@ -147,9 +153,9 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 
 			accountID := params["account_id"]
 			userID := claims.Subject
-			usr, err := user.RetrieveUser(ctx, db, userID)
+			usr, err := user.RetrieveUser(ctx, db, accountID, userID)
 			if err != nil {
-				err := errors.New("user_not_exist") // value used in the UI dont change the string message.
+				err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
 				return web.NewRequestError(err, http.StatusForbidden)
 			}
 
@@ -166,11 +172,6 @@ func HasAccountAccess(db *sqlx.DB) web.Middleware {
 				err := auth.CheckVisitorEntityAccess(ctx, r, usr.Email, accountID, teamID, baseEntityID, baseItemID, entityID, itemID, db)
 				if err != nil {
 					err := errors.New("visitor_dont_have_access")
-					return web.NewRequestError(err, http.StatusForbidden)
-				}
-			} else {
-				if !isExist(usr.AccountIDs(), accountID) {
-					err := errors.New("account_not_associated_with_this_user") // value used in the UI dont change the string message.
 					return web.NewRequestError(err, http.StatusForbidden)
 				}
 			}

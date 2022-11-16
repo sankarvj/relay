@@ -79,17 +79,6 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.New("User magiclink token mismatch. Token invalidated"), http.StatusUnauthorized)
 	}
 
-	// all authentication completed. Proceed with the next steps
-	usr, err := user.RetrieveUserByUniqIdentifier(ctx, a.db, tokenEmail, "")
-	if err == user.ErrNotFound {
-		usr, err = createNewVerifiedUser(ctx, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, a.db)
-		if err != nil {
-			return web.NewRequestError(errors.Wrap(err, "creating new user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
-		}
-	} else if err != nil {
-		return web.NewRequestError(errors.Wrap(err, "retrival of user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
-	}
-
 	dft, err := draft.Retrieve(ctx, draftID, a.db)
 	if err != nil {
 		return web.NewRequestError(errors.Wrap(err, "Draft not found"), http.StatusInternalServerError)
@@ -108,6 +97,17 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Account creation failed"), http.StatusInternalServerError)
 	}
 
+	// all authentication completed. Proceed with the next steps
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, accountID, tokenEmail, "", a.db)
+	if err == user.ErrNotFound {
+		usr, err = createNewVerifiedUser(ctx, accountID, util.NameInEmail(userInfo.Email), userInfo.Email, []string{auth.RoleAdmin}, a.db)
+		if err != nil {
+			return web.NewRequestError(errors.Wrap(err, "creating new user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
+		}
+	} else if err != nil {
+		return web.NewRequestError(errors.Wrap(err, "retrival of user failed. please contact support@workbaseone.com"), http.StatusUnauthorized)
+	}
+
 	systemToken, err := generateSystemUserJWT(ctx, acc.ID, []string{}, time.Now(), a.authenticator, a.db)
 	if err != nil {
 		account.Delete(ctx, a.db, acc.ID)
@@ -119,7 +119,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "System JWT token save failed"), http.StatusInternalServerError)
 	}
 
-	userToken, err := generateUserJWT(ctx, tokenEmail, time.Now(), a.authenticator, a.db)
+	userToken, err := generateUserJWT(ctx, acc.ID, tokenEmail, time.Now(), a.authenticator, a.db)
 	if err != nil {
 		account.Delete(ctx, a.db, acc.ID)
 		return web.NewRequestError(errors.Wrap(err, "User JWT creation failed"), http.StatusInternalServerError)
