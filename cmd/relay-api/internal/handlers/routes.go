@@ -58,6 +58,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("GET", "/v1/accounts", a.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser))
 	app.Handle("GET", "/v1/accounts/:account_id", a.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("POST", "/v1/accounts/:account_id", a.GenerateToken, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("GET", "/v1/accounts/:account_id/api", a.APIToken, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 
 	v := Visitor{
 		db:            db,

@@ -77,15 +77,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Assets Entity Created")
 
 	// add entity - asset status
-	assetStatusEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityStatus, "Asset Status", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, AssetStatusFields())
+	assetStatusEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetStatus, "Asset Status", entity.CategoryChildUnit, entity.StateTeamLevel, false, false, false, AssetStatusFields())
 	if err != nil {
 		return err
 	}
 
 	// add entity - asset request
-	assetStatusTitleField := entity.TitleField(assetStatusEntity.EasyFields())
-	assetTitleField := entity.TitleField(assetEntity.EasyFields())
-	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Request", entity.CategorySubData, entity.StateTeamLevel, false, true, false, AssetRequestFields(assetEntity.ID, assetTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	assetRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetRequest, "Asset Requests", entity.CategoryTask, entity.StateTeamLevel, false, true, false, AssetRequestFields(assetEntity.ID, assetEntity.Key("asset_name"), assetStatusEntity.ID, assetStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -107,7 +105,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 
 	// add entity - service request
 	serviceTitleField := entity.TitleField(serviceEntity.EasyFields())
-	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Request", entity.CategorySubData, entity.StateTeamLevel, false, true, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusTitleField.Key, b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
+	serviceRequestEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceRequest, "Service Requests", entity.CategoryTask, entity.StateTeamLevel, false, true, false, ServiceRequestFields(serviceEntity.ID, serviceTitleField.Key, assetStatusEntity.ID, assetStatusEntity.Key("name"), b.OwnerEntity.ID, b.OwnerEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -223,7 +221,7 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 	if err != nil {
 		return err
 	}
-	statusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityStatus)
+	assetStatusEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityAssetStatus)
 	if err != nil {
 		return err
 	}
@@ -261,7 +259,7 @@ func AddSamples(ctx context.Context, b *base.Base, itemIDMap map[string]string) 
 		return err
 	}
 
-	err = addStatuses(ctx, b, employeeEntity, statusEntity, itemIDMap)
+	err = addStatuses(ctx, b, employeeEntity, assetStatusEntity, itemIDMap)
 	if err != nil {
 		return err
 	}
@@ -379,32 +377,32 @@ func addStatuses(ctx context.Context, b *base.Base, empEntity, assetStatusEntity
 	statusFieldsNamedKeysMap := assetStatusEntity.NameKeyMapWrapper()
 	// add status item - Request-received
 	itemIDMap["status_received"] = uuid.New().String()
-	_, err := b.ItemAdd(ctx, assetStatusEntity.ID, itemIDMap["status_received"], b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Request Received", "#fb667e"), nil)
+	_, err := b.ItemAdd(ctx, assetStatusEntity.ID, itemIDMap["status_received"], b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Request Received", "#FFE9AE"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - In-progress
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "In Progress", "#66fb99"), nil)
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "In Progress", "#FFEF82"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - Approved
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Approved", "#66fb99"), nil)
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Approved", "#B4E197"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - Delivered
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Delivered", "#66fb99"), nil)
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Delivered", "#00ADB5"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - Returned
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Returned", "#66fb99"), nil)
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Returned", "#FF8C8C"), nil)
 	if err != nil {
 		return err
 	}
 	// add status item - Trashed
-	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Trashed", "#66fb99"), nil)
+	_, err = b.ItemAdd(ctx, assetStatusEntity.ID, uuid.New().String(), b.UserID, AssetStatusVals(statusFieldsNamedKeysMap["name"], statusFieldsNamedKeysMap["color"], "Trashed", "#E8E8E8"), nil)
 	if err != nil {
 		return err
 	}

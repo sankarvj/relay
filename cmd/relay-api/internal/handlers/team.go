@@ -97,7 +97,7 @@ func (t *Team) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	if err := web.Decode(r, &nt); err != nil {
 		return errors.Wrap(err, "")
 	}
-	nt.Description = strings.ToUpper(nt.Name)
+	nt.LookUp = strings.ReplaceAll(nt.Name, " ", "_")
 	//set account_id from the request path
 	nt.AccountID = params["account_id"]
 	nTeam, err := team.Create(ctx, t.db, nt, time.Now())
@@ -157,28 +157,22 @@ func (t *Team) createCustomEntities(ctx context.Context, accountID, teamID, curr
 
 func (t *Team) createCustomTemplates(ctx context.Context, accountID, userID, templateKey string) error {
 	switch templateKey {
-	case "crm":
+	case team.PredefinedTeamCSP:
+		err := bootstrap.BootCSM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-cust:", err)
+			return err
+		}
+	case team.PredefinedTeamCRP:
 		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:crm:", err)
 			return err
 		}
-	case "support":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			log.Println("***> unexpected error occurred. when creating custom templates:support:", err)
-			return err
-		}
-	case "onboarding-emp":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
+	case team.PredefinedTeamEMP:
+		err := bootstrap.BootEM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-emp:", err)
-			return err
-		}
-	case "onboarding-cust":
-		err := bootstrap.BootCRM(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-cust:", err)
 			return err
 		}
 	}

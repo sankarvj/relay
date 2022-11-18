@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"log"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,13 +13,12 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/csm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
-	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
-	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
@@ -41,7 +38,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, firebaseSD
 		return errors.Wrap(err, "user update with accounts failed")
 	}
 
-	err = BootstrapTeam(ctx, db, accountID, teamID, "Base")
+	err = BootstrapTeam(ctx, db, accountID, teamID, "base", "Base", "Base is the launchpad for custom apps")
 	if err != nil {
 		return errors.Wrap(err, "team bootstrap failed")
 	}
@@ -87,15 +84,14 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, firebaseSD
 	return nil
 }
 
-func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamName string) error {
+func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamLookUp, teamName, description string) error {
 	const q = `INSERT INTO teams
-		(team_id, account_id, name, description, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		(team_id, account_id, look_up, name, description, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
-	description := strings.ToUpper(teamName)
 	_, err := db.ExecContext(
 		ctx, q,
-		teamID, accountID, teamName, description, time.Now().UTC(), time.Now().UTC().Unix(),
+		teamID, accountID, teamLookUp, teamName, description, time.Now().UTC(), time.Now().UTC().Unix(),
 	)
 	return err
 }
@@ -226,7 +222,8 @@ func BootCRM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCRP)
+	crpTemplate := team.FindTeamTemplate(team.PredefinedTeamCRP)
+	err := BootstrapTeam(ctx, db, accountID, teamID, crpTemplate.Key, crpTemplate.Name, crpTemplate.Description)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CRM `team` insertion failed")
 	}
@@ -269,7 +266,8 @@ func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamCSP)
+	cspTemplate := team.FindTeamTemplate(team.PredefinedTeamCSP)
+	err := BootstrapTeam(ctx, db, accountID, teamID, cspTemplate.Key, cspTemplate.Name, cspTemplate.Description)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:CSM `team` insertion failed")
 	}
@@ -302,16 +300,7 @@ func BootCSM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebas
 	fmt.Println("\t\t\tBootstrap:CSM `workflows` functions completed successfully")
 
 	//all done
-	fmt.Printf("\nBootstrap:CSM ENDED successfully for the accountID: %s\n", accountID)
-
-	//add trail
-	err = payment.InitStripe(ctx, accountID, userID, b.DB)
-	if err != nil {
-		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
-	} else {
-		log.Printf("***> trail started successfully")
-		log.Println("update the account with the plan name and etc...")
-	}
+	fmt.Printf("\nBootstrap:CSP ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }
@@ -321,7 +310,8 @@ func BootEM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebase
 
 	ctx := context.Background()
 	teamID := uuid.New().String()
-	err := BootstrapTeam(ctx, db, accountID, teamID, draft.TeamEMP)
+	empTemplate := team.FindTeamTemplate(team.PredefinedTeamEMP)
+	err := BootstrapTeam(ctx, db, accountID, teamID, empTemplate.Key, empTemplate.Name, empTemplate.Description)
 	if err != nil {
 		return errors.Wrap(err, "\t\t\tBootstrap:EM `team` insertion failed")
 	}

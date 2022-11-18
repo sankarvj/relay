@@ -783,7 +783,7 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 
 func (j Job) actOnWho(ctx context.Context, accountID, teamID, userID, entityID, itemID string, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	for _, f := range valueAddedFields {
-		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil {
+		if f.Who == entity.WhoReminder && f.DataType == entity.TypeDateTime && f.Value != nil && f.Value != "" {
 			when, err := util.ParseTime(f.Value.(string))
 			if err != nil {
 				return err

@@ -58,13 +58,13 @@ func Delete(ctx context.Context, db *sqlx.DB, token string) error {
 	return nil
 }
 
-func Retrieve(ctx context.Context, db *sqlx.DB, token string) (*Token, error) {
+func Retrieve(ctx context.Context, db *sqlx.DB, accountID string) (*Token, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.token.Retrieve")
 	defer span.End()
 
 	var t Token
-	const q = `SELECT * FROM tokens WHERE token = $1`
-	if err := db.GetContext(ctx, &t, q, token); err != nil {
+	const q = `SELECT * FROM tokens WHERE account_id = $1`
+	if err := db.GetContext(ctx, &t, q, accountID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrTokenNotFound
 		}

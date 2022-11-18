@@ -4,18 +4,13 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-)
-
-const (
-	TeamCSP = "csp"
-	TeamCRP = "crp"
-	TeamEMP = "emp"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 )
 
 var TeamDomainMap = map[string]string{
-	TeamCSP: "csp.workbaseone.com",
-	TeamCRP: "crp.workbaseone.com",
-	TeamEMP: "emp.workbaseone.com",
+	team.PredefinedTeamCSP: "csp.workbaseone.com",
+	team.PredefinedTeamCRP: "crp.workbaseone.com",
+	team.PredefinedTeamEMP: "emp.workbaseone.com",
 }
 
 type Draft struct {

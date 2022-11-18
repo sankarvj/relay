@@ -62,7 +62,7 @@ func (f *Form) Adder(ctx context.Context, w http.ResponseWriter, r *http.Request
 		Name:      it.Name,
 		AccountID: accountID,
 		EntityID:  entityID,
-		GenieID:   &it.ID,
+		GenieID:   util.GenieID(entityID, it.ID),
 		UserID:    &anonymousUser,
 		Fields:    newItem.Fields,
 		Source:    map[string][]string{entityID: {it.ID}},

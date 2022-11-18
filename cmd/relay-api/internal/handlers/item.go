@@ -229,6 +229,7 @@ func (i *Item) Create(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ni.EntityID = entityID
 	ni.UserID = &currentUser.ID
 	ni.ID = uuid.New().String()
+	ni.GenieID = util.PickGenieID(ni.Source)
 
 	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.sdb)
 	if errorMap != nil {

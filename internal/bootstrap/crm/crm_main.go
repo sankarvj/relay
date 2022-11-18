@@ -230,7 +230,8 @@ func addAssociations(ctx context.Context, b *base.Base, conEid, comEid, deEid, e
 	//contact company association
 	_, err := b.AssociationAdd(ctx, conEid.ID, comEid.ID)
 	if err != nil {
-		return err
+		fmt.Println("ignoring error here. because the contraint might fail if it is alreay added in CRP")
+		//return err
 	}
 
 	//deal email association
@@ -326,12 +327,12 @@ func addContacts(ctx context.Context, b *base.Base, contactEntity, taskEntity en
 	}
 
 	// add task item for contact - matt (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "Send demo link to the customer", b.ContactItemMatt.ID), map[string][]string{contactEntity.ID: {b.ContactItemMatt.ID}})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "Demo link", "Send demo link to the customer", b.ContactItemMatt.ID), map[string][]string{contactEntity.ID: {b.ContactItemMatt.ID}})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - natasha (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "Schedule an on-site meeting with customer", b.ContactItemNatasha.ID), map[string][]string{contactEntity.ID: {b.ContactItemNatasha.ID}})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, TaskVals(taskEntity, "On site meeting", "Schedule an on-site meeting with customer", b.ContactItemNatasha.ID), map[string][]string{contactEntity.ID: {b.ContactItemNatasha.ID}})
 	if err != nil {
 		return err
 	}

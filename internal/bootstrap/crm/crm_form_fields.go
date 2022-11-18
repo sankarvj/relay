@@ -11,7 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
 
-func TaskVals(actorEntity entity.Entity, desc, contactID string) map[string]interface{} {
+func TaskVals(actorEntity entity.Entity, name, desc, contactID string) map[string]interface{} {
 
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(actorEntity.EasyFields())

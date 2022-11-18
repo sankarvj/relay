@@ -2,11 +2,20 @@ package team
 
 import "time"
 
+const (
+	PredefinedTeamCSP  = "csp"
+	PredefinedTeamCRP  = "crp"
+	PredefinedTeamEMP  = "emp"
+	PredefinedTeamPMP  = "pmp"
+	PredefinedTeamCSup = "csup"
+)
+
 // Team represents sub domains of an organisation
 type Team struct {
 	ID          string    `db:"team_id" json:"id"`
 	AccountID   string    `db:"account_id" json:"account_id"`
-	Name        string    `db:"name" json:"name"`               //use this internally for indentifying the team template CRM,CSM,EM,PM
+	LookUp      string    `db:"look_up" json:"look_up"`         //use this internally for indentifying the team template CRM,CSM,EM,PM
+	Name        string    `db:"name" json:"name"`               //use this for UI display
 	Description *string   `db:"description" json:"description"` //use this for UI display
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   int64     `db:"updated_at" json:"updated_at"`
@@ -15,6 +24,7 @@ type Team struct {
 // NewTeam contains information needed to create a new Team.
 type NewTeam struct {
 	AccountID   string   `json:"account_id"`
+	LookUp      string   `json:"look_up" validate:"required"`
 	Name        string   `json:"name" validate:"required"`
 	Description string   `json:"description"`
 	Modules     []string `json:"modules"`
@@ -42,18 +52,18 @@ type Template struct {
 	Description string `json:"description"`
 }
 
-var templatesMap = map[string]string{
-	"crm":             "CRM",
-	"support":         "Support Desk",
-	"onboarding-emp":  "Employee Onboarding",
-	"onboarding-cust": "Customer Onboarding",
-	"project":         "Project Management",
+var templatesNameMap = map[string]string{
+	PredefinedTeamCSP:  "CSP",
+	PredefinedTeamCRP:  "CRP",
+	PredefinedTeamEMP:  "EMP",
+	PredefinedTeamPMP:  "PMP",
+	PredefinedTeamCSup: "CSuP",
 }
 
 var templatesDescMap = map[string]string{
-	"crm":             "Customer relationship management",
-	"support":         "Customer support desk",
-	"onboarding-emp":  "Onboard your employees with sequence of steps",
-	"onboarding-cust": "Onboard your customers with sequence of steps",
-	"project":         "Manage your project tasks",
+	PredefinedTeamCSP:  "Customer onboarding platform",
+	PredefinedTeamCRP:  "Customer relationship platform",
+	PredefinedTeamEMP:  "Employee onboarding platform",
+	PredefinedTeamPMP:  "Project management platform",
+	PredefinedTeamCSup: "Customer support platform",
 }

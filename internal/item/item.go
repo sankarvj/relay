@@ -87,21 +87,6 @@ func UserEntityItems(ctx context.Context, accountID, entityID, userID string, db
 	return items, nil
 }
 
-//TODO add pagination
-func GenieEntityItems(ctx context.Context, entityIDs []string, genieID string, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.GenieEntityItems")
-	defer span.End()
-
-	items := []Item{}
-	const q = `SELECT * FROM items where entity_id = any($1) AND genie_id = $2 LIMIT 20`
-
-	if err := db.SelectContext(ctx, &items, q, pq.Array(entityIDs), genieID); err != nil {
-		return items, errors.Wrap(err, "selecting bulk items for entity id with genie")
-	}
-
-	return items, nil
-}
-
 // Create inserts a new item into the database.
 func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.Create")
@@ -228,19 +213,6 @@ func Delete(ctx context.Context, db *sqlx.DB, accountID, entityID, itemID string
 
 	if _, err := db.ExecContext(ctx, q, accountID, entityID, itemID); err != nil {
 		return errors.Wrapf(err, "deleting item %s", itemID)
-	}
-
-	return nil
-}
-
-func DeleteAllByGenie(ctx context.Context, db *sqlx.DB, accountID, entityID, genieID string) error {
-	ctx, span := trace.StartSpan(ctx, "internal.item.DeleteAllByGenie")
-	defer span.End()
-
-	const q = `DELETE FROM items WHERE account_id = $1 and entity_id = $2 and genie_id = $3`
-
-	if _, err := db.ExecContext(ctx, q, accountID, entityID, genieID); err != nil {
-		return errors.Wrapf(err, "deleting items for account %s on entity %s", accountID, entityID)
 	}
 
 	return nil

@@ -186,7 +186,6 @@ func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) (even
 
 func (h EventsHandler) processEvent(ctx context.Context, accountID string, body map[string]interface{}) (events.APIGatewayProxyResponse, error) {
 	eHandler.log.Println("processEvent : started : save event")
-	identifier := strValue(body["identifier"])
 	entityName := strValue(body["module"])
 
 	itEve, err := event.Process(ctx, accountID, entityName, body, eHandler.log, h.db)
@@ -194,16 +193,16 @@ func (h EventsHandler) processEvent(ctx context.Context, accountID string, body 
 		return newErrReponse(err)
 	}
 
-	if itEve.OldItem == nil && itEve.NewItem != nil {
+	if itEve.OldData == nil && itEve.NewData != nil {
 		eHandler.log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewItem.EntityID, itEve.NewItem.ID, itEve.NewItem.Fields(), nil, identifier))
+		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewData.EntityID, itEve.NewData.ID, itEve.NewData.Fields(), nil))
 		if err != nil {
 			eHandler.log.Println("processEvent : errored : sqs streaming", err)
 		}
 		eHandler.log.Println("processEvent : completed : sqs streaming")
-	} else if itEve.OldItem != nil && itEve.NewItem != nil {
+	} else if itEve.OldData != nil && itEve.NewData != nil {
 		eHandler.log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewItem.EntityID, itEve.NewItem.ID, itEve.NewItem.Fields(), itEve.OldItem.Fields(), identifier))
+		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewData.EntityID, itEve.NewData.ID, itEve.NewData.Fields(), itEve.OldData.Fields()))
 		if err != nil {
 			eHandler.log.Println("processEvent : errored : sqs streaming", err)
 		}

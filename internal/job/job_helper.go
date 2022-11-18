@@ -16,40 +16,40 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
-	"go.opencensus.io/trace"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"golang.org/x/crypto/bcrypt"
 )
 
 //TODO can be removed. not used anywhere
-func createActivityEvent(ctx context.Context, baseItemID string, ae entity.Entity, childEntity entity.Entity, childItem item.Item, db *sqlx.DB) (item.Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.event.Create")
-	defer span.End()
+// func createActivityEvent1(ctx context.Context, baseItemID string, ae entity.Entity, childEntity entity.Entity, childItem item.Item, db *sqlx.DB) (item.Item, error) {
+// 	ctx, span := trace.StartSpan(ctx, "internal.event.Create")
+// 	defer span.End()
 
-	ni := item.NewItem{}
-	ni.ID = uuid.New().String()
-	ni.AccountID = ae.AccountID
-	ni.EntityID = ae.ID
-	ni.UserID = childItem.UserID
-	ni.GenieID = &baseItemID
-	ni.Fields = make(map[string]interface{}, 0)
+// 	ni := item.NewItem{}
+// 	ni.ID = uuid.New().String()
+// 	ni.AccountID = ae.AccountID
+// 	ni.EntityID = ae.ID
+// 	ni.UserID = childItem.UserID
+// 	ni.GenieID = ---baseItemID
+// 	ni.Fields = make(map[string]interface{}, 0)
 
-	actualItemFields := childEntity.ValueAdd(childItem.Fields())
-	namedActualFields := entity.MetaMap(actualItemFields)
+// 	actualItemFields := childEntity.ValueAdd(childItem.Fields())
+// 	namedActualFields := entity.MetaMap(actualItemFields)
 
-	activityFields := ae.EasyFields()
-	namedActivityFields := entity.NameMap(activityFields)
+// 	activityFields := ae.EasyFields()
+// 	namedActivityFields := entity.NameMap(activityFields)
 
-	ni.Fields[namedActivityFields["activity-name"].Key] = childEntity.Name
-	ni.Fields[namedActivityFields["activity-action"].Key] = namedActualFields["title"].Value
-	ni.Fields[namedActivityFields["activity-link"].Key] = ""
+// 	ni.Fields[namedActivityFields["activity-name"].Key] = childEntity.Name
+// 	ni.Fields[namedActivityFields["activity-action"].Key] = namedActualFields["title"].Value
+// 	ni.Fields[namedActivityFields["activity-link"].Key] = ""
 
-	evItem, err := item.Create(ctx, db, ni, time.Now())
-	if err != nil {
-		return evItem, err
-	}
+// 	evItem, err := item.Create(ctx, db, ni, time.Now())
+// 	if err != nil {
+// 		return evItem, err
+// 	}
 
-	return evItem, nil
-}
+// 	return evItem, nil
+// }
 
 func launchUser(ctx context.Context, draftID, accountName, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
 	dr, err := draft.Retrieve(ctx, draftID, db)
@@ -135,10 +135,11 @@ func (j Job) kabali(ctx context.Context, accountID, teamID, userID, entityID, it
 			}
 		}
 	}
+
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
 		AccountID: accountID,
-		GenieID:   &itemID,
+		GenieID:   util.GenieID(entityID, itemID),
 		UserID:    &userID,
 		EntityID:  approvalEntity.ID,
 		Fields:    itemFieldsMap,

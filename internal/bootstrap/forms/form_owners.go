@@ -83,7 +83,7 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		Name:        "team_ids",
 		DisplayName: "Associated teams",
 		DataType:    entity.TypeList,
-		DomType:     entity.DomMultiSelect,
+		DomType:     entity.DomNotApplicable,
 		Meta:        map[string]string{entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			Key:      "id",

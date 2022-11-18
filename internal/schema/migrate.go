@@ -92,12 +92,13 @@ var migrations = []darwin.Migration{
 		CREATE TABLE teams (
 			team_id       UUID,
 			account_id    UUID REFERENCES accounts ON DELETE CASCADE,
+			look_up       TEXT,
 			name          TEXT,
 			description   TEXT,
 			created_at    TIMESTAMP,
 			updated_at    BIGINT,
 			PRIMARY KEY (team_id),
-			UNIQUE (account_id,name)
+			UNIQUE (account_id,look_up)
 		);
 		CREATE INDEX idx_teams_account_id
 		ON teams(account_id);
@@ -132,7 +133,7 @@ var migrations = []darwin.Migration{
 			item_id          UUID,
 			account_id       UUID REFERENCES accounts ON DELETE CASCADE,
 			entity_id        UUID REFERENCES entities ON DELETE CASCADE,
-			genie_id         UUID,
+			genie_id         TEXT,
 			user_id          UUID,
 			stage_id         UUID,
 			state            INTEGER DEFAULT 0,

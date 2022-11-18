@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
@@ -108,6 +109,18 @@ func (a *Account) GenerateToken(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
+}
+
+func (a *Account) APIToken(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Account.APIToken")
+	defer span.End()
+
+	tkn, err := token.Retrieve(ctx, a.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, createVMToken(*tkn), http.StatusOK)
 }
 
 func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

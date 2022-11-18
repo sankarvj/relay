@@ -52,6 +52,7 @@ const (
 	FixedEntityApprovals        = "approvals"
 	FixedEntityStatus           = "status"
 	FixedEntityApprovalStatus   = "approval_status"
+	FixedEntityAssetStatus      = "asset_status"
 	FixedEntityLeadStatus       = "lead_status"
 	FixedEntityType             = "type"
 	FixedEntityVisitorInvite    = "visitor_invite"

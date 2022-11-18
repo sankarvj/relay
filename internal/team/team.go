@@ -60,11 +60,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewTeam, now time.Time) (Team, e
 	}
 
 	const q = `INSERT INTO teams
-		(team_id, account_id, name, description, created_at, updated_at)
+		(team_id, account_id, look_up, name, description, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := db.ExecContext(
 		ctx, q,
-		t.ID, t.AccountID, t.Name, t.Description,
+		t.ID, t.AccountID, t.LookUp, t.Name, t.Description,
 		t.CreatedAt, t.UpdatedAt,
 	)
 
@@ -107,7 +107,7 @@ func CustomModules() []Module {
 
 func CustomTemplates() []Template {
 	templates := make([]Template, 0)
-	for k, v := range templatesMap {
+	for k, v := range templatesNameMap {
 		template := Template{
 			Key:         k,
 			Name:        v,
@@ -126,4 +126,22 @@ func Names(teams []Team) []string {
 		}
 	}
 	return names
+}
+
+func FindTeamTemplate(lookup string) Template {
+	for k, v := range templatesNameMap {
+		if lookup == k {
+			template := Template{
+				Key:         k,
+				Name:        v,
+				Description: templatesDescMap[k],
+			}
+			return template
+		}
+	}
+	return Template{
+		Key:         lookup,
+		Name:        lookup,
+		Description: lookup,
+	}
 }

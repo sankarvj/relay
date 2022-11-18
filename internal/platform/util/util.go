@@ -327,3 +327,21 @@ func ExpvarGet(key string) string {
 func NotEmpty(param string) bool {
 	return param != "00000000-0000-0000-0000-000000000000" && param != "" && param != "undefined" && param != "nil"
 }
+
+func GenieID(entityID, itemID string) *string {
+	var genieID *string
+	if entityID != "" && itemID != "" {
+		genieIDStr := fmt.Sprintf("%s#%s", entityID, itemID)
+		genieID = &genieIDStr
+	}
+	return genieID
+}
+
+func PickGenieID(source map[string][]string) *string {
+	for k, v := range source {
+		if len(v) > 0 { // sending the first item. Because only one creator must be the source when the automation runs
+			return GenieID(k, v[0])
+		}
+	}
+	return nil
+}

@@ -39,7 +39,7 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 
 	switch n.Type {
 	case node.Push, node.Task, node.Meeting, node.Email:
-		templateItem.GenieID = pickGenieID(n.VarStrMap())
+		templateItem.GenieID = util.PickGenieID(n.VarStrMap())
 		it, err := item.Create(ctx, db, templateItem, time.Now())
 		if err != nil {
 			return err
@@ -176,13 +176,4 @@ func (eng *Engine) evaluateFieldValues(ctx context.Context, db *sqlx.DB, sdb *da
 
 	}
 
-}
-
-func pickGenieID(source map[string][]string) *string {
-	for _, v := range source {
-		if len(v) > 0 { // sending the first item. Because only one creator must be the source when the automation runs
-			return &v[0]
-		}
-	}
-	return nil
 }

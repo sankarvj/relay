@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
+	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
@@ -300,6 +301,7 @@ func createViewModelItem(i item.Item, fields []entity.Field) ViewModelItem {
 		ID:        i.ID,
 		EntityID:  i.EntityID,
 		StageID:   i.StageID,
+		GenieID:   i.GenieID,
 		Name:      i.Name,
 		Type:      i.Type,
 		State:     i.State,
@@ -330,6 +332,7 @@ type ViewModelItem struct {
 	ID         string                 `json:"id"`
 	EntityID   string                 `json:"entity_id"`
 	StageID    *string                `json:"stage_id"`
+	GenieID    *string                `json:"genie_id"`
 	Name       *string                `json:"name"`
 	UserName   string                 `json:"user_name"`
 	UserAvatar string                 `json:"user_avatar"`
@@ -447,4 +450,14 @@ func createNewVerifiedUser(ctx context.Context, accountID, name, email string, r
 	}
 	u, err := user.Create(ctx, db, nu, time.Now())
 	return u, err
+}
+
+type APIToken struct {
+	Token string `json:"token"`
+}
+
+func createVMToken(token token.Token) APIToken {
+	return APIToken{
+		Token: token.Token,
+	}
 }

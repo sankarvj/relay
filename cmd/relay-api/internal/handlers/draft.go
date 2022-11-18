@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -40,20 +41,6 @@ func (a *Account) Draft(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	(&job.Job{}).EventUserSignedUp(draft.AccountName, draft.BusinessEmail, draft.ID, a.db, a.sdb)
 	return web.Respond(ctx, w, true, http.StatusCreated)
-}
-
-func (a *Account) RetriveDraft(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Account.RetriveDraft")
-	defer span.End()
-
-	draftID := params["draft_id"]
-
-	draft, err := draft.Retrieve(ctx, draftID, a.db)
-	if err != nil {
-		return errors.Wrapf(err, "Draft: %+v", &draft)
-	}
-
-	return web.Respond(ctx, w, draft, http.StatusOK)
 }
 
 func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
@@ -133,7 +120,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
-	if util.Contains(dft.Teams, draft.TeamCRP) {
+	if util.Contains(dft.Teams, team.PredefinedTeamCRP) {
 		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -141,7 +128,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, draft.TeamCSP) {
+	if util.Contains(dft.Teams, team.PredefinedTeamCSP) {
 		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)
@@ -149,7 +136,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	if util.Contains(dft.Teams, draft.TeamEMP) {
+	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
 		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, acc.ID)

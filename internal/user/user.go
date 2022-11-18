@@ -173,6 +173,10 @@ func Create(ctx context.Context, db *sqlx.DB, n NewUser, now time.Time) (User, e
 		return User{}, errors.Wrap(err, "generating password hash")
 	}
 
+	if n.MemberID == "" {
+		n.MemberID = string("00000000-0000-0000-0000-000000000000")
+	}
+
 	if n.Avatar == nil || *n.Avatar == "" {
 		avatar := util.Avatar(n.Email)
 		n.Avatar = &avatar

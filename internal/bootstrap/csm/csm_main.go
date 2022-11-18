@@ -3,6 +3,7 @@ package csm
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
@@ -216,12 +217,14 @@ func addAssociations(ctx context.Context, b *base.Base, proEid, emailEid, stream
 	//contact company association
 	_, err = b.AssociationAdd(ctx, b.ContactEntity.ID, b.CompanyEntity.ID)
 	if err != nil {
-		return err
+		log.Println("ignoring error here. because the contraint might fail if it is alreay added in CRP")
+		//return err
 	}
 
 	//task approvals association
 	_, err = b.AssociationAdd(ctx, taskEID.ID, approvalsEID.ID)
 	if err != nil {
+		log.Println("ignoring error here. because the contraint might fail if it is alreay added in CRP")
 		return err
 	}
 
