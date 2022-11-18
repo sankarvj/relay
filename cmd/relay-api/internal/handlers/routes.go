@@ -118,6 +118,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities", e.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities", e.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/home", e.Home, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/dash", e.Dash, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Retrieve, mid.Authenticate(authenticator))
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id", e.Update, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("PUT", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/meta/:ls", e.UpdateLS, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))

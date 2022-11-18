@@ -96,6 +96,41 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, homeDetail, http.StatusOK)
 }
 
+func (e *Entity) Dash(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Dash")
+	defer span.End()
+
+	entities, err := entity.TeamEntities(ctx, params["account_id"], params["team_id"], []int{}, e.db)
+	if err != nil {
+		return err
+	}
+
+	taskEntities := make([]entity.ViewModelEntity, 0)
+	approvalEntities := make([]entity.ViewModelEntity, 0)
+	streamEntities := make([]entity.ViewModelEntity, 0)
+	for _, entt := range entities {
+		if entt.Category == entity.CategoryTask {
+			taskEntities = append(taskEntities, createViewModelEntity(entt))
+		} else if entt.Category == entity.CategoryApprovals {
+			approvalEntities = append(approvalEntities, createViewModelEntity(entt))
+		} else if entt.Category == entity.CategoryEvent {
+			streamEntities = append(streamEntities, createViewModelEntity(entt))
+		}
+	}
+
+	dashDetail := struct {
+		TaskEntities     []entity.ViewModelEntity `json:"task_entities"`
+		ApprovalEntities []entity.ViewModelEntity `json:"approval_entities"`
+		StreamEntities   []entity.ViewModelEntity `json:"stream_entities"`
+	}{
+		taskEntities,
+		approvalEntities,
+		streamEntities,
+	}
+
+	return web.Respond(ctx, w, dashDetail, http.StatusOK)
+}
+
 // List returns all the existing entities associated with team
 func (e *Entity) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.List")
