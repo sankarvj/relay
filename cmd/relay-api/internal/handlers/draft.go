@@ -73,10 +73,14 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	accountID := uuid.New().String()
 	nc := account.NewAccount{
-		ID:      accountID,
-		Name:    dft.AccountName,
-		Domain:  hostname(dft.AccountName, dft.Host),
-		DraftID: dft.ID,
+		ID:             accountID,
+		Name:           dft.AccountName,
+		Domain:         hostname(dft.AccountName, dft.Host),
+		DraftID:        dft.ID,
+		CustomerStatus: account.StatusTrial,
+		CustomerPlan:   account.PlanPro,
+		TrailStart:     util.GetMilliSecondsFloatReduced(time.Now()), //webhooks from stripe will update the values anyways
+		TrailEnd:       util.AddMilliSecondsFloat(time.Now(), 13),    //webhooks from stripe will update the values anyways
 	}
 
 	acc, err := account.Create(ctx, a.db, nc, time.Now())

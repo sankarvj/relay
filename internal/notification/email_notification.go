@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"path"
-	"path/filepath"
-	"runtime"
 
 	"github.com/jmoiron/sqlx"
 	eml "gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
@@ -57,25 +54,23 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		template = "update.html"
 	}
 
-	_, b, _, _ := runtime.Caller(0)
-	basepath := filepath.Dir(b)
-	dir := path.Join(path.Dir(basepath), "..")
-
 	//check me before deployment
-	log.Println("dir ", dir)
+	// _, b, _, _ := runtime.Caller(0)
+	// basepath := filepath.Dir(b)
+	// dir := path.Join(path.Dir(basepath), "..")
+	// log.Println("dir ", dir)
 	localTesting := false
-	for _, toEmail := range emNotif.To {
-		if toEmail == "vijayasankarj@gmail.com" {
-			localTesting = true
-			break
-		}
-	}
+	// for _, toEmail := range emNotif.To {
+	// 	if toEmail == "vijayasankarj@gmail.com" {
+	// 		localTesting = true
+	// 		break
+	// 	}
+	// }
 	if localTesting {
 		log.Println("Magic Link: ", templateData.MagicLink)
 		return nil
 	}
 
-	log.Println("GOT THE templateData", templateData)
 	err := emNotif.ParseTemplate(fmt.Sprintf("templates/%s", template), templateData)
 	if err != nil {
 		log.Println("GOT THE ERROR", err)

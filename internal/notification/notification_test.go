@@ -62,3 +62,21 @@ func TestFirebase(t *testing.T) {
 
 	}
 }
+
+func TestHostName(t *testing.T) {
+
+	t.Log("Check hostname parse")
+	{
+
+		t.Log("\tshould parse the url properly")
+		{
+
+			hostname := notification.HostN("workbaseONE", "csp.workbaseone.com")
+			if hostname != "workbaseone.workbaseone.com" {
+				t.Fatalf("\tshould be able to parse URL %s", hostname)
+			}
+
+		}
+
+	}
+}

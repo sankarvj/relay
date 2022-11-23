@@ -185,9 +185,15 @@ func run() error {
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"POST", "GET", "PUT", "OPTIONS", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type", "X-Requested-With", "Authorization"},
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions},
+		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	})
 

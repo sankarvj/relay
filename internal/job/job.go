@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -28,7 +27,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 	"gitlab.com/vjsideprojects/relay/internal/team"
-	"gitlab.com/vjsideprojects/relay/internal/timeseries"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
@@ -135,7 +133,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//act on notifications
 	if m.State < stream.StateNotification {
-		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.Type, it.UserID, nil, it.Fields(), m.Source, notification.TypeCreated)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on notification update. error: ", err)
 			return err
@@ -215,7 +213,7 @@ func (j *Job) eventItemUpdated(m *stream.Message) error {
 
 	//act on notifications
 	if m.State < stream.StateNotification {
-		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, m.ItemID, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, m.ItemID, it.Type, it.UserID, m.OldFields, m.NewFields, m.Source, notification.TypeUpdated)
 		if err != nil {
 			log.Println("***>***> EventItemUpdated: unexpected/unhandled error occurred on notification update. error: ", err)
 			return err
@@ -255,7 +253,7 @@ func (j *Job) eventItemReminded(m *stream.Message) error {
 	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	//act on notifications
-	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.UserID, nil, it.Fields(), m.Source, notification.TypeReminder)
+	err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.Type, it.UserID, nil, it.Fields(), m.Source, notification.TypeReminder)
 	if err != nil {
 		log.Println("***>***> EventItemReminded: unexpected/unhandled error occurred on notification update. error: ", err)
 		return err
@@ -378,7 +376,7 @@ func (j *Job) eventChatConvAdded(m *stream.Message) error {
 
 	//act on notifications
 	if m.State < stream.StateNotification {
-		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, &m.UserID, nil, entity.KeyValueMap(valueAddedFields), m.Source, notification.TypeChatConversationAdded)
+		err = j.actOnNotifications(ctx, m.AccountID, m.UserID, it.UpdatedAt, e, it.ID, it.Type, &m.UserID, nil, entity.KeyValueMap(valueAddedFields), m.Source, notification.TypeChatConversationAdded)
 		if err != nil {
 			log.Println("***>***> EventChatConvAdded: unexpected/unhandled error occurred on notification update. error: ", err)
 			return err
@@ -414,48 +412,54 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
-		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred when retriving entity on job. error:", err)
+		log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred when retriving entity on job. error:", err)
 		return err
 	}
-	ts, err := timeseries.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
+	it, err := item.Retrieve(ctx, m.AccountID, m.EntityID, m.ItemID, j.DB)
 	if err != nil {
-		log.Println("***>***> EventEventCreated: unexpected/unhandled error occurred while retriving item on job. error:", err)
+		log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while retriving item on job. error:", err)
 		return err
 	}
 
-	if ts.Identifier != nil {
-		identifierElements := strings.Split(*ts.Identifier, ":")
-		if len(identifierElements) == 3 {
-			conditionFields := make([]graphdb.Field, 0)
-			entityName := identifierElements[0]
-			fieldKey := identifierElements[1]
-			fieldValue := identifierElements[1]
+	e.ValueAdd(it.Fields())
+	nameKeyMap := entity.NameKeyMap(e.EasyFields())
+	tagsKey := nameKeyMap["tags"]
 
-			e, err := entity.RetrieveByName(ctx, m.AccountID, entityName, j.DB)
-			if err != nil {
-				return err
-			}
-			exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, fieldKey, fieldValue)
-			filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
+	contactEmailorID := tsIdentifier(it.Fields()[tagsKey])
+	if contactEmailorID != nil {
+		for _, f := range e.EasyFields() {
+			if f.Who == entity.WhoContacts {
+				exp := fmt.Sprintf("{{%s.%s}} eq {%s}", f.RefID, f.EmailGex(), *contactEmailorID)
+				filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
+				conditionFields := make([]graphdb.Field, 0)
+				for _, c := range filter.Conditions {
+					conditionFields = append(conditionFields, graphdb.Field{
+						Expression: graphdb.Operator(c.Expression),
+						Key:        f.EmailGex(),
+						DataType:   graphdb.TypeString,
+						Value:      c.Term,
+					})
+				}
 
-			fields := e.OnlyVisibleFields()
-			for _, f := range fields {
-				if condition, ok := filter.Conditions[f.Key]; ok {
-					conditionFields = append(conditionFields, f.MakeGraphField(condition.Term, condition.Expression, false))
+				gSegment := graphdb.BuildGNode(m.AccountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
+				result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
+				if err != nil {
+					return err
+				}
+
+				associatedContactIds := util.ParseGraphResultWithStrIDs(result)
+				m.Source[f.RefID] = associatedContactIds
+				fieldsMap := it.Fields()
+				fieldsMap[f.Key] = associatedContactIds
+				_, err = item.UpdateFields(ctx, j.DB, m.AccountID, e.ID, it.ID, fieldsMap)
+				if err != nil {
+					log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while updating item with identifier. error:", err)
 				}
 			}
-
-			gSegment := graphdb.BuildGNode(m.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
-			result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
-			if err != nil {
-				return err
-			}
-
-			m.Source[e.ID] = util.ParseGraphResultWithStrIDs(result)
 		}
 	}
 
-	valueAddedFields := e.ValueAdd(ts.Fields())
+	valueAddedFields := e.ValueAdd(it.Fields())
 	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
 	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
@@ -479,7 +483,11 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
 		if err != nil {
 			return err
+		} else {
+			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
 		}
+		log.Printf("job : started : m -- %+v", m)
+		log.Printf("job : started : valueAddedFields -- %+v", valueAddedFields)
 	}
 
 	return nil
@@ -799,7 +807,7 @@ func (j Job) actOnWho(ctx context.Context, accountID, teamID, userID, entityID, 
 	return nil
 }
 
-func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, itemUpdatedAt int64, e entity.Entity, itemID string, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string][]string, notificationType notification.NotificationType) error {
+func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, itemUpdatedAt int64, e entity.Entity, itemID string, itType int, itemCreatorID *string, oldFields, newFields map[string]interface{}, source map[string][]string, notificationType notification.NotificationType) error {
 	log.Println("*********> debug internal.job actOnNotifications kicked in")
 	if e.Category == entity.CategoryNotification { // skip notification when a notification is created :P
 		return nil
@@ -808,6 +816,10 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 	acc, err := account.Retrieve(ctx, j.DB, accountID)
 	if err != nil {
 		return err
+	}
+
+	if itType == item.TypeDummy {
+		return nil
 	}
 
 	dirtyFields := item.Diff(oldFields, newFields)

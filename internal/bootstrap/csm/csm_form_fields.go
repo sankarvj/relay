@@ -336,12 +336,12 @@ func MeetingFields(contactEntityID, companyEntityID, projectEntityID string, con
 	return []entity.Field{titleField, summaryField, attendessField, startTimeField, endTimeField, timezoneField, createdAtField, updatedAtField, contactField, companyField, projectField}
 }
 
-func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, companyEntityKey string) []entity.Field {
+func ActivitiesFields(contactEntityID, contactEntityKey, contactEntityEmailKey, companyEntityID, companyEntityKey string) []entity.Field {
 	activityNameFieldID := uuid.New().String()
 	activityNameField := entity.Field{
 		Key:         activityNameFieldID,
-		Name:        "activity_name",
-		DisplayName: "Activity Name",
+		Name:        "name",
+		DisplayName: "Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
@@ -351,7 +351,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 	activityDescFieldID := uuid.New().String()
 	activityDescField := entity.Field{
 		Key:         activityDescFieldID,
-		Name:        "activity_desc",
+		Name:        "description",
 		DisplayName: "Description",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
@@ -400,7 +400,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       contactEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaMultiChoice: "true"},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaKeyEmailGex: contactEntityEmailKey, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",
@@ -431,10 +431,10 @@ func ActivitiesFields(contactEntityID, contactEntityKey, companyEntityID, compan
 
 func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1, companyID1 string) map[string]interface{} {
 	actVals := map[string]interface{}{
-		"activity_name":        name,
-		"activity_desc":        desc,
-		"icon":                 "🔥",
-		"tagsField":            []interface{}{"super"},
+		"name":                 name,
+		"description":          desc,
+		"icon":                 "🧲",
+		"tags":                 []interface{}{"super"},
 		"associated_contacts":  []interface{}{contactID1},
 		"associated_companies": []interface{}{companyID1},
 	}

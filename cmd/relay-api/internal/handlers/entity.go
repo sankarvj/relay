@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,7 +81,8 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		UserSetting    user.ViewModelUserSetting `json:"user_setting"`
 		Role           string                    `json:"role"`
 		Plan           int                       `json:"plan"`
-		TrialEndsIn    float64                   `json:"trial_ends_in"`
+		Status         string                    `json:"status"`
+		TrailEnd       float64                   `json:"trail_end"`
 	}{
 		acc.Name,
 		teamID,
@@ -89,8 +91,9 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		createViewModelUser(*cu, acc.ID),
 		createViewModelUS(cus),
 		role,
-		acc.Plan,
-		time.Since(acc.Expiry).Hours() / 24,
+		acc.CustomerPlan,
+		acc.CustomerStatus,
+		-math.Trunc(time.Since(util.ConvertMilliToTime(int64(acc.TrailEnd*1000))).Hours() / 24),
 	}
 
 	return web.Respond(ctx, w, homeDetail, http.StatusOK)

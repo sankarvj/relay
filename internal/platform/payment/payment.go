@@ -39,13 +39,13 @@ func InitStripe(ctx context.Context, accountID, userID string, db *sqlx.DB) erro
 		return err
 	}
 
-	trialEndsAt, err := startTrail(cusID)
+	trailStart, trialEnd, err := startTrail(cusID)
 	if err != nil {
 		return err
 	}
 
 	//update the account with e-mail and cusID and set the plan as pro for trail
-	err = account.UpdateStripeCustomer(ctx, accountID, cusID, user.Email, trialEndsAt, account.PlanPro, db)
+	err = account.UpdateStripeCustomer(ctx, accountID, cusID, user.Email, account.StatusTrial, account.PlanPro, trailStart, trialEnd, db)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func addStripeCustomer(email string) (string, error) {
 	return result.ID, nil
 }
 
-func startTrail(cusID string) (int64, error) {
+func startTrail(cusID string) (int64, int64, error) {
 	stripe.Key = stripeTestKey
 	items := []*stripe.SubscriptionItemsParams{
 		{
@@ -102,10 +102,10 @@ func startTrail(cusID string) (int64, error) {
 	}
 	sub, err := subscription.New(params)
 	if err != nil {
-		return util.GetMilliSeconds(time.Now()), err
+		return util.GetMilliSeconds(time.Now()), util.GetMilliSeconds(time.Now()), err
 	}
 
-	return sub.TrialEnd, err
+	return sub.TrialStart, sub.TrialEnd, err
 }
 
 func billingLink(accountID, accountDomain string) string {

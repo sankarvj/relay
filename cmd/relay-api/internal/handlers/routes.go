@@ -258,7 +258,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 		sdb:           sdb,
 		authenticator: authenticator,
 	}
-	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/timeseries", ts.Create)
+	app.Handle("POST", "/v1/streams", ts.Create, mid.Authenticate(authenticator))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries", ts.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/:chart_id", ts.Chart, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/timeseries/onme", ts.OnMe, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))

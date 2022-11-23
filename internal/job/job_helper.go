@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -164,6 +165,29 @@ func (j Job) kabali(ctx context.Context, accountID, teamID, userID, entityID, it
 	}
 	j.baseEntityID = existingBE
 	j.baseItemIDs = existingBIDS
+
+	return nil
+}
+
+func tsIdentifier(tagsIntf interface{}) *string {
+	if tagsIntf == nil {
+		return nil
+	}
+
+	tags := tagsIntf.([]interface{})
+
+	for _, t := range tags {
+		identifiers := strings.Split(t.(string), ":")
+		if len(identifiers) == 2 { //identifier spotted
+			key := identifiers[0]
+			value := identifiers[1]
+			if key == "email" || key == "contact" { // contact spotted
+				return &value
+			} else if key == "company" || key == "account" { // company spotted
+
+			}
+		}
+	}
 
 	return nil
 }

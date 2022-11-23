@@ -64,9 +64,11 @@ func (b *Bill) Events(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	switch event.Type {
 	case "customer.subscription.created":
 		customerID := event.Data.Object["customer"].(string)
+		trialStart, trialEnd := trailStartnEnd(event.Data.Object)
+		status := event.Data.Object["status"].(string)
 		product, quantity := product(event)
 
-		err = updateAccPlan(ctx, customerID, product, quantity, b.db)
+		err = updateAccPlan(ctx, customerID, status, product, quantity, trialStart, trialEnd, b.db)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  updating plan to the existing account failed. %v\n", err)
 			return err
@@ -83,9 +85,18 @@ func (b *Bill) Events(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		log.Printf("trial_will_end event %+v", event)
 	case "customer.subscription.updated":
 		customerID := event.Data.Object["customer"].(string)
+		trialStart, trialEnd := trailStartnEnd(event.Data.Object)
+		status := event.Data.Object["status"].(string)
 		product, quantity := product(event)
 
-		err = updateAccPlan(ctx, customerID, product, quantity, b.db)
+		log.Printf("product %+v", customerID)
+		log.Printf("product %+v", product)
+		log.Printf("quantity %+v", quantity)
+		log.Printf("status %+v", status)
+		log.Printf("trialStart %+v", trialStart)
+		log.Printf("trialEnd %+v", trialEnd)
+
+		err = updateAccPlan(ctx, customerID, status, product, quantity, trialStart, trialEnd, b.db)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  updating plan to the existing account failed. %v\n", err)
 			return err
@@ -117,8 +128,8 @@ func (b *Bill) Portal(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	return web.Respond(ctx, w, url, http.StatusOK)
 }
 
-func product(event stripe.Event) (string, int) {
-	var quantity int
+func product(event stripe.Event) (string, float64) {
+	var quantity float64
 	var product string
 	items := event.Data.Object["items"].(map[string]interface{})
 	if items != nil {
@@ -128,7 +139,7 @@ func product(event stripe.Event) (string, int) {
 
 			firstData := data[0].(map[string]interface{})
 			if firstData != nil {
-				quantity = firstData["quantity"].(int)
+				quantity = firstData["quantity"].(float64)
 				fprice := firstData["price"].(map[string]interface{})
 				if fprice != nil {
 					// price = fprice["id"].(string)
@@ -140,15 +151,16 @@ func product(event stripe.Event) (string, int) {
 	return product, quantity
 }
 
-func updateAccPlan(ctx context.Context, stripeCusID, stripeProductID string, quantity int, db *sqlx.DB) error {
+func updateAccPlan(ctx context.Context, stripeCusID, status, product string, quantity, trailStart, trailEnd float64, db *sqlx.DB) error {
 	acc, err := account.RetrieveByStripeID(ctx, stripeCusID, db)
 	if err != nil {
 		return err
 	}
-	err = account.UpdateStripePlan(ctx, acc.ID, planForProduct(stripeProductID), quantity, db)
+	err = account.UpdateStripePlan(ctx, acc.ID, status, planForProduct(product), int(quantity), int64(trailStart), int64(trailEnd), db)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -157,7 +169,7 @@ func moveToFreePlan(ctx context.Context, stripeCusID string, db *sqlx.DB) error 
 	if err != nil {
 		return err
 	}
-	err = account.UpdateStripePlan(ctx, acc.ID, account.PlanFree, 2, db)
+	err = account.UpdateStripePlan(ctx, acc.ID, account.StatusActive, account.PlanFree, int(2), int64(-1), int64(-1), db)
 	if err != nil {
 		return err
 	}
@@ -176,4 +188,15 @@ func planForProduct(stripeProductID string) int {
 		log.Println("unexpected error: unknown plan reached.... sending pro")
 		return account.PlanPro
 	}
+}
+
+func trailStartnEnd(obj map[string]interface{}) (float64, float64) {
+	var trialStart, trialEnd float64
+	if obj["trial_start"] != nil {
+		trialStart = obj["trial_start"].(float64)
+	}
+	if obj["trial_end"] != nil {
+		trialEnd = obj["trial_end"].(float64)
+	}
+	return trialStart, trialEnd
 }

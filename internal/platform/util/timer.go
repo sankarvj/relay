@@ -19,6 +19,14 @@ func GetMilliSecondsFloat(now time.Time) float64 { // use this until redis g add
 	return float64(GetMilliSeconds(now))
 }
 
+func GetMilliSecondsFloatReduced(now time.Time) float64 { // use this until redis g adds support for int64 in ToString method
+	return float64(GetMilliSeconds(now)) / 1000
+}
+
+func AddMilliSecondsFloat(now time.Time, days int) float64 { // use this until redis g adds support for int64 in ToString method
+	return float64(GetMilliSecondsFloatReduced(now.AddDate(0, 0, days)))
+}
+
 func GetMilliSecondsStr(now time.Time) string {
 	return fmt.Sprintf("%d", GetMilliSeconds(now))
 }
@@ -53,6 +61,8 @@ func ConvertMillisToTime(millis string) time.Time {
 	return time.Unix(0, millsL*int64(time.Millisecond))
 }
 
-func ConvertMilliToTime(millis int64) time.Time {
-	return time.Unix(0, millis*int64(time.Millisecond))
+func ConvertMilliToTime(tm int64) time.Time {
+	sec := tm / 1000
+	msec := tm % 1000
+	return time.Unix(sec, msec*int64(time.Millisecond))
 }

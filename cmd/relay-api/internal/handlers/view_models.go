@@ -21,16 +21,16 @@ import (
 )
 
 type ViewModelAccount struct {
-	ID     string    `json:"id"`
-	Plan   int       `json:"plan"`
-	Expiry time.Time `json:"expiry"`
+	ID     string `json:"id"`
+	Plan   int    `json:"plan"`
+	Status string `json:"status"`
 }
 
 func createViewModelAccount(acc *account.Account) ViewModelAccount {
 	return ViewModelAccount{
 		ID:     acc.ID,
-		Plan:   acc.Plan,
-		Expiry: acc.Expiry,
+		Plan:   acc.CustomerPlan,
+		Status: acc.CustomerStatus,
 	}
 }
 

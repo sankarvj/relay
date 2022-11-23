@@ -21,6 +21,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
 )
 
@@ -40,31 +41,22 @@ func (ts *Timeseries) Create(ctx context.Context, w http.ResponseWriter, r *http
 	if err := web.Decode(r, &ne); err != nil {
 		return errors.Wrap(err, "")
 	}
-	accountID := params["account_id"]
-	entityName := strValue(ne.Body["module"])
 
-	tsData, err := event.Process(ctx, accountID, entityName, ne.Body, log, ts.db)
+	//events pass accountID instead of
+	accountID, err := user.RetrieveCurrentUserID(ctx)
+	if err != nil {
+		return errors.Wrap(err, "token invalid")
+	}
+
+	it, err := event.Process(ctx, accountID, ne, log, ts.db)
 	if err != nil {
 		return errors.Wrapf(err, "process failed")
 	}
 
-	if tsData.OldData == nil && tsData.NewData != nil {
-		log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, ts.db, accountID, "", tsData.NewData.EntityID, tsData.NewData.ID, tsData.NewData.Fields(), nil))
-		if err != nil {
-			log.Println("processEvent : errored : sqs streaming", err)
-		}
-		log.Println("processEvent : completed : sqs streaming")
-	} else if tsData.OldData != nil && tsData.NewData != nil {
-		log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, ts.db, accountID, "", tsData.NewData.EntityID, tsData.NewData.ID, tsData.NewData.Fields(), tsData.OldData.Fields()))
-		if err != nil {
-			log.Println("processEvent : errored : sqs streaming", err)
-		}
-		log.Println("processEvent : completed : sqs streaming")
-	}
+	log.Printf("processEvent : started : sqs streaming -- %+v", it)
+	go job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, ts.db, accountID, *it.UserID, it.EntityID, it.ID, it.Fields(), nil))
 
-	return web.Respond(ctx, w, tsData.NewData, http.StatusCreated)
+	return web.Respond(ctx, w, it, http.StatusCreated)
 }
 
 func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

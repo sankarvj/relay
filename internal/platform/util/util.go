@@ -317,7 +317,7 @@ func ParseGraphResultWithStrIDs(result *rg.QueryResult) []string {
 }
 
 func ExpvarGet(key string) string {
-	val := expvar.Get("build")
+	val := expvar.Get(key)
 	if val != nil {
 		return strings.Trim(val.String(), "\"")
 	}

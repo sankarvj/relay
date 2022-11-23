@@ -36,14 +36,24 @@ type Notification interface {
 	Send(ctx context.Context, notifType NotificationType, db *sqlx.DB) error
 }
 
+func HostN(accName, input string) string {
+	return hostname(accName, input)
+}
+
 func hostname(accName, input string) string {
+
+	if !strings.HasPrefix("input", "https://") {
+		input = fmt.Sprintf("https://%s", input)
+	}
+
 	url, err := url.Parse(input)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("unexpected error occurred", input)
+		return input
 	}
 	hostname := url.Hostname()
 	for _, subDomain := range account.ExistingSubDomains {
-		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
+		hostname = strings.TrimPrefix(hostname, fmt.Sprintf("%s.", subDomain))
 	}
 
 	return fmt.Sprintf("%s.%s", strings.ToLower(accName), hostname)
