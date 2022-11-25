@@ -27,5 +27,5 @@ type NewDraft struct {
 	AccountName   string   `json:"account_name" validate:"required"`
 	BusinessEmail string   `json:"business_email" validate:"required"`
 	Teams         []string `json:"teams" validate:"required"`
-	Host          string   `json:"host" validate:"required"`
+	Host          string   `json:"host"`
 }

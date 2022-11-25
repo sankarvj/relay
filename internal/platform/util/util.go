@@ -345,3 +345,8 @@ func PickGenieID(source map[string][]string) *string {
 	}
 	return nil
 }
+
+func AccountAsHost(accName string) string {
+	accName = strings.ReplaceAll(accName, " ", "_")
+	return strings.ToLower(accName)
+}

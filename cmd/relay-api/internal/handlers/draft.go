@@ -165,12 +165,13 @@ func hostname(accName, input string) string {
 	log.Println("hostname input ", input)
 	url, err := url.Parse(input)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+		return ""
 	}
 	hostname := url.Hostname()
 	for _, subDomain := range account.ExistingSubDomains {
 		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
 	}
 
-	return fmt.Sprintf("%s.%s", strings.ToLower(accName), hostname)
+	return fmt.Sprintf("%s.%s", util.AccountAsHost(accName), hostname)
 }

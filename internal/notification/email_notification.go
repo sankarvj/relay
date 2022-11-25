@@ -30,6 +30,7 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		Name        string
 		AccountName string
 		MagicLink   string
+		Unsubscribe string
 		Requester   string
 		Body        string
 		Subject     string
@@ -37,6 +38,7 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		Name:        emNotif.Name,
 		AccountName: emNotif.AccountName,
 		MagicLink:   emNotif.MagicLink,
+		Unsubscribe: "",
 		Requester:   emNotif.Requester,
 		Body:        emNotif.Body,
 		Subject:     emNotif.Subject,
