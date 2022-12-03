@@ -15,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -119,7 +120,37 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
-	go job.NewJob(a.db, a.sdb, a.authenticator.FireBaseAdminSDK).Stream(stream.NewAccountLaunchMessage(ctx, a.db, accountID, usr.ID, draftID))
+	go a.bootApp(ctx, acc.ID, usr.ID, dft)
+	//FIX THIS
+	go job.NewJob(a.db, a.sdb, a.authenticator.FireBaseAdminSDK).Stream(stream.NewAccountLaunchMessage(ctx, a.db, accountID, usr.ID))
 
 	return web.Respond(ctx, w, userToken, http.StatusCreated)
+}
+
+func (a *Account) bootApp(ctx context.Context, accountID, userID string, dft *draft.Draft) error {
+	if util.Contains(dft.Teams, team.PredefinedTeamCRP) {
+		err := bootstrap.BootCRM(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			account.Delete(ctx, a.db, accountID)
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+
+	if util.Contains(dft.Teams, team.PredefinedTeamCSP) {
+		err := bootstrap.BootCSM(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			account.Delete(ctx, a.db, accountID)
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+
+	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
+		err := bootstrap.BootEM(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			account.Delete(ctx, a.db, accountID)
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+	draft.Delete(ctx, dft.ID, a.db)
+	return nil
 }

@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -62,53 +63,24 @@ func (j *Job) Post(msg *stream.Message) error {
 	case stream.TypeEventAdded:
 		return j.eventEventAdded(msg)
 	case stream.TypeAccountLaunch:
-		//return j.eventAccountLaunched(msg)
+		return j.eventAccountLaunched(msg)
 	}
 	return nil
 }
 
-// func (j *Job) eventAccountLaunched(m *stream.Message) error {
-// 	log.Println("***>***> Reached Account Launch ***<***<")
-// 	ctx := context.Background()
+func (j *Job) eventAccountLaunched(m *stream.Message) error {
+	log.Println("***>***> Reached Account Launch ***<***<")
+	ctx := context.Background()
 
-// 	dft, err := draft.Retrieve(ctx, m.ItemID, j.DB)
-// 	if err != nil {
-// 		return web.NewRequestError(errors.Wrap(err, "Draft not found"), http.StatusInternalServerError)
-// 	}
-
-// 	if util.Contains(dft.Teams, team.PredefinedTeamCRP) {
-// 		err = bootstrap.BootCRM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
-// 		if err != nil {
-// 			account.Delete(ctx, j.DB, m.AccountID)
-// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-// 		}
-// 	}
-
-// 	if util.Contains(dft.Teams, team.PredefinedTeamCSP) {
-// 		err = bootstrap.BootCSM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
-// 		if err != nil {
-// 			account.Delete(ctx, j.DB, m.AccountID)
-// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-// 		}
-// 	}
-
-// 	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
-// 		err = bootstrap.BootEM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
-// 		if err != nil {
-// 			account.Delete(ctx, j.DB, m.AccountID)
-// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-// 		}
-// 	}
-// 	draft.Delete(ctx, dft.ID, j.DB)
-// 	err = payment.InitStripe(ctx, m.AccountID, m.UserID, j.DB)
-// 	if err != nil {
-// 		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
-// 	} else {
-// 		log.Printf("***> trail started successfully")
-// 		log.Println("update the account with the plan name and etc...")
-// 	}
-// 	return err
-// }
+	err := payment.InitStripe(ctx, m.AccountID, m.UserID, j.DB)
+	if err != nil {
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+	} else {
+		log.Printf("***> trail started successfully")
+		log.Println("update the account with the plan name and etc...")
+	}
+	return err
+}
 
 // events
 func (j *Job) eventItemCreated(m *stream.Message) error {

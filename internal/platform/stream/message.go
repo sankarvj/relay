@@ -50,13 +50,12 @@ type Message struct {
 	State          int                    `json:"state"`
 }
 
-func NewAccountLaunchMessage(ctx context.Context, db *sqlx.DB, accountID, userID, draftID string) *Message {
+func NewAccountLaunchMessage(ctx context.Context, db *sqlx.DB, accountID, userID string) *Message {
 	m := &Message{
 		ID:        fmt.Sprintf("%s#%s", "launch", uuid.New().String()),
 		Type:      TypeAccountLaunch,
 		AccountID: accountID,
 		UserID:    userID,
-		ItemID:    draftID,
 		State:     StateQueued,
 	}
 
