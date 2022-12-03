@@ -32,6 +32,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 		authenticator: authenticator,
 	}
 
+	// user unsubscribe
+	app.Handle("GET", "/v1/unsubscribe", u.Unsubscribe)
 	// users login token
 	app.Handle("GET", "/v1/users/verify", u.Verfiy)
 	// join token

@@ -148,21 +148,20 @@ func main() {
 	lambda.Start(newEventsHandler().handleEvent)
 }
 
-func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) (events.APIGatewayProxyResponse, error) {
+func (h EventsHandler) handleEvent(ctx context.Context, payloadIntf interface{}) (events.APIGatewayProxyResponse, error) {
 	eHandler.log.Println("handleEvent : started : parse payload")
-	payload, ok := event.(map[string]interface{})
+
+	payload, ok := payloadIntf.(map[string]interface{})
 	if !ok {
 		eHandler.log.Println("handleEvent : errored : parse payload")
 		return newErrReponse(errors.New("post payload not exist"))
 	}
 
-	var body map[string]interface{}
+	var eventBody event.NewEvent
 	if payload["body"] != nil {
-		jsonStr := payload["body"].(string)
-		err := json.Unmarshal([]byte(jsonStr), &body)
+		err := json.Unmarshal([]byte(payload["body"].(string)), &eventBody)
 		if err != nil {
-			eHandler.log.Println("handleEvent : errored : parse body")
-			return newErrReponse(errors.New("post body not in proper format"))
+			return newErrReponse(errors.New("cannot parse payload"))
 		}
 	} else {
 		eHandler.log.Println("handleEvent : errored : parse body empty")
@@ -181,33 +180,17 @@ func (h EventsHandler) handleEvent(ctx context.Context, event interface{}) (even
 	}
 	eHandler.log.Println("handleEvent : completed : authentication")
 
-	return h.processEvent(ctx, accountID, body)
+	return h.processEvent(ctx, accountID, eventBody)
 }
 
-func (h EventsHandler) processEvent(ctx context.Context, accountID string, body map[string]interface{}) (events.APIGatewayProxyResponse, error) {
+func (h EventsHandler) processEvent(ctx context.Context, accountID string, eventBody event.NewEvent) (events.APIGatewayProxyResponse, error) {
 	eHandler.log.Println("processEvent : started : save event")
-	entityName := strValue(body["module"])
 
-	itEve, err := event.Process(ctx, accountID, entityName, body, eHandler.log, h.db)
+	itEve, err := event.Process(ctx, accountID, eventBody, eHandler.log, h.db)
 	if err != nil {
 		return newErrReponse(err)
 	}
-
-	if itEve.OldData == nil && itEve.NewData != nil {
-		eHandler.log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewData.EntityID, itEve.NewData.ID, itEve.NewData.Fields(), nil))
-		if err != nil {
-			eHandler.log.Println("processEvent : errored : sqs streaming", err)
-		}
-		eHandler.log.Println("processEvent : completed : sqs streaming")
-	} else if itEve.OldData != nil && itEve.NewData != nil {
-		eHandler.log.Println("processEvent : started : sqs streaming")
-		err = job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, "", itEve.NewData.EntityID, itEve.NewData.ID, itEve.NewData.Fields(), itEve.OldData.Fields()))
-		if err != nil {
-			eHandler.log.Println("processEvent : errored : sqs streaming", err)
-		}
-		eHandler.log.Println("processEvent : completed : sqs streaming")
-	}
+	go job.NewJob(h.db, h.sdb, h.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, h.db, accountID, *itEve.UserID, itEve.EntityID, itEve.ID))
 
 	return newSuccessReponse("success")
 }

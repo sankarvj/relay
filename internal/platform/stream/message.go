@@ -19,6 +19,7 @@ const (
 	TypeEmailConversationAdded = 6
 	TypeChatConversationAdded  = 7
 	TypeEventAdded             = 8
+	TypeAccountLaunch          = 9
 )
 
 const (
@@ -47,6 +48,20 @@ type Message struct {
 	Meta           map[string]interface{} `json:"meta"`
 	Comment        string                 `json:"comment"`
 	State          int                    `json:"state"`
+}
+
+func NewAccountLaunchMessage(ctx context.Context, db *sqlx.DB, accountID, userID, draftID string) *Message {
+	m := &Message{
+		ID:        fmt.Sprintf("%s#%s", "launch", uuid.New().String()),
+		Type:      TypeAccountLaunch,
+		AccountID: accountID,
+		UserID:    userID,
+		ItemID:    draftID,
+		State:     StateQueued,
+	}
+
+	add(ctx, db, m, "Queued", StateQueued)
+	return m
 }
 
 func NewCreteItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, source map[string][]string) *Message {
@@ -158,7 +173,7 @@ func NewChatConversationMessage(ctx context.Context, db *sqlx.DB, accountID, use
 	return m
 }
 
-func NewEventItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string, newFields, oldFields map[string]interface{}) *Message {
+func NewEventItemMessage(ctx context.Context, db *sqlx.DB, accountID, userID, entityID, itemID string) *Message {
 	m := &Message{
 		ID:        fmt.Sprintf("%s#%s", "event", uuid.New().String()),
 		Type:      TypeEventAdded,

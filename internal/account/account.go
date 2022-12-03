@@ -22,7 +22,7 @@ var (
 	ErrInvalidID = errors.New("ID is not in its proper form")
 )
 
-var ExistingSubDomains = []string{"www", "app", "csp", "crp", "emp", "client", "clients", "customer", "customers", "employee", "employees"}
+var ExistingSubDomains = []string{"www", "app", "api", "csp", "crp", "emp", "client", "clients", "customer", "customers", "employee", "employees", "success", "event", "events"}
 
 // List retrieves a list of existing accounts from the database.
 func List(ctx context.Context, accountIDs []string, db *sqlx.DB) ([]Account, error) {

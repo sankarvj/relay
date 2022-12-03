@@ -193,17 +193,17 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 
 func addEvents(ctx context.Context, b *base.Base) error {
 	var err error
-	b.DAUEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDailyActiveUsers, "Daily Active Users", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
+	b.DAUEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityDailyActiveUsers, "Daily Active Users", entity.CategoryTimeSeries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcLatest, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPageVisits, "Page Visits", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPageVisits, "Page Visits", entity.CategoryTimeSeries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpDaily))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMilestones, "Milestones or Goals", entity.CategoryTimeseries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
+	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityMilestones, "Milestones or Goals", entity.CategoryTimeSeries, entity.StateAccountLevel, false, false, false, events(entity.MetaCalcSum, entity.MetaRollUpAlways))
 	if err != nil {
 		return err
 	}
@@ -482,7 +482,7 @@ func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, act
 		"associated_companies": activityEntity.Key("associated_companies"),
 		"associated_contacts":  activityEntity.Key("associated_contacts"),
 	}
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "activity_name", chart.TypeRod).
+	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "name", chart.TypeRod).
 		AddAdvancedMap(advActivityMap).
 		SetDurationAllTime().
 		SetGrpLogicField().

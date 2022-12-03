@@ -22,6 +22,7 @@ func loadSeries(ctx context.Context, ch chart.Chart, exp string, stTime, endTime
 }
 
 func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
+
 	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db, sdb)
 	if err != nil {
 		return nil, err
@@ -65,9 +66,6 @@ func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseIt
 				}
 				reference.ChoicesMaker(&filterByField, "", reference.ItemChoices(&filterByField, refItems, map[string]string{}))
 			} else if f.IsNode() {
-				log.Printf("ch ---> %+v ", ch)
-				log.Println("baseEntityID ", baseEntityID)
-				log.Println("baseItemID ", baseItemID)
 				nodes, err := loadNodes(ctx, ch.AccountID, baseEntityID, baseItemID, db, sdb)
 				if err != nil {
 					return nil, err

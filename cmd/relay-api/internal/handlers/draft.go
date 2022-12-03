@@ -2,11 +2,7 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,10 +12,9 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
-	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
+	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
-	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/token"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -75,7 +70,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	nc := account.NewAccount{
 		ID:             accountID,
 		Name:           dft.AccountName,
-		Domain:         hostname(dft.AccountName, dft.Host),
+		Domain:         util.Hostname(dft.AccountName, dft.Host),
 		DraftID:        dft.ID,
 		CustomerStatus: account.StatusTrial,
 		CustomerPlan:   account.PlanPro,
@@ -124,54 +119,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
 
-	if util.Contains(dft.Teams, team.PredefinedTeamCRP) {
-		err = bootstrap.BootCRM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			account.Delete(ctx, a.db, acc.ID)
-			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-		}
-	}
-
-	if util.Contains(dft.Teams, team.PredefinedTeamCSP) {
-		err = bootstrap.BootCSM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			account.Delete(ctx, a.db, acc.ID)
-			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-		}
-	}
-
-	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
-		err = bootstrap.BootEM(accountID, usr.ID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
-		if err != nil {
-			account.Delete(ctx, a.db, acc.ID)
-			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
-		}
-	}
-
-	draft.Delete(ctx, draftID, a.db)
-
-	err = payment.InitStripe(ctx, accountID, usr.ID, a.db)
-	if err != nil {
-		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
-	} else {
-		log.Printf("***> trail started successfully")
-		log.Println("update the account with the plan name and etc...")
-	}
+	go job.NewJob(a.db, a.sdb, a.authenticator.FireBaseAdminSDK).Stream(stream.NewAccountLaunchMessage(ctx, a.db, accountID, usr.ID, draftID))
 
 	return web.Respond(ctx, w, userToken, http.StatusCreated)
-}
-
-func hostname(accName, input string) string {
-	log.Println("hostname input ", input)
-	url, err := url.Parse(input)
-	if err != nil {
-		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
-		return ""
-	}
-	hostname := url.Hostname()
-	for _, subDomain := range account.ExistingSubDomains {
-		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
-	}
-
-	return fmt.Sprintf("%s.%s", util.AccountAsHost(accName), hostname)
 }

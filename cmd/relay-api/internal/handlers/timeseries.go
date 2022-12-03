@@ -53,8 +53,9 @@ func (ts *Timeseries) Create(ctx context.Context, w http.ResponseWriter, r *http
 		return errors.Wrapf(err, "process failed")
 	}
 
-	log.Printf("processEvent : started : sqs streaming -- %+v", it)
-	go job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, ts.db, accountID, *it.UserID, it.EntityID, it.ID, it.Fields(), nil))
+	// log.Printf("processEvent : started : sqs streaming -- %+v", it)
+	go job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewCreteItemMessage(ctx, ts.db, accountID, *it.UserID, it.EntityID, it.ID, nil))
+	//go job.NewJob(ts.db, ts.sdb, ts.authenticator.FireBaseAdminSDK).Stream(stream.NewEventItemMessage(ctx, ts.db, accountID, *it.UserID, it.EntityID, it.ID))
 
 	return web.Respond(ctx, w, it, http.StatusCreated)
 }

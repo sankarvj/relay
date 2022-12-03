@@ -359,16 +359,6 @@ func ActivitiesFields(contactEntityID, contactEntityKey, contactEntityEmailKey, 
 		Who:         entity.WhoDesc,
 	}
 
-	timeOfEventFieldID := uuid.New().String()
-	timeOfEventField := entity.Field{
-		Key:         timeOfEventFieldID,
-		Name:        "time",
-		DisplayName: "Time",
-		DomType:     entity.DomText,
-		DataType:    entity.TypeDateTime,
-		Who:         entity.WhoStartTime,
-	}
-
 	iconFieldID := uuid.New().String()
 	iconField := entity.Field{
 		Key:         iconFieldID,
@@ -377,19 +367,6 @@ func ActivitiesFields(contactEntityID, contactEntityKey, contactEntityEmailKey, 
 		DomType:     entity.DomImage,
 		DataType:    entity.TypeString,
 		Who:         entity.WhoIcon,
-	}
-
-	tagsFieldID := uuid.New().String()
-	tagsField := entity.Field{
-		Key:         tagsFieldID,
-		Name:        "tags",
-		DisplayName: "Tags",
-		DataType:    entity.TypeList,
-		DomType:     entity.DomMultiSelect,
-		Field: &entity.Field{
-			Key:      "id",
-			DataType: entity.TypeString,
-		},
 	}
 
 	contactsFieldID := uuid.New().String()
@@ -409,24 +386,7 @@ func ActivitiesFields(contactEntityID, contactEntityKey, contactEntityEmailKey, 
 		Who: entity.WhoContacts,
 	}
 
-	companyFieldID := uuid.New().String()
-	companyField := entity.Field{
-		Key:         companyFieldID,
-		Name:        "associated_companies",
-		DisplayName: "Associated Companies",
-		DomType:     entity.DomAutoComplete,
-		DataType:    entity.TypeReference,
-		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-		Who: entity.WhoCompanies,
-	}
-
-	return []entity.Field{activityNameField, activityDescField, timeOfEventField, tagsField, contactsField, companyField, iconField}
+	return []entity.Field{activityNameField, activityDescField, contactsField, iconField}
 }
 
 func ActivitiesVals(activityEntity entity.Entity, name, desc string, contactID1, companyID1 string) map[string]interface{} {

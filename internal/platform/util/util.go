@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/mail"
+	"net/url"
 	"strconv"
 	"strings"
 
 	pluralize "github.com/gertd/go-pluralize"
 	rg "github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 )
 
 const (
@@ -349,4 +351,21 @@ func PickGenieID(source map[string][]string) *string {
 func AccountAsHost(accName string) string {
 	accName = strings.ReplaceAll(accName, " ", "_")
 	return strings.ToLower(accName)
+}
+
+func Hostname(accName, input string) string {
+	log.Println("hostname input ", input)
+	url, err := url.Parse(input)
+	if err != nil {
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+		return "app.workbaseone.com"
+	}
+	hostname := url.Hostname()
+	for _, subDomain := range account.ExistingSubDomains {
+		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
+	}
+	log.Println(" hostname:----: ", hostname)
+	//firebase is not supporting account as host.. using the workbaseone
+	//return fmt.Sprintf("%s.%s", util.AccountAsHost(accName), hostname)
+	return "app.workbaseone.com"
 }

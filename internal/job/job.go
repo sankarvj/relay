@@ -61,14 +61,63 @@ func (j *Job) Post(msg *stream.Message) error {
 		return j.eventChatConvAdded(msg)
 	case stream.TypeEventAdded:
 		return j.eventEventAdded(msg)
+	case stream.TypeAccountLaunch:
+		//return j.eventAccountLaunched(msg)
 	}
 	return nil
 }
+
+// func (j *Job) eventAccountLaunched(m *stream.Message) error {
+// 	log.Println("***>***> Reached Account Launch ***<***<")
+// 	ctx := context.Background()
+
+// 	dft, err := draft.Retrieve(ctx, m.ItemID, j.DB)
+// 	if err != nil {
+// 		return web.NewRequestError(errors.Wrap(err, "Draft not found"), http.StatusInternalServerError)
+// 	}
+
+// 	if util.Contains(dft.Teams, team.PredefinedTeamCRP) {
+// 		err = bootstrap.BootCRM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
+// 		if err != nil {
+// 			account.Delete(ctx, j.DB, m.AccountID)
+// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+// 		}
+// 	}
+
+// 	if util.Contains(dft.Teams, team.PredefinedTeamCSP) {
+// 		err = bootstrap.BootCSM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
+// 		if err != nil {
+// 			account.Delete(ctx, j.DB, m.AccountID)
+// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+// 		}
+// 	}
+
+// 	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
+// 		err = bootstrap.BootEM(m.AccountID, m.UserID, j.DB, j.SDB, j.FirebaseSDKPath)
+// 		if err != nil {
+// 			account.Delete(ctx, j.DB, m.AccountID)
+// 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+// 		}
+// 	}
+// 	draft.Delete(ctx, dft.ID, j.DB)
+// 	err = payment.InitStripe(ctx, m.AccountID, m.UserID, j.DB)
+// 	if err != nil {
+// 		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+// 	} else {
+// 		log.Printf("***> trail started successfully")
+// 		log.Println("update the account with the plan name and etc...")
+// 	}
+// 	return err
+// }
 
 // events
 func (j *Job) eventItemCreated(m *stream.Message) error {
 	log.Println("***>***> Reached EventItemCreated ***<***<")
 	ctx := context.Background()
+
+	if m.Source == nil {
+		m.Source = make(map[string][]string, 0)
+	}
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
@@ -111,7 +160,7 @@ func (j *Job) eventItemCreated(m *stream.Message) error {
 
 	//categories such as email,meeting,members
 	if m.State < stream.StateCategory {
-		err = actOnCategories(ctx, m.AccountID, m.UserID, e, it, valueAddedFields, j.DB, j.SDB)
+		err = actOnCategories(ctx, m.AccountID, m.UserID, m.Source, e, it, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
 			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnIntegrations. error: ", err)
 			return err
@@ -421,73 +470,95 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 		return err
 	}
 
-	e.ValueAdd(it.Fields())
-	nameKeyMap := entity.NameKeyMap(e.EasyFields())
-	tagsKey := nameKeyMap["tags"]
+	identifier := it.Fields()["identifier"]
+	var associatedContactIds []string
 
-	contactEmailorID := tsIdentifier(it.Fields()[tagsKey])
-	if contactEmailorID != nil {
+	if identifier != nil {
+		contactEmailorID := identifier.(string)
 		for _, f := range e.EasyFields() {
 			if f.Who == entity.WhoContacts {
-				exp := fmt.Sprintf("{{%s.%s}} eq {%s}", f.RefID, f.EmailGex(), *contactEmailorID)
-				filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
-				conditionFields := make([]graphdb.Field, 0)
-				for _, c := range filter.Conditions {
-					conditionFields = append(conditionFields, graphdb.Field{
-						Expression: graphdb.Operator(c.Expression),
-						Key:        f.EmailGex(),
-						DataType:   graphdb.TypeString,
-						Value:      c.Term,
-					})
+
+				//try retrive from cache
+				cacheKey := fmt.Sprintf("%s.%s.%s", m.AccountID, f.RefID, contactEmailorID)
+				itemID, err := j.SDB.RetriveItemID(cacheKey)
+				if err == nil && itemID != "" {
+					associatedContactIds = []string{itemID}
+				} else { //try retrive from the redis search
+					exp := fmt.Sprintf("{{%s.%s}} eq {%s}", f.RefID, f.EmailGex(), contactEmailorID)
+					filter := NewJabEngine().RunExpGrapher(ctx, j.DB, j.SDB, m.AccountID, exp)
+					conditionFields := make([]graphdb.Field, 0)
+					for _, c := range filter.Conditions {
+						conditionFields = append(conditionFields, graphdb.Field{
+							Expression: graphdb.Operator(c.Expression),
+							Key:        f.EmailGex(),
+							DataType:   graphdb.TypeString,
+							Value:      c.Term,
+						})
+					}
+
+					gSegment := graphdb.BuildGNode(m.AccountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
+					result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
+					if err != nil {
+						return err
+					}
+					associatedContactIds = util.ParseGraphResultWithStrIDs(result)
+
+					//store in cache
+					if len(associatedContactIds) > 0 {
+						j.SDB.SetItemID(cacheKey, associatedContactIds[0])
+					} else { //create the contact here if you want...
+
+					}
+
 				}
 
-				gSegment := graphdb.BuildGNode(m.AccountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
-				result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
-				if err != nil {
-					return err
-				}
-
-				associatedContactIds := util.ParseGraphResultWithStrIDs(result)
-				m.Source[f.RefID] = associatedContactIds
-				fieldsMap := it.Fields()
-				fieldsMap[f.Key] = associatedContactIds
-				_, err = item.UpdateFields(ctx, j.DB, m.AccountID, e.ID, it.ID, fieldsMap)
-				if err != nil {
-					log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while updating item with identifier. error:", err)
+				if len(associatedContactIds) > 0 {
+					m.Source[f.RefID] = associatedContactIds
+					fieldsMap := it.Fields()
+					fieldsMap[f.Key] = associatedContactIds
+					it, err = item.UpdateFields(ctx, j.DB, m.AccountID, e.ID, it.ID, fieldsMap)
+					if err != nil {
+						log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while updating item with identifier. error:", err)
+					}
 				}
 			}
 		}
 	}
 
-	valueAddedFields := e.ValueAdd(it.Fields())
-	reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
+	//do other updates only if we fetch the idenfier properly
+	if len(associatedContactIds) > 0 {
+		valueAddedFields := e.ValueAdd(it.Fields())
+		reference.UpdateChoicesWrapper(ctx, j.DB, j.SDB, m.AccountID, m.EntityID, valueAddedFields, NewJabEngine())
 
-	ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
-	m.State = ls.State
+		ls, _ := stream.Retrieve(ctx, m.AccountID, m.ID, j.DB)
+		m.State = ls.State
 
-	//connect
-	if m.State < stream.StateConnection {
-		err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, j.DB)
-		if err != nil {
-			log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
-			return err
-		} else {
-			stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+		//connect
+		if m.State < stream.StateConnection {
+			err = j.actOnConnections(m.AccountID, m.UserID, m.Source, m.EntityID, m.ItemID, valueAddedFields, e.ValueAdd(m.OldFields), e.DisplayName, j.DB)
+			if err != nil {
+				log.Println("***>***> EventItemCreated: unexpected/unhandled error occurred on actOnConnections. error: ", err)
+				return err
+			} else {
+				stream.Update(ctx, j.DB, m, "Connection", stream.StateConnection)
+			}
 		}
-	}
 
-	//insertion in to redis graph DB
-	//safely deleting the empty string...
-	delete(m.Source, "")
-	if m.State < stream.StateRedis {
-		err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
-		if err != nil {
-			return err
-		} else {
-			stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+		//insertion in to redis graph DB
+		//safely deleting the empty string...
+		delete(m.Source, "")
+		if m.State < stream.StateRedis {
+			err = j.actOnRedisWrapper(ctx, m, valueAddedFields)
+			if err != nil {
+				return err
+			} else {
+				stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+			}
+			log.Printf("job : started : m -- %+v", m)
+			log.Printf("job : started : valueAddedFields -- %+v", valueAddedFields)
 		}
-		log.Printf("job : started : m -- %+v", m)
-		log.Printf("job : started : valueAddedFields -- %+v", valueAddedFields)
+	} else {
+		log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while updating item with identifier. err: cannot find the contact with the given identifier")
 	}
 
 	return nil
@@ -733,7 +804,7 @@ func (j Job) actOnConnections(accountID, userID string, base map[string][]string
 	return nil
 }
 
-func actOnCategories(ctx context.Context, accountID, currentUserID string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
+func actOnCategories(ctx context.Context, accountID, currentUserID string, source map[string][]string, e entity.Entity, it item.Item, valueAddedFields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnCategories kicked in")
 	//shall we move this to a common place
 	acc, err := account.Retrieve(ctx, db, accountID)
@@ -784,6 +855,11 @@ func actOnCategories(ctx context.Context, accountID, currentUserID string, e ent
 		err = notification.JoinInvitation(accountID, acc.Name, acc.Domain, team.Names(teams), userName, usr.Name, usr.Email, it.ID, db, sdb)
 		if err != nil {
 			return errors.Wrap(err, "unable to invite members")
+		}
+	case entity.CategoryEvent:
+		err = updateSourceWithIdentifier(ctx, accountID, e.ID, it.ID, e.EasyFields(), it.Fields(), source, db, sdb)
+		if err != nil {
+			return err
 		}
 	}
 	return err
@@ -955,6 +1031,64 @@ func (j *Job) actOnRedisWrapper(ctx context.Context, m *stream.Message, valueAdd
 			}
 		}
 		stream.Update(ctx, j.DB, m, "Redis", stream.StateRedis)
+	}
+	return nil
+}
+
+//ctx, m.AccountID, e.ID, it.ID, e.EasyFields(), it.Fields(), source
+func updateSourceWithIdentifier(ctx context.Context, accountID, entityID, itemID string, fields []entity.Field, ifieldsMap map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB) error {
+	identifier := ifieldsMap["identifier"]
+	var associatedContactIds []string
+
+	if identifier != nil {
+		contactEmailorID := identifier.(string)
+		for _, f := range fields {
+			if f.Who == entity.WhoContacts {
+
+				//try retrive from cache
+				cacheKey := fmt.Sprintf("%s.%s.%s", accountID, f.RefID, contactEmailorID)
+				itemID, err := sdb.RetriveItemID(cacheKey)
+				if err == nil && itemID != "" {
+					associatedContactIds = []string{itemID}
+				} else { //try retrive from the redis search
+					exp := fmt.Sprintf("{{%s.%s}} eq {%s}", f.RefID, f.EmailGex(), contactEmailorID)
+					filter := NewJabEngine().RunExpGrapher(ctx, db, sdb, accountID, exp)
+					conditionFields := make([]graphdb.Field, 0)
+					for _, c := range filter.Conditions {
+						conditionFields = append(conditionFields, graphdb.Field{
+							Expression: graphdb.Operator(c.Expression),
+							Key:        f.EmailGex(),
+							DataType:   graphdb.TypeString,
+							Value:      c.Term,
+						})
+					}
+
+					gSegment := graphdb.BuildGNode(accountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
+					result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
+					if err != nil {
+						return err
+					}
+					associatedContactIds = util.ParseGraphResultWithStrIDs(result)
+
+					//store in cache
+					if len(associatedContactIds) > 0 {
+						sdb.SetItemID(cacheKey, associatedContactIds[0])
+					} else { //create the contact here if you want...
+
+					}
+
+				}
+
+				if len(associatedContactIds) > 0 {
+					source[f.RefID] = associatedContactIds
+					ifieldsMap[f.Key] = associatedContactIds
+					_, err = item.UpdateFields(ctx, db, accountID, entityID, itemID, ifieldsMap)
+					if err != nil {
+						log.Println("***>***> EventEventAdded: unexpected/unhandled error occurred while updating item with identifier. error:", err)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }

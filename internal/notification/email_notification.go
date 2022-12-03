@@ -13,6 +13,7 @@ import (
 )
 
 type EmailNotification struct {
+	AccountID   string
 	To          []interface{}
 	Subject     string
 	Body        string
@@ -38,7 +39,7 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 		Name:        emNotif.Name,
 		AccountName: emNotif.AccountName,
 		MagicLink:   emNotif.MagicLink,
-		Unsubscribe: "",
+		Unsubscribe: fmt.Sprintf("https://workbaseone.com/v1/unsubscribe?account_id=%s&email=%s", emNotif.AccountID, toMail(emNotif.To)),
 		Requester:   emNotif.Requester,
 		Body:        emNotif.Body,
 		Subject:     emNotif.Subject,
@@ -94,4 +95,11 @@ func (emNotif *EmailNotification) ParseTemplate(templateFileName string, data in
 	}
 	emNotif.Body = buf.String()
 	return nil
+}
+
+func toMail(to []interface{}) string {
+	if len(to) > 0 {
+		return to[0].(string)
+	}
+	return ""
 }

@@ -37,10 +37,10 @@ func (e *Entity) Home(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Home")
 	defer span.End()
 
-	role, ok := ctx.Value(auth.RoleKey).(string)
-	if ok {
-		log.Println("role--- ", role)
-	}
+	role, _ := ctx.Value(auth.RoleKey).(string)
+	// if ok {
+	// 	log.Println("role--- ", role)
+	// }
 
 	acc, err := account.Retrieve(ctx, e.db, params["account_id"])
 	if err != nil {
@@ -179,16 +179,28 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	ne.ID = uuid.New().String()
 	ne.AccountID = accountID
 	ne.TeamID = params["team_id"]
-	//add key with a UUID
-	fieldKeyBinder(ne.ID, ne.Fields)
-
-	entity, err := entity.Create(ctx, e.db, ne, time.Now())
-	if err != nil {
-		return errors.Wrapf(err, "Entity: %+v", &entity)
+	if ne.Category == entity.CategoryEvent {
+		contactEntity, err := entity.RetrieveFixedEntity(ctx, e.db, ne.AccountID, ne.TeamID, entity.FixedEntityContacts)
+		if err != nil {
+			return err
+		}
+		ne.Fields = eventFields(contactEntity.ID, contactEntity.Key("first_name"), contactEntity.Key("email"))
+	} else if ne.Category == entity.CategoryChildUnit {
+		ne.Fields = statusFields()
+	} else {
+		//add key with a UUID
+		fieldKeyBinder(ne.ID, ne.Fields)
 	}
-	e.sdb.SetEntity(entity.ID, entity.Encode())
 
-	return web.Respond(ctx, w, entity, http.StatusCreated)
+	enty, err := entity.Create(ctx, e.db, ne, time.Now())
+	if err != nil {
+		return errors.Wrapf(err, "Entity: %+v", &enty)
+	}
+
+	//cache
+	e.sdb.SetEntity(enty.ID, enty.Encode())
+
+	return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusCreated)
 }
 
 //Update updates the entity

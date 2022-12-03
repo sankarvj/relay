@@ -349,6 +349,30 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 	return nil
 }
 
+//TODO add a mechanisim to verify this request. Anyone can unsubscribe anyone....
+func (u *User) Unsubscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.User.Unsubscribe")
+	defer span.End()
+
+	email := r.URL.Query().Get("email")
+	accountID := r.URL.Query().Get("account_id")
+	if email == "" {
+		return web.NewRequestError(errors.New("email address is empty"), http.StatusBadRequest)
+	}
+
+	usr, err := user.RetrieveUserByUniqIdentifier(ctx, accountID, email, "", u.db)
+	if err != nil {
+		return web.NewRequestError(errors.New("user not exist"), http.StatusNotFound)
+	}
+
+	err = user.UpdateEmailSubscription(ctx, u.db, accountID, usr.ID, false)
+	if err != nil {
+		return web.NewRequestError(errors.New("cannot unsubscribe. Please contact support"), http.StatusInternalServerError)
+	}
+
+	return web.Respond(ctx, w, "Unsubscribed successfully", http.StatusOK)
+}
+
 func verifyToken(ctx context.Context, adminSDK string, idToken string) (string, string, error) {
 	opt := option.WithCredentialsFile(adminSDK)
 	// Initialize default app

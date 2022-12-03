@@ -29,13 +29,13 @@ func Boot(ctx context.Context, b *base.Base) error {
 	}
 
 	// add entity - payroll
-	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategorySubData, entity.StateTeamLevel, false, false, false, PayrollFields())
+	payrollEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityPayroll, "Payroll", entity.CategoryData, entity.StateTeamLevel, false, false, false, PayrollFields())
 	if err != nil {
 		return err
 	}
 
 	// add entity - salary
-	salaryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySalary, "Salary", entity.CategorySubData, entity.StateTeamLevel, false, false, false, SalaryFields())
+	salaryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySalary, "Salary", entity.CategoryData, entity.StateTeamLevel, false, false, false, SalaryFields())
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - asset-catagory
-	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.AssetCategory())
+	assetCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityAssetCatagory, "Assets Category", entity.CategoryData, entity.StateTeamLevel, false, false, false, forms.AssetCategory())
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tEM:BOOT Asset Request Entity Created")
 
 	// add entity - service-catagory
-	serviceCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceCatagory, "Service Category", entity.CategorySubData, entity.StateTeamLevel, false, false, false, forms.ServiceCategory())
+	serviceCatagoryEntity, err := b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityServiceCatagory, "Service Category", entity.CategoryData, entity.StateTeamLevel, false, false, false, forms.ServiceCategory())
 	if err != nil {
 		return err
 	}
@@ -729,7 +729,7 @@ func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, empEnt
 		return err
 	}
 
-	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Activities", "activity_name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Activities", "name", chart.TypeRod).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
 	// if err != nil {
 	// 	return err
 	// }

@@ -9,6 +9,7 @@ import (
 const (
 	SocketNameSpace = "SocketAuth"
 	EntityNameSpace = "Entity"
+	ItemIDNameSpace = "ItemID"
 )
 
 type SecDB struct {
@@ -97,4 +98,23 @@ func (sdb *SecDB) ResetEntity(key string) (string, error) {
 	conn := sdb.redisCachePool.Get()
 	defer conn.Close()
 	return redis.String(conn.Do("DELETE", fmt.Sprintf("%s:%s", EntityNameSpace, key)))
+}
+
+func (sdb *SecDB) SetItemID(key string, itemID string) error {
+	conn := sdb.redisCachePool.Get()
+	defer conn.Close()
+
+	err := conn.Send("SET", fmt.Sprintf("%s:%s", ItemIDNameSpace, key), itemID)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("EXPIRE", fmt.Sprintf("%s:%s", ItemIDNameSpace, key), 25)
+	return err
+}
+
+func (sdb *SecDB) RetriveItemID(key string) (string, error) {
+	conn := sdb.redisCachePool.Get()
+	defer conn.Close()
+	return redis.String(conn.Do("GET", fmt.Sprintf("%s:%s", ItemIDNameSpace, key)))
 }

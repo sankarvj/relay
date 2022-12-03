@@ -53,17 +53,17 @@ type Template struct {
 }
 
 var templatesNameMap = map[string]string{
-	PredefinedTeamCSP:  "CSP",
-	PredefinedTeamCRP:  "CRP",
+	PredefinedTeamCSP:  "Success",
+	PredefinedTeamCRP:  "CRM",
 	PredefinedTeamEMP:  "EMP",
-	PredefinedTeamPMP:  "PMP",
-	PredefinedTeamCSup: "CSuP",
+	PredefinedTeamPMP:  "Project Management",
+	PredefinedTeamCSup: "Support",
 }
 
 var templatesDescMap = map[string]string{
-	PredefinedTeamCSP:  "Customer onboarding platform",
+	PredefinedTeamCSP:  "Customer success platform",
 	PredefinedTeamCRP:  "Customer relationship platform",
-	PredefinedTeamEMP:  "Employee onboarding platform",
+	PredefinedTeamEMP:  "Employee management platform",
 	PredefinedTeamPMP:  "Project management platform",
 	PredefinedTeamCSup: "Customer support platform",
 }

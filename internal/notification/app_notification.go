@@ -227,6 +227,7 @@ func (appNotif *AppNotification) AddMoreFollowers(ctx context.Context, accountID
 
 func (appNotif AppNotification) Send(ctx context.Context, assignee entity.UserEntity, notificationType NotificationType, db *sqlx.DB, firebaseSDKPath string) (error, error) {
 	emailNotif := EmailNotification{
+		AccountID: appNotif.AccountID,
 		Name:      strings.Title(assignee.Name),
 		To:        []interface{}{assignee.Email},
 		Subject:   appNotif.Subject,

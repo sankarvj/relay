@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"time"
 
@@ -28,22 +27,27 @@ func Process(ctx context.Context, accountID string, ne NewEvent, log *log.Logger
 		return item.Item{}, err
 	}
 
-	var iMap map[string]interface{}
-	inrec, _ := json.Marshal(ne)
-	json.Unmarshal(inrec, &iMap)
+	var name *string
+	if ne.Properties["name"] != nil {
+		namePtr := ne.Properties["name"].(string)
+		name = &namePtr
+	}
 
-	fields := e.KeyMap(iMap)
+	fields := e.KeyMap(ne.Properties)
+	//adding identifier as one of the field inside the item
+	fields["identifier"] = ne.Identifier
 
 	userID := user.UUID_SYSTEM_USER
 	ni := item.NewItem{
 		ID:        uuid.New().String(),
-		Name:      nil,
+		Name:      name,
 		AccountID: accountID,
 		EntityID:  e.ID,
 		UserID:    &userID,
 		Fields:    fields,
 		Source:    nil,
 	}
+
 	it, err := item.Create(ctx, db, ni, time.Now())
 	return it, err
 }

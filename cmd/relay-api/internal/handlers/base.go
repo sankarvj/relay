@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	rg "github.com/redislabs/redisgraph-go"
@@ -227,3 +228,126 @@ func validateMyselfWithOwner(ctx context.Context, accountID, entityID string, it
 	}
 	return nil
 }
+
+func eventFields(contactEntityID, contactEntityKey, contactEntityEmailKey string) []entity.Field {
+	activityNameFieldID := uuid.New().String()
+	activityNameField := entity.Field{
+		Key:         activityNameFieldID,
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+		Who:         entity.WhoTitle,
+	}
+
+	activityDescFieldID := uuid.New().String()
+	activityDescField := entity.Field{
+		Key:         activityDescFieldID,
+		Name:        "description",
+		DisplayName: "Description",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutSubTitle},
+		Who:         entity.WhoDesc,
+	}
+
+	timeOfEventFieldID := uuid.New().String()
+	timeOfEventField := entity.Field{
+		Key:         timeOfEventFieldID,
+		Name:        "time",
+		DisplayName: "Time",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeDateTime,
+		Who:         entity.WhoStartTime,
+	}
+
+	iconFieldID := uuid.New().String()
+	iconField := entity.Field{
+		Key:         iconFieldID,
+		Name:        "icon",
+		DisplayName: "Icon",
+		DomType:     entity.DomImage,
+		DataType:    entity.TypeString,
+		Who:         entity.WhoIcon,
+	}
+
+	contactsFieldID := uuid.New().String()
+	contactsField := entity.Field{
+		Key:         contactsFieldID,
+		Name:        "associated_contacts",
+		DisplayName: "Associated Contacts",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       contactEntityID,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: contactEntityKey, entity.MetaKeyEmailGex: contactEntityEmailKey, entity.MetaMultiChoice: "true"},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+		Who: entity.WhoContacts,
+	}
+
+	return []entity.Field{activityNameField, activityDescField, timeOfEventField, contactsField, iconField}
+}
+
+func statusFields() []entity.Field {
+	verbFieldID := uuid.New().String()
+	verbField := entity.Field{
+		Key:         verbFieldID, // we use this value inside the code. don't change it
+		Name:        "verb",
+		DisplayName: "Verb (Internal field)",
+		DomType:     entity.DomNotApplicable,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutVerb},
+		Who:         entity.WhoVerb,
+	}
+
+	nameFieldID := uuid.New().String()
+	nameField := entity.Field{
+		Key:         nameFieldID,
+		Name:        "name",
+		DisplayName: "Name",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
+	}
+
+	colorFieldID := uuid.New().String()
+	colorField := entity.Field{
+		Key:         colorFieldID,
+		Name:        "color",
+		DisplayName: "Color",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutColor},
+		Who:         entity.WhoColor,
+	}
+
+	return []entity.Field{verbField, nameField, colorField}
+}
+
+//b.accountID
+// func ItemAdd(ctx context.Context, accountID, entityID, itemID, userID string, fields map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) (item.Item, error) {
+// 	name := "System Generated"
+// 	ni := item.NewItem{
+// 		ID:        itemID,
+// 		Name:      &name,
+// 		AccountID: accountID,
+// 		EntityID:  entityID,
+// 		UserID:    &userID,
+// 		Fields:    fields,
+// 		Source:    source,
+// 		Type:      item.TypeDummy,
+// 	}
+
+// 	it, err := item.Create(ctx, db, ni, time.Now())
+// 	if err != nil {
+// 		return item.Item{}, err
+// 	}
+
+// 	job.NewJob(db, sdb, firebaseSDKPath).Stream(stream.NewCreteItemMessage(ctx, db, accountID, userID, entityID, it.ID, ni.Source))
+
+// 	return it, nil
+// }

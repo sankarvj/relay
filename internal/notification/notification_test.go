@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"gitlab.com/vjsideprojects/relay/internal/notification"
+	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/tests"
 )
 
@@ -21,6 +22,7 @@ func TestEmail(t *testing.T) {
 		{
 
 			emailNotif := notification.EmailNotification{
+				AccountID:   schema.SeedAccountID,
 				To:          []interface{}{"vijayasankarmail@gmail.com"},
 				Subject:     fmt.Sprintf("%s is ready", "Acme"),
 				Name:        "Tester",

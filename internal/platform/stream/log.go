@@ -65,10 +65,9 @@ func Update(ctx context.Context, db *sqlx.DB, m *Message, comment string, state 
 	ctx, span := trace.StartSpan(ctx, "internal.log.Update")
 	defer span.End()
 
-	log.Printf("---> log message updated for :: %s  -- comment :: %s  --  state :: %d", m.ID, m.Comment, m.State)
-
 	m.Comment = comment
 	m.State = state
+	log.Printf("---> log message updated for :: %s  -- comment :: %s  --  state :: %d", m.ID, m.Comment, m.State)
 
 	const q = `UPDATE log_streams SET
 				"comment" = $3,

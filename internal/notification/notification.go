@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
-	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
@@ -37,26 +35,7 @@ type Notification interface {
 }
 
 func HostN(accName, input string) string {
-	return hostname(accName, input)
-}
-
-func hostname(accName, input string) string {
-
-	if !strings.HasPrefix("input", "https://") {
-		input = fmt.Sprintf("https://%s", input)
-	}
-
-	url, err := url.Parse(input)
-	if err != nil {
-		log.Println("unexpected error occurred", input)
-		return input
-	}
-	hostname := url.Hostname()
-	for _, subDomain := range account.ExistingSubDomains {
-		hostname = strings.TrimPrefix(hostname, fmt.Sprintf("%s.", subDomain))
-	}
-
-	return fmt.Sprintf("%s.%s", strings.ToLower(accName), hostname)
+	return util.Hostname(accName, input)
 }
 
 func WelcomeInvitation(draftID string, apps []string, accountName, host, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
@@ -68,7 +47,7 @@ func WelcomeInvitation(draftID string, apps []string, accountName, host, request
 		}
 	}
 
-	workBaseDomain := hostname(accountName, host)
+	workBaseDomain := util.Hostname(accountName, host)
 
 	magicLink, err := auth.CreateMagicLaunchLink(app, workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
@@ -77,8 +56,9 @@ func WelcomeInvitation(draftID string, apps []string, accountName, host, request
 	}
 
 	emailNotif := EmailNotification{
+		AccountID:   draftID,
 		To:          []interface{}{usrEmail},
-		Subject:     fmt.Sprintf("Welcome %s! Get started with workbaseONE", requester),
+		Subject:     "Welcome! Get started with workbaseONE",
 		Name:        requester,
 		Requester:   requester,
 		AccountName: accountName,
@@ -97,6 +77,7 @@ func JoinInvitation(accountID, accountName, accDomain string, teams []string, re
 	}
 
 	emailNotif := EmailNotification{
+		AccountID:   accountID,
 		To:          []interface{}{usrEmail},
 		Subject:     fmt.Sprintf("Invitation to join %s account", accountName),
 		Name:        usrName,
@@ -130,6 +111,7 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *data
 	}
 
 	emailNotif := EmailNotification{
+		AccountID:   accountID,
 		To:          []interface{}{v.Email},
 		Subject:     fmt.Sprintf("Invitation to visit %s account", a.Name),
 		Name:        usrName,

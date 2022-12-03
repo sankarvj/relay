@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -18,7 +19,7 @@ func UserSettingRetrieve(ctx context.Context, accountID, userID string, db *sqlx
 	const q = `SELECT * FROM user_settings WHERE account_id = $1 AND user_id = $2`
 	if err := db.GetContext(ctx, &us, q, accountID, userID); err != nil {
 		if err == sql.ErrNoRows {
-			notificationSettingBytes, _ := json.Marshal(defaultNotificationSettings())
+			notificationSettingBytes, _ := json.Marshal(defaultNotificationSettings(true))
 			return UserSetting{
 				AccountID:           accountID,
 				UserID:              userID,
@@ -44,10 +45,11 @@ func AddUserSetting(ctx context.Context, db *sqlx.DB, nus NewUserSetting) (UserS
 	}
 
 	us := UserSetting{
-		AccountID:           nus.AccountID,
-		UserID:              nus.UserID,
-		LayoutStyle:         nus.LayoutStyle,
-		SelectedTeam:        nus.SelectedTeam,
+		AccountID:    nus.AccountID,
+		UserID:       nus.UserID,
+		LayoutStyle:  nus.LayoutStyle,
+		SelectedTeam: nus.SelectedTeam,
+
 		NotificationSetting: string(notificationSettingBytes),
 	}
 
@@ -100,6 +102,47 @@ func UpdateUserSettings(ctx context.Context, db *sqlx.DB, nus NewUserSetting) er
 	return err
 }
 
+func UpdateEmailSubscription(ctx context.Context, db *sqlx.DB, accountID, userID string, emailSubscription bool) error {
+	ctx, span := trace.StartSpan(ctx, "internal.UserSetting.UpdateUserSettings")
+	defer span.End()
+
+	// if not exist add it
+	var us UserSetting
+	const rq = `SELECT * FROM user_settings WHERE account_id = $1 AND user_id = $2`
+	if err := db.GetContext(ctx, &us, rq, accountID, userID); err != nil {
+		if err == sql.ErrNoRows {
+			nus := NewUserSetting{
+				AccountID:           accountID,
+				UserID:              userID,
+				LayoutStyle:         "menu",
+				SelectedTeam:        "",
+				NotificationSetting: defaultNotificationSettings(emailSubscription),
+			}
+			_, err = AddUserSetting(ctx, db, nus)
+			if err != nil {
+				return errors.Wrap(err, "encode notification settings to bytes")
+			}
+			return nil
+		}
+	}
+
+	nsMap := UnmarshalNotificationSettings(us.NotificationSetting)
+	nsMap["email_subscription"] = strconv.FormatBool(emailSubscription)
+	notificationSettingBytes, err := json.Marshal(nsMap)
+	if err != nil {
+		return errors.Wrap(err, "encode notification settings to bytes")
+	}
+
+	const q = `UPDATE user_settings SET
+		"notification_setting" = $3 
+		WHERE account_id = $1 AND user_id = $2`
+	_, err = db.ExecContext(ctx, q, accountID, userID,
+		string(notificationSettingBytes),
+	)
+
+	return err
+}
+
 func UnmarshalNotificationSettings(notificationSettingsB string) map[string]string {
 	var notificationSettingsMap map[string]string
 	if err := json.Unmarshal([]byte(notificationSettingsB), &notificationSettingsMap); err != nil {
@@ -108,10 +151,11 @@ func UnmarshalNotificationSettings(notificationSettingsB string) map[string]stri
 	return notificationSettingsMap
 }
 
-func defaultNotificationSettings() map[string]string {
+func defaultNotificationSettings(emailSubscription bool) map[string]string {
 	nSettings := make(map[string]string, 0)
 	nSettings["updated"] = "true"
 	nSettings["created"] = "true"
 	nSettings["assigned"] = "true"
+	nSettings["email_subscription"] = strconv.FormatBool(emailSubscription)
 	return nSettings
 }

@@ -52,17 +52,18 @@ type ViewModelEntity struct {
 
 // NewEntity has information needed to creat new entity
 type NewEntity struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	DisplayName string  `json:"display_name" validate:"required"`
-	AccountID   string  `json:"account_id"`
-	TeamID      string  `json:"team_id"`
-	Fields      []Field `json:"fields" validate:"required"`
-	Category    int     `json:"category"`
-	State       int     `json:"state"`
-	IsPublic    bool    `json:"is_public"`
-	IsCore      bool    `json:"is_core"`
-	IsShared    bool    `json:"is_shared"`
+	ID            string   `json:"id"`
+	AccountID     string   `json:"account_id"`
+	TeamID        string   `json:"team_id"`
+	Name          string   `json:"name"`
+	DisplayName   string   `json:"display_name" validate:"required"`
+	Category      int      `json:"category"`
+	Fields        []Field  `json:"fields" validate:"required"`
+	SharedTeamIds []string `json:"shared_team_ids"`
+	State         int      `json:"state"`
+	IsPublic      bool     `json:"is_public"`
+	IsCore        bool     `json:"is_core"`
+	IsShared      bool     `json:"is_shared"`
 }
 
 //State for the entity specifies the current state of the entity
@@ -93,7 +94,5 @@ const (
 	CategoryStream             = 17
 	CategoryNotification       = 18
 	CategoryVisitorsInvitation = 19
-	CategorySubData            = 20
-	CategoryTimeseries         = 21
-	CategoryApprovals          = 22
+	CategoryApprovals          = 20
 )
