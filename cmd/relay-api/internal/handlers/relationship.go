@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -133,10 +132,6 @@ func fetchChildItems(ctx context.Context, accountID, sourceEntityID, sourceItemI
 			DoCount(count).
 			AddSourceCondition(sourceEntityID, sourceItemID).
 			filterWrapper(ctx, accountID, e.ID, fields, sourceMap, db, sdb)
-		log.Println("sourceEntityID-- ", sourceEntityID)
-		log.Println("sourceItemID-- ", sourceItemID)
-		log.Println("sourceMap-- ", sourceMap)
-		log.Println("viewModelItems-- ", viewModelItems)
 	} else { // implicit straight. tasks are the child of deals because task has a deal field
 		if isFieldKeyExist(relation.FieldID, entity.KeyValueMap(fields)) {
 			// newExp := fmt.Sprintf("{{%s.%s}} in {%s}", e.ID, relation.FieldID, sourceItemID)

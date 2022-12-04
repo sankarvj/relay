@@ -30,7 +30,7 @@ func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
 		Key:         contactFieldID,
-		Name:        "contact",
+		Name:        "associated_contacts",
 		DisplayName: "Associated Contacts",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -46,7 +46,7 @@ func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
 		Key:         companyFieldID,
-		Name:        "company",
+		Name:        "associated_companies",
 		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,

@@ -95,7 +95,7 @@ type MailBody struct {
 }
 
 func (m SESMail) SendMail(fromName, fromEmail string, toName string, toEmails []string, subject string, body string) (*string, error) {
-	log.Printf("internal.platform.integration.email.fallback request - domain:%s  from: %s\n", m.Domain, fromEmail)
+	log.Printf("internal.platform.integration.email.fallback request - domain:%s  from: %s  to:%+v\n", m.Domain, fromEmail, toEmails)
 	resMsg, err := send(fromEmail, util.ConvertStrToPtStr(toEmails), subject, body, m.ReplyTo)
 	log.Printf("internal.platform.integration.email.fallback response - resMsg:%s  err:%v\n", resMsg, err)
 	return resMsg.MessageId, err
@@ -179,7 +179,6 @@ func send(fromEmail string, toEmails []*string, subject string, body string, rep
 
 	}
 
-	fmt.Println("Email Sent to address: " + Recipient)
 	fmt.Println(result)
 	return result, err
 }

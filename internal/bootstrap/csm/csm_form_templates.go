@@ -8,15 +8,23 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
 
-func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
+func taskTemplates(name, desc, statusID string, thisEntity entity.Entity, actorEntity entity.Entity) map[string]interface{} {
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
-			taskVals[f.Key] = fmt.Sprintf("%s", desc)
+			taskVals[f.Key] = fmt.Sprintf("%s", name)
 		}
 		switch name {
+		case "name":
+			taskVals[f.Key] = name
+		case "desc":
+			taskVals[f.Key] = desc
+		case "status":
+			taskVals[f.Key] = []interface{}{statusID}
+		// case "associated_contacts":
+		// 	taskVals[f.Key] = []interface{}{contactID}
 		case "reminder", "due_by":
 			taskVals[f.Key] = util.FormatTimeGo(time.Now())
 		}

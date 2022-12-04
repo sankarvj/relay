@@ -22,59 +22,59 @@ func addAutomation(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	taskTemplate1, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare documents", taskEntity, projectEntity), nil)
+	taskTemplate1, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare documents", "prepare documents about the client org and needs", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate2, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Schedule a meeting", taskEntity, projectEntity), nil)
+	taskTemplate2, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Schedule a meeting", "Ask the client about the convenient time and schedule a meeting", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate3, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Review the plan with customer", taskEntity, projectEntity), nil)
+	taskTemplate3, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Review the plan with customer", "Explain the complete onboarding plan and get the approval from the customer", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate4, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Setup account", taskEntity, projectEntity), nil)
+	taskTemplate4, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Setup account", "Create a new account and all the clients who have signed up for the demo", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate5, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Populate sample data", taskEntity, projectEntity), nil)
+	taskTemplate5, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Populate sample data", "Populate the sample data needed for the smooth onboarding demo", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate6, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Walkthrough the features", taskEntity, projectEntity), nil)
+	taskTemplate6, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Walkthrough the features", "Walkthrough all the features with the use of demo and add if any needed", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate7, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Analyze the metrics", taskEntity, projectEntity), nil)
+	taskTemplate7, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Analyze the metrics", "Use the client analytics to check if the client is using all the features of the product", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate8, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Setup Integrations", taskEntity, projectEntity), nil)
+	taskTemplate8, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Setup Integrations", "Once the user is comfortable move on to integrations", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate9, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Team Traning", taskEntity, projectEntity), nil)
+	taskTemplate9, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Team Traning", "Ask the customer to send the real data to the product", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate10, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Share access", taskEntity, projectEntity), nil)
+	taskTemplate10, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Share access", "Let the customer invite his team members with necessary roles", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate11, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Walk users through the report", taskEntity, projectEntity), nil)
+	taskTemplate11, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Walk users through the report", "Send the final status report to the client and the manager for reference", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate12, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Go live", taskEntity, projectEntity), nil)
+	taskTemplate12, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Go live", "Remove all the demo data populated before going live", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate13, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Collect Feedback", taskEntity, projectEntity), nil)
+	taskTemplate13, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Collect Feedback", "Collect feedback using the integrated forms in the workbaseONE", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskTemplate14, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Hand off and mark the project as completed", taskEntity, projectEntity), nil)
+	taskTemplate14, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Hand off and mark the project as completed", "Hand off the project to success/support team", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
@@ -199,31 +199,31 @@ func addAutomation(ctx context.Context, b *base.Base) error {
 		},
 	}
 
-	taskUpTemplate1, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Send the oppurtuninty the manager", taskEntity, projectEntity), nil)
+	taskUpTemplate1, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Send the oppurtuninty the manager", "Once the customer is validated send the details to the manager", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate2, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare a pitch", taskEntity, projectEntity), nil)
+	taskUpTemplate2, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Prepare a pitch", "Prepare the pitch deck to solve the customer specific use cases", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate3, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Reachout to customer", taskEntity, projectEntity), nil)
+	taskUpTemplate3, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Reachout to customer", "Reach out to the customer to gather the real problems and current working model", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate4, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Deliver the proposal", taskEntity, projectEntity), nil)
+	taskUpTemplate4, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Deliver the proposal", "Analyse the data provided by the customer and send proposal report", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate5, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Give negotiation", taskEntity, projectEntity), nil)
+	taskUpTemplate5, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Give negotiation", "In this step, show the various pricing plans and guide the customer to the right plan", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate6, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Collect Requirements", taskEntity, projectEntity), nil)
+	taskUpTemplate6, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Collect Requirements", "Collect his requirements before creating a new account for him", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}
-	taskUpTemplate7, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Hand off to finance", taskEntity, projectEntity), nil)
+	taskUpTemplate7, err := b.TemplateAddWithOutMeta(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskTemplates("Hand off to finance", "Move the customer to the finance team for payment processing", b.StatusItemOpened.ID, taskEntity, projectEntity), nil)
 	if err != nil {
 		return err
 	}

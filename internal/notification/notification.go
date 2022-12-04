@@ -49,6 +49,8 @@ func WelcomeInvitation(draftID string, apps []string, accountName, host, request
 
 	workBaseDomain := util.Hostname(accountName, host)
 
+	log.Println("workBaseDomain ", workBaseDomain)
+
 	magicLink, err := auth.CreateMagicLaunchLink(app, workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)

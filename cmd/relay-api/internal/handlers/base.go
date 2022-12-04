@@ -41,11 +41,13 @@ func nodeStages(ctx context.Context, accountID, flowID string, db *sqlx.DB) ([]n
 
 	viewModelNodes := make([]node.ViewModelNode, 0)
 	for _, n := range nodes {
+
 		if n.Type == node.Stage {
 			viewModelNodes = append(viewModelNodes, createViewModelNodeActor(n))
 		}
 	}
-	return viewModelNodes, nil
+
+	return sortNodes(viewModelNodes), nil
 }
 
 func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.QueryResult) ([]item.Item, error) {
@@ -351,3 +353,31 @@ func statusFields() []entity.Field {
 
 // 	return it, nil
 // }
+
+func sortNodes(nodes []node.ViewModelNode) []node.ViewModelNode {
+	//make map of nodes by its parent_id
+	mapOfParentNodes := make(map[string]node.ViewModelNode, 0)
+	for _, n := range nodes {
+		mapOfParentNodes[n.ParentNodeID] = n
+	}
+
+	//pick first node
+	firstNode := mapOfParentNodes["00000000-0000-0000-0000-000000000000"]
+	if firstNode.ID == "" {
+		return nodes // atleast send the nodes when caught with error
+	}
+
+	//pick first node
+	sortedNodes := make([]node.ViewModelNode, len(nodes))
+	sortedNodes[0] = firstNode
+	parentNodeID := firstNode.ID
+
+	for i := 1; i < len(nodes); i++ {
+		if nextNode, ok := mapOfParentNodes[parentNodeID]; ok {
+			sortedNodes[i] = nextNode
+			parentNodeID = nextNode.ID
+		}
+	}
+
+	return sortedNodes
+}

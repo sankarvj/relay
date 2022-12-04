@@ -12,16 +12,20 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 )
 
-func taskVals(actorEntity entity.Entity, desc, contactID string) map[string]interface{} {
+func taskVals(actorEntity entity.Entity, name, desc, contactID, statusID string) map[string]interface{} {
 
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(actorEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
+		case "name":
+			taskVals[f.Key] = name
 		case "desc":
 			taskVals[f.Key] = desc
-		case "contact":
+		case "status":
+			taskVals[f.Key] = []interface{}{statusID}
+		case "associated_contacts":
 			taskVals[f.Key] = []interface{}{contactID}
 		case "reminder", "due_by":
 			taskVals[f.Key] = util.FormatTimeGo(time.Now())

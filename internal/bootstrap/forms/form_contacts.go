@@ -2,6 +2,7 @@ package forms
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/google/uuid"
@@ -286,15 +287,16 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 func ContactVals(contactEntity entity.Entity, firstName, lastName, email, leadStatusItemID string) map[string]interface{} {
 
 	namedVals := map[string]interface{}{
-		"first_name":      firstName,
-		"last_name":       lastName,
-		"email":           email,
-		"mobile_numbers":  []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
-		"nps_score":       randomdata.Number(100),
-		"lifecycle_stage": []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
-		"owner":           []interface{}{},
-		"avatar":          fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", firstName),
-		"lead_status":     []interface{}{leadStatusItemID},
+		"first_name":             firstName,
+		"last_name":              lastName,
+		"email":                  email,
+		"mobile_numbers":         []interface{}{randomdata.PhoneNumber(), randomdata.PhoneNumber()},
+		"nps_score":              randomdata.Number(100),
+		"lifecycle_stage":        []interface{}{util.ConvertIntToStr(randomdata.Number(1, 5))},
+		"owner":                  []interface{}{},
+		"avatar":                 fmt.Sprintf("https://avatars.dicebear.com/api/pixel-art/%s.svg", firstName),
+		"lead_status":            []interface{}{leadStatusItemID},
+		"became_a_customer_date": util.FormatTimeGo(time.Now()),
 	}
 
 	return keyMap(contactEntity.NameKeyMapWrapper(), namedVals)
