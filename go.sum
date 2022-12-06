@@ -243,8 +243,8 @@ github.com/stretchr/testify v1.7.2 h1:4jaiDzPyXQvSd7D0EjG45355tLlV3VOECpq10pLC+8
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
 github.com/stripe/stripe-go v70.15.0+incompatible h1:hNML7M1zx8RgtepEMlxyu/FpVPrP7KZm1gPFQquJQvM=
 github.com/stripe/stripe-go v70.15.0+incompatible/go.mod h1:A1dQZmO/QypXmsL0T8axYZkSN/uA/T/A64pfKdBAMiY=
-github.com/stripe/stripe-go/v73 v73.16.0 h1:X3uTpl3zwY7tSPjcltQJ9t/7TYOgfqT6QQK7Qml995I=
-github.com/stripe/stripe-go/v73 v73.16.0/go.mod h1:Uk0oBh96JHdlxRsu0/t8XfuJ3xOUQTUgpKAFZuDcFnQ=
+github.com/stripe/stripe-go/v74 v74.2.0 h1:E0P3Q8fruS7yoDAxkP/BU+f4QTLU7jwvo07hGv8bfuA=
+github.com/stripe/stripe-go/v74 v74.2.0/go.mod h1:5PoXNp30AJ3tGq57ZcFuaMylzNi8KpwlrYAFmO1fHZw=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

@@ -37,8 +37,7 @@ require (
 	github.com/redislabs/redisgraph-go v2.0.2+incompatible
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/cors v1.7.0
-	github.com/stripe/stripe-go v70.15.0+incompatible
-	github.com/stripe/stripe-go/v73 v73.16.0
+	github.com/stripe/stripe-go/v74 v74.2.0
 	go.opencensus.io v0.23.0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d

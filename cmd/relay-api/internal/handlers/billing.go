@@ -11,8 +11,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/webhook"
+	"github.com/stripe/stripe-go/v74"
+	"github.com/stripe/stripe-go/v74/webhook"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
