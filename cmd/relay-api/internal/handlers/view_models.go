@@ -99,11 +99,12 @@ func createViewModelUS(us user.UserSetting) user.ViewModelUserSetting {
 }
 
 type UserToken struct {
-	Token    string   `json:"token"`
-	Accounts []string `json:"accounts"`
-	Team     string   `json:"team"`
-	Entity   string   `json:"entity"`
-	Item     string   `json:"item"`
+	Token        string   `json:"token"`
+	Accounts     []string `json:"accounts"`
+	Team         string   `json:"team"`
+	Entity       string   `json:"entity"`
+	Item         string   `json:"item"`
+	JustLaunched bool     `json:"just_launched"`
 }
 
 func createViewModelCharts(charts []chart.Chart, eagerLoader map[string]EagerLoader) []VMChart {
@@ -300,7 +301,6 @@ func createViewModelItem(i item.Item, fields []entity.Field) ViewModelItem {
 	return ViewModelItem{
 		ID:        i.ID,
 		EntityID:  i.EntityID,
-		StageID:   i.StageID,
 		GenieID:   i.GenieID,
 		Name:      i.Name,
 		Type:      i.Type,

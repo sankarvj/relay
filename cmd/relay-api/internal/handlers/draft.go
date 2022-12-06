@@ -119,6 +119,8 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		account.Delete(ctx, a.db, acc.ID)
 		return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 	}
+	//this will show onboard page in the UI
+	userToken.JustLaunched = true
 
 	go a.bootApp(ctx, acc.ID, usr.ID, dft)
 	//FIX THIS

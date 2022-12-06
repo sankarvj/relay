@@ -7,9 +7,41 @@ import (
 	"strconv"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 )
+
+const (
+	NSUpdated           = "updated"
+	NSCreated           = "created"
+	NSAssigned          = "assigned"
+	NSEmailSubscription = "email_subscription"
+)
+
+func RetrieveUserSetting(ctx context.Context, db *sqlx.DB, accountID, userID string) (*NotificationUserSetting, error) {
+	var u NotificationUserSetting
+	const q = `SELECT u.user_id, u.member_id, u.name, u.avatar, u.email, us.notification_setting FROM users as u join user_settings as us on u.user_id = us.user_id WHERE u.user_id = $1 AND u.account_id = $2`
+	if err := db.GetContext(ctx, &u, q, userID, accountID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, errors.Wrapf(err, "selecting current user %q", userID)
+	}
+
+	return &u, nil
+}
+
+func BulkRetrieveUserSetting(ctx context.Context, db *sqlx.DB, accountID string, ids []interface{}) ([]NotificationUserSetting, error) {
+	users := []NotificationUserSetting{}
+	const q = `SELECT u.user_id, u.member_id, u.name, u.avatar, u.email, us.notification_setting FROM users as u join user_settings as us on u.user_id = us.user_id WHERE u.account_id = $1 AND u.user_id = any($2)`
+
+	if err := db.SelectContext(ctx, &users, q, accountID, pq.Array(ids)); err != nil {
+		return users, errors.Wrap(err, "selecting items for a list of item ids")
+	}
+
+	return users, nil
+}
 
 func UserSettingRetrieve(ctx context.Context, accountID, userID string, db *sqlx.DB) (UserSetting, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.UserSetting.Retrieve")
@@ -153,9 +185,9 @@ func UnmarshalNotificationSettings(notificationSettingsB string) map[string]stri
 
 func defaultNotificationSettings(emailSubscription bool) map[string]string {
 	nSettings := make(map[string]string, 0)
-	nSettings["updated"] = "true"
-	nSettings["created"] = "true"
-	nSettings["assigned"] = "true"
-	nSettings["email_subscription"] = strconv.FormatBool(emailSubscription)
+	nSettings[NSUpdated] = "true"
+	nSettings[NSCreated] = "true"
+	nSettings[NSAssigned] = "true"
+	nSettings[NSEmailSubscription] = strconv.FormatBool(emailSubscription)
 	return nSettings
 }

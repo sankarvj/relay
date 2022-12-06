@@ -209,10 +209,15 @@ func (u *User) MLVerify(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		log.Println("***> unexpected error occurred in MLVerify. error: ", err)
 		return ErrForbiddenMLToken
 	}
-	_, err = user.RetrieveUserByUniqIdentifier(ctx, userInfo.AccountID, userInfo.Email, "", u.db)
-	if err != nil {
+	if userInfo.AccountID != "" {
+		_, err = user.RetrieveUserByUniqIdentifier(ctx, userInfo.AccountID, userInfo.Email, "", u.db)
+		if err != nil {
+			userInfo.Verified = false
+		}
+	} else {
 		userInfo.Verified = false
 	}
+
 	return web.Respond(ctx, w, userInfo, http.StatusOK)
 }
 
@@ -270,6 +275,7 @@ func (u *User) Join(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
 	tkn.Accounts = []string{userInfo.AccountID}
+	tkn.JustLaunched = true
 
 	return web.Respond(ctx, w, tkn, http.StatusCreated)
 }

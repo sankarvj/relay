@@ -12,11 +12,11 @@ func taskTemplates(name, desc, statusID string, thisEntity entity.Entity, actorE
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
-	for name, f := range namedFieldsMap {
+	for nameOfField, f := range namedFieldsMap {
 		if f.IsTitleLayout() {
-			taskVals[f.Key] = fmt.Sprintf("%s", name)
+			taskVals[f.Key] = name
 		}
-		switch name {
+		switch nameOfField {
 		case "name":
 			taskVals[f.Key] = name
 		case "desc":

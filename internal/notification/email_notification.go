@@ -76,7 +76,6 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 
 	err := emNotif.ParseTemplate(fmt.Sprintf("templates/%s", template), templateData)
 	if err != nil {
-		log.Println("GOT THE ERROR", err)
 		return err
 	}
 	e := eml.SESMail{Domain: "", ReplyTo: ""}

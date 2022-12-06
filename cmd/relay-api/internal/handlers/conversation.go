@@ -262,7 +262,7 @@ func addNotification(ctx context.Context, accountID, entityID, itemID, userID, m
 	titleField := entity.TitleField(baseEntity.EasyFields())
 	appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 	//adding base item follower and assignees
-	appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)
+	appNotif.AddCreators(ctx, accountID, it.UserID, db, sdb)
 	baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
 	for _, f := range baseValueAddedFields {
 		if f.Value == nil {

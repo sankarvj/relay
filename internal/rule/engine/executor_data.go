@@ -32,7 +32,6 @@ func (eng *Engine) executeData(ctx context.Context, n node.Node, db *sqlx.DB, sd
 		ID:        uuid.New().String(),
 		UserID:    util.String(user.UUID_ENGINE_USER),
 		AccountID: n.AccountID,
-		StageID:   &n.StageID,
 		EntityID:  n.ActorID,
 		Fields:    itemFields(valueAddedFields),
 	}

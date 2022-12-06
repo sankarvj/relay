@@ -76,8 +76,7 @@ func (j *Job) eventAccountLaunched(m *stream.Message) error {
 	if err != nil {
 		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
 	} else {
-		log.Printf("***> trail started successfully")
-		log.Println("update the account with the plan name and etc...")
+		log.Printf("***> stripe trail started successfully")
 	}
 	return err
 }
@@ -866,9 +865,9 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 		return err
 	}
 
-	if itType == item.TypeDummy {
-		return nil
-	}
+	// if itType == item.TypeDummy {
+	// 	return nil
+	// }
 
 	dirtyFields := item.Diff(oldFields, newFields)
 	//save the notification to the notifications.

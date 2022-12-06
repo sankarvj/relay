@@ -413,11 +413,11 @@ func RetriveUserItem(ctx context.Context, accountID, ownerEntityID, memberID str
 		return nil, errors.New("memberID is empty. Cannot retrive user item")
 	}
 
-	var userEntityItem UserEntity
 	valueAddedFields, _, err := RetrieveFixedItem(ctx, accountID, ownerEntityID, memberID, db, sdb)
 	if err != nil {
 		return nil, err
 	}
+	var userEntityItem UserEntity
 	err = ParseFixedEntity(valueAddedFields, &userEntityItem)
 	if err != nil {
 		return nil, err

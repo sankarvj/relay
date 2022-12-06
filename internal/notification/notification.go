@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 )
 
@@ -48,9 +49,6 @@ func WelcomeInvitation(draftID string, apps []string, accountName, host, request
 	}
 
 	workBaseDomain := util.Hostname(accountName, host)
-
-	log.Println("workBaseDomain ", workBaseDomain)
-
 	magicLink, err := auth.CreateMagicLaunchLink(app, workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
@@ -138,7 +136,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	case TypeCreated:
 		switch entityCategory {
 		case entity.CategoryEmail:
-			appNotif.Subject = fmt.Sprintf("An e-mail has been sent/received")
+			appNotif.Subject = fmt.Sprintf("An e-mail sent/received")
 			// enriching subject with base elements
 			if appNotif.BaseEntityName != "" {
 				appNotif.Subject = fmt.Sprintf("%s for %s", appNotif.Subject, util.LowerSinglarize(appNotif.BaseEntityName))
@@ -150,12 +148,12 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		case entity.CategoryUsers:
 			notificationType = TypeMemberAdded //changing notification type in the mid-way
 			// adding all members as followers
-			appNotif.AddMoreFollowers(ctx, accountID, db)
+			appNotif.AddMembers(ctx, accountID, db)
 			appNotif.Subject = fmt.Sprintf("A new member added to your account")
 			appNotif.Body = fmt.Sprintf("New member %s added to your account", appNotif.Title)
 		default:
 			if len(source) == 0 { // add all members for the main module addition...
-				appNotif.AddMoreFollowers(ctx, accountID, db)
+				appNotif.AddMembers(ctx, accountID, db)
 			}
 
 			appNotif.Subject = fmt.Sprintf("A new %s created", util.LowerSinglarize(entityDisName))
@@ -175,14 +173,14 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		switch entityCategory {
 		case entity.CategoryUsers:
 			appNotif.Subject = "Invited member logged in"
-			appNotif.Body = fmt.Sprintf("%s `%s` has been logged in for the first time", "Member", appNotif.Title)
+			appNotif.Body = fmt.Sprintf("%s `%s` logged in for the first time", "Member", appNotif.Title)
 		default:
 			if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` has been updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				appNotif.Body = fmt.Sprintf("%s `%s` updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 			} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` due date has been modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				appNotif.Body = fmt.Sprintf("%s `%s` due date modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 			} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` has been modified with the following fields %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				appNotif.Body = fmt.Sprintf("%s `%s` %s modified", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 			}
 		}
 
@@ -193,21 +191,57 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		appNotif.Subject = fmt.Sprintf("New comment added in %s `%s`", util.LowerSinglarize(appNotif.BaseEntityName), appNotif.BaseItemName)
 	}
 
+	userSettingsMap, err := notificationSettings(ctx, accountID, appNotif.Assignees, appNotif.Followers, db)
+	if err != nil {
+		log.Println("***>***> OnAnItemLevelEvent: unexpected/unhandled error occurred when retriving userSettingsMap. error:", err)
+	}
 	duplicateMasker := make(map[string]bool, 0)
 	//Send email/firebase notification to assignees/followers/creators
 	for _, assignee := range appNotif.Assignees {
 		if _, ok := duplicateMasker[assignee.UserID]; !ok {
-			appNotif.Send(ctx, assignee, notificationType, db, firebaseSDKPath)
+			if notifSettingMap, ok := userSettingsMap[assignee.UserID]; ok {
+				if notifSettingMap[user.NSAssigned] == "true" {
+					appNotif.Send(ctx, assignee, notificationType, db, firebaseSDKPath)
+				}
+			} else { // go with default flow if user settings not exist
+				appNotif.Send(ctx, assignee, notificationType, db, firebaseSDKPath)
+			}
 			duplicateMasker[assignee.UserID] = true
 		}
 	}
 
 	for _, follower := range appNotif.Followers {
 		if _, ok := duplicateMasker[follower.UserID]; !ok {
-			appNotif.Send(ctx, follower, notificationType, db, firebaseSDKPath)
+			if notifSettingMap, ok := userSettingsMap[follower.UserID]; ok {
+				if (notificationType == TypeCreated && notifSettingMap[user.NSCreated] == "true") || (notificationType == TypeUpdated && notifSettingMap[user.NSUpdated] == "true") {
+					appNotif.Send(ctx, follower, notificationType, db, firebaseSDKPath)
+				}
+			} else { // go with default flow if user settings not exist
+				appNotif.Send(ctx, follower, notificationType, db, firebaseSDKPath)
+			}
 			duplicateMasker[follower.UserID] = true
 		}
 	}
 
 	return appNotif.Save(ctx, notificationType, db)
+}
+
+func notificationSettings(ctx context.Context, accountID string, assignees, followers []entity.UserEntity, db *sqlx.DB) (map[string]map[string]string, error) {
+	userMap := make(map[string]map[string]string, 0)
+	userIDs := make([]interface{}, 0)
+	for _, assignee := range assignees {
+		userIDs = append(userIDs, assignee.UserID)
+	}
+	for _, follower := range followers {
+		userIDs = append(userIDs, follower.UserID)
+	}
+	users, err := user.BulkRetrieveUserSetting(ctx, db, accountID, userIDs)
+	if err != nil {
+		return userMap, err
+	}
+
+	for _, u := range users {
+		userMap[u.UserID] = user.UnmarshalNotificationSettings(u.NotificationSetting)
+	}
+	return userMap, nil
 }

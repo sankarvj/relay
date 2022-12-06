@@ -69,8 +69,9 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 						appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
 					}
 
-					//adding base item follower and assignees
-					appNotif.AddFollower(ctx, accountID, it.UserID, db, sdb)
+					//adding base item creator
+					appNotif.AddCreators(ctx, accountID, it.UserID, db, sdb)
+					//adding base item assignees
 					baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
 					for _, f := range baseValueAddedFields {
 						if f.Value == nil {
@@ -78,6 +79,9 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 						}
 						if f.Who == entity.WhoAssignee {
 							appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
+						}
+						if f.Who == entity.WhoFollower {
+							appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
 						}
 					}
 				}
@@ -87,7 +91,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 
 	appNotif.DirtyFields = make(map[string]string, 0)
 	if itemCreatorID != nil && *itemCreatorID != user.UUID_SYSTEM_USER && *itemCreatorID != userID {
-		appNotif.AddFollower(ctx, accountID, itemCreatorID, db, sdb)
+		appNotif.AddCreators(ctx, accountID, itemCreatorID, db, sdb)
 	}
 
 	switch userID {
@@ -152,37 +156,31 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 	return appNotif
 }
 
-func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB, sdb *database.SecDB) {
-	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db, sdb)
+func (appNotif *AppNotification) AddAssignees(ctx context.Context, accountID, ownerEntityID string, ownerIds []interface{}, db *sqlx.DB, sdb *database.SecDB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, ownerEntityID, db, sdb)
 	if err != nil {
-		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity in add_assigness. error:", err)
 	}
-	for _, assignee := range assignees {
-		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db, sdb)
-		if err != nil {
-			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
-			continue
-		}
-		appNotif.Assignees = append(appNotif.Assignees, *userItem)
+	owners, err := users(ctx, accountID, ownerEntity, ownerIds, db)
+	if err != nil {
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owners in add_assigness. error:", err)
 	}
+	appNotif.Assignees = append(appNotif.Assignees, owners...)
 }
 
-func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, assigneeEntityID string, assignees []interface{}, db *sqlx.DB, sdb *database.SecDB) {
-	ownerEntity, err := entity.Retrieve(ctx, accountID, assigneeEntityID, db, sdb)
+func (appNotif *AppNotification) AddFollowers(ctx context.Context, accountID, ownerEntityID string, ownerIds []interface{}, db *sqlx.DB, sdb *database.SecDB) {
+	ownerEntity, err := entity.Retrieve(ctx, accountID, ownerEntityID, db, sdb)
 	if err != nil {
-		log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving owner entity. error:", err)
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity in add_followers. error:", err)
 	}
-	for _, assignee := range assignees {
-		userItem, err := entity.RetriveUserItem(ctx, accountID, ownerEntity.ID, assignee.(string), db, sdb)
-		if err != nil {
-			log.Println("***>***> ItemUpdates: unexpected/unhandled error occurred while retriving userItem from memberID. error:", err)
-			continue
-		}
-		appNotif.Followers = append(appNotif.Followers, *userItem)
+	owners, err := users(ctx, accountID, ownerEntity, ownerIds, db)
+	if err != nil {
+		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owners in add_followers. error:", err)
 	}
+	appNotif.Followers = append(appNotif.Followers, owners...)
 }
 
-func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID string, itemCreatorID *string, db *sqlx.DB, sdb *database.SecDB) {
+func (appNotif *AppNotification) AddCreators(ctx context.Context, accountID string, itemCreatorID *string, db *sqlx.DB, sdb *database.SecDB) {
 	creator, err := user.RetrieveUser(ctx, db, accountID, *itemCreatorID)
 	if err != nil {
 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving user from creatorID. error:", err)
@@ -200,7 +198,7 @@ func (appNotif *AppNotification) AddFollower(ctx context.Context, accountID stri
 	}
 }
 
-func (appNotif *AppNotification) AddMoreFollowers(ctx context.Context, accountID string, db *sqlx.DB) {
+func (appNotif *AppNotification) AddMembers(ctx context.Context, accountID string, db *sqlx.DB) {
 	ownerEntity, err := entity.RetrieveFixedEntity(ctx, db, accountID, "", entity.FixedEntityOwner)
 	if err != nil {
 		log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while retriving owner entity. error:", err)
@@ -218,8 +216,9 @@ func (appNotif *AppNotification) AddMoreFollowers(ctx context.Context, accountID
 			log.Println("***>***> appNotificationBuilder: unexpected/unhandled error occurred while parsing owner items. error:", err)
 			continue
 		}
-		userEntityItem.MemberID = userItem.ID
+
 		if userEntityItem.UserID != "" {
+			userEntityItem.MemberID = userItem.ID
 			appNotif.Followers = append(appNotif.Followers, userEntityItem)
 		}
 	}
@@ -303,4 +302,25 @@ func (appNotif AppNotification) assigneeNames() string {
 		names = append(names, ass.Name)
 	}
 	return strings.Join(names[:], ",")
+}
+
+func users(ctx context.Context, accountID string, ownerEntity entity.Entity, owners []interface{}, db *sqlx.DB) ([]entity.UserEntity, error) {
+	users := make([]entity.UserEntity, 0)
+	items, err := item.BulkRetrieveItems(ctx, accountID, owners, db)
+	if err != nil {
+		return users, err
+	}
+
+	for _, it := range items {
+		ownerValueAdded := ownerEntity.ValueAdd(it.Fields())
+		var userEntityItem entity.UserEntity
+		err = entity.ParseFixedEntity(ownerValueAdded, &userEntityItem)
+		if err != nil {
+			return users, err
+		}
+		userEntityItem.MemberID = it.ID
+		users = append(users, userEntityItem)
+	}
+	return users, nil
+
 }

@@ -55,6 +55,15 @@ type ViewModelUserSetting struct {
 	NotificationSetting map[string]string `json:"notification_setting"`
 }
 
+type NotificationUserSetting struct {
+	UserID              string `db:"user_id" json:"user_id"`
+	MemberID            string `db:"member_id" json:"member_id"`
+	Name                string `db:"name" json:"name"`
+	Avatar              string `db:"avatar" json:"avatar"`
+	Email               string `db:"email" json:"email"`
+	NotificationSetting string `db:"notification_setting" json:"notification_setting"`
+}
+
 // NewUser contains information needed to create a new User.
 type NewUser struct {
 	AccountID       string   `json:"account_id"`

@@ -17,8 +17,8 @@ func taskVals(actorEntity entity.Entity, name, desc, contactID, statusID string)
 	taskVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(actorEntity.EasyFields())
 
-	for name, f := range namedFieldsMap {
-		switch name {
+	for nameOfField, f := range namedFieldsMap {
+		switch nameOfField {
 		case "name":
 			taskVals[f.Key] = name
 		case "desc":

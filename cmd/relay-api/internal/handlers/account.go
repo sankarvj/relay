@@ -140,6 +140,18 @@ func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *ht
 	return web.Respond(ctx, w, false, http.StatusOK)
 }
 
+func (a *Account) RemoveDummyData(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Account.Retrieve")
+	defer span.End()
+
+	account, err := account.Retrieve(ctx, a.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(ctx, w, createViewModelAccount(account), http.StatusOK)
+}
+
 func accUsers(ctx context.Context, currentUserEmail string, db *sqlx.DB) ([]user.User, error) {
 	var users []user.User
 	_, err := mail.ParseAddress(currentUserEmail)
