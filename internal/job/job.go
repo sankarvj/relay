@@ -72,7 +72,9 @@ func (j *Job) eventAccountLaunched(m *stream.Message) error {
 	log.Println("***>***> Reached Account Launch ***<***<")
 	ctx := context.Background()
 
-	err := payment.InitStripe(ctx, m.AccountID, m.UserID, j.DB)
+	stripeLiveKey := util.ExpvarGet("stripe_live_key")
+
+	err := payment.InitStripe(ctx, m.AccountID, m.UserID, stripeLiveKey, j.DB)
 	if err != nil {
 		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
 	} else {

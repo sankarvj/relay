@@ -16,30 +16,25 @@ import (
 )
 
 const (
-	stripeTestKey  = "sk_test_51M0BSXHUBFGeRHv5Qalelfhv8NO1kdnM0FgGd37iG74b2HNQfRLSolOgcvuFjvkfRP4KYTmZwztk5qMCmN245IDW00IUDFBOmp"
-	EndPointSecret = "whsec_41d7022cc154e767fe96054ac413c1cde21b2d9c23b4c7743f20315901f247cc"
+	monthlyPro     = "price_1MCSkJHUBFGeRHv57UGsHmIF"
+	yearlyPro      = "price_1MCSosHUBFGeRHv5mn6cu8IO"
+	monthlyStartup = "price_1MCSrUHUBFGeRHv5YKAFFq3L"
+	yearlyStartup  = "price_1MCSrUHUBFGeRHv5PBjvxjhq"
+	monthlyFree    = "price_1MCSlqHUBFGeRHv5rrOnsPxu"
+	yearlyFree     = "price_1MCSlqHUBFGeRHv5rrOnsPxu"
 )
 
-const (
-	monthlyPro     = "price_1M2yysHUBFGeRHv5ny0GpDcg"
-	yearlyPro      = "price_1M33FmHUBFGeRHv5CacjHjmY"
-	monthlyStartup = "price_1M2yy2HUBFGeRHv5Egzwph1J"
-	yearlyStartup  = "price_1M33I1HUBFGeRHv5JbtHIUIC"
-	monthlyFree    = "price_1M2yw0HUBFGeRHv5pQzB0gPT"
-	yearlyFree     = "price_1M2yw0HUBFGeRHv5j65gw5i4"
-)
-
-func InitStripe(ctx context.Context, accountID, userID string, db *sqlx.DB) error {
+func InitStripe(ctx context.Context, accountID, userID string, stripeLiveKey string, db *sqlx.DB) error {
 	user, err := user.RetrieveUser(ctx, db, accountID, userID)
 	if err != nil {
 		return err
 	}
-	cusID, err := addStripeCustomer(user.Email)
+	cusID, err := addStripeCustomer(user.Email, stripeLiveKey)
 	if err != nil {
 		return err
 	}
 
-	trailStart, trialEnd, err := startTrail(cusID)
+	trailStart, trialEnd, err := startTrail(cusID, stripeLiveKey)
 	if err != nil {
 		return err
 	}
@@ -53,13 +48,13 @@ func InitStripe(ctx context.Context, accountID, userID string, db *sqlx.DB) erro
 	return nil
 }
 
-func CustomerPortal(ctx context.Context, accountID, userID string, db *sqlx.DB) (string, error) {
+func CustomerPortal(ctx context.Context, accountID, userID string, stripeLiveKey string, db *sqlx.DB) (string, error) {
 	acc, err := account.Retrieve(ctx, db, accountID)
 	if err != nil {
 		return "", err
 	}
 
-	stripe.Key = stripeTestKey
+	stripe.Key = stripeLiveKey
 	params := &stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(*acc.CustomerID),
 		ReturnURL: stripe.String(billingLink(acc.ID, acc.Domain)),
@@ -72,8 +67,8 @@ func CustomerPortal(ctx context.Context, accountID, userID string, db *sqlx.DB) 
 	return s.URL, nil
 }
 
-func addStripeCustomer(email string) (string, error) {
-	stripe.Key = stripeTestKey
+func addStripeCustomer(email, stripeLiveKey string) (string, error) {
+	stripe.Key = stripeLiveKey
 	params := &stripe.CustomerParams{
 		Email:         stripe.String(email),
 		PaymentMethod: stripe.String("pm_card_visa"),
@@ -88,8 +83,8 @@ func addStripeCustomer(email string) (string, error) {
 	return result.ID, nil
 }
 
-func startTrail(cusID string) (int64, int64, error) {
-	stripe.Key = stripeTestKey
+func startTrail(cusID, stripeLiveKey string) (int64, int64, error) {
+	stripe.Key = stripeLiveKey
 	items := []*stripe.SubscriptionItemsParams{
 		{
 			Price: stripe.String(monthlyPro),

@@ -68,6 +68,10 @@ func run() error {
 			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
 			WorkerSqsURL string `conf:"default:us-east-1,env:AWS_WORKER_SQS_URL"`
 		}
+		Payment struct {
+			StripeLiveKey    string `conf:"default:sk_test_51M0BSXHUBFGeRHv5Qalelfhv8NO1kdnM0FgGd37iG74b2HNQfRLSolOgcvuFjvkfRP4KYTmZwztk5qMCmN245IDW00IUDFBOmp,env:STRIPE_LIVE_KEY"`
+			StripePublishKey string `conf:"default:whsec_41d7022cc154e767fe96054ac413c1cde21b2d9c23b4c7743f20315901f247cc,env:STRIPE_PUBLISH_KEY"`
+		}
 		Build string `conf:"default:dev,env:BUILD"`
 	}
 
@@ -87,6 +91,8 @@ func run() error {
 	expvar.NewString("build").Set(cfg.Build)
 	expvar.NewString("aws_region").Set(cfg.Service.Region)
 	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
+	expvar.NewString("stripe_live_key").Set(cfg.Payment.StripeLiveKey)
+	expvar.NewString("stripe_publish_key").Set(cfg.Payment.StripePublishKey)
 
 	// =========================================================================
 	// App Starting

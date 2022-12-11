@@ -16,6 +16,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
+	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -51,14 +52,12 @@ func (b *Bill) Events(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	// If you are testing with the CLI, find the secret by running 'stripe listen'
 	// If you are using an endpoint defined with the API or dashboard, look in your webhook settings
 	// at https://dashboard.stripe.com/webhooks
-	event, err = webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), payment.EndPointSecret)
+	stripePublishKey := util.ExpvarGet("stripe_publish_key")
+	event, err = webhook.ConstructEvent(payload, r.Header.Get("Stripe-Signature"), stripePublishKey)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  Webhook signature verification failed. %v\n", err)
 		return err
 	}
-
-	log.Printf("event.Type %+v", event.Type)
-	log.Printf("event.Data.Object %+v", event.Data.Object)
 
 	// Unmarshal the event data into an appropriate struct depending on its Type
 	switch event.Type {
@@ -89,13 +88,6 @@ func (b *Bill) Events(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		status := event.Data.Object["status"].(string)
 		product, quantity := product(event)
 
-		log.Printf("product %+v", customerID)
-		log.Printf("product %+v", product)
-		log.Printf("quantity %+v", quantity)
-		log.Printf("status %+v", status)
-		log.Printf("trialStart %+v", trialStart)
-		log.Printf("trialEnd %+v", trialEnd)
-
 		err = updateAccPlan(ctx, customerID, status, product, quantity, trialStart, trialEnd, b.db)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  updating plan to the existing account failed. %v\n", err)
@@ -119,7 +111,8 @@ func (b *Bill) Portal(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		err := errors.New("auth_cliams_missing_from_context") // value used in the UI dont change the string message.
 		return web.NewRequestError(err, http.StatusForbidden)
 	}
-	url, err := payment.CustomerPortal(ctx, params["account_id"], currentUser.ID, b.db)
+	stripeLiveKey := util.ExpvarGet("stripe_live_key")
+	url, err := payment.CustomerPortal(ctx, params["account_id"], currentUser.ID, stripeLiveKey, b.db)
 	if err != nil {
 		err := errors.New("failed_to_handle_customer_portal_failed") // value used in the UI dont change the string message.
 		return web.NewRequestError(err, http.StatusForbidden)
