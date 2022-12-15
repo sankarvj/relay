@@ -34,24 +34,39 @@ type User struct {
 type UserSetting struct {
 	AccountID           string `db:"account_id" json:"account_id"`
 	UserID              string `db:"user_id" json:"user_id"`
-	LayoutStyle         string `db:"layout_style" json:"layout_style"`
 	SelectedTeam        string `db:"selected_team" json:"selected_team"`
+	SelectedEntity      string `db:"selected_entity" json:"selected_entity"`
+	SelectedView        string `db:"selected_view" json:"selected_view"`
+	SelectedOrder       string `db:"selected_order" json:"selected_order"`
+	SelectedTheme       string `db:"selected_theme" json:"selected_theme"`
+	LayoutStyle         string `db:"layout_style" json:"layout_style"`
+	Metab               string `db:"metab" json:"metab"`
 	NotificationSetting string `db:"notification_setting" json:"notification_setting"`
 }
 
 type NewUserSetting struct {
 	AccountID           string            `json:"account_id"`
 	UserID              string            `json:"user_id"`
-	LayoutStyle         string            `json:"layout_style"`
 	SelectedTeam        string            `json:"selected_team"`
+	SelectedEntity      string            `json:"selected_entity"`
+	SelectedView        string            `json:"selected_view"`
+	SelectedOrder       string            `json:"selected_order"`
+	SelectedTheme       string            `json:"selected_theme"`
+	LayoutStyle         string            `json:"layout_style"`
+	Meta                map[string]string `json:"meta"`
 	NotificationSetting map[string]string `json:"notification_setting"`
 }
 
 type ViewModelUserSetting struct {
 	AccountID           string            `json:"account_id"`
 	UserID              string            `json:"user_id"`
-	LayoutStyle         string            `json:"layout_style"`
 	SelectedTeam        string            `json:"selected_team"`
+	SelectedEntity      string            `json:"selected_entity"`
+	SelectedView        string            `json:"selected_view"`
+	SelectedOrder       string            `json:"selected_order"`
+	SelectedTheme       string            `json:"selected_theme"`
+	LayoutStyle         string            `json:"layout_style"`
+	Meta                map[string]string `json:"meta"`
 	NotificationSetting map[string]string `json:"notification_setting"`
 }
 

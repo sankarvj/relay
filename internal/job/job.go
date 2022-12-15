@@ -878,6 +878,10 @@ func (j Job) actOnNotifications(ctx context.Context, accountID, userID string, i
 		return err
 	}
 
+	if appNotifItem == nil {
+		return nil
+	}
+
 	notifEntity, err := entity.Retrieve(ctx, appNotifItem.AccountID, appNotifItem.EntityID, j.DB, j.SDB)
 	if err != nil {
 		return err

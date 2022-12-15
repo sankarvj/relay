@@ -63,12 +63,12 @@ func (emNotif EmailNotification) Send(ctx context.Context, notifType Notificatio
 	// dir := path.Join(path.Dir(basepath), "..")
 	// log.Println("dir ", dir)
 	localTesting := false
-	// for _, toEmail := range emNotif.To {
-	// 	if toEmail == "vijayasankarj@gmail.com" {
-	// 		localTesting = true
-	// 		break
-	// 	}
-	// }
+	for _, toEmail := range emNotif.To {
+		if toEmail == "vijayasankarj@gmail.com" {
+			localTesting = true
+			break
+		}
+	}
 	if localTesting {
 		log.Println("Magic Link: ", templateData.MagicLink)
 		return nil

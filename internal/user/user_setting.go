@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"strconv"
 
 	"github.com/jmoiron/sqlx"
@@ -55,8 +56,13 @@ func UserSettingRetrieve(ctx context.Context, accountID, userID string, db *sqlx
 			return UserSetting{
 				AccountID:           accountID,
 				UserID:              userID,
-				LayoutStyle:         "menu",
 				SelectedTeam:        "",
+				SelectedEntity:      "",
+				SelectedView:        "",
+				SelectedOrder:       "",
+				SelectedTheme:       "light-theme-1",
+				Metab:               string(MarshalMeta(map[string]string{})),
+				LayoutStyle:         "menu",
 				NotificationSetting: string(notificationSettingBytes),
 			}, nil
 		}
@@ -77,21 +83,25 @@ func AddUserSetting(ctx context.Context, db *sqlx.DB, nus NewUserSetting) (UserS
 	}
 
 	us := UserSetting{
-		AccountID:    nus.AccountID,
-		UserID:       nus.UserID,
-		LayoutStyle:  nus.LayoutStyle,
-		SelectedTeam: nus.SelectedTeam,
-
+		AccountID:           nus.AccountID,
+		UserID:              nus.UserID,
+		SelectedTeam:        nus.SelectedTeam,
+		SelectedEntity:      nus.SelectedEntity,
+		SelectedView:        nus.SelectedView,
+		SelectedOrder:       nus.SelectedOrder,
+		SelectedTheme:       nus.SelectedTheme,
+		LayoutStyle:         nus.LayoutStyle,
+		Metab:               string(MarshalMeta(nus.Meta)),
 		NotificationSetting: string(notificationSettingBytes),
 	}
 
 	const q = `INSERT INTO user_settings
-		(account_id, user_id, layout_style, selected_team, notification_setting)
-		VALUES ($1, $2, $3, $4, $5)`
+		(account_id, user_id, selected_team, selected_entity, selected_view, selected_order, selected_theme, layout_style, metab, notification_setting)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	_, err = db.ExecContext(
 		ctx, q,
-		us.AccountID, us.UserID, us.LayoutStyle, us.SelectedTeam, us.NotificationSetting,
+		us.AccountID, us.UserID, us.SelectedTeam, us.SelectedEntity, us.SelectedView, us.SelectedOrder, us.SelectedTheme, us.LayoutStyle, us.Metab, us.NotificationSetting,
 	)
 	if err != nil {
 		return UserSetting{}, errors.Wrap(err, "inserting user setting")
@@ -123,12 +133,17 @@ func UpdateUserSettings(ctx context.Context, db *sqlx.DB, nus NewUserSetting) er
 	}
 
 	const q = `UPDATE user_settings SET
-		"layout_style" = $3,
-		"selected_team" = $4,
-		"notification_setting" = $5 
+		"selected_team" = $3,
+		"selected_entity" = $4,
+		"selected_view" = $5,
+		"selected_order" = $6,
+		"selected_theme" = $7,
+		"layout_style" = $8,
+		"metab" = $9,
+		"notification_setting" = $10 
 		WHERE account_id = $1 AND user_id = $2`
-	_, err = db.ExecContext(ctx, q, nus.AccountID, nus.UserID,
-		nus.LayoutStyle, nus.SelectedTeam, string(notificationSettingBytes),
+	_, err = db.ExecContext(ctx, q, nus.AccountID, nus.UserID, nus.SelectedTeam, nus.SelectedEntity, nus.SelectedView, nus.SelectedOrder, nus.SelectedTheme,
+		nus.LayoutStyle, string(MarshalMeta(nus.Meta)), string(notificationSettingBytes),
 	)
 
 	return err
@@ -146,8 +161,13 @@ func UpdateEmailSubscription(ctx context.Context, db *sqlx.DB, accountID, userID
 			nus := NewUserSetting{
 				AccountID:           accountID,
 				UserID:              userID,
-				LayoutStyle:         "menu",
 				SelectedTeam:        "",
+				SelectedEntity:      "",
+				SelectedView:        "",
+				SelectedOrder:       "",
+				SelectedTheme:       "light-theme-1",
+				Meta:                map[string]string{},
+				LayoutStyle:         "menu",
 				NotificationSetting: defaultNotificationSettings(emailSubscription),
 			}
 			_, err = AddUserSetting(ctx, db, nus)
@@ -190,4 +210,21 @@ func defaultNotificationSettings(emailSubscription bool) map[string]string {
 	nSettings[NSAssigned] = "true"
 	nSettings[NSEmailSubscription] = strconv.FormatBool(emailSubscription)
 	return nSettings
+}
+
+func MarshalMeta(meta map[string]string) []byte {
+	json, err := json.Marshal(meta)
+	if err != nil {
+		log.Println("***> unexpected/unhandled error in internal.usersettings. when marshaling meta. error:", err)
+	}
+
+	return json
+}
+
+func UnmarshalMeta(metaB string) map[string]string {
+	var meta map[string]string
+	if err := json.Unmarshal([]byte(metaB), &meta); err != nil {
+		return meta
+	}
+	return meta
 }

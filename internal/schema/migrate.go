@@ -358,8 +358,13 @@ var migrations = []darwin.Migration{
 		CREATE TABLE user_settings (
 			account_id      		UUID REFERENCES accounts ON DELETE CASCADE,
 			user_id    				UUID REFERENCES users ON DELETE CASCADE,
-			layout_style    		TEXT,
 			selected_team 			TEXT,
+			selected_entity 		TEXT,
+			selected_view 		    TEXT,
+			selected_order    		TEXT,
+			selected_theme    		TEXT,
+			layout_style    		TEXT,
+			metab    				JSONB,
 			notification_setting    JSONB,
 			UNIQUE (account_id, user_id)
 		);

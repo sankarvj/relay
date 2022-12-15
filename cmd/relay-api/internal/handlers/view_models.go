@@ -22,6 +22,7 @@ import (
 
 type ViewModelAccount struct {
 	ID     string `json:"id"`
+	Name   string `json:"name"`
 	Plan   int    `json:"plan"`
 	Status string `json:"status"`
 }
@@ -29,6 +30,7 @@ type ViewModelAccount struct {
 func createViewModelAccount(acc *account.Account) ViewModelAccount {
 	return ViewModelAccount{
 		ID:     acc.ID,
+		Name:   acc.Name,
 		Plan:   acc.CustomerPlan,
 		Status: acc.CustomerStatus,
 	}
@@ -92,8 +94,13 @@ func createViewModelUS(us user.UserSetting) user.ViewModelUserSetting {
 	return user.ViewModelUserSetting{
 		AccountID:           us.AccountID,
 		UserID:              us.UserID,
-		LayoutStyle:         us.LayoutStyle,
 		SelectedTeam:        us.SelectedTeam,
+		SelectedEntity:      us.SelectedEntity,
+		SelectedView:        us.SelectedView,
+		SelectedOrder:       us.SelectedOrder,
+		SelectedTheme:       us.SelectedTheme,
+		LayoutStyle:         us.LayoutStyle,
+		Meta:                user.UnmarshalMeta(us.Metab),
 		NotificationSetting: user.UnmarshalNotificationSettings(us.NotificationSetting),
 	}
 }
@@ -453,11 +460,13 @@ func createNewVerifiedUser(ctx context.Context, accountID, name, email string, r
 }
 
 type APIToken struct {
-	Token string `json:"token"`
+	AccountName string `json:"account_name"`
+	Token       string `json:"token"`
 }
 
-func createVMToken(token token.Token) APIToken {
+func createVMToken(accName string, token token.Token) APIToken {
 	return APIToken{
-		Token: token.Token,
+		AccountName: accName,
+		Token:       token.Token,
 	}
 }

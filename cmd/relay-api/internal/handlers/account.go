@@ -115,12 +115,17 @@ func (a *Account) APIToken(ctx context.Context, w http.ResponseWriter, r *http.R
 	ctx, span := trace.StartSpan(ctx, "handlers.Account.APIToken")
 	defer span.End()
 
+	account, err := account.Retrieve(ctx, a.db, params["account_id"])
+	if err != nil {
+		return err
+	}
+
 	tkn, err := token.Retrieve(ctx, a.db, params["account_id"])
 	if err != nil {
 		return err
 	}
 
-	return web.Respond(ctx, w, createVMToken(*tkn), http.StatusOK)
+	return web.Respond(ctx, w, createVMToken(account.Name, *tkn), http.StatusOK)
 }
 
 func (a *Account) Availability(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

@@ -127,6 +127,10 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db, sdb)
 	appNotif.CreatedAt = itemUpdatedAt
 
+	if entityCategory == entity.CategoryEvent { //stop notifications for events
+		return nil, nil
+	}
+
 	switch notificationType {
 	case TypeReminder:
 		if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
