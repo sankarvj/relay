@@ -117,7 +117,7 @@ func whenContactAdded(ctx context.Context, b *base.Base, contactEntity, dealEnti
 				ActorID:    dealEntity.ID,
 				ActorName:  "Deal",
 				TemplateID: dealTemplateBasic.ID,
-				Type:       node.Modify,
+				Type:       node.Push,
 			},
 		},
 	}
@@ -133,7 +133,7 @@ func whenDealAmountExceeds1000(ctx context.Context, b *base.Base, contactEntity,
 	cf := &base.CoreWorkflow{
 		Name:     "When a deal amount exceeds $1000",
 		ActorID:  dealEntity.ID,
-		FlowType: flow.FlowTypeEventUpdate,
+		FlowType: flow.FlowTypeEventCreateOrUpdate,
 		Nodes: []*base.CoreNode{
 			{
 				Name:       "Update related contacts",

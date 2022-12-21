@@ -50,14 +50,14 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - activities
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	b.ActivityEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
 	fmt.Println("\tCRM:BOOT Activities Entity Created")
 
 	// add entity - plan
-	_, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySubscriptions, "Subscriptions", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, PlanFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	b.SubscriptionEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntitySubscriptions, "Subscriptions", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, PlanFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -82,6 +82,14 @@ func AddWorkflows(ctx context.Context, b *base.Base) error {
 		return err
 	}
 	err = b.AddSegments(ctx, b.CompanyEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = b.AddSegments(ctx, b.ActivityEntity.ID)
+	if err != nil {
+		return err
+	}
+	err = b.AddSegments(ctx, b.SubscriptionEntity.ID)
 	if err != nil {
 		return err
 	}
@@ -414,10 +422,11 @@ func addDashboards(ctx context.Context, b *base.Base, activityEntity, planEntity
 
 func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, activityEntity, planEntity entity.Entity) error {
 	//charts for home dashboard
-	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "daily_active_users", "Daily active users", "", chart.TypeLine).SetAsTimeseries().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
+	var err error
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "daily_active_users", "Daily active users", "", chart.TypeLine).SetAsTimeseries().Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
 	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ContactEntity.ID, "contacts_stage", "Contacts stage", "lifecycle_stage", chart.TypePie).SetGrpLogicID().SetDurationAllTime().Add(ctx, b.DB)
 	if err != nil {
 		return err
@@ -427,10 +436,10 @@ func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, activi
 		return err
 	}
 
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "dau", "DAU", "", chart.TypeGrid).SetAsTimeseries().SetDurationLast24hrs().SetCalcSum().SetIcon("dau.svg").Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.DAUEntity.ID, "dau", "DAU", "", chart.TypeGrid).SetAsTimeseries().SetDurationLast24hrs().SetCalcSum().SetIcon("dau.svg").Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
 	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ContactEntity.ID, "chrun_rate", "Chrun rate", "lifecycle_stage", chart.TypeGrid).AddDateField("lost_customer_on").SetDurationLast24hrs().SetCalcRate().SetGrpLogicID().SetIcon("chrun.svg").Add(ctx, b.DB)
 	if err != nil {
 		return err

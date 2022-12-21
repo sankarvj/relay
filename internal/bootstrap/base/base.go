@@ -62,6 +62,8 @@ type CoreEntity struct {
 	ProjectEntity        entity.Entity
 	NotificationEntity   entity.Entity
 	DAUEntity            entity.Entity
+	ActivityEntity       entity.Entity
+	SubscriptionEntity   entity.Entity
 }
 
 type CoreItem struct {
