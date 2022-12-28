@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -67,19 +68,21 @@ func CustomerPortal(ctx context.Context, accountID, userID string, stripeLiveKey
 	return s.URL, nil
 }
 
+func AddStripCus(email, stripeLiveKey string) (string, error) {
+	return addStripeCustomer(email, stripeLiveKey)
+}
+
 func addStripeCustomer(email, stripeLiveKey string) (string, error) {
 	stripe.Key = stripeLiveKey
 	params := &stripe.CustomerParams{
-		Email:         stripe.String(email),
-		PaymentMethod: stripe.String("pm_card_visa"),
-		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
-			DefaultPaymentMethod: stripe.String("pm_card_visa"),
-		},
+		Email: stripe.String(email),
 	}
 	result, err := customer.New(params)
 	if err != nil {
 		return "", err
 	}
+	log.Printf("addStripeCustomer --- %+v", result)
+	log.Println("addStripeCustomer err --->>>>", err)
 	return result.ID, nil
 }
 
