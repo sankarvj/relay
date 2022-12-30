@@ -112,7 +112,7 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return web.NewRequestError(errors.Wrap(err, "User JWT creation failed"), http.StatusInternalServerError)
 	}
 	//this will take the user in the frontend to the specific account even multiple accounts exists
-	userToken.Accounts = []string{nc.ID}
+	userToken.Accounts = []string{acc.ID}
 
 	err = bootstrap.Bootstrap(ctx, a.db, a.sdb, a.authenticator.FireBaseAdminSDK, acc.ID, acc.Name, &usr)
 	if err != nil {
