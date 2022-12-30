@@ -282,12 +282,12 @@ func addContacts(ctx context.Context, b *base.Base, contactEntity, taskEntity en
 	}
 
 	// add task item for contact - matt (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskVals(taskEntity, "Send demo link to the customer", "Send an email to the customer with the demo links often used to get started", b.StatusItemOpened.ID, b.ContactItemMatt.ID), map[string][]string{contactEntity.ID: {b.ContactItemMatt.ID}})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskVals(taskEntity, "Send demo link to the customer", "Send an email to the customer with the demo links often used to get started", b.ContactItemMatt.ID, b.StatusItemOpened.ID), map[string][]string{contactEntity.ID: {b.ContactItemMatt.ID}})
 	if err != nil {
 		return err
 	}
 	// add task item for contact - natasha (reverse)
-	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskVals(taskEntity, "Schedule an on-site meeting with customer", "Ask the customer about the preferred time and schedule a meeting", b.StatusItemOpened.ID, b.ContactItemNatasha.ID), map[string][]string{contactEntity.ID: {b.ContactItemNatasha.ID}})
+	_, err = b.ItemAdd(ctx, taskEntity.ID, uuid.New().String(), b.UserID, taskVals(taskEntity, "Schedule an on-site meeting with customer", "Ask the customer about the preferred time and schedule a meeting", b.ContactItemNatasha.ID, b.StatusItemOpened.ID), map[string][]string{contactEntity.ID: {b.ContactItemNatasha.ID}})
 	if err != nil {
 		return err
 	}

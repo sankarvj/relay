@@ -32,7 +32,7 @@ func graph(graphName string, conn redis.Conn) rg.Graph {
 	return rg.GraphNew(graphName, conn)
 }
 
-//GraphNode takes an item and build the bule print of the nodes and relationships
+// GraphNode takes an item and build the bule print of the nodes and relationships
 type GraphNode struct {
 	GraphName     string
 	Label         string
@@ -123,7 +123,7 @@ func (gn GraphNode) MakeBaseGNode(itemID string, fields []Field) GraphNode {
 	return gn
 }
 
-//GetNode fetches the node for the id provided
+// GetNode fetches the node for the id provided
 func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, error) {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -147,7 +147,7 @@ func GetNode(rPool *redis.Pool, graphName, label, itemID string) (*rg.Node, erro
 	return iNode, nil
 }
 
-//GetResult fetches resultant node
+// GetResult fetches resultant node
 func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction string) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -177,12 +177,13 @@ func GetResult(rPool *redis.Pool, gn GraphNode, pageNo int, sortBy, direction st
 	}
 	//DEBUG LOG
 	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result query: %s\n", q)
-	//DEBUG LOG log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
-	//result.PrettyPrint()
+	//DEBUG LOG
+	log.Printf("*********> debug: internal.platform.graphdb : graphdb - result: %v\n", result)
+	result.PrettyPrint()
 	return result, err
 }
 
-//GetCount fetches count of destination node
+// GetCount fetches count of destination node
 func GetCount(rPool *redis.Pool, gn GraphNode, groupById bool) (*rg.QueryResult, error) {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -416,10 +417,10 @@ func chainRelations(gn *GraphNode, srcNode *rg.Node, s []string) []string {
 	return s
 }
 
-//UpsertNode create/update the node with the given properties.
-//Properties should not include text area, lists, maps, reference.
-//TODO: For update, properties should include only the modified values including null for deleted keys.
-//TODO: handle deleted field/field values
+// UpsertNode create/update the node with the given properties.
+// Properties should not include text area, lists, maps, reference.
+// TODO: For update, properties should include only the modified values including null for deleted keys.
+// TODO: handle deleted field/field values
 func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 
 	conn := rPool.Get()
@@ -461,7 +462,7 @@ func UpsertNode(rPool *redis.Pool, gn GraphNode) error {
 	return nil
 }
 
-//"MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
+// "MERGE (n { id: '12345' }) SET n.age = 33, n.name = 'Bob'"
 func mergeProperties(gn GraphNode, srcNode *rg.Node) []string {
 	s := []string{}
 	props := gn.onlyProps()
@@ -476,7 +477,7 @@ func mergeProperties(gn GraphNode, srcNode *rg.Node) []string {
 	return s
 }
 
-//UpsertEdge creates/updates the relationship between src node and all its dst node
+// UpsertEdge creates/updates the relationship between src node and all its dst node
 func UpsertEdge(rPool *redis.Pool, gn GraphNode) error {
 	conn := rPool.Get()
 	defer conn.Close()
@@ -529,7 +530,7 @@ func updateRelation(gn GraphNode, srcNode *rg.Node) ([]string, []string) {
 	return s, u
 }
 
-//"MERGE (charlie { name: 'Charlie Sheen' }) MERGE (wallStreet:Movie { name: 'Wall Street' }) MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
+// "MERGE (charlie { name: 'Charlie Sheen' }) MERGE (wallStreet:Movie { name: 'Wall Street' }) MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
 func mergeRelation(relation string, srcNode, destNode *rg.Node) []string {
 	edge := rg.EdgeNew(relation, srcNode, destNode, nil)
 	md := mergeNode(destNode)
@@ -537,7 +538,7 @@ func mergeRelation(relation string, srcNode, destNode *rg.Node) []string {
 	return append(md, me...)
 }
 
-//Usefull when we update the event props with parent edge
+// Usefull when we update the event props with parent edge
 func mergeRevRelation(relation string, srcNode, destNode *rg.Node) []string {
 	edge := rg.EdgeNew(relation, destNode, srcNode, nil)
 	md := mergeNode(destNode)
@@ -577,7 +578,7 @@ func mergeEdge(e *rg.Edge) []string {
 	return s
 }
 
-//"MERGE (charlie { name: 'Charlie Sheen' }) MATCH (wallStreet:Movie { name: 'Wall Street' }) MATCH (charlie)-[r:ACTED_IN]->(wallStreet)"
+// "MERGE (charlie { name: 'Charlie Sheen' }) MATCH (wallStreet:Movie { name: 'Wall Street' }) MATCH (charlie)-[r:ACTED_IN]->(wallStreet)"
 func unlinkRelation(relation string, srcNode, destNode *rg.Node) []string {
 	unlinkAlias := rg.RandomString(10)
 	edge := rg.EdgeNew(relation, srcNode, destNode, nil)
@@ -600,9 +601,9 @@ func (gn GraphNode) ParentEdge(parentEntityID, parentItemID string, rev bool) Gr
 	return gn
 }
 
-//useful during all the upsertNode/upsertEdge
-//when id is not empty, choose node with id alone. (ref/create/update use-case)
-//when id is empty, choose all the properties. (list use-case)
+// useful during all the upsertNode/upsertEdge
+// when id is not empty, choose node with id alone. (ref/create/update use-case)
+// when id is empty, choose all the properties. (list use-case)
 func (gn GraphNode) rgNode() *rg.Node {
 	if gn.ItemID == "" { //useful for list
 		return rg.NodeNew(quote(gn.Label), rg.RandomString(10), gn.onlyProps())
@@ -610,9 +611,9 @@ func (gn GraphNode) rgNode() *rg.Node {
 	return gn.justNode()
 }
 
-//useful during the get/upsertNode/upsertEdge
-//when id is not empty - form node with id alone. (ref/create/update use-case)
-//when id is empty - form node with out properties (segment use-case)
+// useful during the get/upsertNode/upsertEdge
+// when id is not empty - form node with id alone. (ref/create/update use-case)
+// when id is empty - form node with out properties (segment use-case)
 func (gn GraphNode) justNode() *rg.Node {
 	properties := map[string]interface{}{}
 	if gn.ItemID != "" { //useful for almost all the cases except the segmentation use-case
@@ -625,7 +626,7 @@ func (gn GraphNode) justNode() *rg.Node {
 	return rg.NodeNew(quote(gn.Label), alias, properties)
 }
 
-//useful during the upsert.
+// useful during the upsert.
 func (gn GraphNode) onlyProps() map[string]interface{} {
 	properties := map[string]interface{}{}
 	for _, field := range gn.Fields {
@@ -683,9 +684,9 @@ func GraphNodeSt(jsonB string) (GraphNode, error) {
 	return gn, nil
 }
 
-//deleteEncode adds the alias for relation.
-//current go-library doesn't have this functionality
-//overloading encode with relation alias
+// deleteEncode adds the alias for relation.
+// current go-library doesn't have this functionality
+// overloading encode with relation alias
 func deleteEncode(e *rg.Edge, relationAlias string) string {
 	s := []string{"(", e.Source.Alias, ")"}
 
@@ -724,8 +725,8 @@ var operatorMap = map[string]string{
 	lexertoken.AFSign:       ">",
 }
 
-//TODO genralise and remove the if check
-//In segmentation call sometimes the value will be passed as 'eq' and sometime '='
+// TODO genralise and remove the if check
+// In segmentation call sometimes the value will be passed as 'eq' and sometime '='
 func Operator(lexerOp string) string {
 	if val, ok := operatorMap[lexerOp]; ok {
 		return val

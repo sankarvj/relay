@@ -107,6 +107,6 @@ func startTrail(cusID, stripeLiveKey string) (int64, int64, error) {
 }
 
 func billingLink(accountID, accountDomain string) string {
-	billLink := fmt.Sprintf("https://%s/v1/accounts/%s/billing", accountDomain, accountID)
+	billLink := fmt.Sprintf("https://%s/v1/accounts/%s", accountDomain, accountID)
 	return billLink
 }
