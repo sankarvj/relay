@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-//Integration types also used in the discoveries type
+// Integration types also used in the discoveries type
 const (
 	TypeBaseInbox      = "base_inbox"
 	TypeGmail          = "gmail"
@@ -24,14 +24,14 @@ const (
 	TypeOwners = "owners"
 )
 
-//Integration Mail Domains
+// Integration Mail Domains
 const (
 	DomainBaseInbox = "base_inbox.com"
 	DomainMailGun   = "mailgun.org"
 	DomainGMail     = "google.com"
 )
 
-//Google Scopes
+// Google Scopes
 var (
 	GmailScopes          = []string{gmail.GmailReadonlyScope, gmail.GmailSendScope}
 	GoogleCalendarScopes = []string{calendar.CalendarScope}
@@ -48,7 +48,7 @@ type DoCalendar interface {
 	Watch(calendarID, channelID string) error
 }
 
-//GetGoogleAccessURL gets the access-url for the scopes mentioned. This url should be loaded in the UI
+// GetGoogleAccessURL gets the access-url for the scopes mentioned. This url should be loaded in the UI
 func GetGoogleAccessURL(ctx context.Context, oAuthFile string, integId string, scope ...string) (string, error) {
 	config, err := GetConfig(oAuthFile, scope...)
 	if err != nil {
@@ -57,7 +57,7 @@ func GetGoogleAccessURL(ctx context.Context, oAuthFile string, integId string, s
 	return config.AuthCodeURL(integId, oauth2.AccessTypeOffline), nil
 }
 
-//GetGoogleToken retrives the token for the given scopes. This token should be stored and used for further google API calls
+// GetGoogleToken retrives the token for the given scopes. This token should be stored and used for further google API calls
 func GetGoogleToken(oAuthFile, code string, scope ...string) (string, error) {
 	config, err := GetConfig(oAuthFile, scope...)
 	if err != nil {

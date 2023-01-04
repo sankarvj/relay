@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rsa"
+	"database/sql"
 	"expvar"
 	"fmt"
 	"io/ioutil"
@@ -59,6 +60,12 @@ func run() error {
 			Password string `conf:"default:redis,noprint,env:SEC_DB_PASSWORD"`
 			Host     string `conf:"default:127.0.0.1:6379,env:SEC_DB_HOST"`
 			Name     string `conf:"default:relaydb,env:SEC_DB_NAME"`
+		}
+		CacheDB struct {
+			User     string `conf:"default:redisgraph,env:CACHE_DB_USER"`
+			Password string `conf:"default:redis,noprint,env:CACHE_DB_PASSWORD"`
+			Host     string `conf:"default:127.0.0.1:6379,env:CACHE_DB_HOST"`
+			Name     string `conf:"default:relaydb,env:CACHE_DB_NAME"`
 		}
 		PubSub struct {
 			GmailPublisherTopic string `conf:"default:projects/relay-94b69/topics/receive-gmail-message"`
@@ -139,7 +146,8 @@ func run() error {
 
 	// =========================================================================
 	// Initialize primary database
-	log.Println("main : Started : Initializing database support")
+
+	log.Println("main : Started : Initializing primary database support")
 	db, err := database.Open(database.Config{
 		User:       cfg.DB.User,
 		Password:   cfg.DB.Password,
@@ -158,6 +166,7 @@ func run() error {
 	// =========================================================================
 	// Initialize secondary database
 
+	log.Println("main : Started : Initializing secondary database support")
 	rp := &redis.Pool{
 		MaxIdle:     50,
 		MaxActive:   50,
@@ -179,6 +188,60 @@ func run() error {
 		log.Printf("main : Redis Database Stopping : %s", cfg.SecDB.Host)
 		rp.Close()
 	}()
+
+	// =========================================================================
+	// Initialize cache database
+
+	log.Println("main : Started : Initializing cache database support")
+	cp := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", cfg.CacheDB.Host, redis.DialPassword(cfg.CacheDB.Password))
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer func() {
+		log.Printf("main : Redis Cache Database Stopping : %s", cfg.CacheDB.Host)
+		rp.Close()
+	}()
+
+	// =========================================================================
+	// Initialize clickhouse database
+
+	var chDB *sql.DB
+	// chDB := clickhouse.OpenDB(&clickhouse.Options{
+	// 	Addr: []string{"lqo3m6r05r.us-east-1.aws.clickhouse.cloud:9440"},
+	// 	Auth: clickhouse.Auth{
+	// 		Database: "default",
+	// 		Username: "default",
+	// 		Password: "MxbeUPkXYZLD",
+	// 	},
+	// 	TLS: &tls.Config{
+	// 		InsecureSkipVerify: true,
+	// 	},
+	// 	Settings: clickhouse.Settings{
+	// 		"max_execution_time": 60,
+	// 	},
+	// 	DialTimeout: 5 * time.Second,
+	// })
+	// defer func() {
+	// 	log.Printf("main : Clickhouse Database Stopping : %s", "lqo3m6r05r.us-east-1.aws.clickhouse.cloud")
+	// 	chDB.Close()
+	// }()
+	// err = chDB.Ping()
+	// if err != nil {
+	// 	return errors.Wrap(err, "connecting to clickhouse db")
+	// }
 
 	// =========================================================================
 	// Start WebServer
@@ -206,9 +269,9 @@ func run() error {
 		Topic: cfg.PubSub.GmailPublisherTopic,
 	}
 
-	sdb := database.Init(rp, rp, rp)
+	sdb := database.Init(rp, cp, rp)
 
-	handler := c.Handler(handlers.API(shutdown, log, db, sdb, authenticator, publisher))
+	handler := c.Handler(handlers.API(shutdown, log, db, chDB, sdb, authenticator, publisher))
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,

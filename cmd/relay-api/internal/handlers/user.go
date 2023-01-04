@@ -355,7 +355,7 @@ func (u *User) updateMemberUserID(ctx context.Context, accountID, memberID, user
 	return nil
 }
 
-//TODO add a mechanisim to verify this request. Anyone can unsubscribe anyone....
+// TODO add a mechanisim to verify this request. Anyone can unsubscribe anyone....
 func (u *User) Unsubscribe(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.User.Unsubscribe")
 	defer span.End()

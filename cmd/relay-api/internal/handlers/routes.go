@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +15,7 @@ import (
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.SecDB, authenticator *auth.Authenticator, publisher *conversation.Publisher) http.Handler {
+func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sdb *database.SecDB, authenticator *auth.Authenticator, publisher *conversation.Publisher) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
@@ -152,6 +153,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, sdb *database.Se
 
 	i := Item{
 		db:            db,
+		chdb:          chdb,
 		sdb:           sdb,
 		authenticator: authenticator,
 	}

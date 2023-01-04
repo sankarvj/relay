@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -30,13 +31,14 @@ import (
 // Item represents the Item API method handler set.
 type Item struct {
 	db            *sqlx.DB
+	chdb          *sql.DB
 	sdb           *database.SecDB
 	authenticator *auth.Authenticator
 	// ADD OTHER STATE LIKE THE LOGGER AND CONFIG HERE.
 }
 
 // List returns all the existing items associated with entity
-//TODO: add pagination
+// TODO: add pagination
 func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.List")
 	defer span.End()
@@ -172,7 +174,7 @@ func (i *Item) StateRecords(ctx context.Context, w http.ResponseWriter, r *http.
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-//Update updates the item
+// Update updates the item
 func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Item.Update")
 	defer span.End()
