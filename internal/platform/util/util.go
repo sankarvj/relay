@@ -44,6 +44,28 @@ func ConvertStrToPtStr(inf []string) []*string {
 	return s
 }
 
+func AddStringifiedQuotes(inf interface{}) interface{} {
+	switch v := inf.(type) {
+	default:
+		return inf
+	case string:
+		return []string{fmt.Sprintf("\"%s\"", v)}
+	case []string:
+		s := make([]string, len(v))
+		for i, v := range v {
+			s[i] = fmt.Sprintf("\"%s\"", v)
+		}
+		return s
+	case []interface{}:
+		s := make([]string, len(v))
+		for i, v := range v {
+			s[i] = fmt.Sprintf("\"%s\"", v)
+		}
+		return s
+	}
+
+}
+
 func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
 	var itemMap map[string]interface{}
 	jsonbody, err := json.Marshal(intf)
@@ -103,6 +125,12 @@ func ConvertIntfToCommaSepString(in interface{}) string {
 		strArr := make([]string, 0)
 		for _, ev := range v {
 			strArr = append(strArr, ev.(string))
+		}
+		return strings.Join(strArr[:], ",")
+	case []string:
+		strArr := make([]string, 0)
+		for _, ev := range v {
+			strArr = append(strArr, fmt.Sprintf("'%s'", ev))
 		}
 		return strings.Join(strArr[:], ",")
 	}

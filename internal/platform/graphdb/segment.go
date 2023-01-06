@@ -6,11 +6,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-//DType defines the data type of field
+// DType defines the data type of field
 type DType string
 
-//Mode for the entity spcifies certain entity specific characteristics
-//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
+// Mode for the entity spcifies certain entity specific characteristics
+// Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
 	TypeString         DType = "S"
 	TypeNumber               = "N"
@@ -27,7 +27,7 @@ const (
 	FieldIdKey = "id"
 )
 
-//Field is the subset of entity field. Make sure it is on par with Entity Field
+// Field is the subset of entity field. Make sure it is on par with Entity Field
 type Field struct {
 	Key          string      `json:"key" validate:"required"`
 	Value        interface{} `json:"value" validate:"required"`
@@ -41,6 +41,7 @@ type Field struct {
 	Aggr         string      `json:"aggr"`
 	WithAlias    string      `json:"with_alias"`
 	IsReverse    bool        `json:"is_reverse"`
+	IsDate       bool        `json:"is_date"`
 }
 
 func Fields(jsonB string) ([]Field, error) {

@@ -18,6 +18,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/payment"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -31,7 +32,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/user"
 )
 
-//func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
+// func's in this package should not throw errors. It should handle errors by re-queue/dl-queue
 type Job struct {
 	baseItemIDs     []string
 	baseEntityID    string
@@ -469,12 +470,11 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 						})
 					}
 
-					gSegment := graphdb.BuildGNode(m.AccountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
-					result, err := graphdb.GetResult(j.SDB.GraphPool(), gSegment, 0, "", "")
+					items, _, err := dbservice.NewDBservice(dbservice.Bee, j.DB, j.SDB).Result(ctx, m.AccountID, f.RefID, "", "", 0, false, false, conditionFields)
 					if err != nil {
 						return err
 					}
-					associatedContactIds = util.ParseGraphResultWithStrIDs(result)
+					associatedContactIds = dbservice.FetchIds(items)
 
 					//store in cache
 					if len(associatedContactIds) > 0 {
@@ -682,7 +682,7 @@ func (j *Job) actOnWorkflows(ctx context.Context, e entity.Entity, itemID string
 	return nil
 }
 
-//actOnPipelines -  not a generic way. the way we use dependent is muddy
+// actOnPipelines -  not a generic way. the way we use dependent is muddy
 func actOnPipelines(ctx context.Context, eng engine.Engine, e entity.Entity, itemID string, dirtyFields map[string]interface{}, newFields map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) error {
 	log.Println("*********> debug internal.job actOnPipelines kicked in")
 	for _, fi := range e.EasyFields() {
@@ -1012,7 +1012,7 @@ func (j *Job) actOnRedisWrapper(ctx context.Context, m *stream.Message, valueAdd
 	return nil
 }
 
-//ctx, m.AccountID, e.ID, it.ID, e.EasyFields(), it.Fields(), source
+// ctx, m.AccountID, e.ID, it.ID, e.EasyFields(), it.Fields(), source
 func updateSourceWithIdentifier(ctx context.Context, accountID, entityID, itemID string, fields []entity.Field, ifieldsMap map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB) error {
 	identifier := ifieldsMap["identifier"]
 	var associatedContactIds []string
@@ -1040,12 +1040,11 @@ func updateSourceWithIdentifier(ctx context.Context, accountID, entityID, itemID
 						})
 					}
 
-					gSegment := graphdb.BuildGNode(accountID, f.RefID, false, nil).MakeBaseGNode("", conditionFields)
-					result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
+					items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, accountID, f.RefID, "", "", 0, false, false, conditionFields)
 					if err != nil {
 						return err
 					}
-					associatedContactIds = util.ParseGraphResultWithStrIDs(result)
+					associatedContactIds = dbservice.FetchIds(items)
 
 					//store in cache
 					if len(associatedContactIds) > 0 {

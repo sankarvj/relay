@@ -3,16 +3,16 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	rg "github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
@@ -48,7 +48,7 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		}
 		return web.Respond(ctx, w, res, http.StatusOK)
 	case entity.FixedEntityNode:
-		res, err := recordCountPerStage(accountID, entityID, dstEntity, countBody, c.sdb)
+		res, err := recordCountPerStage(ctx, accountID, entityID, dstEntity, countBody, c.db, c.sdb)
 		if err != nil {
 			return err
 		}
@@ -63,44 +63,35 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 
 	conditionFields = append(conditionFields, makeIdCondition(countBody.IDs, dstEntity.ID, statusField.RefID)...)
 
-	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetGroupedIDPlusFieldCount(sdb.GraphPool(), gSegment, statusField.RefID, true)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, entityID, statusField.RefID, chart.GroupLogicFieldRef, conditionFields)
 	if err != nil {
 		return nil, err
 	}
+
 	reference.LoadRefFieldChoices(ctx, accountID, &statusField, db, sdb)
-
 	response := make(map[string][]Series, 0)
-	for result.Next() {
-		r := result.Record()
-		itemID := r.GetByIndex(1).(string)
-		statusID := r.GetByIndex(2).(string)
-
-		choice := statusField.ChoiceMap()[statusID]
-		if _, ok := response[itemID]; !ok {
-			response[itemID] = make([]Series, 0)
+	for _, ctr := range counters {
+		choice := statusField.ChoiceMap()[ctr.GroupID]
+		if _, ok := response[ctr.ID]; !ok {
+			response[ctr.ID] = make([]Series, 0)
 		}
-
-		switch v := r.GetByIndex(0).(type) {
+		switch v := ctr.Count.(type) {
 		case int:
-			response[itemID] = append(response[itemID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
+			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
 		case float64:
-			response[itemID] = append(response[itemID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, int(v)))
+			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, int(v)))
 		}
 	}
-
 	return response, nil
 }
 
-func recordCountPerStage(accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, sdb *database.SecDB) (map[string]int, error) {
+func recordCountPerStage(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, sdb *database.SecDB) (map[string]int, error) {
 	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
-
-	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFieldsForStage)
-	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, entityID, "", chart.GroupLogicID, conditionFieldsForStage)
 	if err != nil {
 		return nil, err
 	}
-	return counts(result), nil
+	return counts(counters), nil
 }
 
 func (gOne *GridOne) itemCountPerStage(ctx context.Context, accountID, exp string, fields []entity.Field, db *sqlx.DB, sdb *database.SecDB) error {
@@ -123,14 +114,11 @@ func (gOne *GridOne) itemCountPerStage(ctx context.Context, accountID, exp strin
 			}
 		}
 	}
-
-	gSegment := graphdb.BuildGNode(accountID, gOne.SelectedEntityID, false, nil).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, gOne.SelectedEntityID, "", chart.GroupLogicID, conditionFields)
 	if err != nil {
-		return errors.Wrapf(err, "WidgetGridOne: get stage count")
+		return err
 	}
-	gOne.gridResult(ctx, counts(result), db)
+	gOne.gridResult(ctx, counts(counters), db)
 	return nil
 }
 
@@ -166,44 +154,27 @@ func (gOne *GridOne) taskCountPerStage(ctx context.Context, accountID, teamID st
 		}
 	}
 
-	gSegment := graphdb.BuildGNode(accountID, taskE.ID, false, nil).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetGroupedIDPlusFieldCount(sdb.GraphPool(), gSegment, statusField.RefID, false)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, taskE.ID, statusField.RefID, chart.GroupLogicFieldRef2, conditionFields)
 	if err != nil {
-		return errors.Wrapf(err, "WidgetGridOne: get stage count")
+		return err
 	}
-	log.Printf("result resultresultresultresultresultresultresult %+v", result)
 
 	reference.LoadRefFieldChoices(ctx, accountID, &statusField, db, sdb)
-
-	gOne.taskCountForEachStage(ctx, statusField, result, db)
+	gOne.taskCountForEachStage(ctx, statusField, counters, db)
 	return nil
 }
 
-func counts(result *rg.QueryResult) map[string]int {
-	responseArr := make(map[string]int, 0)
-	if result == nil {
-		return responseArr
-	}
-	for result.Next() { // Next returns true until the iterator is depleted.
-		// Get the current Record.
-
-		r := result.Record()
-
-		id := "total_count"
-		if len(r.Keys()) > 1 {
-			id = r.GetByIndex(1).(string)
-		}
-
-		switch v := r.GetByIndex(0).(type) {
+func counts(counters []dbservice.Counters) map[string]int {
+	counts := make(map[string]int, 0)
+	for _, ctr := range counters {
+		switch v := ctr.Count.(type) {
 		case int:
-			responseArr[id] = v
+			counts[ctr.ID] = v
 		case float64:
-			responseArr[id] = int(v)
+			counts[ctr.ID] = int(v)
 		}
 	}
-
-	return responseArr
+	return counts
 }
 
 func makeIdCondition(ids []string, dstEntityID, statusEntityID string) []graphdb.Field {

@@ -3,16 +3,16 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	rg "github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/lexer/lexertoken"
 	"gitlab.com/vjsideprojects/relay/internal/platform/ruleengine/services/ruler"
@@ -143,14 +143,11 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(accountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
-
-	result, err := graphdb.GetCount(sdb.GraphPool(), gSegment, true)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, e.ID, "", chart.GroupLogicID, conditionFields)
 	if err != nil {
-		return errors.Wrapf(err, "WidgetGridThree: get status count")
+		return err
 	}
-	gThree.gridResult(ctx, accountID, teamID, statusField, counts(result), db, sdb)
-	log.Println("three result", result)
+	gThree.gridResult(ctx, accountID, teamID, statusField, counts(counters), db, sdb)
 	return nil
 }
 
@@ -275,29 +272,18 @@ func (gOne *GridOne) gridResult(ctx context.Context, resultMap map[string]int, d
 	}
 }
 
-func (gOne *GridOne) taskCountForEachStage(ctx context.Context, statusField entity.Field, result *rg.QueryResult, db *sqlx.DB) {
+func (gOne *GridOne) taskCountForEachStage(ctx context.Context, statusField entity.Field, counters []dbservice.Counters, db *sqlx.DB) {
 	response := make(map[string][]Series, 0)
-	if result == nil {
-		return
-	}
-	for result.Next() { // Next returns true until the iterator is depleted.
-		// Get the current Record.
-
-		r := result.Record()
-
-		stageID := r.GetByIndex(1).(string)
-		statusID := r.GetByIndex(2).(string)
-
-		choice := statusField.ChoiceMap()[statusID]
-		if _, ok := response[stageID]; !ok {
-			response[stageID] = make([]Series, 0)
+	for _, ctr := range counters {
+		choice := statusField.ChoiceMap()[ctr.GroupID]
+		if _, ok := response[ctr.ID]; !ok {
+			response[ctr.ID] = make([]Series, 0)
 		}
-
-		switch v := r.GetByIndex(0).(type) {
+		switch v := ctr.Count.(type) {
 		case int:
-			response[stageID] = append(response[stageID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
+			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
 		case float64:
-			response[stageID] = append(response[stageID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, int(v)))
+			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, int(v)))
 		}
 	}
 

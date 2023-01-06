@@ -10,6 +10,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
 	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -70,12 +71,14 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 }
 
 func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key string, whoMap, layoutMap map[string]string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
-	result, _, err := NewSegmenter(exp).
-		segment(ctx, accountID, entityID, db, sdb)
+	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, exp, db, sdb)
 	if err != nil {
 		return nil, err
 	}
-	items, err := itemsResp(ctx, db, accountID, result)
+	items, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search2(ctx, accountID, entityID, conditionFields)
+	if err != nil {
+		return nil, err
+	}
 
 	if err != nil {
 		return nil, err
@@ -86,13 +89,11 @@ func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key strin
 func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db *sqlx.DB, sdb *database.SecDB) ([]entity.Choice, error) {
 	duplicateReducer := make(map[string]interface{}, 0)
 	choices := make([]entity.Choice, 0)
-	result, _, err := NewSegmenter(exp).
-		_useReturn().
-		segment(ctx, accountID, entityID, db, sdb)
+	conditionFields, err := makeConditionsFromExp(ctx, accountID, entityID, exp, db, sdb)
 	if err != nil {
 		return nil, err
 	}
-	elements := itemElements(result)
+	elements := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search1(ctx, accountID, entityID, conditionFields)
 
 	for _, e := range elements {
 		duplicateReducer[e.(string)] = e

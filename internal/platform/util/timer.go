@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -65,4 +66,25 @@ func ConvertMilliToTime(tm int64) time.Time {
 	sec := tm / 1000
 	msec := tm % 1000
 	return time.Unix(sec, msec*int64(time.Millisecond))
+}
+
+func ConvertMilliToTimeFromIntf(val interface{}) string {
+	log.Println("val ONE ", val)
+	var millis int64
+	switch t := val.(type) {
+	case int:
+		millis = int64(t)
+	case int32:
+		millis = int64(t)
+	case int64:
+		millis = t
+	case float64:
+		millis = int64(t)
+	case string:
+		millis = ConvertStrToInt64(t)
+	default:
+		log.Printf("val THREE %+v", t)
+	}
+	log.Println("val TWO ", millis)
+	return FormatTimeGoogle(time.Unix(0, millis*int64(time.Millisecond)))
 }

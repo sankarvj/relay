@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/rule/node"
@@ -74,9 +75,9 @@ func (eng *Engine) executeInvite(ctx context.Context, n node.Node, db *sqlx.DB, 
 	return nil
 }
 
-//a user should be either USER or ADMIN/SUPER-ADMIN can't be both
-//add the user-id/account-id/team-id/entity-id/item-id to the access-list table.
-//send it to user via email
+// a user should be either USER or ADMIN/SUPER-ADMIN can't be both
+// add the user-id/account-id/team-id/entity-id/item-id to the access-list table.
+// send it to user via email
 func inviteVisitor(ctx context.Context, nv visitor.NewVisitor, body string, eng *Engine, db *sqlx.DB, sdb *database.SecDB) error {
 	v, err := visitor.Create(ctx, db, nv, time.Now())
 	if err != nil {
@@ -169,13 +170,7 @@ func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email s
 	}
 	conditionFields = append(conditionFields, gf)
 
-	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
-	if err != nil {
-		return nil, err
-	}
-
-	items, err := itemsResp(ctx, db, accountID, result)
+	items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, accountID, entityID, "", "", 0, false, false, conditionFields)
 	if err != nil {
 		return nil, err
 	}

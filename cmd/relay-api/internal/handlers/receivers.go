@@ -23,6 +23,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration/email"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
@@ -49,11 +50,13 @@ type Data struct {
 	HistoryID    uint64 `json:"historyId"`
 }
 
-/***
+/*
+**
 
-					GOOGLE RECEIVERS - GMAIL/CALENDAR API - GCONSOLE TOPIC
+	GOOGLE RECEIVERS - GMAIL/CALENDAR API - GCONSOLE TOPIC
 
-***/
+**
+*/
 func (g *Integration) Act(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	integrationID := params["integration_id"]
 	actionID := params["action_id"]
@@ -80,11 +83,13 @@ func (g *Integration) Notifications(ctx context.Context, w http.ResponseWriter, 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusOK)
 }
 
-/***
+/*
+**
 
-					GOOGLE RECEIVERS - GMAIL API - GCONSOLE TOPIC
+	GOOGLE RECEIVERS - GMAIL API - GCONSOLE TOPIC
 
-***/
+**
+*/
 func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	var pushMsgPayload PushMsgPayload
 	if err := web.Decode(r, &pushMsgPayload); err != nil {
@@ -207,8 +212,8 @@ func receiveSESEmail(ctx context.Context, mb email.MailBody, db *sqlx.DB, sdb *d
 	return nil
 }
 
-//creatSourceIfNotExist should take contact/employee as the source.
-//TODO: what happens if the both contacts/emplooyees not exist in that account?
+// creatSourceIfNotExist should take contact/employee as the source.
+// TODO: what happens if the both contacts/emplooyees not exist in that account?
 func creatSourceIfNotExist(ctx context.Context, accountID, teamID string, emailEntityItem entity.EmailEntity, db *sqlx.DB, sdb *database.SecDB, fbSDKPath string) (map[string][]string, error) {
 	e, err := entity.RetrieveFixedEntity(ctx, db, accountID, teamID, entity.FixedEntityContacts)
 	if err != nil {
@@ -235,11 +240,12 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 
 	exp := fmt.Sprintf("{{%s.%s}} eq {%s}", e.ID, e.Key("email"), value)
 	//TODO: segment call doesn't need the count. But it is executing count query in the call. Shall we stop it?
-	result, _, err := NewSegmenter(exp).segment(ctx, accountID, e.ID, db, sdb)
+
+	conditionFields, err := makeConditionsFromExp(ctx, accountID, e.ID, exp, db, sdb)
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
-	itemIds := util.ParseGraphResult(result)
+	itemIds := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search3(ctx, accountID, e.ID, conditionFields)
 
 	if len(itemIds) == 0 {
 		fields := make(map[string]interface{}, 0)

@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 )
@@ -93,13 +94,7 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 		conditionFields = append(conditionFields, gf)
 	}
 
-	gSegment := graphdb.BuildGNode(e.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetResult(sdb.GraphPool(), gSegment, 0, "", "")
-	if err != nil {
-		return nil, err
-	}
-
-	items, err := itemsResp(ctx, db, e.AccountID, result)
+	items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, e.AccountID, e.ID, "", "", 0, false, false, conditionFields)
 	if err != nil {
 		return nil, err
 	}

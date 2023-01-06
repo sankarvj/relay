@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -41,6 +42,34 @@ func ListFilterByState(ctx context.Context, accountID, entityID string, state in
 	}
 
 	return items, nil
+}
+
+func Result(ctx context.Context, accountID, entityID string, offset int, wh string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.List")
+	defer span.End()
+
+	items := []Item{}
+	q := fmt.Sprintf(`SELECT * FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s ORDER BY created_at DESC LIMIT $4 OFFSET $5`, wh)
+	log.Printf("q--------------- %+v -- ", q)
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.MaxLimt, offset); err != nil {
+		return nil, errors.Wrap(err, "selecting items by state")
+	}
+
+	return items, nil
+}
+
+func Counts(ctx context.Context, accountID, entityID string, wh string, db *sqlx.DB) (map[string]int, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.List")
+	defer span.End()
+
+	var count int
+	q := fmt.Sprintf(`SELECT count(*) as total_count FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s`, wh)
+
+	if err := db.GetContext(ctx, &count, q, accountID, entityID, StateDefault); err != nil {
+		return nil, errors.Wrap(err, "selecting items by state")
+	}
+
+	return map[string]int{"total_count": count}, nil
 }
 
 func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {
@@ -92,6 +121,13 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 	ctx, span := trace.StartSpan(ctx, "internal.item.Create")
 	defer span.End()
 
+	//convert empty string to null
+	for k, v := range n.Fields {
+		if v == "" {
+			n.Fields[k] = nil
+		}
+	}
+
 	fieldsBytes, err := json.Marshal(n.Fields)
 	if err != nil {
 		return Item{}, errors.Wrap(err, "encode fields to bytes")
@@ -137,8 +173,14 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 	return i, nil
 }
 
-//UpdateFields patches the field data
+// UpdateFields patches the field data
 func UpdateFields(ctx context.Context, db *sqlx.DB, accountID, entityID, id string, fields map[string]interface{}) (Item, error) {
+	//convert empty string to null
+	for k, v := range fields {
+		if v == "" {
+			fields[k] = nil
+		}
+	}
 	input, err := json.Marshal(fields)
 	if err != nil {
 		return Item{}, errors.Wrap(err, "encode fields to input")
@@ -251,7 +293,7 @@ func (i Item) Fields() map[string]interface{} {
 	return fields
 }
 
-//Diff old and new fields
+// Diff old and new fields
 func Diff(oldItemFields, newItemFields map[string]interface{}) map[string]interface{} {
 	if oldItemFields == nil {
 		return newItemFields

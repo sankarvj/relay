@@ -22,7 +22,7 @@ type RuleResult struct {
 	Response map[string]interface{}
 }
 
-//RunRuleEngine runs the expression and execute action if the expression conditions met
+// RunRuleEngine runs the expression and execute action if the expression conditions met
 func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node) (*RuleResult, error) {
 	var err error
 	signalsChan := make(chan ruler.Work)
@@ -53,7 +53,7 @@ func (e *Engine) RunRuleEngine(ctx context.Context, db *sqlx.DB, sdb *database.S
 	return ruleResult, err
 }
 
-//RunExpRenderer run the expression and returns evaluated string
+// RunExpRenderer run the expression and returns evaluated string
 func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) string {
 	var lexedContent string
 	signalsChan := make(chan ruler.Work)
@@ -79,8 +79,8 @@ func (e *Engine) RunExpRenderer(ctx context.Context, db *sqlx.DB, sdb *database.
 	return lexedContent
 }
 
-//RunFieldExpRenderer is same as RunExpRenderer but it evaluate the single value and return
-//Added this new func to handle to evalution of expressions for the reference field which returns array of string. Instead of string
+// RunFieldExpRenderer is same as RunExpRenderer but it evaluate the single value and return
+// Added this new func to handle to evalution of expressions for the reference field which returns array of string. Instead of string
 func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) interface{} {
 	var lexedContent interface{}
 	signalsChan := make(chan ruler.Work)
@@ -107,7 +107,7 @@ func (e *Engine) RunFieldExpRenderer(ctx context.Context, db *sqlx.DB, sdb *data
 	return lexedContent
 }
 
-//RunExpGrapher run the expression and returns graph query in a readable format
+// RunExpGrapher run the expression and returns graph query in a readable format
 func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string) *ruler.Filter {
 	var filter *ruler.Filter
 	signalsChan := make(chan ruler.Work)
@@ -129,7 +129,7 @@ func (e *Engine) RunExpGrapher(ctx context.Context, db *sqlx.DB, sdb *database.S
 	return filter
 }
 
-//RunExpEvaluator runs the expression to see whether the condition met or not
+// RunExpEvaluator runs the expression to see whether the condition met or not
 func (e *Engine) RunExpEvaluator(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, exp string, variables map[string]interface{}) bool {
 	positive := false
 	signalsChan := make(chan ruler.Work)

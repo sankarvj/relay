@@ -116,7 +116,7 @@ func UpdateReferenceFields(ctx context.Context, accountID, entityID string, fiel
 	}
 }
 
-//TODO not efficient. Put it in a map???
+// TODO not efficient. Put it in a map???
 func populateExistingItemIds(items []item.Item, fields []entity.Field) map[string][]interface{} {
 	referenceIds := make(map[string][]interface{}, 0)
 	for _, i := range items {
@@ -136,10 +136,10 @@ func populateExistingItemIds(items []item.Item, fields []entity.Field) map[strin
 	return referenceIds
 }
 
-//updateChoices simply update single value to the choice if that itemID if populated already.
-//updateChoices won't pull all the choices available to that reference entity in the list view.
-//updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
-//updateChoices should work differently in the detail use-case
+// updateChoices simply update single value to the choice if that itemID if populated already.
+// updateChoices won't pull all the choices available to that reference entity in the list view.
+// updateChoices bulk get all the references for the particular item and updates the choices once for each reference field
+// updateChoices should work differently in the detail use-case
 func updateChoices(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID string, f *entity.Field, refIDs []interface{}, eng *engine.Engine) {
 
 	if f.IsReference() && f.RefID != "" && !f.IsNotApplicable() {
@@ -231,7 +231,7 @@ func ChoicesMaker(f *entity.Field, parentID string, choicers []Choicer) {
 	}
 }
 
-//updateBPChoices populate the choices of the template fields and also sets the one by evaluting the parent which is creating it
+// updateBPChoices populate the choices of the template fields and also sets the one by evaluting the parent which is creating it
 func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
 
 	if sourceEntity == nil {
@@ -270,7 +270,7 @@ func updateBPChoices(f *entity.Field, sourceEntity *entity.Entity) {
 
 }
 
-//UpdateChoicesWrapper updates only the choices for reference fields
+// UpdateChoicesWrapper updates only the choices for reference fields
 func UpdateChoicesWrapper(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, accountID, entityID string, valueAddedFields []entity.Field, eng *engine.Engine) {
 	for i := 0; i < len(valueAddedFields); i++ {
 		if valueAddedFields[i].IsReference() {

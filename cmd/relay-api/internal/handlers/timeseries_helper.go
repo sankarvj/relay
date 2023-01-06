@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/redislabs/redisgraph-go"
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
-	"gitlab.com/vjsideprojects/relay/internal/platform/graphdb"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/timeseries"
@@ -77,25 +76,23 @@ func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseIt
 		}
 	}
 
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(ch.AccountID, e.ID, false, nil).MakeBaseGNode("", conditionFields)
-	var result *redisgraph.QueryResult
+	var counters []dbservice.Counters
 	switch groupedLogic {
 	case string(chart.GroupLogicID):
-		result, err = graphdb.GetCount(sdb.GraphPool(), gSegment, true)
+		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicID, conditionFields)
 	case string(chart.GroupLogicField):
-		result, err = graphdb.GetGroupedCount(sdb.GraphPool(), gSegment, filterByField.Key)
+		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, filterByField.Key, chart.GroupLogicField, conditionFields)
 	case string(chart.GroupLogicParent):
-		result, err = graphdb.GetFromParentCount(sdb.GraphPool(), gSegment)
+		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicParent, conditionFields)
 	case string(chart.GroupLogicNone):
-		result, err = graphdb.GetCount(sdb.GraphPool(), gSegment, false)
+		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicNone, conditionFields)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return vmseriesFromMap(counts(result), filterByField), nil
+	return vmseriesFromMap(counts(counters), filterByField), nil
 }
 
 func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
@@ -133,14 +130,12 @@ func sum(ctx context.Context, ch chart.Chart, exp string, db *sqlx.DB, sdb *data
 	}
 
 	conditionFields = append(conditionFields, timeRange("system_created_at", startTime, endTime))
-	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	gSegment := graphdb.BuildGNode(ch.AccountID, ch.EntityID, false, nil).MakeBaseGNode("", conditionFields)
-	result, err := graphdb.GetSum(sdb.GraphPool(), gSegment, filterByField.Key)
+	summers, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Sum(ctx, ch.AccountID, ch.EntityID, filterByField.Key, conditionFields)
 	if err != nil {
 		return nil, err
 	}
 
-	return vmseriesFromMap(counts(result), filterByField), nil
+	return vmseriesFromMap(counts(summers), filterByField), nil
 }
 
 func grids(ctx context.Context, charts []chart.Chart, exp string, loc *time.Location, db *sqlx.DB, sdb *database.SecDB) (map[string]EagerLoader, error) {

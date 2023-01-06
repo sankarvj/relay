@@ -25,13 +25,13 @@ const (
 	CalcSum   Calc = "sum"
 )
 
-type GroupLogic string
-
 const (
-	GroupLogicNone   GroupLogic = "none"
-	GroupLogicID     GroupLogic = "g_b_id"
-	GroupLogicField  GroupLogic = "g_b_f"
-	GroupLogicParent GroupLogic = "g_b_p"
+	GroupLogicNone      string = "none"
+	GroupLogicID        string = "g_b_id"
+	GroupLogicFieldRef  string = "g_b_f_r"
+	GroupLogicFieldRef2 string = "g_b_f_r2"
+	GroupLogicField     string = "g_b_f"
+	GroupLogicParent    string = "g_b_p"
 )
 
 type Type string

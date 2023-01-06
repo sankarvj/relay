@@ -16,11 +16,11 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/relationship"
 )
 
-//DType defines the data type of field
+// DType defines the data type of field
 type DType string
 
-//Mode for the entity spcifies certain entity specific characteristics
-//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
+// Mode for the entity spcifies certain entity specific characteristics
+// Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
 	TypeString    DType = "S"
 	TypeNumber    DType = "N"
@@ -30,10 +30,10 @@ const (
 	TypeReference       = "R"
 )
 
-//Dom defines the visual representation of the field
+// Dom defines the visual representation of the field
 type Dom string
 
-//const defines the types of visual representation dom
+// const defines the types of visual representation dom
 const (
 	DomText          Dom = "TE"
 	DomTextArea      Dom = "TA"
@@ -57,7 +57,7 @@ const (
 	AccountsReferenceID = "accounts"
 )
 
-//field_unit expression
+// field_unit expression
 const (
 	FuExpNone = "none"
 	FuExpDone = "done"
@@ -113,7 +113,7 @@ const (
 	MetaRollUpChangeOver = "change_over"
 )
 
-//traits of the field
+// traits of the field
 const (
 	WhoTitle         = "title"
 	WhoDesc          = "desc"
@@ -704,6 +704,7 @@ func (f *Field) MakeGraphField(value interface{}, expression string, reverse boo
 			Value:      value,
 			Min:        min,
 			Max:        max,
+			IsDate:     true,
 		}
 	} else {
 		return graphdb.Field{

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -58,20 +57,6 @@ func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.Qu
 	}
 
 	return sort(items, itemIDs), nil
-}
-
-func itemElements(result *rg.QueryResult) []interface{} {
-	values := make([]interface{}, 0)
-	for result.Next() { // Next returns true until the iterator is depleted.
-		// Get the current Record.
-		r := result.Record()
-
-		// Entries in the Record can be accessed by index or key.
-		record := util.ConvertInterfaceToMap(util.ConvertInterfaceToMap(r.GetByIndex(0))["Properties"])
-		log.Printf("record %+v", record)
-		values = append(values, record["element"])
-	}
-	return values
 }
 
 func sort(items []item.Item, itemIds []interface{}) []item.Item {
