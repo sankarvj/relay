@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/conversation"
 	"gitlab.com/vjsideprojects/relay/internal/discovery"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -245,7 +246,8 @@ func createContactIfNotExist(ctx context.Context, accountID string, e entity.Ent
 	if err != nil {
 		return nil, err
 	}
-	itemIds := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search3(ctx, accountID, e.ID, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	itemIds := dbservice.NewDBservice(useDB, db, sdb).Search3(ctx, accountID, e.ID, conditionFields)
 
 	if len(itemIds) == 0 {
 		fields := make(map[string]interface{}, 0)

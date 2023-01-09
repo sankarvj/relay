@@ -4,14 +4,14 @@ import (
 	"time"
 )
 
-//State for the item specifies when to associate a item to the lists
+// State for the item specifies when to associate a item to the lists
 const (
 	StateDefault   = 0
 	StateBluePrint = 1 //used when adding blueprint item in the workflow
 	StateWebForm   = 2
 )
 
-//Type for the item is still open we can use it for anything
+// Type for the item is still open we can use it for anything
 const (
 	TypeDefault = 0
 	TypeDummy   = 1
@@ -40,6 +40,12 @@ type TimeSeriesItem struct {
 	State string    `db:"status" json:"status"`
 	Date  time.Time `db:"date" json:"date"`
 	Value int64     `db:"value" json:"value"`
+}
+
+type Counter struct {
+	ID      *string `db:"item_id" json:"id"`
+	GroupID *string `db:"group_id" json:"group_id"`
+	Count   int     `db:"count" json:"count"`
 }
 
 // NewItem has information needed to creat new item

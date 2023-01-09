@@ -69,7 +69,6 @@ func ConvertMilliToTime(tm int64) time.Time {
 }
 
 func ConvertMilliToTimeFromIntf(val interface{}) string {
-	log.Println("val ONE ", val)
 	var millis int64
 	switch t := val.(type) {
 	case int:
@@ -85,6 +84,5 @@ func ConvertMilliToTimeFromIntf(val interface{}) string {
 	default:
 		log.Printf("val THREE %+v", t)
 	}
-	log.Println("val TWO ", millis)
 	return FormatTimeGoogle(time.Unix(0, millis*int64(time.Millisecond)))
 }

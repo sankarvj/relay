@@ -11,7 +11,9 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/draft"
 	"gitlab.com/vjsideprojects/relay/internal/job"
+	"gitlab.com/vjsideprojects/relay/internal/notification"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/stream"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -71,12 +73,13 @@ func (a *Account) Launch(ctx context.Context, w http.ResponseWriter, r *http.Req
 	nc := account.NewAccount{
 		ID:             accountID,
 		Name:           dft.AccountName,
-		Domain:         util.Hostname(dft.AccountName, dft.Host),
+		Domain:         notification.Hostname(dft.AccountName, dft.Host),
 		DraftID:        dft.ID,
 		CustomerStatus: account.StatusTrial,
 		CustomerPlan:   account.PlanPro,
 		TrailStart:     util.GetMilliSecondsFloatReduced(time.Now()), //webhooks from stripe will update the values anyways
 		TrailEnd:       util.AddMilliSecondsFloat(time.Now(), 13),    //webhooks from stripe will update the values anyways
+		UseDB:          string(dbservice.Bee),
 	}
 
 	acc, err := account.Create(ctx, a.db, nc, time.Now())

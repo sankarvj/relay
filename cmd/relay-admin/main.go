@@ -21,6 +21,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
+	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/schema"
 	"gitlab.com/vjsideprojects/relay/internal/token"
@@ -194,6 +195,7 @@ func seed(db *sqlx.DB, sdb *database.SecDB, auth *auth.Authenticator) error {
 		CustomerPlan:   account.PlanPro,
 		TrailStart:     util.GetMilliSecondsFloatReduced(time.Now()), //webhooks from stripe will update the values anyways
 		TrailEnd:       util.AddMilliSecondsFloat(time.Now(), 14),    //webhooks from stripe will update the values anyways
+		UseDB:          string(dbservice.Bee),
 	}
 
 	acc, err := account.Create(ctx, db, nc, time.Now())

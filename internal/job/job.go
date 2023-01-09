@@ -432,6 +432,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 	if m.Source == nil {
 		m.Source = make(map[string][]string, 0)
 	}
+	useDB := account.UseDB(ctx, j.DB, m.AccountID)
 
 	e, err := entity.Retrieve(ctx, m.AccountID, m.EntityID, j.DB, j.SDB)
 	if err != nil {
@@ -470,7 +471,7 @@ func (j *Job) eventEventAdded(m *stream.Message) error {
 						})
 					}
 
-					items, _, err := dbservice.NewDBservice(dbservice.Bee, j.DB, j.SDB).Result(ctx, m.AccountID, f.RefID, "", "", 0, false, false, conditionFields)
+					items, _, err := dbservice.NewDBservice(useDB, j.DB, j.SDB).Result(ctx, m.AccountID, f.RefID, "", "", 0, false, false, conditionFields)
 					if err != nil {
 						return err
 					}
@@ -983,6 +984,12 @@ func deletedList(newList, oldList interface{}) []interface{} {
 }
 
 func (j *Job) actOnRedisWrapper(ctx context.Context, m *stream.Message, valueAddedFields []entity.Field) error {
+	useDB := account.UseDB(ctx, j.DB, m.AccountID)
+	if useDB != dbservice.Spider {
+		stream.Update(ctx, j.DB, m, "Bee", stream.StatePsql)
+		return nil
+	}
+
 	if len(m.Source) == 0 {
 		err := j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)
 		if err != nil {
@@ -1039,8 +1046,8 @@ func updateSourceWithIdentifier(ctx context.Context, accountID, entityID, itemID
 							Value:      c.Term,
 						})
 					}
-
-					items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, accountID, f.RefID, "", "", 0, false, false, conditionFields)
+					useDB := account.UseDB(ctx, db, accountID)
+					items, _, err := dbservice.NewDBservice(useDB, db, sdb).Result(ctx, accountID, f.RefID, "", "", 0, false, false, conditionFields)
 					if err != nil {
 						return err
 					}

@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-//Type for the item is still open we can use it for anything
+// Type for the item is still open we can use it for anything
 const (
 	TypeDefault                = 0
 	TypeItemCreate             = 1
@@ -32,6 +32,7 @@ const (
 	StateRedis           = 6
 	StatePrimaryDBDelete = 7
 	StateSecDBDelete     = 8
+	StatePsql            = 9
 )
 
 type Message struct {

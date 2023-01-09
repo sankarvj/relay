@@ -57,6 +57,12 @@ func run() error {
 			Host     string `conf:"default:127.0.0.1:6379,env:SEC_DB_HOST"`
 			Name     string `conf:"default:relaydb,env:SEC_DB_NAME"`
 		}
+		CacheDB struct {
+			User     string `conf:"default:redisgraph,env:CACHE_DB_USER"`
+			Password string `conf:"default:redis,noprint,env:CACHE_DB_PASSWORD"`
+			Host     string `conf:"default:127.0.0.1:6379,env:CACHE_DB_HOST"`
+			Name     string `conf:"default:relaydb,env:CACHE_DB_NAME"`
+		}
 		Auth struct {
 			KeyID              string `conf:"default:1"`
 			PrivateKeyFile     string `conf:"default:private.pem,env:AUTH_PRIVATE_KEY_FILE"`
@@ -150,7 +156,33 @@ func run() error {
 		rp.Close()
 	}()
 
-	sdb := database.Init(rp, rp, rp)
+	// =========================================================================
+	// Initialize cache database
+
+	log.Println("main : Started : Initializing cache database support")
+	cp := &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   50,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", cfg.CacheDB.Host, redis.DialPassword(cfg.CacheDB.Password))
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+	defer func() {
+		log.Printf("main : Redis Cache Database Stopping : %s", cfg.CacheDB.Host)
+		rp.Close()
+	}()
+
+	sdb := database.Init(rp, cp, rp)
 
 	//this should be started as the separate service.
 	go func() {

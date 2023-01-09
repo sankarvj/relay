@@ -44,32 +44,48 @@ func ListFilterByState(ctx context.Context, accountID, entityID string, state in
 	return items, nil
 }
 
-func Result(ctx context.Context, accountID, entityID string, offset int, wh string, db *sqlx.DB) ([]Item, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.List")
+func Result(ctx context.Context, accountID, entityID string, pageNo int, wh string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.Result")
 	defer span.End()
+
+	skipCount := pageNo * util.PageLimt
 
 	items := []Item{}
 	q := fmt.Sprintf(`SELECT * FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s ORDER BY created_at DESC LIMIT $4 OFFSET $5`, wh)
-	log.Printf("q--------------- %+v -- ", q)
-	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.MaxLimt, offset); err != nil {
-		return nil, errors.Wrap(err, "selecting items by state")
+	log.Println("q ", q)
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.MaxLimt, skipCount); err != nil {
+		return nil, errors.Wrap(err, "selecting items result")
 	}
 
 	return items, nil
 }
 
 func Counts(ctx context.Context, accountID, entityID string, wh string, db *sqlx.DB) (map[string]int, error) {
-	ctx, span := trace.StartSpan(ctx, "internal.item.List")
+	ctx, span := trace.StartSpan(ctx, "internal.item.Counts")
 	defer span.End()
 
 	var count int
 	q := fmt.Sprintf(`SELECT count(*) as total_count FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s`, wh)
 
 	if err := db.GetContext(ctx, &count, q, accountID, entityID, StateDefault); err != nil {
-		return nil, errors.Wrap(err, "selecting items by state")
+		return nil, errors.Wrap(err, "selecting items count")
 	}
 
 	return map[string]int{"total_count": count}, nil
+}
+
+func CountMap(ctx context.Context, accountID, entityID string, se, wh, grp string, db *sqlx.DB) ([]Counter, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.CountMap")
+	defer span.End()
+
+	counters := []Counter{}
+	q := fmt.Sprintf(`SELECT %s FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s %s`, se, wh, grp)
+	log.Printf("q---------------------:::: %+v", q)
+	if err := db.SelectContext(ctx, &counters, q, accountID, entityID, StateDefault); err != nil {
+		return nil, errors.Wrap(err, "selecting items count map")
+	}
+
+	return counters, nil
 }
 
 func BulkRetrieveItems(ctx context.Context, accountID string, ids []interface{}, db *sqlx.DB) ([]Item, error) {

@@ -12,8 +12,8 @@ import (
 type DBIdenfier string
 
 const (
-	Bee    DBIdenfier = "psql"
-	Spider DBIdenfier = "redis_graph"
+	Bee    string = "psql"
+	Spider string = "redis_graph"
 )
 
 type Counters struct {
@@ -24,7 +24,7 @@ type Counters struct {
 
 type DBService interface {
 	Result(ctx context.Context, accountID, entityID, sortby, direction string, page int, docount, useReturn bool, conditions []graphdb.Field) ([]item.Item, map[string]int, error)
-	Count(ctx context.Context, accountID, entityID, groupById, groupLogic string, conditions []graphdb.Field) ([]Counters, error)
+	Count(ctx context.Context, accountID, entityID, groupByKey, groupById, groupLogic string, conditions []graphdb.Field) ([]Counters, error)
 	Sum(ctx context.Context, accountID, entityID, groupById string, conditions []graphdb.Field) ([]Counters, error)
 	Search1(ctx context.Context, accountID, entityID string, conditionFields []graphdb.Field) []interface{}
 	Search2(ctx context.Context, accountID, entityID string, conditionFields []graphdb.Field) ([]item.Item, error)
@@ -45,7 +45,7 @@ func CreateSpiderService(pdb *sqlx.DB, sdb *database.SecDB) DBService {
 	}
 }
 
-func NewDBservice(dbIdentifier DBIdenfier, pdb *sqlx.DB, sdb *database.SecDB) DBService {
+func NewDBservice(dbIdentifier string, pdb *sqlx.DB, sdb *database.SecDB) DBService {
 	switch dbIdentifier {
 	case Bee:
 		return CreateBeeService(pdb, sdb)

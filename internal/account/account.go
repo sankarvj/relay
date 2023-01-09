@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -117,17 +118,18 @@ func Create(ctx context.Context, db *sqlx.DB, n NewAccount, now time.Time) (Acco
 		CustomerStatus: n.CustomerStatus,
 		TrailStart:     n.TrailStart,
 		TrailEnd:       n.TrailEnd,
+		UseDB:          n.UseDB,
 		CreatedAt:      now.UTC(),
 		UpdatedAt:      now.UTC().Unix(),
 	}
 
 	const q = `INSERT INTO accounts
-		(account_id, name, domain, cus_plan, cus_status, trail_start, trail_end, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		(account_id, name, domain, cus_plan, cus_status, trail_start, trail_end, use_db, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 	_, err := db.ExecContext(
 		ctx, q,
 		a.ID, a.Name, a.Domain, a.CustomerPlan, a.CustomerStatus,
-		a.TrailStart, a.TrailEnd,
+		a.TrailStart, a.TrailEnd, a.UseDB,
 		a.CreatedAt, a.UpdatedAt,
 	)
 	if err != nil {
@@ -165,4 +167,13 @@ func UpdateStripePlan(ctx context.Context, accountID, cusStatus string, plan, se
 		return errors.Wrap(err, "updating account payment plan and seat")
 	}
 	return nil
+}
+
+func UseDB(ctx context.Context, db *sqlx.DB, id string) string {
+	acc, err := Retrieve(ctx, db, id)
+	if err != nil || acc.UseDB == "" {
+		log.Println("Unexpected error occurred in account DB service retrival", err)
+		return "psql"
+	}
+	return acc.UseDB
 }

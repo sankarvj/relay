@@ -33,6 +33,7 @@ type Account struct {
 	TimeZone        *string   `db:"timezone" json:"timezone"`
 	Language        *string   `db:"language" json:"language"`
 	Country         *string   `db:"country" json:"country"`
+	UseDB           string    `db:"use_db" json:"use_db"`
 	CreatedAt       time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt       int64     `db:"updated_at" json:"updated_at"`
 }
@@ -47,6 +48,7 @@ type NewAccount struct {
 	CustomerStatus string  `json:"cus_status"`
 	TrailStart     float64 `json:"trail_start"`
 	TrailEnd       float64 `json:"trail_end"`
+	UseDB          string  `json:"use_db"`
 }
 
 type LaunchAccount struct {

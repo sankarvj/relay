@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
@@ -64,9 +64,6 @@ func (i *Item) Search(ctx context.Context, w http.ResponseWriter, r *http.Reques
 			return err
 		}
 	}
-
-	log.Printf("choices %+v", choices)
-
 	return web.Respond(ctx, w, choices, http.StatusOK)
 }
 
@@ -75,7 +72,8 @@ func likeSearchRefItems(ctx context.Context, accountID, entityID, exp, key strin
 	if err != nil {
 		return nil, err
 	}
-	items, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search2(ctx, accountID, entityID, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	items, err := dbservice.NewDBservice(useDB, db, sdb).Search2(ctx, accountID, entityID, conditionFields)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +91,8 @@ func likeSearchElements(ctx context.Context, accountID, entityID, exp string, db
 	if err != nil {
 		return nil, err
 	}
-	elements := dbservice.NewDBservice(dbservice.Spider, db, sdb).Search1(ctx, accountID, entityID, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	elements := dbservice.NewDBservice(useDB, db, sdb).Search1(ctx, accountID, entityID, conditionFields)
 
 	for _, e := range elements {
 		duplicateReducer[e.(string)] = e
@@ -146,11 +145,8 @@ func LikeSearchNodes(ctx context.Context, accountID string, flowIDs []string, te
 
 func choiceResponse(key string, items []item.Item, whoMap map[string]string, layoutMap map[string]string) []entity.Choice {
 	choices := make([]entity.Choice, 0)
-	log.Printf("items %+v", items)
-	log.Printf("whoMap %+v", whoMap)
-	log.Printf("key %+v", key)
+
 	for _, item := range items {
-		log.Printf("item %+v", item)
 		//display
 		var displayV interface{}
 		if key != "" {

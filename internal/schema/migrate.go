@@ -48,6 +48,7 @@ var migrations = []darwin.Migration{
 			timezone      		TEXT,
 			language      		TEXT,
 			country       		TEXT,
+			use_db 				TEXT,
 			created_at    		TIMESTAMP,
 			updated_at    		BIGINT,
 			PRIMARY KEY (account_id)

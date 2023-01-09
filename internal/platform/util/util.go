@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/mail"
-	"net/url"
 	"strconv"
 	"strings"
 
 	pluralize "github.com/gertd/go-pluralize"
 	rg "github.com/redislabs/redisgraph-go"
-	"gitlab.com/vjsideprojects/relay/internal/account"
 )
 
 const (
@@ -42,28 +40,6 @@ func ConvertStrToPtStr(inf []string) []*string {
 		s[i] = &v
 	}
 	return s
-}
-
-func AddStringifiedQuotes(inf interface{}) interface{} {
-	switch v := inf.(type) {
-	default:
-		return inf
-	case string:
-		return []string{fmt.Sprintf("\"%s\"", v)}
-	case []string:
-		s := make([]string, len(v))
-		for i, v := range v {
-			s[i] = fmt.Sprintf("\"%s\"", v)
-		}
-		return s
-	case []interface{}:
-		s := make([]string, len(v))
-		for i, v := range v {
-			s[i] = fmt.Sprintf("\"%s\"", v)
-		}
-		return s
-	}
-
 }
 
 func ConvertInterfaceToMap(intf interface{}) map[string]interface{} {
@@ -379,21 +355,4 @@ func PickGenieID(source map[string][]string) *string {
 func AccountAsHost(accName string) string {
 	accName = strings.ReplaceAll(accName, " ", "_")
 	return strings.ToLower(accName)
-}
-
-func Hostname(accName, input string) string {
-	log.Println("hostname input ", input)
-	url, err := url.Parse(input)
-	if err != nil {
-		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
-		return "app.workbaseone.com"
-	}
-	hostname := url.Hostname()
-	for _, subDomain := range account.ExistingSubDomains {
-		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
-	}
-	log.Println(" hostname:----: ", hostname)
-	//firebase is not supporting account as host.. using the workbaseone
-	//return fmt.Sprintf("%s.%s", util.AccountAsHost(accName), hostname)
-	return "app.workbaseone.com"
 }

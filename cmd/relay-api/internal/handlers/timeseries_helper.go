@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
@@ -21,7 +22,6 @@ func loadSeries(ctx context.Context, ch chart.Chart, exp string, stTime, endTime
 }
 
 func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseItemID string, stTime, endTime time.Time, db *sqlx.DB, sdb *database.SecDB) ([]Series, error) {
-
 	e, err := entity.Retrieve(ctx, ch.AccountID, ch.EntityID, db, sdb)
 	if err != nil {
 		return nil, err
@@ -76,16 +76,17 @@ func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseIt
 		}
 	}
 
+	useDB := account.UseDB(ctx, db, ch.AccountID)
 	var counters []dbservice.Counters
 	switch groupedLogic {
 	case string(chart.GroupLogicID):
-		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicID, conditionFields)
+		counters, err = dbservice.NewDBservice(useDB, db, sdb).Count(ctx, ch.AccountID, e.ID, "", "", chart.GroupLogicID, conditionFields)
 	case string(chart.GroupLogicField):
-		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, filterByField.Key, chart.GroupLogicField, conditionFields)
+		counters, err = dbservice.NewDBservice(useDB, db, sdb).Count(ctx, ch.AccountID, e.ID, filterByField.Key, filterByField.RefID, chart.GroupLogicField, conditionFields)
 	case string(chart.GroupLogicParent):
-		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicParent, conditionFields)
+		counters, err = dbservice.NewDBservice(useDB, db, sdb).Count(ctx, ch.AccountID, e.ID, "", "", chart.GroupLogicParent, conditionFields)
 	case string(chart.GroupLogicNone):
-		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, ch.AccountID, e.ID, "", chart.GroupLogicNone, conditionFields)
+		counters, err = dbservice.NewDBservice(useDB, db, sdb).Count(ctx, ch.AccountID, e.ID, "", "", chart.GroupLogicNone, conditionFields)
 	}
 
 	if err != nil {

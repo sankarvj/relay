@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/vjsideprojects/relay/internal/account"
@@ -36,7 +38,7 @@ type Notification interface {
 }
 
 func HostN(accName, input string) string {
-	return util.Hostname(accName, input)
+	return Hostname(accName, input)
 }
 
 func WelcomeInvitation(draftID string, apps []string, accountName, host, requester, usrName, usrEmail string, db *sqlx.DB, sdb *database.SecDB) error {
@@ -48,7 +50,7 @@ func WelcomeInvitation(draftID string, apps []string, accountName, host, request
 		}
 	}
 
-	workBaseDomain := util.Hostname(accountName, host)
+	workBaseDomain := Hostname(accountName, host)
 	magicLink, err := auth.CreateMagicLaunchLink(app, workBaseDomain, draftID, accountName, usrEmail, sdb)
 	if err != nil {
 		log.Println("***>***> WelcomeInvitation: unexpected/unhandled error occurred when creating the magic link. error:", err)
@@ -248,4 +250,21 @@ func notificationSettings(ctx context.Context, accountID string, assignees, foll
 		userMap[u.UserID] = user.UnmarshalNotificationSettings(u.NotificationSetting)
 	}
 	return userMap, nil
+}
+
+func Hostname(accName, input string) string {
+	log.Println("hostname input ", input)
+	url, err := url.Parse(input)
+	if err != nil {
+		log.Printf("***> unexpected error occurred when starting the trail. error: %v\n", err)
+		return "app.workbaseone.com"
+	}
+	hostname := url.Hostname()
+	for _, subDomain := range account.ExistingSubDomains {
+		hostname = strings.TrimPrefix(url.Hostname(), fmt.Sprintf("%s.", subDomain))
+	}
+	log.Println(" hostname:----: ", hostname)
+	//firebase is not supporting account as host.. using the workbaseone
+	//return fmt.Sprintf("%s.%s", util.AccountAsHost(accName), hostname)
+	return "app.workbaseone.com"
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -68,7 +69,8 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	if s.source != nil {
 		conditionFields = append(conditionFields, *s.source)
 	}
-	items, totalCount, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, accountID, entityID, s.sortby, s.direction, s.page, s.doCount, s.useReturn, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	items, totalCount, err := dbservice.NewDBservice(useDB, db, sdb).Result(ctx, accountID, entityID, s.sortby, s.direction, s.page, s.doCount, s.useReturn, conditionFields)
 	if err != nil {
 		return nil, nil, err
 	}

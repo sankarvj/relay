@@ -24,7 +24,8 @@ func (spider SpiderService) Result(ctx context.Context, accountID, entityID stri
 	if err != nil {
 		return nil, nil, err
 	}
-	items, err := itemsResp(ctx, spider.pdb, accountID, segmentResult)
+	itemIDs := util.ParseGraphResult(segmentResult)
+	items, err := itemsResp(ctx, spider.pdb, accountID, itemIDs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -36,7 +37,7 @@ func (spider SpiderService) Result(ctx context.Context, accountID, entityID stri
 	return items, totalCount, nil
 }
 
-func (spider SpiderService) Count(ctx context.Context, accountID, entityID, groupById, groupLogic string, conditions []graphdb.Field) ([]Counters, error) {
+func (spider SpiderService) Count(ctx context.Context, accountID, entityID, groupByKey, groupById, groupLogic string, conditions []graphdb.Field) ([]Counters, error) {
 	gSegment := graphdb.BuildGNode(accountID, entityID, false, nil).MakeBaseGNode("", conditions)
 
 	var result *rg.QueryResult
@@ -45,7 +46,7 @@ func (spider SpiderService) Count(ctx context.Context, accountID, entityID, grou
 	case "g_b_id":
 		result, err = graphdb.GetCount(spider.sdb.GraphPool(), gSegment, true)
 	case "g_b_f":
-		result, err = graphdb.GetGroupedCount(spider.sdb.GraphPool(), gSegment, groupById)
+		result, err = graphdb.GetGroupedCount(spider.sdb.GraphPool(), gSegment, groupByKey)
 	case "g_b_f_r":
 		result, err = graphdb.GetGroupedIDPlusFieldCount(spider.sdb.GraphPool(), gSegment, groupById, true)
 	case "g_b_f_r2":
@@ -111,7 +112,8 @@ func (rgs SpiderService) Search2(ctx context.Context, accountID, entityID string
 	if err != nil {
 		return nil, nil
 	}
-	items, err := itemsResp(ctx, rgs.pdb, accountID, result)
+	itemIDs := util.ParseGraphResult(result)
+	items, err := itemsResp(ctx, rgs.pdb, accountID, itemIDs)
 	if err != nil {
 		return nil, nil
 	}
@@ -189,8 +191,7 @@ func (rgs *SpiderService) CountEnabled(doCount bool, page int) bool {
 	return doCount && page == 0
 }
 
-func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, result *rg.QueryResult) ([]item.Item, error) {
-	itemIDs := util.ParseGraphResult(result)
+func itemsResp(ctx context.Context, db *sqlx.DB, accountID string, itemIDs []interface{}) ([]item.Item, error) {
 	items, err := item.BulkRetrieveItems(ctx, accountID, itemIDs, db)
 	if err != nil {
 		return []item.Item{}, err

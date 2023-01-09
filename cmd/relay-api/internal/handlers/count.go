@@ -3,11 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/job"
@@ -58,14 +60,26 @@ func (c *Counter) Count(ctx context.Context, w http.ResponseWriter, r *http.Requ
 }
 
 func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, sdb *database.SecDB) (map[string][]Series, error) {
-	conditionFields := make([]graphdb.Field, 0)
+
 	statusField := dstEntity.WhoField(entity.WhoStatus)
 
-	conditionFields = append(conditionFields, makeIdCondition(countBody.IDs, dstEntity.ID, statusField.RefID)...)
-
-	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, entityID, statusField.RefID, chart.GroupLogicFieldRef, conditionFields)
-	if err != nil {
-		return nil, err
+	var counters []dbservice.Counters
+	var err error
+	useDB := account.UseDB(ctx, db, accountID)
+	if useDB == dbservice.Bee {
+		conditionFields := make([]graphdb.Field, 0)
+		conditionFields = append(conditionFields, makeIdConditionBee(entityID, countBody.IDs)...)
+		counters, err = dbservice.NewDBservice(dbservice.Bee, db, sdb).Count(ctx, accountID, dstEntity.ID, statusField.Key, statusField.RefID, chart.GroupLogicFieldRef, conditionFields)
+		if err != nil {
+			return nil, err
+		}
+	} else if useDB == dbservice.Spider {
+		conditionFields := make([]graphdb.Field, 0)
+		conditionFields = append(conditionFields, makeIdConditionSpider(countBody.IDs, dstEntity.ID, statusField.RefID)...)
+		counters, err = dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, entityID, statusField.Key, statusField.RefID, chart.GroupLogicFieldRef, conditionFields)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	reference.LoadRefFieldChoices(ctx, accountID, &statusField, db, sdb)
@@ -75,6 +89,7 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 		if _, ok := response[ctr.ID]; !ok {
 			response[ctr.ID] = make([]Series, 0)
 		}
+		log.Printf("ctr ----- %+v", ctr)
 		switch v := ctr.Count.(type) {
 		case int:
 			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))
@@ -87,7 +102,8 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 
 func recordCountPerStage(ctx context.Context, accountID, entityID string, dstEntity entity.Entity, countBody CountRequest, db *sqlx.DB, sdb *database.SecDB) (map[string]int, error) {
 	conditionFieldsForStage := makeItemPerStage(dstEntity, countBody.IDs)
-	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, entityID, "", chart.GroupLogicID, conditionFieldsForStage)
+	useDB := account.UseDB(ctx, db, accountID)
+	counters, err := dbservice.NewDBservice(useDB, db, sdb).Count(ctx, accountID, entityID, "", "", chart.GroupLogicID, conditionFieldsForStage)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +130,8 @@ func (gOne *GridOne) itemCountPerStage(ctx context.Context, accountID, exp strin
 			}
 		}
 	}
-	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, gOne.SelectedEntityID, "", chart.GroupLogicID, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	counters, err := dbservice.NewDBservice(useDB, db, sdb).Count(ctx, accountID, gOne.SelectedEntityID, "", "", chart.GroupLogicID, conditionFields)
 	if err != nil {
 		return err
 	}
@@ -154,7 +171,7 @@ func (gOne *GridOne) taskCountPerStage(ctx context.Context, accountID, teamID st
 		}
 	}
 
-	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, taskE.ID, statusField.RefID, chart.GroupLogicFieldRef2, conditionFields)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, taskE.ID, statusField.Key, statusField.RefID, chart.GroupLogicFieldRef2, conditionFields)
 	if err != nil {
 		return err
 	}
@@ -177,7 +194,20 @@ func counts(counters []dbservice.Counters) map[string]int {
 	return counts
 }
 
-func makeIdCondition(ids []string, dstEntityID, statusEntityID string) []graphdb.Field {
+func makeIdConditionBee(entityID string, ids []string) []graphdb.Field {
+	conditionFields := []graphdb.Field{
+		{
+			DataType: graphdb.TypeWist,
+			RefID:    entityID,
+			Field: &graphdb.Field{
+				Value: ids,
+			},
+		},
+	}
+	return conditionFields
+}
+
+func makeIdConditionSpider(ids []string, dstEntityID, statusEntityID string) []graphdb.Field {
 	conditionFields := []graphdb.Field{
 		{
 			Expression: "in", //adding IN instead of giving the ID in the MakeBaseGNode

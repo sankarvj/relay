@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	rg "github.com/redislabs/redisgraph-go"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/item"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
@@ -170,7 +171,8 @@ func checkIfMemberAlreadyExist(ctx context.Context, accountID, entityID, email s
 	}
 	conditionFields = append(conditionFields, gf)
 
-	items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, accountID, entityID, "", "", 0, false, false, conditionFields)
+	useDB := account.UseDB(ctx, db, accountID)
+	items, _, err := dbservice.NewDBservice(useDB, db, sdb).Result(ctx, accountID, entityID, "", "", 0, false, false, conditionFields)
 	if err != nil {
 		return nil, err
 	}

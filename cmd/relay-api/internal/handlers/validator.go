@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database/dbservice"
@@ -94,7 +95,8 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 		conditionFields = append(conditionFields, gf)
 	}
 
-	items, _, err := dbservice.NewDBservice(dbservice.Bee, db, sdb).Result(ctx, e.AccountID, e.ID, "", "", 0, false, false, conditionFields)
+	useDB := account.UseDB(ctx, db, e.AccountID)
+	items, _, err := dbservice.NewDBservice(useDB, db, sdb).Result(ctx, e.AccountID, e.ID, "", "", 0, false, false, conditionFields)
 	if err != nil {
 		return nil, err
 	}

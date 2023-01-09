@@ -143,7 +143,7 @@ func (gThree *GridThree) WidgetGridThree(ctx context.Context, accountID, teamID 
 	}
 
 	//{Operator:in Key:uuid-00-contacts DataType:S Value:6eb4f58e-8327-4ccc-a262-22ad809e76cb}
-	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, e.ID, "", chart.GroupLogicID, conditionFields)
+	counters, err := dbservice.NewDBservice(dbservice.Spider, db, sdb).Count(ctx, accountID, e.ID, "", "", chart.GroupLogicID, conditionFields)
 	if err != nil {
 		return err
 	}
