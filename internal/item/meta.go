@@ -10,10 +10,16 @@ import (
 	"go.opencensus.io/trace"
 )
 
-//UpdateMeta patches the meta data right now it is used to save the UI web forms
+// UpdateMeta patches the meta data right now it is used to save the UI web forms
 func UpdateFieldsWithMeta(ctx context.Context, db *sqlx.DB, i Item, name *string, fields, meta map[string]interface{}, isPublic bool) (Item, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.item.UpdateMeta")
 	defer span.End()
+
+	for k, v := range fields {
+		if v == "" {
+			fields[k] = nil
+		}
+	}
 
 	i.Name = name
 	i.IsPublic = isPublic

@@ -21,18 +21,20 @@ import (
 )
 
 type ViewModelAccount struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Plan   int    `json:"plan"`
-	Status string `json:"status"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Plan     int     `json:"plan"`
+	Status   string  `json:"status"`
+	TrailEnd float64 `json:"trail_end"`
 }
 
 func createViewModelAccount(acc *account.Account) ViewModelAccount {
 	return ViewModelAccount{
-		ID:     acc.ID,
-		Name:   acc.Name,
-		Plan:   acc.CustomerPlan,
-		Status: acc.CustomerStatus,
+		ID:       acc.ID,
+		Name:     acc.Name,
+		Plan:     acc.CustomerPlan,
+		Status:   acc.CustomerStatus,
+		TrailEnd: acc.TrailEnd * 1000,
 	}
 }
 
@@ -250,11 +252,29 @@ func createViewModelNode(n node.Node) node.ViewModelNode {
 }
 
 func createViewModelMember(id string, fields map[string]entity.Field, teamMap map[string]team.Team) ViewModelMember {
+	name := fields["name"].Value
+	email := fields["email"].Value
+	avatar := fields["avatar"].Value
+
+	var nameStr string
+	var emailStr string
+	var avatarStr string
+
+	if name != nil {
+		nameStr = name.(string)
+	}
+	if email != nil {
+		emailStr = email.(string)
+	}
+	if avatar != nil {
+		avatarStr = avatar.(string)
+	}
+
 	return ViewModelMember{
 		ID:     id,
-		Name:   fields["name"].Value.(string),
-		Email:  fields["email"].Value.(string),
-		Avatar: fields["avatar"].Value.(string),
+		Name:   nameStr,
+		Email:  emailStr,
+		Avatar: avatarStr,
 		Teams:  populateTeams(fields["team_ids"].Value, teamMap),
 		Role:   fields["role"].Value.([]interface{}),
 	}

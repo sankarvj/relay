@@ -115,7 +115,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

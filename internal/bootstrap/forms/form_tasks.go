@@ -132,22 +132,22 @@ func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 		},
 	}
 
-	approverFieldID := uuid.New().String()
-	approverField := entity.Field{
-		Key:         approverFieldID,
-		Name:        "approver",
-		DisplayName: "Approver",
-		DomType:     entity.DomSelect,
-		DataType:    entity.TypeReference,
-		RefID:       ownerEntityID,
-		Who:         entity.WhoApprover,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntitySearchKey, entity.MetaKeyHidden: "true"},
-		Field: &entity.Field{
-			DataType: entity.TypeString,
-			Key:      "id",
-			Value:    "--",
-		},
-	}
+	// approverFieldID := uuid.New().String()
+	// approverField := entity.Field{
+	// 	Key:         approverFieldID,
+	// 	Name:        "approver",
+	// 	DisplayName: "Approver",
+	// 	DomType:     entity.DomSelect,
+	// 	DataType:    entity.TypeReference,
+	// 	RefID:       ownerEntityID,
+	// 	Who:         entity.WhoApprover,
+	// 	Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntitySearchKey, entity.MetaKeyHidden: "true"},
+	// 	Field: &entity.Field{
+	// 		DataType: entity.TypeString,
+	// 		Key:      "id",
+	// 		Value:    "--",
+	// 	},
+	// }
 
-	return []entity.Field{nameField, descField, statusField, contactField, companyField, dueByField, reminderField, stageField, ownerField, approverField}
+	return []entity.Field{nameField, descField, statusField, contactField, companyField, dueByField, reminderField, stageField, ownerField}
 }

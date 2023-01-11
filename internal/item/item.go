@@ -139,9 +139,11 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 
 	//convert empty string to null
 	for k, v := range n.Fields {
+
 		if v == "" {
 			n.Fields[k] = nil
 		}
+
 	}
 
 	fieldsBytes, err := json.Marshal(n.Fields)
@@ -193,10 +195,12 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 func UpdateFields(ctx context.Context, db *sqlx.DB, accountID, entityID, id string, fields map[string]interface{}) (Item, error) {
 	//convert empty string to null
 	for k, v := range fields {
+		log.Printf("k---- %+v and v ---- %+v", k, v)
 		if v == "" {
 			fields[k] = nil
 		}
 	}
+	log.Printf("fields %+v", fields)
 	input, err := json.Marshal(fields)
 	if err != nil {
 		return Item{}, errors.Wrap(err, "encode fields to input")

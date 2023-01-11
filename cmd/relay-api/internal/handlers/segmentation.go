@@ -110,6 +110,23 @@ func (s *Segmenter) AddPage(page int) *Segmenter {
 	return s
 }
 
+func (s *Segmenter) AddSourceRefCondition(key, sourceEntityID, sourceItemID string) *Segmenter {
+	s.source = &graphdb.Field{
+		Value:     []interface{}{""},
+		DataType:  graphdb.TypeReference,
+		RefID:     sourceEntityID,
+		IsReverse: false,
+		Key:       key,
+		Field: &graphdb.Field{
+			Expression: graphdb.Operator("in"),
+			Key:        "id",
+			DataType:   graphdb.TypeString,
+			Value:      sourceItemID,
+		},
+	}
+	return s
+}
+
 func (s *Segmenter) AddSourceCondition(sourceEntityID, sourceItemID string) *Segmenter {
 	s.source = &graphdb.Field{
 		Value:     []interface{}{""},

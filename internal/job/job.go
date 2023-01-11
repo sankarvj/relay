@@ -851,7 +851,7 @@ func (j Job) actOnWho(ctx context.Context, accountID, teamID, userID, entityID, 
 				return err
 			}
 		} else if f.Who == entity.WhoApprover && f.IsHidden() && f.Value != nil {
-			j.kabali(ctx, accountID, teamID, userID, entityID, itemID, f, valueAddedFields, db, sdb)
+			//j.kabali(ctx, accountID, teamID, userID, entityID, itemID, f, valueAddedFields, db, sdb)
 		}
 	}
 	return nil
@@ -984,11 +984,11 @@ func deletedList(newList, oldList interface{}) []interface{} {
 }
 
 func (j *Job) actOnRedisWrapper(ctx context.Context, m *stream.Message, valueAddedFields []entity.Field) error {
-	useDB := account.UseDB(ctx, j.DB, m.AccountID)
-	if useDB != dbservice.Spider {
-		stream.Update(ctx, j.DB, m, "Bee", stream.StatePsql)
-		return nil
-	}
+	// useDB := account.UseDB(ctx, j.DB, m.AccountID)
+	// if useDB != dbservice.Spider {
+	// 	stream.Update(ctx, j.DB, m, "Bee", stream.StatePsql)
+	// 	return nil
+	// }
 
 	if len(m.Source) == 0 {
 		err := j.actOnRedisGraph(ctx, m.AccountID, m.EntityID, m.ItemID, m.OldFields, valueAddedFields, j.DB, j.SDB)

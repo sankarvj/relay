@@ -177,7 +177,7 @@ func ContactFields(ownerEntityID, ownerEntityKey string, companyEntityID, compan
 		DataType:    entity.TypeReference,
 		RefID:       companyEntityID,
 		RefType:     entity.RefTypeStraight,
-		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey},
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: companyEntityKey, entity.MetaMultiChoice: "true"},
 		Field: &entity.Field{
 			DataType: entity.TypeString,
 			Key:      "id",

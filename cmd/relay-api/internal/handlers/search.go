@@ -165,7 +165,9 @@ func choiceResponse(key string, items []item.Item, whoMap map[string]string, lay
 		var avatar string
 		if ava, ok := whoMap[entity.WhoAvatar]; ok {
 			if aval, ok := item.Fields()[ava]; ok {
-				avatar = aval.(string)
+				if aval != nil {
+					avatar = aval.(string)
+				}
 			}
 		}
 

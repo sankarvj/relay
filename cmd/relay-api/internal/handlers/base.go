@@ -22,6 +22,7 @@ import (
 )
 
 type Piper struct {
+	Possible       bool                       `json:"possible"`
 	NodeKey        string                     `json:"node_key"`
 	Nodes          []node.ViewModelNode       `json:"nodes"`
 	Items          map[string][]ViewModelItem `json:"items"`

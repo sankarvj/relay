@@ -50,7 +50,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - activities
-	b.ActivityEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Activities", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	b.ActivityEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Goals", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -503,10 +503,10 @@ func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, act
 	if err != nil {
 		return err
 	}
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue_tasks", "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
+	// err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue_tasks", "Overdue Tasks", "", chart.TypeList).AddExp(overdueEXP).SetDurationAllTime().SetGrpLogicField().Add(ctx, b.DB)
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "project_phase", "Project Phase", "pipeline_stage", chart.TypePie).
 		SetDurationAllTime().

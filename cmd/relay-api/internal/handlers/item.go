@@ -61,7 +61,8 @@ func (i *Item) List(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	fields := e.EasyFieldsByRole(ctx)
 
 	piper := Piper{
-		Items: make(map[string][]ViewModelItem, 0),
+		Possible: e.NodeField() != nil,
+		Items:    make(map[string][]ViewModelItem, 0),
 	}
 
 	if !util.IsEmpty(viewID) {
@@ -199,6 +200,11 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	err = validateMyselfWithOwner(ctx, accountID, entityID, existingItem, i.db, i.sdb)
 	if err != nil {
 		return err
+	}
+
+	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.sdb)
+	if errorMap != nil {
+		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}
 
 	it, err := item.UpdateFieldsWithMeta(ctx, i.db, existingItem, ni.Name, ni.Fields, ni.Meta, ni.IsPublic)
