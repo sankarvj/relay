@@ -29,11 +29,38 @@ func validateItemCreate(ctx context.Context, accountID, entityID string, values 
 	}
 
 	//unique field error
-	uniqueErrorsMap, err := validateUniquness(ctx, e, values, db, sdb)
+	uniqueErrorsMap, _, err := validateUniquness(ctx, e, values, db, sdb)
 	if err != nil {
 		return unexpectedError(errors.Wrapf(err, "uniquness validation failed"))
 	}
 	if len(uniqueErrorsMap) > 0 {
+		return validationError(uniqueErrorsMap)
+	}
+
+	return nil
+}
+
+func validateItemUpdate(ctx context.Context, accountID, entityID, itemID string, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) *ErrorResponse {
+	e, err := entity.Retrieve(ctx, accountID, entityID, db, sdb)
+	if err != nil {
+		return unexpectedError(errors.Wrapf(err, "item update validation failed"))
+	}
+
+	//required field error
+	requiredErrorsMap, err := validateRequired(ctx, e, values)
+	if err != nil {
+		return unexpectedError(errors.Wrapf(err, "required field validation failed"))
+	}
+	if len(requiredErrorsMap) > 0 {
+		return requiredError(requiredErrorsMap)
+	}
+
+	//unique field error
+	uniqueErrorsMap, erroredIds, err := validateUniquness(ctx, e, values, db, sdb)
+	if err != nil {
+		return unexpectedError(errors.Wrapf(err, "uniquness validation failed"))
+	}
+	if len(uniqueErrorsMap) > 0 && !uniqueErrorIsInvalid(erroredIds, itemID) {
 		return validationError(uniqueErrorsMap)
 	}
 
@@ -62,12 +89,13 @@ func validateRequired(ctx context.Context, e entity.Entity, values map[string]in
 	return requiredErrorsMap, nil
 }
 
-func validateUniquness(ctx context.Context, e entity.Entity, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) (map[string]ErrorPayload, error) {
+func validateUniquness(ctx context.Context, e entity.Entity, values map[string]interface{}, db *sqlx.DB, sdb *database.SecDB) (map[string]ErrorPayload, []string, error) {
 
+	uniqueItems := make([]string, 0)
 	//unique fields only
 	fields := e.OnlyUniqueFields()
 	if len(fields) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	conditionFields := make([]graphdb.Field, 0)
@@ -98,11 +126,12 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 	useDB := account.UseDB(ctx, db, e.AccountID)
 	items, _, err := dbservice.NewDBservice(useDB, db, sdb).Result(ctx, e.AccountID, e.ID, "", "", 0, false, false, conditionFields)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	uniqueErrorsMap := make(map[string]ErrorPayload, 0)
 	for _, i := range items {
+		uniqueItems = append(uniqueItems, i.ID)
 		filtertedVals := i.Fields()
 		for _, f := range fields {
 			switch filtertedVals[f.Key].(type) {
@@ -117,5 +146,5 @@ func validateUniquness(ctx context.Context, e entity.Entity, values map[string]i
 			}
 		}
 	}
-	return uniqueErrorsMap, nil
+	return uniqueErrorsMap, uniqueItems, nil
 }

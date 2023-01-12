@@ -155,14 +155,14 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 			notificationType = TypeMemberAdded //changing notification type in the mid-way
 			// adding all members as followers
 			appNotif.AddMembers(ctx, accountID, db)
-			appNotif.Subject = fmt.Sprintf("A new member added to your account")
-			appNotif.Body = fmt.Sprintf("New member %s added to your account", appNotif.Title)
+			appNotif.Subject = fmt.Sprintf("New member added to your account")
+			appNotif.Body = fmt.Sprintf("%s added to your account", appNotif.Title)
 		default:
 			if len(source) == 0 { // add all members for the main module addition...
 				appNotif.AddMembers(ctx, accountID, db)
 			}
 
-			appNotif.Subject = fmt.Sprintf("A new %s created", util.LowerSinglarize(entityDisName))
+			appNotif.Subject = fmt.Sprintf("New %s created", util.LowerSinglarize(entityDisName))
 			// enriching subject with base elements
 			if appNotif.BaseEntityName != "" {
 				appNotif.Subject = fmt.Sprintf("%s in %s", appNotif.Subject, util.LowerSinglarize(appNotif.BaseEntityName))
@@ -174,19 +174,21 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		}
 
 	case TypeUpdated:
-		appNotif.Subject = fmt.Sprintf("A record in %s is updated", util.LowerPluralize(entityDisName))
+		appNotif.Subject = fmt.Sprintf("%s updated", util.LowerPluralize(entityDisName))
 		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		switch entityCategory {
 		case entity.CategoryUsers:
-			appNotif.Subject = "Invited member logged in"
-			appNotif.Body = fmt.Sprintf("%s `%s` logged in for the first time", "Member", appNotif.Title)
+			appNotif.Subject = "Newly invited member logged in for the first time"
+			appNotif.Body = fmt.Sprintf("`%s` logged in for the first time", appNotif.Title)
 		default:
 			if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` updated with assignee/s %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				appNotif.Body = fmt.Sprintf("%s `%s` assigned to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 			} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` due date modified %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				appNotif.Body = fmt.Sprintf("%s `%s` due date set to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 			} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` %s modified", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				// appNotif.Body = fmt.Sprintf("%s `%s` updated with %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+				log.Println("modified vals ", val)
+				appNotif.Body = fmt.Sprintf("%s `%s` updated with new values", util.UpperSinglarize(entityDisName), appNotif.Title)
 			}
 		}
 

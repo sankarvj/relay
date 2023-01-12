@@ -202,7 +202,7 @@ func (i *Item) Update(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		return err
 	}
 
-	errorMap := validateItemCreate(ctx, accountID, entityID, ni.Fields, i.db, i.sdb)
+	errorMap := validateItemUpdate(ctx, accountID, entityID, itemID, ni.Fields, i.db, i.sdb)
 	if errorMap != nil {
 		return web.Respond(ctx, w, errorMap, http.StatusForbidden)
 	}

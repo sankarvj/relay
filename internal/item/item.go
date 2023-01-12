@@ -52,8 +52,7 @@ func Result(ctx context.Context, accountID, entityID string, pageNo int, wh stri
 
 	items := []Item{}
 	q := fmt.Sprintf(`SELECT * FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s ORDER BY created_at DESC LIMIT $4 OFFSET $5`, wh)
-	log.Println("q ", q)
-	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.MaxLimt, skipCount); err != nil {
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.PageLimt, skipCount); err != nil {
 		return nil, errors.Wrap(err, "selecting items result")
 	}
 
@@ -80,7 +79,7 @@ func CountMap(ctx context.Context, accountID, entityID string, se, wh, grp strin
 
 	counters := []Counter{}
 	q := fmt.Sprintf(`SELECT %s FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s %s`, se, wh, grp)
-	log.Printf("q---------------------:::: %+v", q)
+	//log.Printf("CountMap q---------------------:::: %+v", q)
 	if err := db.SelectContext(ctx, &counters, q, accountID, entityID, StateDefault); err != nil {
 		return nil, errors.Wrap(err, "selecting items count map")
 	}
@@ -195,12 +194,10 @@ func Create(ctx context.Context, db *sqlx.DB, n NewItem, now time.Time) (Item, e
 func UpdateFields(ctx context.Context, db *sqlx.DB, accountID, entityID, id string, fields map[string]interface{}) (Item, error) {
 	//convert empty string to null
 	for k, v := range fields {
-		log.Printf("k---- %+v and v ---- %+v", k, v)
 		if v == "" {
 			fields[k] = nil
 		}
 	}
-	log.Printf("fields %+v", fields)
 	input, err := json.Marshal(fields)
 	if err != nil {
 		return Item{}, errors.Wrap(err, "encode fields to input")

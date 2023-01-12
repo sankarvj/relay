@@ -69,6 +69,16 @@ func validationError(errorMap map[string]ErrorPayload) *ErrorResponse {
 	}
 }
 
+func uniqueErrorIsInvalid(erroredIds []string, id string) bool {
+	var invalid bool
+	for _, erroredID := range erroredIds {
+		if erroredID == id {
+			invalid = true
+		}
+	}
+	return invalid
+}
+
 func unexpectedError(err error) *ErrorResponse {
 	log.Println("***> unexpected error occurred ", err)
 	return &ErrorResponse{

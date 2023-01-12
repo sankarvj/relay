@@ -70,7 +70,7 @@ func (bee BeeService) Count(ctx context.Context, accountID, entityID, groupByKey
 		grp = "group by item_id"
 	default:
 		sel = "count(*)"
-		grp = "group by item_id"
+		grp = ""
 	}
 
 	counts, err := item.CountMap(ctx, accountID, entityID, sel, where, grp, bee.pdb)
@@ -140,7 +140,6 @@ func (bee BeeService) Search1(ctx context.Context, accountID, entityID string, c
 }
 
 func (bee BeeService) Search2(ctx context.Context, accountID, entityID string, conditions []graphdb.Field) ([]item.Item, error) {
-	log.Printf("Search2 conditionFields %+v ", conditions)
 	wh := WhBuilder(conditions)
 	where := strings.Join(wh, " AND ")
 	if len(wh) > 0 {
@@ -258,7 +257,7 @@ func addStringifiedQuotes(key, exp string, inf interface{}) string {
 		return ""
 	case string:
 		q := fmt.Sprintf(`fieldsb @> '{"%s": [%s]}'`, key, fmt.Sprintf("\"%s\"", v))
-		if exp == "NOT IN" {
+		if exp == "NOT IN" || exp == "<>" {
 			q = fmt.Sprintf(`NOT %s`, q)
 		}
 		return q
@@ -266,7 +265,7 @@ func addStringifiedQuotes(key, exp string, inf interface{}) string {
 		s := make([]string, len(v))
 		for i, v := range v {
 			s[i] = fmt.Sprintf(`fieldsb @> '{"%s": [%s]}'`, key, fmt.Sprintf("\"%s\"", v))
-			if exp == "NOT IN" {
+			if exp == "NOT IN" || exp == "<>" {
 				s[i] = fmt.Sprintf(`NOT %s`, s[i])
 			}
 		}
@@ -275,7 +274,7 @@ func addStringifiedQuotes(key, exp string, inf interface{}) string {
 		s := make([]string, len(v))
 		for i, v := range v {
 			s[i] = fmt.Sprintf(`fieldsb @> '{"%s": [%s]}'`, key, fmt.Sprintf("\"%s\"", v))
-			if exp == "NOT IN" {
+			if exp == "NOT IN" || exp == "<>" {
 				s[i] = fmt.Sprintf(`NOT %s`, s[i])
 			}
 		}

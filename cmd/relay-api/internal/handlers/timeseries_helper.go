@@ -76,6 +76,9 @@ func loadCHSeries(ctx context.Context, ch chart.Chart, exp, baseEntityID, baseIt
 		}
 	}
 
+	// log.Printf("chart ---:: %+v", ch)
+	// log.Printf("chart conditionFields---%+v", conditionFields)
+
 	useDB := account.UseDB(ctx, db, ch.AccountID)
 	var counters []dbservice.Counters
 	switch groupedLogic {
