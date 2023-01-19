@@ -50,7 +50,7 @@ func Boot(ctx context.Context, b *base.Base) error {
 	fmt.Println("\tCRM:BOOT Approvals Entity Created")
 
 	// add entity - activities
-	b.ActivityEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityActivities, "Goals", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
+	b.ActivityEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityGoals, "Goals", entity.CategoryEvent, entity.StateAccountLevel, false, true, false, ActivitiesFields(b.ContactEntity.ID, b.ContactEntity.Key("first_name"), b.ContactEntity.Key("email"), b.CompanyEntity.ID, b.CompanyEntity.Key("name")))
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func AddSamples(ctx context.Context, b *base.Base) error {
 		return err
 	}
 
-	activityEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityActivities)
+	activityEntity, err := entity.RetrieveFixedEntity(ctx, b.DB, b.AccountID, b.TeamID, entity.FixedEntityGoals)
 	if err != nil {
 		return err
 	}

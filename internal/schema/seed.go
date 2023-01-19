@@ -36,7 +36,7 @@ func IsEntitySeeded(entityName string) bool {
 		entity.FixedEntityOwner:            true,
 		entity.FixedEntityEmails:           true,
 		entity.FixedEntityVisitorInvite:    true,
-		entity.FixedEntityActivities:       true,
+		entity.FixedEntityGoals:            true,
 		entity.FixedEntitySubscriptions:    true,
 		entity.FixedEntityDailyActiveUsers: true,
 		entity.FixedEntityPageVisits:       true,
@@ -86,7 +86,7 @@ func SeedUsers(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
-//SeedEntity runs entity data
+// SeedEntity runs entity data
 func SeedEntity(db *sqlx.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -103,7 +103,7 @@ func SeedEntity(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
-//SeedWorkFlows runs workflows
+// SeedWorkFlows runs workflows
 func SeedWorkFlows(db *sqlx.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -120,7 +120,7 @@ func SeedWorkFlows(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
-//SeedRelationShips runs pipeline flows
+// SeedRelationShips runs pipeline flows
 func SeedRelationShips(db *sqlx.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -137,7 +137,7 @@ func SeedRelationShips(db *sqlx.DB) error {
 	return tx.Commit()
 }
 
-//SeedPipelines runs pipeline flows
+// SeedPipelines runs pipeline flows
 func SeedPipelines(db *sqlx.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -161,7 +161,7 @@ func SeedPipelines(db *sqlx.DB) error {
 // multiple queries as part of the same execution so this single large constant
 // may need to be broken up.
 
-//TODO: this seed needs to get removed in the main project
+// TODO: this seed needs to get removed in the main project
 const accountSeeds = `
 INSERT INTO public.accounts (account_id, parent_account_id, name, domain, avatar, cus_id, cus_plan, mode, timezone, language, country, issued_at, expiry, created_at, updated_at) VALUES ('3cf17266-3473-4006-984f-9325122678b7', NULL, 'Wayplot', 'wayplot.com', NULL, 'cus_MnP9sOMjxKLbmL' , 0, 0, NULL, NULL, NULL, '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', '2021-01-10 14:53:12.100372', 1610290392);
 INSERT INTO public.teams (team_id, account_id, name, description, created_at, updated_at) VALUES ('73d54431-318c-4b3b-ae73-82c75cd56dcb', '3cf17266-3473-4006-984f-9325122678b7', 'Base', '', '2021-04-08 06:19:04.630095', 1617862744);

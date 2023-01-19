@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -89,7 +88,6 @@ func taskCountPerItem(ctx context.Context, accountID, entityID string, dstEntity
 		if _, ok := response[ctr.ID]; !ok {
 			response[ctr.ID] = make([]Series, 0)
 		}
-		log.Printf("ctr ----- %+v", ctr)
 		switch v := ctr.Count.(type) {
 		case int:
 			response[ctr.ID] = append(response[ctr.ID], createPartialVMSeries(choice.ID, choice.DisplayValue.(string), choice.Color, choice.Verb, v))

@@ -68,7 +68,7 @@ const (
 	FixedEntityServiceRequest   = "service_request"
 	FixedEntityAgileTask        = "agile_task"
 	FixedEntityAgileSubTask     = "agile_sub_task"
-	FixedEntityActivities       = "activities"
+	FixedEntityGoals            = "goals"
 	FixedEntitySubscriptions    = "subscriptions"
 	FixedEntityDailyActiveUsers = "daily_active_users"
 	FixedEntityPageVisits       = "page_visits"
@@ -126,7 +126,7 @@ type CaldendarEntity struct {
 	Retries   int       `json:"retries"`
 }
 
-//DelayEntity represents the structural format of delay entity
+// DelayEntity represents the structural format of delay entity
 type DelayEntity struct {
 	Title   string `json:"title"`
 	DelayBy int    `json:"delay_by"` // in mins
@@ -184,7 +184,7 @@ type NotificationEntityItem struct {
 	CreatedAt  string   `json:"created_at"`
 }
 
-//ParseFixedEntity creates the entity from the given value added fields
+// ParseFixedEntity creates the entity from the given value added fields
 func ParseFixedEntity(valueAddedFields []Field, v interface{}) error {
 	jsonbody, err := json.Marshal(namedFieldsMap(valueAddedFields))
 	if err != nil {
@@ -382,7 +382,7 @@ func DiscoverDoneStatusID(ctx context.Context, accountID, entityID string, db *s
 	return "", ErrNotFound
 }
 
-//updateFields func encloses the update func
+// updateFields func encloses the update func
 func updateFields(accountID, entityID, itemID string, fields []Field) UpdaterFunc {
 	return func(ctx context.Context, updatedItem interface{}, db *sqlx.DB) error {
 		_, err := item.UpdateFields(ctx, db, accountID, entityID, itemID, itemValMap(fields, util.ConvertInterfaceToMap(updatedItem)))
@@ -390,7 +390,7 @@ func updateFields(accountID, entityID, itemID string, fields []Field) UpdaterFun
 	}
 }
 
-//itemValMap make the key:value map for storing from the entity and name:value map
+// itemValMap make the key:value map for storing from the entity and name:value map
 func itemValMap(fields []Field, namedFieldsMap map[string]interface{}) map[string]interface{} {
 	params := map[string]interface{}{}
 	for _, field := range fields {
@@ -399,7 +399,7 @@ func itemValMap(fields []Field, namedFieldsMap map[string]interface{}) map[strin
 	return params
 }
 
-//namedFieldsMap make the name:value map from the value added entites for fixed entities
+// namedFieldsMap make the name:value map from the value added entites for fixed entities
 func namedFieldsMap(entityFields []Field) map[string]interface{} {
 	params := map[string]interface{}{}
 	for _, field := range entityFields {

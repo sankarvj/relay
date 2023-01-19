@@ -156,7 +156,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 			// adding all members as followers
 			appNotif.AddMembers(ctx, accountID, db)
 			appNotif.Subject = fmt.Sprintf("New member added to your account")
-			appNotif.Body = fmt.Sprintf("%s added to your account", appNotif.Title)
+			appNotif.Body = fmt.Sprintf("%s added to your account", util.UpperSinglarize(appNotif.Title))
 		default:
 			if len(source) == 0 { // add all members for the main module addition...
 				appNotif.AddMembers(ctx, accountID, db)
@@ -170,11 +170,11 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 					appNotif.Subject = fmt.Sprintf("%s `%s`", appNotif.Subject, appNotif.BaseItemName)
 				}
 			}
-			appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
+			appNotif.Body = fmt.Sprintf("%s. %s", appNotif.Subject, appNotif.Title)
 		}
 
 	case TypeUpdated:
-		appNotif.Subject = fmt.Sprintf("%s updated", util.LowerPluralize(entityDisName))
+		appNotif.Subject = fmt.Sprintf("%s updated", util.UpperSinglarize(entityDisName))
 		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
 		switch entityCategory {
 		case entity.CategoryUsers:

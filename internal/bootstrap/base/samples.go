@@ -120,7 +120,7 @@ func (b *Base) AddSegments(ctx context.Context, entityID string) error {
 		if err != nil {
 			return err
 		}
-	} else if e.Name == entity.FixedEntityActivities {
+	} else if e.Name == entity.FixedEntityGoals {
 		err = addSegmentFlow(ctx, entityID, "All Activities", "", b)
 		if err != nil {
 			return err
