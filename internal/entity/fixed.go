@@ -174,6 +174,7 @@ type NotificationEntityItem struct {
 	UserID     string   `json:"user_id"`
 	UserName   string   `json:"user_name"`
 	UserAvatar string   `json:"user_avatar"`
+	Category   int      `json:"category"`
 	ItemID     string   `json:"item_id"`
 	Subject    string   `json:"subject"`
 	Body       string   `json:"body"`

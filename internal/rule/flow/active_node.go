@@ -17,7 +17,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
-//Err vars from node
+// Err vars from node
 var (
 	ErrNodeAlreadyActive = errors.New("Node is already active. Can't execute it again")
 	ErrCannotExecuteNode = errors.New("Node not executed due to expression condition")
@@ -153,7 +153,8 @@ func nextRun(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node,
 		childNode.Variables = updatedVars
 		if childNode.Type == node.Stage { //stage nodes should not execute automatically. Always needs a manual intervention
 			log.Printf("rule.flow.active_node: encountered stage node. Skipping auto run\n")
-			continue
+			//adding continue will stop the tasks created for all at once.
+			//continue
 		}
 		runJob(ctx, db, sdb, childNode, eng)
 	}

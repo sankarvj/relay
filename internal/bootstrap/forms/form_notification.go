@@ -33,6 +33,15 @@ func NotificationFields(ownerEntityID string) []entity.Field {
 		DataType:    entity.TypeString,
 	}
 
+	categoryFieldID := uuid.New().String()
+	categoryField := entity.Field{
+		Key:         categoryFieldID,
+		Name:        "category",
+		DisplayName: "category",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
 	timeFieldID := uuid.New().String()
 	timeField := entity.Field{
 		Key:         timeFieldID,
@@ -150,5 +159,5 @@ func NotificationFields(ownerEntityID string) []entity.Field {
 		},
 	}
 
-	return []entity.Field{subjectField, bodyField, typeField, timeField, accountField, teamField, entityField, userField, userNameField, userAvatarField, itemField, followerField, ownerField, baseField}
+	return []entity.Field{subjectField, bodyField, typeField, categoryField, timeField, accountField, teamField, entityField, userField, userNameField, userAvatarField, itemField, followerField, ownerField, baseField}
 }

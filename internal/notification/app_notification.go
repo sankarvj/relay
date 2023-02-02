@@ -34,6 +34,7 @@ type AppNotification struct {
 	BaseEntityName string
 	BaseItemName   string
 	Due            time.Time
+	Category       int
 	Specifics
 }
 
@@ -42,7 +43,7 @@ type Specifics struct {
 	DirtyFields map[string]string
 }
 
-func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamID, userID, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB) AppNotification {
+func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamID, userID string, entityCategory int, entityID, itemID string, itemCreatorID *string, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, db *sqlx.DB, sdb *database.SecDB) AppNotification {
 	appNotif := AppNotification{
 		AccountID:     accountID,
 		AccountDomain: accountDomain,
@@ -53,6 +54,7 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		Followers:     make([]entity.UserEntity, 0),
 		Assignees:     make([]entity.UserEntity, 0),
 		BaseIds:       make([]string, 0), //events filter use case. check README for more info
+		Category:      entityCategory,
 	}
 
 	for baseEntityID, baseItemIDs := range source {
@@ -261,6 +263,7 @@ func (appNotif AppNotification) Save(ctx context.Context, notifType Notification
 		TeamID:     appNotif.TeamID,
 		EntityID:   appNotif.EntityID,
 		ItemID:     appNotif.ItemID,
+		Category:   appNotif.Category,
 		UserID:     appNotif.UserID,
 		UserName:   appNotif.UserName,
 		UserAvatar: appNotif.UserAvatar,

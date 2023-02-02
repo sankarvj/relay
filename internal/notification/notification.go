@@ -126,7 +126,7 @@ func VisitorInvitation(accountID, visitorID, body string, db *sqlx.DB, sdb *data
 }
 
 func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, entityDisName, accountID, accDomain, teamID, entityID, itemID string, itemCreatorID *string, itemUpdatedAt int64, valueAddedFields []entity.Field, dirtyFields map[string]interface{}, source map[string][]string, notificationType NotificationType, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) (*item.Item, error) {
-	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db, sdb)
+	appNotif := appNotificationBuilder(ctx, accountID, accDomain, teamID, usrID, entityCategory, entityID, itemID, itemCreatorID, valueAddedFields, dirtyFields, source, db, sdb)
 	appNotif.CreatedAt = itemUpdatedAt
 
 	if entityCategory == entity.CategoryEvent { //stop notifications for events
