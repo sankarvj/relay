@@ -63,7 +63,7 @@ func TaskFields(contactEntityID, contactEntityKey, companyEntityID, companyEntit
 	dueByField := entity.Field{
 		Key:         dueByFieldID,
 		Name:        "due_by",
-		DisplayName: "Due By",
+		DisplayName: "Due by",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoDueBy,

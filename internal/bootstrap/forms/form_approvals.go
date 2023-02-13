@@ -21,7 +21,7 @@ func ApprovalsFields(approvalStatusEntityID, approvalStatusKey, ownerEntityID, o
 	dueByField := entity.Field{
 		Key:         dueByFieldID,
 		Name:        "due_by",
-		DisplayName: "Due By",
+		DisplayName: "Due by",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoDueBy,

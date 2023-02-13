@@ -405,7 +405,7 @@ func AssetRequestFields(assetEntityID string, assetEntityKey string, assetStatus
 	dueByField := entity.Field{
 		Key:         dueByFieldID,
 		Name:        "due_by",
-		DisplayName: "Due By",
+		DisplayName: "Due by",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoDueBy,
@@ -491,7 +491,7 @@ func ServiceRequestFields(serviceEntityID string, serviceEntityKey string, statu
 	dueByField := entity.Field{
 		Key:         dueByFieldID,
 		Name:        "due_by",
-		DisplayName: "Due By",
+		DisplayName: "Due by",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoDueBy,
@@ -549,7 +549,7 @@ func TaskEFields(employeeEntityID, employeeEntityKey, nodeEntityID, statusEntity
 	dueByField := entity.Field{
 		Key:         dueByFieldID,
 		Name:        "due_by",
-		DisplayName: "Due By",
+		DisplayName: "Due by",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeDateTime,
 		Who:         entity.WhoDueBy,
