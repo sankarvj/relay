@@ -175,6 +175,13 @@ func (t *Team) createCustomTemplates(ctx context.Context, accountID, userID, tem
 			log.Println("***> unexpected error occurred. when creating custom templates:onboarding-emp:", err)
 			return err
 		}
+	case team.PredefinedTeamCSup:
+		err := bootstrap.BootSupport(accountID, userID, t.db, t.sdb, t.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			log.Println("***> unexpected error occurred. when creating custom templates:support:", err)
+			return err
+		}
 	}
+
 	return nil
 }

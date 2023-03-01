@@ -43,7 +43,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		DisplayName: "Project Name",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
-		Meta:        map[string]string{entity.MetaKeyLayout: "title"},
+		Meta:        map[string]string{entity.MetaKeyLayout: entity.MetaLayoutTitle},
 	}
 
 	planFieldID := uuid.New().String()

@@ -60,14 +60,16 @@ func taskTemplates(desc string, thisEntity entity.Entity, actorEntity entity.Ent
 	return taskVals
 }
 
-func assetRequestTemplates(desc, assetID, statusID string, thisEntity entity.Entity) map[string]interface{} {
+func assetRequestTemplates(name, assetID, statusID string, thisEntity entity.Entity) map[string]interface{} {
 	arVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
-		case "comments":
-			arVals[f.Key] = fmt.Sprintf("%s", desc)
+		case "name":
+			arVals[f.Key] = fmt.Sprintf("Asset request: %s", name)
+		case "desc":
+			arVals[f.Key] = fmt.Sprintf("%s requested", name)
 		case "asset":
 			arVals[f.Key] = []interface{}{assetID}
 		case "request_status":
@@ -77,14 +79,16 @@ func assetRequestTemplates(desc, assetID, statusID string, thisEntity entity.Ent
 	return arVals
 }
 
-func serviceRequestTemplates(desc, serviceID, statusID string, thisEntity entity.Entity) map[string]interface{} {
+func serviceRequestTemplates(name, serviceID, statusID string, thisEntity entity.Entity) map[string]interface{} {
 	arVals := make(map[string]interface{}, 0)
 	namedFieldsMap := entity.NameMap(thisEntity.EasyFields())
 
 	for name, f := range namedFieldsMap {
 		switch name {
+		case "name":
+			arVals[f.Key] = fmt.Sprintf("Service request: %s", name)
 		case "desc":
-			arVals[f.Key] = fmt.Sprintf("%s", desc)
+			arVals[f.Key] = fmt.Sprintf("%s requested", name)
 		case "service":
 			arVals[f.Key] = []interface{}{serviceID}
 		case "request_status":

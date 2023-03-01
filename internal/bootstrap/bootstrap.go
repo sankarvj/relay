@@ -11,6 +11,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/base"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/crm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/csm"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/ctm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
@@ -182,7 +183,7 @@ func BootstrapFlowAndNodeEntity(ctx context.Context, b *base.Base) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCRM:BOOT Flow & Node Wrapper Entities Created")
+	fmt.Println("\tBOOT Flow & Node Wrapper Entities Created")
 
 	return err
 }
@@ -330,6 +331,42 @@ func BootEM(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebase
 
 	//all done
 	fmt.Printf("\nBootstrap:EM ENDED successfully for the accountID: %s\n", accountID)
+
+	return nil
+}
+
+func BootSupport(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
+	fmt.Printf("\nBootstrap:Support STARTED for the accountID %s\n", accountID)
+
+	ctx := context.Background()
+	teamID := uuid.New().String()
+	supportTemplate := team.FindTeamTemplate(team.PredefinedTeamCSup)
+	err := BootstrapTeam(ctx, db, accountID, teamID, supportTemplate.Key, supportTemplate.Name, supportTemplate.Description)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:Support `team` insertion failed")
+	}
+	fmt.Println("\t\t\tBootstrap:Support `team` added")
+
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
+
+	//boot
+	fmt.Println("\t\t\tBootstrap:Support `boot` functions started")
+	err = ctm.Boot(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:Support `boot` functions failed")
+	}
+	fmt.Println("Bootstrap:Support `boot` functions completed successfully")
+
+	//samples
+	fmt.Println("Bootstrap:Support `samples` functions started")
+	err = ctm.AddSamples(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:Support `samples` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:Support `samples` functions completed successfully")
+
+	//all done
+	fmt.Printf("\nBootstrap:Support ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }

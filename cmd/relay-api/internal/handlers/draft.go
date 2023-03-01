@@ -150,7 +150,15 @@ func (a *Account) bootApp(ctx context.Context, accountID, userID string, dft *dr
 	}
 
 	if util.Contains(dft.Teams, team.PredefinedTeamEMP) {
-		err := bootstrap.BootEM(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		err := bootstrap.BootCRM(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			account.Delete(ctx, a.db, accountID)
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
+
+	if util.Contains(dft.Teams, team.PredefinedTeamCSup) {
+		err := bootstrap.BootSupport(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
 		if err != nil {
 			account.Delete(ctx, a.db, accountID)
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)

@@ -59,6 +59,7 @@ type CoreEntity struct {
 	CompanyEntity        entity.Entity
 	TaskEntity           entity.Entity
 	DealEntity           entity.Entity
+	TicketEntity         entity.Entity
 	ProjectEntity        entity.Entity
 	NotificationEntity   entity.Entity
 	DAUEntity            entity.Entity
@@ -92,6 +93,7 @@ type CrmSample struct {
 	LeadStatusItemAttempted item.Item
 	EmpItemMatt             item.Item
 	EmpItemNatasha          item.Item
+	TicketStatusItemNew     item.Item
 }
 
 type CoreWorkflow struct {

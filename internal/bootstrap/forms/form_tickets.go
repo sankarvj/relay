@@ -36,7 +36,7 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 	contactFieldID := uuid.New().String()
 	contactField := entity.Field{
 		Key:         contactFieldID,
-		Name:        "contact",
+		Name:        "associated_contacts",
 		DisplayName: "Associated Contacts",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,
@@ -52,7 +52,7 @@ func TicketFields(contactEntityID, contactEntityKey, companyEntityID, companyEnt
 	companyFieldID := uuid.New().String()
 	companyField := entity.Field{
 		Key:         companyFieldID,
-		Name:        "company",
+		Name:        "associated_companies",
 		DisplayName: "Associated Companies",
 		DomType:     entity.DomAutoComplete,
 		DataType:    entity.TypeReference,

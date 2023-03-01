@@ -10,8 +10,6 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/chart"
 	"gitlab.com/vjsideprojects/relay/internal/dashboard"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
-	"gitlab.com/vjsideprojects/relay/internal/rule/flow"
-	"gitlab.com/vjsideprojects/relay/internal/rule/node"
 )
 
 func Boot(ctx context.Context, b *base.Base) error {
@@ -481,47 +479,47 @@ func addEmployees(ctx context.Context, b *base.Base, empEntity, taskEntity entit
 }
 
 func AddWorkflows(ctx context.Context, b *base.Base, employeeEntity, taskEntity, assetRequestEntity, serviceRequestEntity entity.Entity, itemIDMap map[string]string) error {
-	assetTemplateMacbookPro, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Pro", itemIDMap["macbook_pro"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateMacbookPro, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Macbook Pro", itemIDMap["macbook_pro"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateMacbookAir, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: Macbook Air", itemIDMap["macbook_air"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateMacbookAir, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Macbook Air", itemIDMap["macbook_air"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateiPhone14, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iPhone 14", itemIDMap["iphone_14"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateiPhone14, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("iPhone 14", itemIDMap["iphone_14"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	assetTemplateiMac, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("Asset request: iMac", itemIDMap["imac"], itemIDMap["status_received"], assetRequestEntity), nil)
+	assetTemplateiMac, err := b.TemplateAddWithOutMeta(ctx, assetRequestEntity.ID, uuid.New().String(), b.UserID, assetRequestTemplates("iMac", itemIDMap["imac"], itemIDMap["status_received"], assetRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateGit, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Git Access", itemIDMap["git"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateGit, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Git access", itemIDMap["git"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateMail, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Mail Access", itemIDMap["mail"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateMail, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Mail access", itemIDMap["mail"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateInfra, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Infra Access", itemIDMap["infra"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateInfra, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Infra access", itemIDMap["infra"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateMarketing, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Merketing Tools Access", itemIDMap["marketing"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateMarketing, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Marketing tools", itemIDMap["marketing"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
 
-	serviceTemplateEarnings, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Service request: Earnings Sheet Access", itemIDMap["earnings"], itemIDMap["status_received"], serviceRequestEntity), nil)
+	serviceTemplateEarnings, err := b.TemplateAddWithOutMeta(ctx, serviceRequestEntity.ID, uuid.New().String(), b.UserID, serviceRequestTemplates("Earnings sheet access", itemIDMap["earnings"], itemIDMap["status_received"], serviceRequestEntity), nil)
 	if err != nil {
 		return err
 	}
@@ -645,32 +643,32 @@ func AddWorkflows(ctx context.Context, b *base.Base, employeeEntity, taskEntity,
 	}
 	fmt.Println("\tEM:SAMPLES Pipeline And Its Nodes Created")
 
-	inviteTemplate, err := b.TemplateAddWithOutMeta(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity, employeeEntity), nil)
-	if err != nil {
-		return err
-	}
+	// inviteTemplate, err := b.TemplateAddWithOutMeta(ctx, b.InviteEntity.ID, uuid.New().String(), b.UserID, inviteTemplates("Hi, Welcome to the account", b.InviteEntity, employeeEntity), nil)
+	// if err != nil {
+	// 	return err
+	// }
 
 	fmt.Println("\tEM:SAMPLES inviteTemplate added")
 
-	cf := &base.CoreWorkflow{
-		Name:     "When a new employee added",
-		ActorID:  employeeEntity.ID,
-		FlowType: flow.FlowTypeEventCreate,
-		Nodes: []*base.CoreNode{
-			{
-				Name:       "Invite Employee as users to the portal",
-				ActorID:    b.InviteEntity.ID,
-				ActorName:  "Employees",
-				TemplateID: inviteTemplate.ID,
-				Type:       node.Invite,
-			},
-		},
-	}
+	// cf := &base.CoreWorkflow{
+	// 	Name:     "When a new employee added",
+	// 	ActorID:  employeeEntity.ID,
+	// 	FlowType: flow.FlowTypeEventCreate,
+	// 	Nodes: []*base.CoreNode{
+	// 		{
+	// 			Name:       "Invite Employee as users to the portal",
+	// 			ActorID:    b.InviteEntity.ID,
+	// 			ActorName:  "Employees",
+	// 			TemplateID: inviteTemplate.ID,
+	// 			Type:       node.Invite,
+	// 		},
+	// 	},
+	// }
 
-	err = b.AddWorkflows(ctx, cf)
-	if err != nil {
-		return err
-	}
+	// err = b.AddWorkflows(ctx, cf)
+	// if err != nil {
+	// 	return err
+	// }
 
 	fmt.Println("\tEM:SAMPLES Workflows And Its Nodes Created")
 	return nil

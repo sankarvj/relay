@@ -6,9 +6,8 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # PARTICULAR PURPOSE.
 
 # This program built for i386-apple-darwin11.3.0
- 
 
-# Make data base, printed on Thu Jan  5 10:13:55 2023
+# Make data base, printed on Mon Feb 20 11:51:46 2023
 
 # Variables
 
@@ -16,7 +15,6 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
- 
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # automatic
@@ -52,7 +50,7 @@ ELECTRON_RUN_AS_NODE = 1
 # default
 .FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
 # environment
-SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.CQJiZR63IB/Listeners
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.wBLt2vNASd/Listeners
 # automatic
 %F = $(notdir $%)
 # environment
@@ -66,7 +64,7 @@ HOME = /Users/vijayasankar
 # default
 MAKEFILEPATH = $(shell /usr/bin/xcode-select -print-path 2>/dev/null || echo /Developer)/Makefiles
 # environment
-VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/e8a3071ea4344d9d48ef8a4df2c097372b0c5161
+VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/441438abd1ac652551dbe4d408dfcec8a499b8bf
 # environment
 LOGNAME = vijayasankar
 # environment
@@ -100,7 +98,7 @@ TMPDIR = /var/folders/r3/3kd_02bs2lz8x69kryggsnv80000gn/T/
 # automatic
 *F = $(notdir $*)
 # environment
-VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.74.2-main.sock
+VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.75.1-main.sock
 # environment
 MallocNanoZone = 0
 # makefile
@@ -110,7 +108,7 @@ MFLAGS = -Rrqp
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
-XPC_SERVICE_NAME = application.com.microsoft.VSCode.33729809.33729816
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.35903139.35903145
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # automatic
@@ -136,7 +134,7 @@ MAKELEVEL := 0
 # environment
 LANG = C
 # environment
-VSCODE_PID = 7152
+VSCODE_PID = 57126
 # variable set hash-table stats:
 # Load=62/1024=6%, Rehash=0, Collisions=2/90=2%
 
@@ -146,7 +144,7 @@ VSCODE_PID = 7152
 
 # Directories
 
-# . (device 16777224, inode 18636597): 23 files, no impossibilities.
+# . (device 16777225, inode 18636597): 23 files, no impossibilities.
 
 # 23 files, no impossibilities in 1 directories.
 
@@ -193,7 +191,6 @@ metrics:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
- 
 #  commands to execute (from `makefile', line 50):
 	docker build \
 	-f dockerfile.metrics \
@@ -329,6 +326,7 @@ relay-api:
 	-f dockerfile.relay-api \
 	-t gcr.io/$(PROJECT)/relay-api-amd64:1.0 \
 	--build-arg PACKAGE_NAME=relay-api \
+ 
 	--build-arg VCS_REF=`git rev-parse HEAD` \
 	--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
 	.
@@ -336,7 +334,6 @@ relay-api:
 
 # Not a target:
 .DEFAULT:
- 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -483,6 +480,6 @@ csp:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Thu Jan  5 10:13:55 2023
+# Finished Make data base on Mon Feb 20 11:51:46 2023
 
  

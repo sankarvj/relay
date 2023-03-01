@@ -54,9 +54,8 @@ type Template struct {
 
 var templatesNameMap = map[string]string{
 	PredefinedTeamCSP:  "Success",
-	PredefinedTeamCRP:  "CRM",
-	PredefinedTeamEMP:  "EMP",
-	PredefinedTeamPMP:  "Project Management",
+	PredefinedTeamCRP:  "Sales",
+	PredefinedTeamEMP:  "Employee Dir",
 	PredefinedTeamCSup: "Support",
 }
 
