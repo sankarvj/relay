@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gomodule/redigo/redis"
@@ -76,6 +77,9 @@ func (sdb *SecDB) GetUserToken(key string) (string, error) {
 }
 
 func (sdb *SecDB) SetEntity(key string, encodedEntity []byte) error {
+	if sdb == nil {
+		return errors.New("SDB is null. USE primary DB")
+	}
 	conn := sdb.redisCachePool.Get()
 	defer conn.Close()
 
@@ -89,6 +93,9 @@ func (sdb *SecDB) SetEntity(key string, encodedEntity []byte) error {
 }
 
 func (sdb *SecDB) RetriveEntity(key string) (string, error) {
+	if sdb == nil {
+		return "", errors.New("SDB is null. USE primary DB")
+	}
 	conn := sdb.redisCachePool.Get()
 	defer conn.Close()
 	return redis.String(conn.Do("GET", fmt.Sprintf("%s:%s", EntityNameSpace, key)))

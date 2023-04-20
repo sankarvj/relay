@@ -347,7 +347,7 @@ var migrations = []darwin.Migration{
 			expire_at       TIMESTAMP,
 			created_at    	TIMESTAMP,
 			updated_at    	BIGINT,
-			UNIQUE (account_id, team_id, entity_id, item_id)
+			UNIQUE (account_id, team_id, entity_id, item_id, email)
 		);
 		CREATE INDEX idx_visitors_visitor_id
 		ON visitors(visitor_id);

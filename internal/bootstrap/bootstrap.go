@@ -14,6 +14,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/ctm"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/em"
 	"gitlab.com/vjsideprojects/relay/internal/bootstrap/forms"
+	"gitlab.com/vjsideprojects/relay/internal/bootstrap/incident"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/integration"
@@ -100,7 +101,7 @@ func BootstrapTeam(ctx context.Context, db *sqlx.DB, accountID, teamID, teamLook
 
 func BootstrapOwnerEntity(ctx context.Context, memberID string, currentUser *user.User, b *base.Base) error {
 	var err error
-	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email)
+	fields, itemVals := forms.OwnerFields(b.TeamID, currentUser.ID, *currentUser.Name, *currentUser.Avatar, currentUser.Email, currentUser.Phone)
 	// add entity - owners
 	b.OwnerEntity, err = b.EntityAdd(ctx, uuid.New().String(), entity.FixedEntityOwner, "Owners", entity.CategoryUsers, entity.StateAccountLevel, false, false, true, fields)
 	if err != nil {
@@ -367,6 +368,50 @@ func BootSupport(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, fir
 
 	//all done
 	fmt.Printf("\nBootstrap:Support ENDED successfully for the accountID: %s\n", accountID)
+
+	return nil
+}
+
+func BootIncident(accountID, userID string, db *sqlx.DB, sdb *database.SecDB, firebaseSDKPath string) error {
+	fmt.Printf("\nBootstrap:INCIDENT STARTED for the accountID %s\n", accountID)
+
+	ctx := context.Background()
+	teamID := uuid.New().String()
+	incTemplate := team.FindTeamTemplate(team.PredefinedTeamINC)
+	err := BootstrapTeam(ctx, db, accountID, teamID, incTemplate.Key, incTemplate.Name, incTemplate.Description)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:INCIDENT `team` insertion failed")
+	}
+	fmt.Println("\t\t\tBootstrap:INCIDENT `team` added")
+
+	b := base.NewBase(accountID, teamID, userID, db, sdb, firebaseSDKPath)
+
+	//boot
+	fmt.Println("\t\t\tBootstrap:INCIDENT `boot` functions started")
+	err = incident.Boot(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:INCIDENT `boot` functions failed")
+	}
+	fmt.Println("Bootstrap:INCIDENT `boot` functions completed successfully")
+
+	//samples
+	fmt.Println("Bootstrap:INCIDENT `samples` functions started")
+	err = incident.AddSamples(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:INCIDENT `samples` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:INCIDENT `samples` functions completed successfully")
+
+	//workflows
+	fmt.Println("Bootstrap:INCIDENT `workflows` functions started")
+	err = incident.AddWorkflows(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "\t\t\tBootstrap:INCIDENT `workflows` functions failed")
+	}
+	fmt.Println("\t\t\tBootstrap:INCIDENT `workflows` functions completed successfully")
+
+	//all done
+	fmt.Printf("\nBootstrap:INCIDENT ENDED successfully for the accountID: %s\n", accountID)
 
 	return nil
 }

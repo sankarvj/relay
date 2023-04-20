@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	superSmallLayout     = "Jan 2"
 	smallLayout          = "Jan 2 2006, 3:04PM"
 	dateTimeGoLayout     = "2006-01-02 15:04:05 -0700"
 	dateTimeGoogleLayout = "2006-01-02T15:04:05-07:00"
@@ -55,6 +56,10 @@ func FormatTimeGoogle(t time.Time) string {
 
 func FormatTimeView(t time.Time) string {
 	return t.Format(smallLayout)
+}
+
+func FormatTimeViewSmall(t time.Time) string {
+	return t.Format(superSmallLayout)
 }
 
 func ConvertMillisToTime(millis string) time.Time {

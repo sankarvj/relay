@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -89,6 +90,7 @@ func (i *Integration) SaveIntegration(ctx context.Context, w http.ResponseWriter
 
 		emailAddress, err = g.Watch(i.publisher.Topic)
 		if err != nil {
+			log.Println("Watch failed....")
 			return err
 		}
 

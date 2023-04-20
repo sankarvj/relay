@@ -5,7 +5,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/entity"
 )
 
-func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Field, map[string]interface{}) {
+func OwnerFields(teamID, currentUserID, name, avatar, email string, phone *string) ([]entity.Field, map[string]interface{}) {
 
 	userIDFieldID := uuid.New().String()
 	userIDField := entity.Field{
@@ -42,6 +42,15 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		Key:         emailFieldID,
 		Name:        "email",
 		DisplayName: "Email",
+		DomType:     entity.DomText,
+		DataType:    entity.TypeString,
+	}
+
+	phoneFieldID := uuid.New().String()
+	phoneField := entity.Field{
+		Key:         phoneFieldID,
+		Name:        "phone",
+		DisplayName: "Phone",
 		DomType:     entity.DomText,
 		DataType:    entity.TypeString,
 	}
@@ -96,9 +105,10 @@ func OwnerFields(teamID, currentUserID, name, avatar, email string) ([]entity.Fi
 		nameFieldID:   name,
 		avatarFieldID: avatar,
 		emailFieldID:  email,
+		phoneFieldID:  phone,
 		teamFieldID:   []interface{}{teamID},
 		roleFieldID:   []interface{}{"ADMIN"},
 	}
 
-	return []entity.Field{userIDField, nameField, avatarField, emailField, roleField, teamListField}, ownerVals
+	return []entity.Field{userIDField, nameField, avatarField, emailField, phoneField, roleField, teamListField}, ownerVals
 }

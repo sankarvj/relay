@@ -82,14 +82,17 @@ func (bee BeeService) Count(ctx context.Context, accountID, entityID, groupByKey
 	if groupLogic == "g_b_f_r" {
 		newCounter := make(map[string]int, 0)
 		for _, c := range counts {
-			genies := strings.Split(*c.ID, "#")
-			itemID := genies[1]
-			theKey := fmt.Sprintf("%s#%s", itemID, *c.GroupID)
-			if v, ok := newCounter[theKey]; ok {
-				newCounter[theKey] = v + 1
-			} else {
-				newCounter[theKey] = 1
+			if c.ID != nil {
+				genies := strings.Split(*c.ID, "#")
+				itemID := genies[1]
+				theKey := fmt.Sprintf("%s#%s", itemID, *c.GroupID)
+				if v, ok := newCounter[theKey]; ok {
+					newCounter[theKey] = v + 1
+				} else {
+					newCounter[theKey] = 1
+				}
 			}
+
 		}
 		counts = make([]item.Counter, 0)
 		//revert to counts
@@ -214,13 +217,16 @@ func WhBuilder(conditionFields []graphdb.Field) []string {
 				wh = append(wh, cond)
 			}
 		case graphdb.TypeString:
-			if f.Expression == "STARTS WITH" {
-				str := `LOWER(fieldsb->>'` + f.Key + `') LIKE LOWER('` + f.Value.(string) + `%')`
-				wh = append(wh, str)
+			if f.Key != "system_is_public" {
+				if f.Expression == "STARTS WITH" {
+					str := `LOWER(fieldsb->>'` + f.Key + `') LIKE LOWER('` + f.Value.(string) + `%')`
+					wh = append(wh, str)
+				} else {
+					wh = append(wh, fmt.Sprintf("fieldsb->>'%s' %s '%s'", f.Key, f.Expression, f.Value))
+				}
 			} else {
-				wh = append(wh, fmt.Sprintf("fieldsb->>'%s' %s '%s'", f.Key, f.Expression, f.Value))
+				wh = append(wh, fmt.Sprintf("is_public %s %t", f.Expression, f.Value))
 			}
-
 		case graphdb.TypeNumber:
 			if f.IsDate { // the make condition field converts datetime to number for graph convinence
 				wh = append(wh, fmt.Sprintf("(fieldsb->>'%s')::timestamp %s '%v'", f.Key, f.Expression, util.ConvertMilliToTimeFromIntf(f.Value)))

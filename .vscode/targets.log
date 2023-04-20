@@ -6,8 +6,9 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # PARTICULAR PURPOSE.
 
 # This program built for i386-apple-darwin11.3.0
+ 
 
-# Make data base, printed on Mon Feb 20 11:51:46 2023
+# Make data base, printed on Wed Apr 12 17:24:50 2023
 
 # Variables
 
@@ -15,6 +16,9 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
+ 
+# environment
+VSCODE_CRASH_REPORTER_PROCESS_TYPE = extensionHost
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # automatic
@@ -26,7 +30,7 @@ CURDIR := /Users/vijayasankar/Work/relay
 # makefile (from `makefile', line 1)
 SHELL := /bin/bash
 # environment
-VSCODE_NLS_CONFIG = {"locale":"en-gb","availableLanguages":{},"_languagePackSupport":true}
+VSCODE_NLS_CONFIG = {"locale":"en-in","availableLanguages":{},"_languagePackSupport":true}
 # environment
 _ = /usr/bin/make
 # makefile (from `makefile', line 1)
@@ -50,7 +54,7 @@ ELECTRON_RUN_AS_NODE = 1
 # default
 .FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
 # environment
-SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.wBLt2vNASd/Listeners
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.lgAoIHWS0h/Listeners
 # automatic
 %F = $(notdir $%)
 # environment
@@ -64,7 +68,7 @@ HOME = /Users/vijayasankar
 # default
 MAKEFILEPATH = $(shell /usr/bin/xcode-select -print-path 2>/dev/null || echo /Developer)/Makefiles
 # environment
-VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/441438abd1ac652551dbe4d408dfcec8a499b8bf
+VSCODE_CODE_CACHE_PATH = /Users/vijayasankar/Library/Application Support/Code/CachedData/5e805b79fcb6ba4c2d23712967df89a089da575b
 # environment
 LOGNAME = vijayasankar
 # environment
@@ -81,6 +85,8 @@ MAKE = $(MAKE_COMMAND)
 MAKECMDGOALS := all
 # environment
 SHLVL = 1
+# environment
+VSCODE_CRASH_REPORTER_SANDBOXED_HINT = 1
 # default
 MAKE_VERSION := 3.81
 # environment
@@ -98,7 +104,7 @@ TMPDIR = /var/folders/r3/3kd_02bs2lz8x69kryggsnv80000gn/T/
 # automatic
 *F = $(notdir $*)
 # environment
-VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.75.1-main.sock
+VSCODE_IPC_HOOK = /Users/vijayasankar/Library/Application Support/Code/1.76-main.sock
 # environment
 MallocNanoZone = 0
 # makefile
@@ -108,12 +114,13 @@ MFLAGS = -Rrqp
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
-XPC_SERVICE_NAME = application.com.microsoft.VSCode.35903139.35903145
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.39814076.39814082
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
 # automatic
 +F = $(notdir $+)
 # environment
+ 
 __CF_USER_TEXT_ENCODING = 0x1F5:0x0:0x0
 # environment
 COMMAND_MODE = unix2003
@@ -134,9 +141,9 @@ MAKELEVEL := 0
 # environment
 LANG = C
 # environment
-VSCODE_PID = 57126
+VSCODE_PID = 6524
 # variable set hash-table stats:
-# Load=62/1024=6%, Rehash=0, Collisions=2/90=2%
+# Load=64/1024=6%, Rehash=0, Collisions=2/92=2%
 
 # Pattern-specific Variable Values
 
@@ -158,7 +165,7 @@ deploy-api:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 94):
+#  commands to execute (from `makefile', line 97):
 	./deploy-api.sh
 	
 
@@ -166,7 +173,7 @@ stop-all:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 75):
+#  commands to execute (from `makefile', line 78):
 	docker stop $(docker ps -aq)
 	
 
@@ -191,7 +198,7 @@ metrics:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 50):
+#  commands to execute (from `makefile', line 53):
 	docker build \
 	-f dockerfile.metrics \
 	-t gcr.io/$(PROJECT)/metrics-amd64:1.0 \
@@ -222,7 +229,7 @@ up:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 60):
+#  commands to execute (from `makefile', line 63):
 	docker-compose up
 	
 
@@ -230,7 +237,7 @@ ngrok:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 106):
+#  commands to execute (from `makefile', line 109):
 	../ngrok http 3000
 	
 
@@ -252,14 +259,15 @@ test:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 66):
+#  commands to execute (from `makefile', line 69):
 	go test -mod=vendor ./... -count=1
 	
 
 # Not a target:
 makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-10-17 15:16:27
+ 
+#  Last modified 2023-03-19 14:29:41
 #  File has been updated.
 #  Successfully updated.
 # variable set hash-table stats:
@@ -269,7 +277,7 @@ build:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 91):
+#  commands to execute (from `makefile', line 94):
 	env GOOS=linux GOARCH=arm go build ./cmd/relay-api -o bin/application application.go
 	
 
@@ -277,7 +285,7 @@ remove-all:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 78):
+#  commands to execute (from `makefile', line 81):
 	docker rm $(docker ps -aq)
 	
 
@@ -321,12 +329,11 @@ relay-api:
 # ? := 
 # variable set hash-table stats:
 # Load=8/32=25%, Rehash=0, Collisions=1/11=9%
-#  commands to execute (from `makefile', line 41):
+#  commands to execute (from `makefile', line 44):
 	docker build \
 	-f dockerfile.relay-api \
 	-t gcr.io/$(PROJECT)/relay-api-amd64:1.0 \
 	--build-arg PACKAGE_NAME=relay-api \
- 
 	--build-arg VCS_REF=`git rev-parse HEAD` \
 	--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
 	.
@@ -342,7 +349,7 @@ clean-test:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 69):
+#  commands to execute (from `makefile', line 72):
 	go clean -testcache
 	
 
@@ -358,7 +365,7 @@ deploy-worker:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 97):
+#  commands to execute (from `makefile', line 100):
 	./deploy-worker.sh
 	
 
@@ -366,7 +373,7 @@ brainrok:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 112):
+#  commands to execute (from `makefile', line 115):
 	../ngrok http 3002
 	
 
@@ -382,7 +389,7 @@ clean:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 72):
+#  commands to execute (from `makefile', line 75):
 	docker system prune -f
 	
 
@@ -398,7 +405,7 @@ relayrok:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 109):
+#  commands to execute (from `makefile', line 112):
 	../ngrok http -hostname=relay.ngrok.io 3000
 	
 
@@ -406,7 +413,7 @@ deploy-events:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 103):
+#  commands to execute (from `makefile', line 106):
 	./deploy-events.sh
 	
 
@@ -422,7 +429,7 @@ deps-reset:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 81):
+#  commands to execute (from `makefile', line 84):
 	git checkout -- go.mod
 	go mod tidy
 	
@@ -431,7 +438,7 @@ deps-cleancache:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 88):
+#  commands to execute (from `makefile', line 91):
 	go clean -modcache
 	
 
@@ -439,15 +446,24 @@ deploy-admin:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 100):
+#  commands to execute (from `makefile', line 103):
 	./deploy-admin.sh
+	
+
+inc:
+#  Implicit rule search has not been done.
+ 
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `makefile', line 41):
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 incadd
 	
 
 down:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 63):
+#  commands to execute (from `makefile', line 66):
 	docker-compose down
 	
 
@@ -455,7 +471,7 @@ deps-upgrade:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  commands to execute (from `makefile', line 85):
+#  commands to execute (from `makefile', line 88):
 	go get $(go list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
 	
 
@@ -468,7 +484,7 @@ csp:
 	
 
 # files hash-table stats:
-# Load=35/1024=3%, Rehash=0, Collisions=1/52=2%
+# Load=36/1024=4%, Rehash=0, Collisions=1/53=2%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -480,6 +496,6 @@ csp:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Mon Feb 20 11:51:46 2023
+# Finished Make data base on Wed Apr 12 17:24:50 2023
 
  

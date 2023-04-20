@@ -74,7 +74,6 @@ func (s Segmenter) filterWrapper(ctx context.Context, accountID, entityID string
 	if err != nil {
 		return nil, nil, err
 	}
-
 	//adding users
 	userIDs := make(map[string]bool, 0)
 	for _, item := range items {

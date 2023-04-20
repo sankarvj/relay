@@ -61,29 +61,31 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		baseEntity, berr := entity.Retrieve(ctx, accountID, baseEntityID, db, sdb)
 		appNotif.BaseEntityName = baseEntity.DisplayName
 		for i, baseItemID := range baseItemIDs {
-			//making baseID for filtering notifications per item (events).
-			appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", baseEntityID, baseItemID))
-			if i == 0 && berr == nil { // for now fetching one time is enough
-				it, err := item.Retrieve(ctx, accountID, baseEntityID, baseItemID, db)
-				if err == nil && it.State != item.StateWebForm {
-					titleField := entity.TitleField(baseEntity.EasyFields())
-					if it.Fields()[titleField.Key] != nil {
-						appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
-					}
+			if baseEntityID != "" && baseItemID != "" {
+				//making baseID for filtering notifications per item (events).
+				appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", baseEntityID, baseItemID))
+				if i == 0 && berr == nil { // for now fetching one time is enough
+					it, err := item.Retrieve(ctx, accountID, baseEntityID, baseItemID, db)
+					if err == nil && it.State != item.StateWebForm {
+						titleField := entity.TitleField(baseEntity.EasyFields())
+						if it.Fields()[titleField.Key] != nil {
+							appNotif.BaseItemName = it.Fields()[titleField.Key].(string)
+						}
 
-					//adding base item creator
-					appNotif.AddCreators(ctx, accountID, it.UserID, db, sdb)
-					//adding base item assignees
-					baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
-					for _, f := range baseValueAddedFields {
-						if f.Value == nil {
-							continue
-						}
-						if f.Who == entity.WhoAssignee {
-							appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
-						}
-						if f.Who == entity.WhoFollower {
-							appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
+						//adding base item creator
+						appNotif.AddCreators(ctx, accountID, it.UserID, db, sdb)
+						//adding base item assignees
+						baseValueAddedFields := baseEntity.ValueAdd(it.Fields())
+						for _, f := range baseValueAddedFields {
+							if f.Value == nil {
+								continue
+							}
+							if f.Who == entity.WhoAssignee {
+								appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
+							}
+							if f.Who == entity.WhoFollower {
+								appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
+							}
 						}
 					}
 				}
@@ -91,14 +93,18 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		}
 	}
 
+	if len(appNotif.BaseIds) == 0 {
+		appNotif.BaseIds = append(appNotif.BaseIds, fmt.Sprintf("%s#%s", entityID, itemID))
+	}
+
 	appNotif.DirtyFields = make(map[string]string, 0)
-	if itemCreatorID != nil && *itemCreatorID != user.UUID_SYSTEM_USER && *itemCreatorID != userID {
+	if itemCreatorID != nil && *itemCreatorID != user.UUID_SYSTEM_USER && *itemCreatorID != userID && *itemCreatorID != user.UUID_ENGINE_USER {
 		appNotif.AddCreators(ctx, accountID, itemCreatorID, db, sdb)
 	}
 
 	switch userID {
 	case user.UUID_ENGINE_USER:
-		appNotif.UserName = "automation workflow"
+		appNotif.UserName = "automation"
 		appNotif.UserAvatar = "https://avatars.dicebear.com/api/bottts/workflow.svg"
 	case user.UUID_SYSTEM_USER:
 		appNotif.UserName = "system"
@@ -120,32 +126,36 @@ func appNotificationBuilder(ctx context.Context, accountID, accountDomain, teamI
 		}
 
 		if _, ok := dirtyFields[f.Key]; ok {
-			modifiedFields = append(modifiedFields, fmt.Sprintf("%s", f.DisplayName))
+			if f.IsReference() || f.IsList() {
+				if f.Value != nil {
+					vals := f.Value.([]interface{})
+					var disp string
+					for _, v := range vals {
+						if v != nil {
+							for _, choice := range f.Choices {
+								if choice.ID == v.(string) {
+									disp = fmt.Sprintf("%s %s", disp, choice.DisplayValue.(string))
+								}
+							}
+						}
+					}
+					modifiedFields = append(modifiedFields, fmt.Sprintf("%s set to %s", f.DisplayName, disp))
+				}
+
+			} else {
+				modifiedFields = append(modifiedFields, fmt.Sprintf("%s set to %s", f.DisplayName, f.Value))
+			}
 		}
 
 		if f.IsTitleLayout() {
 			appNotif.Title = util.TruncateText(f.Value.(string), 30)
 		}
 
-		if f.Who == entity.WhoDueBy && f.DataType == entity.TypeDateTime {
-			when, _ := util.ParseTime(f.Value.(string))
-			appNotif.Due = when
-			if _, ok := dirtyFields[f.Key]; ok {
-				appNotif.DirtyFields[entity.WhoDueBy] = util.FormatTimeView(when)
-			}
-		}
-
 		if f.Who == entity.WhoAssignee {
 			appNotif.AddAssignees(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
-			if _, ok := dirtyFields[f.Key]; ok {
-				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
-			}
 		}
 		if f.Who == entity.WhoFollower {
 			appNotif.AddFollowers(ctx, accountID, f.RefID, f.Value.([]interface{}), db, sdb)
-			if _, ok := dirtyFields[f.Key]; ok {
-				appNotif.DirtyFields[entity.WhoAssignee] = appNotif.assigneeNames()
-			}
 		}
 	}
 	appNotif.DirtyFields["modified_fields"] = strings.Join(modifiedFields, ",")
@@ -302,6 +312,14 @@ func fetchMemberIDs(entities []entity.UserEntity) []string {
 func (appNotif AppNotification) assigneeNames() string {
 	names := make([]string, 0)
 	for _, ass := range appNotif.Assignees {
+		names = append(names, ass.Name)
+	}
+	return strings.Join(names[:], ",")
+}
+
+func (appNotif AppNotification) followerNames() string {
+	names := make([]string, 0)
+	for _, ass := range appNotif.Followers {
 		names = append(names, ass.Name)
 	}
 	return strings.Join(names[:], ",")

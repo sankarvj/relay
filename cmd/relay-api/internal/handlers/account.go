@@ -6,9 +6,11 @@ import (
 	"net/mail"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
+	"gitlab.com/vjsideprojects/relay/internal/entity"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
@@ -109,6 +111,22 @@ func (a *Account) GenerateToken(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
+}
+
+func (a *Account) GenerateURL(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Entity.GenerateURL")
+	defer span.End()
+
+	accountID, _, _ := takeAEI(ctx, params, a.db)
+	var ne entity.NewEntity
+	if err := web.Decode(r, &ne); err != nil {
+		return errors.Wrap(err, "")
+	}
+	ne.ID = uuid.New().String()
+	ne.AccountID = accountID
+	ne.TeamID = params["team_id"]
+
+	return web.Respond(ctx, w, "", http.StatusCreated)
 }
 
 func (a *Account) APIToken(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {

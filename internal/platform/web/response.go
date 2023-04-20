@@ -71,3 +71,34 @@ func RespondError(ctx context.Context, w http.ResponseWriter, err error) error {
 	}
 	return nil
 }
+
+func RespondXML(ctx context.Context, w http.ResponseWriter, data string, statusCode int) error {
+
+	// Set the status code for the request logger middleware.
+	// If the context is missing this value, request the service
+	// to be shutdown gracefully.
+	v, ok := ctx.Value(KeyValues).(*Values)
+	if !ok {
+		return NewShutdownError("web value missing from context")
+	}
+	v.StatusCode = statusCode
+
+	// If there is nothing to marshal then set status code and return.
+	if statusCode == http.StatusNoContent {
+		w.WriteHeader(statusCode)
+		return nil
+	}
+
+	// Set the content type and headers once we know marshaling has succeeded.
+	w.Header().Set("Content-Type", "application/xml")
+
+	// Write the status code to the response.
+	w.WriteHeader(statusCode)
+
+	// Send the result back to the client.
+	if _, err := w.Write([]byte(data)); err != nil {
+		return err
+	}
+
+	return nil
+}

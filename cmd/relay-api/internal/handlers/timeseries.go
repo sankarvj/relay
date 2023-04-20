@@ -139,7 +139,6 @@ func (ts *Timeseries) List(ctx context.Context, w http.ResponseWriter, r *http.R
 			}
 		}
 	}
-
 	return web.Respond(ctx, w, createViewModelCharts(filteredCharts, eagerLoader), http.StatusOK)
 }
 
@@ -231,7 +230,6 @@ func vmseries(tms []timeseries.Timeseries) []Series {
 
 func vmseriesFromMap(m map[string]int, f entity.Field) []Series {
 	mapOfChoices := f.ChoiceMap()
-
 	vmseries := make([]Series, 0)
 	for id, value := range m {
 		label := id // this line fixes for group with name

@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	TypeUnknown = 0
+	TypeUnknown  = 0
+	TypeIncident = 1
 )
 
 type Timeseries struct {

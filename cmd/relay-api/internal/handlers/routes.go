@@ -62,6 +62,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sd
 	app.Handle("GET", "/v1/accounts/:account_id", a.Retrieve, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser), mid.HasAccountAccess(db))
 	app.Handle("POST", "/v1/accounts/:account_id", a.GenerateToken, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
 	app.Handle("GET", "/v1/accounts/:account_id/api", a.APIToken, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin))
+	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/tokens", a.GenerateURL, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 
 	v := Visitor{
 		db:            db,
@@ -75,6 +76,8 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sd
 	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/toggle_active", v.ToggleActive, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 	app.Handle("PUT", "/v1/accounts/:account_id/visitors/:visitor_id/resend", v.Resend, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
 	app.Handle("DELETE", "/v1/accounts/:account_id/visitors/:visitor_id", v.Delete, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin), mid.HasAccountAccess(db))
+	//little different from normal visitor paths - getting visitors info for projects
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/vistorinfo", v.VisitorInfo, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser, auth.RoleVisitor), mid.HasAccountAccess(db))
 
 	integ := Integration{
 		db:            db,
@@ -118,6 +121,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sd
 	}
 	// Register entities management endpoints.
 	// TODO Add team authorization middleware
+
 	app.Handle("POST", "/v1/accounts/:account_id/teams/:team_id/entities", e.Create, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities", e.List, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/home", e.Home, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember), mid.HasAccountAccess(db))
@@ -213,6 +217,7 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sd
 	// Register relationship management endpoints.
 	// TODO Add team authorization middleware
 	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/relationships/:relationship_id", rs.ChildItems, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser, auth.RoleVisitor), mid.HasAccountAccess(db))
+	app.Handle("GET", "/v1/accounts/:account_id/teams/:team_id/entities/:entity_id/items/:item_id/relationships/:relationship_id/tasks", rs.TaskChildItems, mid.Authenticate(authenticator), mid.HasRole(auth.RoleAdmin, auth.RoleMember, auth.RoleUser, auth.RoleVisitor), mid.HasAccountAccess(db))
 
 	ass := AwsSnsSubscription{
 		db:            db,
@@ -221,6 +226,15 @@ func API(shutdown chan os.Signal, log *log.Logger, db *sqlx.DB, chdb *sql.DB, sd
 	}
 	// Register sns subscription from aws for the product key.
 	app.Handle("POST", "/aws/sns/:accountkey/:productkey", ass.Create)
+	app.Handle("POST", "/aws/alerts/:account_key", ass.ManageIncidents)
+
+	twil := Twilio{
+		db:            db,
+		sdb:           sdb,
+		authenticator: authenticator,
+	}
+	// Register sns subscription from aws for the product key.
+	app.Handle("POST", "/v1/accounts/:account_id/twilio/:account_token/entities/:entity_id/items/:item_id", twil.Action)
 
 	//TODO move this as a new service
 	cv := Conversation{

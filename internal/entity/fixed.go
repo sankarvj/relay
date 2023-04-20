@@ -38,6 +38,7 @@ const (
 	FixedEntityEmails       = "emails"
 	FixedEntityStream       = "stream"
 	FixedEntityNotification = "notification"
+	FixedEntityNotify       = "notify"
 	//not fixed yet known entities
 	FixedEntityETask            = "employee_tasks"
 	FixedEntityTask             = "tasks"
@@ -74,6 +75,9 @@ const (
 	FixedEntityDailyActiveUsers = "daily_active_users"
 	FixedEntityPageVisits       = "page_visits"
 	FixedEntityMilestones       = "milestones"
+	FixedEntityIncidents        = "incidents"
+	FixedEntityAlerts           = "alerts"
+	FixedEntityBugs             = "bugs"
 )
 
 var (
@@ -148,7 +152,13 @@ type UserEntity struct {
 	Name     string `json:"name"`
 	Avatar   string `json:"avatar"`
 	Email    string `json:"email"`
+	Phone    string `json:"phone"`
 	Gtoken   string `json:"gtoken"`
+}
+
+type NotifyEntity struct {
+	Title string   `json:"title"`
+	Owner []string `json:"owner"`
 }
 
 // FlowEntity represents structural format of flow entity

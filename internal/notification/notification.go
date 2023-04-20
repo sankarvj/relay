@@ -174,21 +174,26 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 		}
 
 	case TypeUpdated:
-		appNotif.Subject = fmt.Sprintf("%s updated", util.UpperSinglarize(entityDisName))
-		appNotif.Body = fmt.Sprintf("%s", appNotif.Title)
+		appNotif.Subject = appNotif.Title
 		switch entityCategory {
 		case entity.CategoryUsers:
 			appNotif.Subject = "Newly invited member logged in for the first time"
 			appNotif.Body = fmt.Sprintf("`%s` logged in for the first time", appNotif.Title)
 		default:
-			if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` assigned to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
-			} else if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
-				appNotif.Body = fmt.Sprintf("%s `%s` due date set to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
-			} else if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
+			// if val, exist := appNotif.DirtyFields[entity.WhoAssignee]; exist {
+			// 	appNotif.Body = fmt.Sprintf("%s `%s` assigned to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+			// }
+
+			// if val, exist := appNotif.DirtyFields[entity.WhoDueBy]; exist {
+			// 	body := fmt.Sprintf("%s `%s` due date set to %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
+			// 	appNotif.Body = fmt.Sprintf("%s %s", appNotif.Body, body)
+			// }
+
+			if val, exist := appNotif.DirtyFields["modified_fields"]; exist {
 				// appNotif.Body = fmt.Sprintf("%s `%s` updated with %s", util.UpperSinglarize(entityDisName), appNotif.Title, val)
 				log.Println("modified vals ", val)
-				appNotif.Body = fmt.Sprintf("%s `%s` updated with new values", util.UpperSinglarize(entityDisName), appNotif.Title)
+				log.Printf("valueAddedFields %+v", valueAddedFields)
+				appNotif.Body = val
 			}
 		}
 
@@ -206,6 +211,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	duplicateMasker := make(map[string]bool, 0)
 	//Send email/firebase notification to assignees/followers/creators
 	for _, assignee := range appNotif.Assignees {
+		log.Printf("assignee -- %+v", assignee)
 		if _, ok := duplicateMasker[assignee.UserID]; !ok {
 			if notifSettingMap, ok := userSettingsMap[assignee.UserID]; ok {
 				if notifSettingMap[user.NSAssigned] == "true" {
@@ -219,6 +225,7 @@ func OnAnItemLevelEvent(ctx context.Context, usrID string, entityCategory int, e
 	}
 
 	for _, follower := range appNotif.Followers {
+		log.Printf("follower -- %+v", follower)
 		if _, ok := duplicateMasker[follower.UserID]; !ok {
 			if notifSettingMap, ok := userSettingsMap[follower.UserID]; ok {
 				if (notificationType == TypeCreated && notifSettingMap[user.NSCreated] == "true") || (notificationType == TypeUpdated && notifSettingMap[user.NSUpdated] == "true") {

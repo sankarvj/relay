@@ -122,6 +122,7 @@ func History(oAuthFile, tokenJson string, user string, historyID uint64) (uint64
 		return 0, err
 	}
 
+	log.Println("historyID ", historyID)
 	if len(rgmsg.History) == 0 {
 		log.Println("Why the heck the history of messages are empty!!!!!!!!!!!")
 	}
@@ -169,7 +170,6 @@ func (g Gmail) SendMail(fromName, fromEmail string, toName string, toEmail []str
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("rgmsg %+v", rgmsg.ThreadId)
 	return &rgmsg.ThreadId, nil
 }
 

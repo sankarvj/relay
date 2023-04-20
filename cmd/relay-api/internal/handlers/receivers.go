@@ -106,6 +106,8 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 		return errors.Wrap(err, "unmarshal data from the data bytes")
 	}
 
+	log.Printf("Received data from gmail %+v", data)
+
 	sub, err := discovery.Retrieve(ctx, "", "", data.EmailAddress, g.db)
 	if err != nil {
 		if err == discovery.ErrDiscoveryEmpty { //means we don't want to listen to that mailbox
@@ -128,7 +130,7 @@ func (g *Integration) ReceiveEmail(ctx context.Context, w http.ResponseWriter, r
 	}
 	hisID, _ := strconv.ParseUint(emailConfigEntityItem.HistoryID, 10, 64)
 	if hisID != 0 {
-		_, err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, data.HistoryID)
+		_, err = email.History(g.authenticator.GoogleClientSecret, emailConfigEntityItem.APIKey, data.EmailAddress, hisID)
 		if err != nil {
 			return err
 		}

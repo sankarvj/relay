@@ -140,6 +140,23 @@ func UpdateExpiry(ctx context.Context, db *sqlx.DB, accountID, visitorID string)
 	return nil
 }
 
+func RetrieveByEmail(ctx context.Context, accountID, email, entityID, itemID string, db *sqlx.DB) (Visitor, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.layout.RetrieveByEmail")
+	defer span.End()
+
+	var v Visitor
+	const q = `SELECT * FROM visitors WHERE account_id = $1 AND email = $2 AND entity_id = $3 AND item_id = $4`
+	if err := db.GetContext(ctx, &v, q, accountID, email, entityID, itemID); err != nil {
+		if err == sql.ErrNoRows {
+			return Visitor{}, ErrNotFound
+		}
+
+		return Visitor{}, errors.Wrapf(err, "selecting visitor %q", email)
+	}
+
+	return v, nil
+}
+
 func Retrieve(ctx context.Context, accountID, visitorID string, db *sqlx.DB) (Visitor, error) {
 	ctx, span := trace.StartSpan(ctx, "internal.layout.Retrieve")
 	defer span.End()

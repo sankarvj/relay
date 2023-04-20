@@ -91,6 +91,23 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		},
 	}
 
+	followersFieldID := uuid.New().String()
+	followerField := entity.Field{
+		Key:         followersFieldID,
+		Name:        "followers",
+		DisplayName: "Followers",
+		DomType:     entity.DomAutoComplete,
+		DataType:    entity.TypeReference,
+		RefID:       ownerEntityID,
+		Who:         entity.WhoFollower,
+		Meta:        map[string]string{entity.MetaKeyDisplayGex: ownerEntityKey, entity.MetaMultiChoice: "true", entity.MetaKeyLayout: entity.MetaLayoutUsers},
+		Field: &entity.Field{
+			DataType: entity.TypeString,
+			Key:      "id",
+			Value:    "--",
+		},
+	}
+
 	contactsFieldID := uuid.New().String()
 	contactsField := entity.Field{
 		Key:         contactsFieldID,
@@ -183,7 +200,7 @@ func ProjectFields(statusEntityID, statusEntityKey, ownerEntityID, ownerEntityKe
 		},
 	}
 
-	return []entity.Field{projectNameField, planField, statusField, ownerField, contactsField, companyField, startTimeField, endTimeField, pipeField, pipeStageField}
+	return []entity.Field{projectNameField, planField, statusField, ownerField, followerField, contactsField, companyField, startTimeField, endTimeField, pipeField, pipeStageField}
 }
 
 func ProjVals(projectEntity entity.Entity, name string, contactID1, contactID2, flowID string) map[string]interface{} {

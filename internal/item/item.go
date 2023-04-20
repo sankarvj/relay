@@ -48,11 +48,17 @@ func Result(ctx context.Context, accountID, entityID string, pageNo int, wh stri
 	ctx, span := trace.StartSpan(ctx, "internal.item.Result")
 	defer span.End()
 
-	skipCount := pageNo * util.PageLimt
+	var pageLimt int = util.PageLimt
+	var skipCount int = 0
+	if pageNo == -1 {
+		pageLimt = 1000
+	} else {
+		skipCount = pageNo * util.PageLimt
+	}
 
 	items := []Item{}
 	q := fmt.Sprintf(`SELECT * FROM items where account_id = $1 AND entity_id = $2 AND state = $3 %s ORDER BY created_at DESC LIMIT $4 OFFSET $5`, wh)
-	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, util.PageLimt, skipCount); err != nil {
+	if err := db.SelectContext(ctx, &items, q, accountID, entityID, StateDefault, pageLimt, skipCount); err != nil {
 		return nil, errors.Wrap(err, "selecting items result")
 	}
 
@@ -112,6 +118,22 @@ func EntityItems(ctx context.Context, accountID, entityID string, db *sqlx.DB) (
 		if err := db.SelectContext(ctx, &items, q, accountID, entityID); err != nil {
 			return items, errors.Wrap(err, "selecting items for an entity")
 		}
+	}
+
+	return items, nil
+}
+
+func TaskItems(ctx context.Context, accountID, entityID, itemID, taskEntityID string, db *sqlx.DB) ([]Item, error) {
+	ctx, span := trace.StartSpan(ctx, "internal.item.TaskItems")
+	defer span.End()
+
+	genieID := fmt.Sprintf("%s#%s", entityID, itemID)
+
+	items := []Item{}
+	const q = `SELECT * FROM items where account_id = $1 AND entity_id = $2 AND genie_id = $3 AND LIMIT 1000`
+
+	if err := db.SelectContext(ctx, &items, q, accountID, taskEntityID, genieID); err != nil {
+		return items, errors.Wrap(err, "selecting items for an entity")
 	}
 
 	return items, nil

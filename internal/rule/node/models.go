@@ -10,7 +10,7 @@ import (
 
 //Type specifies the enum for type of nodes
 
-//consts for different node types
+// consts for different node types
 const (
 	Unknown  int = 0
 	Decision     = 1
@@ -20,6 +20,7 @@ const (
 	Schedule     = 6
 	Delay        = 7
 	Stage        = 8
+	Notify       = 9
 	//specific types equivalent to push
 	Task    = 101
 	Meeting = 102
@@ -27,7 +28,7 @@ const (
 	Invite  = 104
 )
 
-//Node struct defines the structure of each node in the workflow
+// Node struct defines the structure of each node in the workflow
 type Node struct {
 	ID           string    `db:"node_id" json:"id"`
 	ParentNodeID string    `db:"parent_node_id" json:"parent_node_id"` //put 000000 for default
@@ -48,14 +49,14 @@ type Node struct {
 	UpdatedAt    int64     `db:"updated_at" json:"updated_at"`
 }
 
-//Meta is the node meta data which is passed to the queues
+// Meta is the node meta data which is passed to the queues
 type Meta struct {
 	EntityID string
 	ItemID   string
 	FlowType int
 }
 
-//Node struct defines the structure of each node in the workflow
+// Node struct defines the structure of each node in the workflow
 type NodeActor struct {
 	ID             string         `db:"node_id" json:"id"`
 	FlowID         string         `db:"flow_id" json:"flow_id"`

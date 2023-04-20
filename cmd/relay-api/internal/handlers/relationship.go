@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -39,6 +40,98 @@ func (rs *Relationship) List(ctx context.Context, w http.ResponseWriter, r *http
 	return web.Respond(ctx, w, relationships, http.StatusOK)
 }
 
+func (rs *Relationship) TaskChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Relationship.TaskChildItems")
+	defer span.End()
+	var dueBy string
+	sourceEntityID := params["entity_id"]
+	sourceItemID := params["item_id"]
+	accountID := params["account_id"]
+	relationshipID := params["relationship_id"]
+	exp := r.URL.Query().Get("exp")
+	page := util.ConvertStrToInt(r.URL.Query().Get("page"))
+
+	relation, err := relationship.Retrieve(ctx, accountID, relationshipID, rs.db)
+	if err != nil {
+		return err
+	}
+
+	relatedEntityID := relation.SrcEntityID
+	if relatedEntityID == sourceEntityID {
+		relatedEntityID = relation.DstEntityID
+	}
+
+	childEntity, err := entity.Retrieve(ctx, accountID, relatedEntityID, rs.db, rs.sdb)
+	if err != nil {
+		return err
+	}
+	childFields := childEntity.EasyFieldsByRole(ctx)
+
+	parentEntity, err := entity.Retrieve(ctx, accountID, sourceEntityID, rs.db, rs.sdb)
+	if err != nil {
+		return err
+	}
+
+	viewModelItems, countMap, err := fetchChildItems(ctx, accountID, sourceEntityID, sourceItemID, exp, page, relation, childEntity, childFields, parentEntity.EasyFields(), true, rs.db, rs.sdb)
+	if err != nil {
+		return err
+	}
+
+	taskProgress := make([]*TaskProgress, 0)
+	for _, cf := range childFields {
+		if cf.Who == entity.WhoStatus {
+			for _, ch := range cf.Choices {
+				taskProgress = append(taskProgress, createTaskProgress(ch.ID, ch.Verb, ch.DisplayValue.(string), ch.Color, ch.Avatar))
+			}
+			for _, vm := range viewModelItems {
+				vals := vm.Fields[cf.Key].([]interface{})
+				if len(vals) > 0 {
+					for i := 0; i < len(taskProgress); i++ {
+						if taskProgress[i].ID == vals[0] {
+							taskProgress[i].Count++
+						}
+					}
+				}
+			}
+		}
+
+		if cf.Who == entity.WhoDueBy {
+			var beginWith *time.Time
+			for _, vm := range viewModelItems {
+				if (vm.Fields[cf.Key]) != nil {
+					dueDateStr := vm.Fields[cf.Key].(string)
+					dueDate, _ := util.ParseTime(dueDateStr)
+					if beginWith == nil || dueDate.After(*beginWith) {
+						beginWith = &dueDate
+					}
+				}
+			}
+			if beginWith != nil {
+				dueBy = util.FormatTimeViewSmall(*beginWith)
+			}
+		}
+
+	}
+
+	response := struct {
+		Items        []ViewModelItem        `json:"items"`
+		Fields       []entity.Field         `json:"fields"`
+		Entity       entity.ViewModelEntity `json:"entity"`
+		CountMap     map[string]int         `json:"count_map"`
+		TaskProgress []*TaskProgress        `json:"task_progress"`
+		DueBy        string                 `json:"due_by"`
+	}{
+		Items:        viewModelItems,
+		Fields:       childFields, // this fields passed by reference in various places and choices are populated
+		Entity:       createViewModelEntity(childEntity),
+		CountMap:     countMap,
+		TaskProgress: taskProgress,
+		DueBy:        dueBy,
+	}
+
+	return web.Respond(ctx, w, response, http.StatusOK)
+}
+
 func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Connections.List")
 	defer span.End()
@@ -60,8 +153,8 @@ func (rs *Relationship) ChildItems(ctx context.Context, w http.ResponseWriter, r
 		relatedEntityID = relation.DstEntityID
 	}
 
-	log.Printf("core relation ------ %+v", relation)
-	log.Println("core relatedEntityID ------ ", relatedEntityID)
+	// log.Printf("core relation ------ %+v", relation)
+	// log.Println("core relatedEntityID ------ ", relatedEntityID)
 
 	childEntity, err := entity.Retrieve(ctx, accountID, relatedEntityID, rs.db, rs.sdb)
 	if err != nil {

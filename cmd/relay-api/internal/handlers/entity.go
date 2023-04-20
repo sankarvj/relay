@@ -16,10 +16,13 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/vjsideprojects/relay/internal/account"
 	"gitlab.com/vjsideprojects/relay/internal/entity"
+	"gitlab.com/vjsideprojects/relay/internal/item"
+	"gitlab.com/vjsideprojects/relay/internal/job"
 	"gitlab.com/vjsideprojects/relay/internal/platform/auth"
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/reference"
 	"gitlab.com/vjsideprojects/relay/internal/team"
 	"gitlab.com/vjsideprojects/relay/internal/user"
 	"go.opencensus.io/trace"
@@ -163,7 +166,10 @@ func (e *Entity) Retrieve(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusOK)
+	fields := enty.AllFieldsButSecured()
+	reference.UpdateReferenceFields(ctx, accountID, entityID, fields, []item.Item{}, map[string]interface{}{}, e.db, e.sdb, job.NewJabEngine())
+
+	return web.Respond(ctx, w, createViewModelEntityWithChoices(enty, fields), http.StatusOK)
 }
 
 // Create inserts a new team into the system.
@@ -203,7 +209,7 @@ func (e *Entity) Create(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	return web.Respond(ctx, w, createViewModelEntity(enty), http.StatusCreated)
 }
 
-//Update updates the entity
+// Update updates the entity
 func (e *Entity) Update(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Entity.Update")
 	defer span.End()
@@ -236,6 +242,27 @@ func (e *Entity) Delete(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	return web.Respond(ctx, w, "SUCCESS", http.StatusAccepted)
+}
+
+func createViewModelEntityWithChoices(e entity.Entity, fields []entity.Field) entity.ViewModelEntity {
+	return entity.ViewModelEntity{
+		ID:            e.ID,
+		TeamID:        e.TeamID,
+		Name:          e.Name,
+		DisplayName:   e.DisplayName,
+		Category:      e.Category,
+		State:         e.State,
+		Fields:        fields,
+		Tags:          e.Tags,
+		IsPublic:      e.IsPublic,
+		IsCore:        e.IsCore,
+		IsShared:      e.IsShared,
+		SharedTeamIds: e.SharedTeamIds,
+		CreatedAt:     e.CreatedAt,
+		UpdatedAt:     e.UpdatedAt,
+		HasFlow:       e.FlowField() != nil,
+		LayoutStyle:   e.Layout(),
+	}
 }
 
 func createViewModelEntity(e entity.Entity) entity.ViewModelEntity {

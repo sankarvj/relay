@@ -109,6 +109,7 @@ func CustomTemplates() []Template {
 	templates := make([]Template, 0)
 	for k, v := range templatesNameMap {
 		template := Template{
+			Icon:        templatesIconMap[k],
 			Key:         k,
 			Name:        v,
 			Description: templatesDescMap[k],
@@ -132,6 +133,7 @@ func FindTeamTemplate(lookup string) Template {
 	for k, v := range templatesNameMap {
 		if lookup == k {
 			template := Template{
+				Icon:        templatesIconMap[k],
 				Key:         k,
 				Name:        v,
 				Description: templatesDescMap[k],
@@ -140,6 +142,7 @@ func FindTeamTemplate(lookup string) Template {
 		}
 	}
 	return Template{
+		Icon:        "block.svg",
 		Key:         lookup,
 		Name:        lookup,
 		Description: lookup,

@@ -70,6 +70,10 @@ func run() error {
 			GoogleKeyFile      string `conf:"default:config/dev/relay-70013-firebase-adminsdk-cfun3-58caec85f0.json,env:AUTH_GOOGLE_KEY_FILE"`
 			GoogleClientSecret string `conf:"default:config/dev/google-apps-client-secret.json,env:AUTH_GOOGLE_CLIENT_SECRET"`
 		}
+		Twilio struct {
+			SID   string `conf:"default:AC003ebc2617064dcb0ab9b53a29cb3b87,env:TWILIO_SID"`
+			Token string `conf:"default:6cc6ffdb8ccec49646f742bf2b54aa3d,env:TWILIO_TOKEN"`
+		}
 		Service struct {
 			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
 			WorkerSqsURL string `conf:"default:us-east-1,env:AWS_WORKER_SQS_URL"`
@@ -99,6 +103,8 @@ func run() error {
 	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
 	expvar.NewString("stripe_live_key").Set(cfg.Payment.StripeLiveKey)
 	expvar.NewString("stripe_publish_key").Set(cfg.Payment.StripePublishKey)
+	expvar.NewString("twilio_sid").Set(cfg.Twilio.SID)
+	expvar.NewString("twilio_token").Set(cfg.Twilio.Token)
 
 	// =========================================================================
 	// App Starting

@@ -66,13 +66,13 @@ type NewEntity struct {
 	IsShared      bool     `json:"is_shared"`
 }
 
-//State for the entity specifies the current state of the entity
+// State for the entity specifies the current state of the entity
 const (
 	StateTeamLevel    = 0
 	StateAccountLevel = 1
 )
 
-//Category specifies the different type of entities
+// Category specifies the different type of entities
 const (
 	CategoryUnknown            = 0
 	CategoryData               = 1
@@ -95,4 +95,5 @@ const (
 	CategoryNotification       = 18
 	CategoryVisitorsInvitation = 19
 	CategoryApprovals          = 20
+	CategoryNotify             = 21
 )

@@ -684,7 +684,7 @@ func addDashboards(ctx context.Context, b *base.Base, empEntity, srEntity, arEnt
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCSP:Dashboard Overview Created")
+	fmt.Println("\tEM:Dashboard Overview Created")
 	projDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, empEntity.ID, "Employee Overview").Add(ctx, b.DB)
 	if err != nil {
 		return err
@@ -693,7 +693,7 @@ func addDashboards(ctx context.Context, b *base.Base, empEntity, srEntity, arEnt
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCSP:Dashboard Project Overview Created")
+	fmt.Println("\tEM:Dashboard Project Overview Created")
 	myDashID, err := dashboard.BuildNewDashboard(b.AccountID, b.TeamID, b.UserID, b.NotificationEntity.ID, "My Dashboard").Add(ctx, b.DB)
 	if err != nil {
 		return err
@@ -702,7 +702,7 @@ func addDashboards(ctx context.Context, b *base.Base, empEntity, srEntity, arEnt
 	if err != nil {
 		return err
 	}
-	fmt.Println("\tCSP:Dashboard My Dashboard Created")
+	fmt.Println("\tEM:Dashboard My Dashboard Created")
 
 	return nil
 }

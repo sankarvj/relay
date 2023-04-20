@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"gitlab.com/vjsideprojects/relay/internal/platform/database"
 	"gitlab.com/vjsideprojects/relay/internal/platform/util"
 	"gitlab.com/vjsideprojects/relay/internal/platform/web"
+	"gitlab.com/vjsideprojects/relay/internal/user"
 	"gitlab.com/vjsideprojects/relay/internal/visitor"
 	"go.opencensus.io/trace"
 )
@@ -126,7 +128,7 @@ func (v *Visitor) RetrieveItem(ctx context.Context, w http.ResponseWriter, r *ht
 	return web.Respond(ctx, w, i.List(ctx, w, r, params), http.StatusOK)
 }
 
-//Update updates the item
+// Update updates the item
 func (v *Visitor) ToggleActive(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
 	ctx, span := trace.StartSpan(ctx, "handlers.Visitor.ToggleActive")
 	defer span.End()
@@ -222,9 +224,34 @@ func (v *Visitor) ListRelations(ctx context.Context, w http.ResponseWriter, r *h
 	return web.Respond(ctx, w, response, http.StatusOK)
 }
 
-func (v *Visitor) ChildItems(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
-	ctx, span := trace.StartSpan(ctx, "handlers.Visitor.ChildItems")
+func (v *Visitor) VisitorInfo(ctx context.Context, w http.ResponseWriter, r *http.Request, params map[string]string) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.Visitor.VisitorInfo")
 	defer span.End()
-	response := ""
-	return web.Respond(ctx, w, response, http.StatusOK)
+
+	accountID := params["account_id"]
+
+	currentUser, err := user.RetrieveCurrentUser(ctx, accountID, v.db)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("currentUser :: %+v", currentUser)
+
+	sourceEntityID := params["entity_id"]
+	sourceItemID := params["item_id"]
+
+	vis, err := visitor.RetrieveByEmail(ctx, accountID, currentUser.Email, sourceEntityID, sourceItemID, v.db)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("vis :: %+v", vis)
+
+	visInfo := struct {
+		Name string `json:"name"`
+	}{
+		vis.Name,
+	}
+
+	return web.Respond(ctx, w, visInfo, http.StatusOK)
 }

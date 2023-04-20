@@ -164,6 +164,14 @@ func (a *Account) bootApp(ctx context.Context, accountID, userID string, dft *dr
 			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
 		}
 	}
+
+	if util.Contains(dft.Teams, team.PredefinedTeamINC) {
+		err := bootstrap.BootIncident(accountID, userID, a.db, a.sdb, a.authenticator.FireBaseAdminSDK)
+		if err != nil {
+			account.Delete(ctx, a.db, accountID)
+			return web.NewRequestError(errors.Wrap(err, "Cannot bootstrap your account. Please contact support"), http.StatusInternalServerError)
+		}
+	}
 	draft.Delete(ctx, dft.ID, a.db)
 	return nil
 }

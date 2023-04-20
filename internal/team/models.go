@@ -8,6 +8,7 @@ const (
 	PredefinedTeamEMP  = "emp"
 	PredefinedTeamPMP  = "pmp"
 	PredefinedTeamCSup = "csup"
+	PredefinedTeamINC  = "inc"
 )
 
 // Team represents sub domains of an organisation
@@ -47,6 +48,7 @@ var modulesMap = map[string]string{
 }
 
 type Template struct {
+	Icon        string `json:"icon"`
 	Key         string `json:"key"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -55,8 +57,10 @@ type Template struct {
 var templatesNameMap = map[string]string{
 	PredefinedTeamCSP:  "Success",
 	PredefinedTeamCRP:  "Sales",
-	PredefinedTeamEMP:  "Employee Dir",
+	PredefinedTeamEMP:  "Employee",
+	PredefinedTeamPMP:  "Project",
 	PredefinedTeamCSup: "Support",
+	PredefinedTeamINC:  "Incident",
 }
 
 var templatesDescMap = map[string]string{
@@ -65,4 +69,14 @@ var templatesDescMap = map[string]string{
 	PredefinedTeamEMP:  "Employee management platform",
 	PredefinedTeamPMP:  "Project management platform",
 	PredefinedTeamCSup: "Customer support platform",
+	PredefinedTeamINC:  "Incident management platform",
+}
+
+var templatesIconMap = map[string]string{
+	PredefinedTeamCSP:  "csp.svg",
+	PredefinedTeamCRP:  "crp.svg",
+	PredefinedTeamEMP:  "emp.svg",
+	PredefinedTeamPMP:  "pmp.svg",
+	PredefinedTeamCSup: "csup.svg",
+	PredefinedTeamINC:  "inc.svg",
 }

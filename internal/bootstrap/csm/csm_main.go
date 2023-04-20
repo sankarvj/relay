@@ -467,31 +467,11 @@ func addHomeCharts(ctx context.Context, b *base.Base, dashboardID string, activi
 
 func addProjectCharts(ctx context.Context, b *base.Base, dashboardID string, activityEntity entity.Entity) error {
 
-	//charts for projects
-	overdueEXP := fmt.Sprintf("{{%s.%s}} !in {%s} && {{%s.%s}} bf {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemClosed.ID, b.TaskEntity.ID, b.TaskEntity.Key("due_by"), "now")
-	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "overdue", "Overdue", "", chart.TypeGrid).AddExp(overdueEXP).SetDurationAllTime().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
-	openEXP := fmt.Sprintf("{{%s.%s}} in {%s}", b.TaskEntity.ID, b.TaskEntity.Key("status"), b.StatusItemOpened.ID)
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.TaskEntity.ID, "open", "Open", "", chart.TypeGrid).AddExp(openEXP).SetDurationAllTime().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "stage", "Stage", b.ProjectEntity.Key("pipeline_stage"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, b.ProjectEntity.ID, "status", "Status", b.ProjectEntity.Key("status"), chart.TypeGrid).SetAsCustom().SetDurationAllTime().Add(ctx, b.DB)
-	if err != nil {
-		return err
-	}
-
 	advActivityMap := map[string]string{
 		"associated_companies": activityEntity.Key("associated_companies"),
 		"associated_contacts":  activityEntity.Key("associated_contacts"),
 	}
-	err = chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "name", chart.TypeRod).
+	err := chart.BuildNewChart(b.AccountID, b.TeamID, dashboardID, activityEntity.ID, "goals", "Goals", "name", chart.TypeRod).
 		AddAdvancedMap(advActivityMap).
 		SetDurationAllTime().
 		SetGrpLogicField().

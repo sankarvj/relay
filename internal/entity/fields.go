@@ -137,6 +137,9 @@ const (
 	WhoColor         = "color"
 	WhoApprover      = "approver"
 	WhoCounter       = "counter"
+	WhoPriority      = "priority"
+	WhoType          = "type"
+	WhoCategory      = "category"
 )
 
 // Field represents structural format of attributes in entity

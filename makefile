@@ -36,6 +36,9 @@ csp:
 
 emp:
 	go run ./cmd/relay-admin/main.go --db-disable-tls=1 empadd
+	
+inc:
+	go run ./cmd/relay-admin/main.go --db-disable-tls=1 incadd
 
 relay-api:
 	docker build \

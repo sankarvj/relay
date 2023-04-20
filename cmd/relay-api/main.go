@@ -68,7 +68,7 @@ func run() error {
 			Name     string `conf:"default:relaydb,env:CACHE_DB_NAME"`
 		}
 		PubSub struct {
-			GmailPublisherTopic string `conf:"default:projects/relay-94b69/topics/receive-gmail-message"`
+			GmailPublisherTopic string `conf:"default:projects/relay-70013/topics/gmail-messages"`
 		}
 		Auth struct {
 			KeyID              string `conf:"default:1"`
@@ -86,6 +86,10 @@ func run() error {
 		Service struct {
 			Region       string `conf:"default:us-east-1,env:AWS_REGION"`
 			WorkerSqsURL string `conf:"env:AWS_WORKER_SQS_URL"`
+		}
+		Twilio struct {
+			SID   string `conf:"default:AC003ebc2617064dcb0ab9b53a29cb3b87,env:TWILIO_SID"`
+			Token string `conf:"default:6cc6ffdb8ccec49646f742bf2b54aa3d,env:TWILIO_TOKEN"`
 		}
 		Payment struct {
 			StripeLiveKey    string `conf:"default:sk_test_51M0BSXHUBFGeRHv5Qalelfhv8NO1kdnM0FgGd37iG74b2HNQfRLSolOgcvuFjvkfRP4KYTmZwztk5qMCmN245IDW00IUDFBOmp,env:STRIPE_LIVE_KEY"`
@@ -112,6 +116,8 @@ func run() error {
 	expvar.NewString("aws_worker_sqs_url").Set(cfg.Service.WorkerSqsURL)
 	expvar.NewString("stripe_live_key").Set(cfg.Payment.StripeLiveKey)
 	expvar.NewString("stripe_publish_key").Set(cfg.Payment.StripePublishKey)
+	expvar.NewString("twilio_sid").Set(cfg.Twilio.SID)
+	expvar.NewString("twilio_token").Set(cfg.Twilio.Token)
 
 	// =========================================================================
 	// App Starting

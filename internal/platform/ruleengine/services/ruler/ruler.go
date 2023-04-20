@@ -22,7 +22,7 @@ type Condition struct {
 	Key        string      `json:"key"`
 }
 
-//ExpressionType returns the type of expression
+// ExpressionType returns the type of expression
 type ExpressionType int
 
 // ExpressionType defines different types of expression to work with
@@ -36,7 +36,7 @@ const (
 	PosExecutor
 )
 
-//Work used to evaluate the expression
+// Work used to evaluate the expression
 type Work struct {
 	Type          ExpressionType
 	Expression    string
@@ -44,7 +44,7 @@ type Work struct {
 	InboundRespCh chan interface{}
 }
 
-//Ruler has the full set of rule items
+// Ruler has the full set of rule items
 type Ruler struct {
 	RuleItem *RuleItem
 	positive *bool
@@ -55,7 +55,7 @@ type Ruler struct {
 	workChan chan Work
 }
 
-//RuleItem specifies the single section of the rules
+// RuleItem specifies the single section of the rules
 type RuleItem struct {
 	left     Operand
 	right    Operand
@@ -67,11 +67,11 @@ type RuleItem struct {
 	operator  string
 }
 
-//DType defines the data type of field
+// DType defines the data type of field
 type DType string
 
-//Mode for the entity spcifies certain entity specific characteristics
-//Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
+// Mode for the entity spcifies certain entity specific characteristics
+// Keep this as minimal and add a sub-type for data types such as decimal,boolean,time & date
 const (
 	TypeUnKnown   DType = "U"
 	TypeString          = "S"
@@ -81,7 +81,7 @@ const (
 	TypeReference       = "R"
 )
 
-//EngineFeedback defines the type of response execution
+// EngineFeedback defines the type of response execution
 type EngineFeedback int
 
 const (
@@ -91,14 +91,14 @@ const (
 	Compute
 )
 
-//applyFn takes two operands and then apply the logic to get the final result
+// applyFn takes two operands and then apply the logic to get the final result
 type applyFn func(Operand, Operand) bool
 
-//Operand is the value of type interface
+// Operand is the value of type interface
 type Operand interface{}
 
-//Run starts the lexer by passing the rule and a res chan,
-//res chan will trigger when the rule engine needs a response in the form of map
+// Run starts the lexer by passing the rule and a res chan,
+// res chan will trigger when the rule engine needs a response in the form of map
 func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 	defer close(workChan)
 
@@ -116,7 +116,7 @@ func Run(rule string, eFeedback EngineFeedback, workChan chan Work) {
 
 	switch eFeedback {
 	case Execute:
-		//log.Printf("internal.platform.ruleengine.services.ruler case: `execute`  expression: %s\n", rule)
+		log.Printf("internal.platform.ruleengine.services.ruler case: `execute`  expression: %s\n", rule)
 		r = r.startExecutingLexer(rule)
 		if r.positive != nil && *r.positive {
 			workChan <- Work{PosExecutor, r.trigger, nil, nil}

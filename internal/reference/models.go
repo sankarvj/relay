@@ -13,6 +13,7 @@ type Choicer struct {
 	Value  interface{}
 	Verb   interface{}
 	Avatar interface{}
+	Icon   interface{}
 	Color  interface{}
 }
 
@@ -70,6 +71,7 @@ func ItemChoices(f *entity.Field, items []item.Item, whoMap map[string]string) [
 			Value:  item.Fields()[whoMap[entity.WhoIdentifier]], // considering it as view value...  is it okay to have a specific logic with name emailgex?
 			Verb:   item.Fields()[whoMap[entity.WhoVerb]],       // is it okay to have `uuid-00-verb`?
 			Avatar: item.Fields()[whoMap[entity.WhoAvatar]],     // finding the lookup from the child itemn
+			Icon:   item.Fields()[whoMap[entity.WhoIcon]],       // finding the lookup from the child itemn
 		}
 	}
 	return choicers

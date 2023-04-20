@@ -53,7 +53,7 @@ func UpdateAN(ctx context.Context, db *sqlx.DB, an ActiveNode) error {
 	const q = `UPDATE active_nodes SET
 		"is_active" = $4,
 		"life" = $5,
-		"updated_At" = $6 
+		"updated_at" = $6 
 		WHERE item_id = $1 AND flow_id = $2 AND node_id = $3` //TODO: should I include account_id in the where clause for sharding?
 	_, err := db.ExecContext(ctx, q, an.ItemID, an.FlowID, an.NodeID,
 		an.IsActive, an.Life, an.UpdatedAt,
@@ -162,6 +162,7 @@ func nextRun(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node,
 }
 
 func runJob(ctx context.Context, db *sqlx.DB, sdb *database.SecDB, n node.Node, eng engine.Engine) error {
+	log.Println("RUN JOB CALLED.....")
 	ruleResult, err := eng.RunRuleEngine(ctx, db, sdb, n)
 	if err != nil {
 		//TODO push this to DL queue

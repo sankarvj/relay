@@ -255,10 +255,12 @@ func createViewModelMember(id string, fields map[string]entity.Field, teamMap ma
 	name := fields["name"].Value
 	email := fields["email"].Value
 	avatar := fields["avatar"].Value
+	phone := fields["phone"].Value
 
 	var nameStr string
 	var emailStr string
 	var avatarStr string
+	var phoneStr string
 
 	if name != nil {
 		nameStr = name.(string)
@@ -269,12 +271,16 @@ func createViewModelMember(id string, fields map[string]entity.Field, teamMap ma
 	if avatar != nil {
 		avatarStr = avatar.(string)
 	}
+	if phone != nil {
+		phoneStr = phone.(string)
+	}
 
 	return ViewModelMember{
 		ID:     id,
 		Name:   nameStr,
 		Email:  emailStr,
 		Avatar: avatarStr,
+		Phone:  phoneStr,
 		Teams:  populateTeams(fields["team_ids"].Value, teamMap),
 		Role:   fields["role"].Value.([]interface{}),
 	}
@@ -285,6 +291,7 @@ func recreateFields(vm ViewModelMember, namedKeys map[string]string) map[string]
 	itemFields[namedKeys["name"]] = vm.Name
 	itemFields[namedKeys["user_id"]] = vm.UserID
 	itemFields[namedKeys["email"]] = vm.Email
+	itemFields[namedKeys["phone"]] = vm.Phone
 	itemFields[namedKeys["avatar"]] = vm.Avatar
 	itemFields[namedKeys["team_ids"]] = stripeTeamIds(vm.Teams)
 	itemFields[namedKeys["role"]] = vm.Role
@@ -296,6 +303,7 @@ type ViewModelMember struct {
 	UserID string        `json:"user_id"`
 	Name   string        `json:"name"`
 	Email  string        `json:"email"`
+	Phone  string        `json:"phone"`
 	Avatar string        `json:"avatar"`
 	Teams  []ViewTeam    `json:"teams"`
 	Role   []interface{} `json:"role"`
@@ -488,5 +496,25 @@ func createVMToken(accName string, token token.Token) APIToken {
 	return APIToken{
 		AccountName: accName,
 		Token:       token.Token,
+	}
+}
+
+type TaskProgress struct {
+	ID     string      `json:"id"`
+	Verb   string      `json:"verb"`
+	Name   string      `json:"name"`
+	Count  int         `json:"count"`
+	Color  string      `json:"color"`
+	Avatar interface{} `json:"avatar"`
+}
+
+func createTaskProgress(id, verb, name, color string, avatar interface{}) *TaskProgress {
+	return &TaskProgress{
+		ID:     id,
+		Verb:   verb,
+		Name:   name,
+		Color:  color,
+		Avatar: avatar,
+		Count:  0,
 	}
 }
